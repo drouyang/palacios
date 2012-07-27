@@ -8,7 +8,6 @@
 
 
 uintptr_t alloc_palacios_pgs(u64 num_pages, u32 alignment);
-void free_palacios_pg(uintptr_t base_addr);
 void free_palacios_pgs(uintptr_t base_addr, u64 num_pages);
 
 uintptr_t get_palacios_base_addr(void);
@@ -20,6 +19,9 @@ int remove_palacios_memory(uintptr_t base_addr, u64 num_pages);
 int palacios_init_mm( void );
 int palacios_deinit_mm( void );
 
+
+void * palacios_kmalloc(size_t size, gfp_t flags);
+void palacios_kfree(void * ptr);
 
 
 #endif

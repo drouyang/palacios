@@ -280,7 +280,7 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 	    }
 
 	    host_dev->hw_dev.num_msix_vecs = 0;
-	    kfree(host_dev->hw_dev.msix_entries);
+	    palacios_kfree(host_dev->hw_dev.msix_entries);
 
 	    pci_disable_msix(dev);
 

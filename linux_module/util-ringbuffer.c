@@ -10,9 +10,10 @@
 
 #include "palacios.h"
 #include "util-ringbuffer.h"
+#include "mm.h"
 
 void init_ringbuf(struct ringbuf * ring, unsigned int size) {
-    ring->buf = palacios_alloc(size);
+    ring->buf = palacios_kmalloc(size, GFP_KERNEL);
 
     if (!(ring->buf)) { 
 	ERROR("Cannot allocate ring buffer data\n");
@@ -27,7 +28,7 @@ void init_ringbuf(struct ringbuf * ring, unsigned int size) {
 }
 
 struct ringbuf * create_ringbuf(unsigned int size) {
-    struct ringbuf * ring = (struct ringbuf *)palacios_alloc(sizeof(struct ringbuf));
+    struct ringbuf * ring = (struct ringbuf *)palacios_kmalloc(sizeof(struct ringbuf), GFP_KERNEL);
 
     if (!ring) { 
 	ERROR("Cannot allocate ring buffer\n");
@@ -40,8 +41,8 @@ struct ringbuf * create_ringbuf(unsigned int size) {
 }
 
 void free_ringbuf(struct ringbuf * ring) {
-    palacios_free(ring->buf);
-    palacios_free(ring);
+    palacios_kfree(ring->buf);
+    palacios_kfree(ring);
 }
 
 static inline unsigned char * get_read_ptr(struct ringbuf * ring) {

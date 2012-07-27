@@ -1,4 +1,5 @@
 #include "linux-exts.h"
+#include "mm.h"
 
 /* 
  * This is a place holder to ensure that the _lnx_exts section gets created by gcc
@@ -43,7 +44,7 @@ static inline struct global_ctrl * __insert_global_ctrl(struct global_ctrl * ctr
 
 int add_global_ctrl(unsigned int cmd, 
                    int (*handler)(unsigned int cmd, unsigned long arg)) {
-    struct global_ctrl * ctrl = kmalloc(sizeof(struct global_ctrl), GFP_KERNEL);
+    struct global_ctrl * ctrl = palacios_kmalloc(sizeof(struct global_ctrl), GFP_KERNEL);
 
     if (ctrl == NULL) {
         printk("Error: Could not allocate global ctrl %d\n", cmd);
@@ -55,7 +56,7 @@ int add_global_ctrl(unsigned int cmd,
 
     if (__insert_global_ctrl(ctrl) != NULL) {
         printk("Could not insert guest ctrl %d\n", cmd);
-        kfree(ctrl);
+        palacios_kfree(ctrl);
         return -1;
     }
     
@@ -129,7 +130,7 @@ int init_vm_extensions(struct v3_guest * guest) {
 	
 	INFO("Registering Linux Extension (%s)\n", ext_impl->name);
 
-	ext = palacios_alloc(sizeof(struct vm_ext));
+	ext = palacios_kmalloc(sizeof(struct vm_ext), GFP_KERNEL);
 	
 	if (!ext) {
 	    WARNING("Error allocating VM extension (%s)\n", ext_impl->name);
@@ -162,7 +163,7 @@ int deinit_vm_extensions(struct v3_guest * guest) {
 	}
 
 	list_del(&(ext->node));
-	palacios_free(ext);
+	palacios_kfree(ext);
     }
 
     return 0;

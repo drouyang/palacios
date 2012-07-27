@@ -10,7 +10,7 @@
 
 #include "palacios.h"
 #include "linux-exts.h"
-
+#include "mm.h"
 
 #include <interfaces/host_pci.h>
 
@@ -201,7 +201,7 @@ static int register_pci_hw_dev(unsigned int cmd, unsigned long arg) {
 
     if (ret == 0) {
 	// Error device already exists
-	kfree(host_dev);
+	palacios_kfree(host_dev);
 	return -EFAULT;
     }
 

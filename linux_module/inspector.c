@@ -13,6 +13,7 @@
 #include "palacios.h"
 #include "vm.h"
 #include "linux-exts.h"
+#include "mm.h"
 
 static struct dentry * v3_dir = NULL;
 

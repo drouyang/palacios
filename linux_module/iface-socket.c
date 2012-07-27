@@ -20,7 +20,7 @@
 
 #include "palacios.h"
 #include "linux-exts.h"
-
+#include "mm.h"
 
 struct palacios_socket {
     struct socket * sock;
@@ -57,7 +57,7 @@ palacios_tcp_socket(const int bufsize, const int nodelay,
     }
 
 
-    sock = palacios_alloc(sizeof(struct palacios_socket));
+    sock = palacios_kmalloc(sizeof(struct palacios_socket), GFP_KERNEL);
     
     if (!sock) { 
 	ERROR("Cannot allocate TCP socket\n");
@@ -70,7 +70,7 @@ palacios_tcp_socket(const int bufsize, const int nodelay,
 
     if (err < 0) {
 	ERROR("Cannot create TCP socket\n");
-	palacios_free(sock);
+	palacios_kfree(sock);
 	return NULL;
     }
        
@@ -108,7 +108,7 @@ palacios_udp_socket(
     }
 
 
-    sock = palacios_alloc(sizeof(struct palacios_socket));
+    sock = palacios_kmalloc(sizeof(struct palacios_socket), GFP_KERNEL);
     if (!sock) { 
 	ERROR("Cannot allocate UDP socket\n");
 	return NULL;
@@ -120,7 +120,7 @@ palacios_udp_socket(
 	
     if (err < 0){
 	ERROR("Cannot create UDP socket\n");
-	palacios_free(sock);
+	palacios_kfree(sock);
 	return NULL;
     }
     
@@ -146,7 +146,7 @@ palacios_close(void * sock_ptr)
 	sock->sock->ops->release(sock->sock);
 	
 	list_del(&(sock->sock_node));
-	palacios_free(sock);
+	palacios_kfree(sock);
     }
 }
 
@@ -206,7 +206,7 @@ static void * palacios_accept(const void * sock_ptr, unsigned int * remote_ip, u
     }
 
 
-    newsock = palacios_alloc(sizeof(struct palacios_socket));
+    newsock = palacios_kmalloc(sizeof(struct palacios_socket), GFP_KERNEL);
 
     if (!newsock) { 
 	ERROR("Cannot allocate new socket on accept\n");
@@ -217,7 +217,7 @@ static void * palacios_accept(const void * sock_ptr, unsigned int * remote_ip, u
 
     if (err < 0) {
 	ERROR("Cannot create new socket on accept\n");
-	palacios_free(newsock);
+	palacios_kfree(newsock);
 	return NULL;
     }
 
@@ -228,7 +228,7 @@ static void * palacios_accept(const void * sock_ptr, unsigned int * remote_ip, u
 
     if (err < 0){
 	ERROR("Cannot accept\n");
-	palacios_free(newsock);
+	palacios_kfree(newsock);
 	return NULL;
     }
 

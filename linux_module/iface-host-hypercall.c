@@ -17,6 +17,7 @@
 #include "vm.h"
 #include "linux-exts.h"
 #include "iface-host-hypercall.h"
+#include "mm.h"
 
 static int host_hypercall_nop(palacios_core_t core,
 			      unsigned int hcall_id, 

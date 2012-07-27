@@ -23,7 +23,7 @@
 #include "util-hashtable.h"
 #include "linux-exts.h"
 #include "vm.h"
-
+#include "mm.h"
 
 /* there is one for each host nic */
 struct raw_interface {
@@ -158,7 +158,7 @@ static int packet_recv_thread( void * arg ) {
     struct v3_packet * recver_state;
     struct raw_interface * iface = (struct raw_interface *)arg;
 
-    pkt = (unsigned char *)palacios_alloc(ETHERNET_PACKET_LEN);
+    pkt = (unsigned char *)palacios_kmalloc(ETHERNET_PACKET_LEN, GFP_KERNEL);
     
     if (!pkt) {
 	ERROR("Unable to allocate packet in vnet receive thread\n");
@@ -227,7 +227,7 @@ deinit_raw_interface(struct raw_interface * iface){
     palacios_free_htable(iface->mac_to_recver,  0,  0);
     
     list_for_each_entry_safe(recver_state, tmp_state, &(iface->brdcast_recvers), node) {
-	palacios_free(recver_state);
+	palacios_kfree(recver_state);
     }
 }
 
@@ -258,14 +258,14 @@ palacios_packet_connect(struct v3_packet * packet,
     spin_unlock_irqrestore(&(packet_state.lock),flags);
 
     if(iface == NULL){
-	iface = (struct raw_interface *)palacios_alloc(sizeof(struct raw_interface));
+	iface = (struct raw_interface *)palacios_kmalloc(sizeof(struct raw_interface), GFP_KERNEL);
 	if (!iface) { 
 	    ERROR("Palacios Packet Interface: Fails to allocate interface\n");
 	    return -1;
 	}
 	if(init_raw_interface(iface, host_nic) != 0) {
 	    ERROR("Palacios Packet Interface: Fails to initiate an raw interface on device %s\n", host_nic);
-	    palacios_free(iface);
+	    palacios_kfree(iface);
 	    return -1;
 	}
 	spin_lock_irqsave(&(packet_state.lock), flags);	
@@ -359,7 +359,7 @@ static int packet_deinit( void ) {
     
     list_for_each_entry_safe(iface, tmp, &(packet_state.open_interfaces), node) {
 	deinit_raw_interface(iface);
-	palacios_free(iface);
+	palacios_kfree(iface);
     }
     
     return 0;

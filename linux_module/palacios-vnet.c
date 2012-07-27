@@ -86,7 +86,7 @@ static void *
 host_create_timer(unsigned long interval, 
 		  void (* timer_fun)(void * priv_data), 
 		  void * data){
-    struct host_timer * timer = (struct host_timer *)palacios_alloc(sizeof(struct host_timer));
+    struct host_timer * timer = (struct host_timer *)palacios_kmalloc(sizeof(struct host_timer), GFP_KERNEL);
 
     if (!timer) { 
 	ERROR("Unable to allocate timer in VNET\n");
@@ -135,12 +135,26 @@ host_del_timer(void * vnet_timer){
 
     del_timer(&(timer->timer));
 
-    palacios_free(timer);
+    palacios_kfree(timer);
 }
 
 
 
-
+/* Enable access to main palacios stub functions */
+extern void * palacios_allocate_pages(int num_pages, unsigned int alignment);
+extern void palacios_free_pages(void * page_paddr, int num_pages);
+extern void palacios_print(const char * fmt, ...);
+extern void * palacios_alloc(unsigned int size);
+extern void palacios_free(void * addr);
+extern void * palacios_vaddr_to_paddr(void * vaddr);
+extern void * palacios_paddr_to_vaddr(void * paddr);
+extern void palacios_yield_cpu(void);
+extern void * palacios_mutex_alloc(void);
+extern void palacios_mutex_free(void * mutex);
+extern void palacios_mutex_lock(void * mutex, int must_spin);
+extern void * palacios_mutex_lock_irqsave(void * mutex, int must_spin);
+extern void palacios_mutex_unlock(void * mutex);
+extern void palacios_mutex_unlock_irqrestore(void *mutex, void *flags);
 
 static struct vnet_host_hooks vnet_host_hooks = {
     .timer_create	        = host_create_timer,

@@ -12,6 +12,7 @@
 #include <linux/module.h>
 
 #include "palacios.h"
+#include "mm.h"
 #include "linux-exts.h"
 
 #include <interfaces/vmm_file.h>
@@ -49,7 +50,7 @@ static int mkdir_recursive(const char * path, unsigned short perms) {
     char * dirname_ptr;
     char * tmp_iter;
 
-    tmp_str = palacios_alloc(strlen(path) + 1);
+    tmp_str = palacios_kmalloc(strlen(path) + 1, GFP_KERNEL);
     if (!tmp_str) { 
 	ERROR("Cannot allocate in mkdir recursive\n");
 	return -1;
@@ -72,7 +73,7 @@ static int mkdir_recursive(const char * path, unsigned short perms) {
 
 	    if ( (!isprint(*tmp_iter))) {
 		ERROR("Invalid character in path name (%d)\n", *tmp_iter);
-		palacios_free(tmp_str);
+		palacios_kfree(tmp_str);
 		return -1;
 	    } else {
 		tmp_iter++;
@@ -89,7 +90,7 @@ static int mkdir_recursive(const char * path, unsigned short perms) {
 	if ((tmp_iter - dirname_ptr) > 1) {
 	    if (palacios_file_mkdir(tmp_str, perms, 0) != 0) {
 		ERROR("Could not create directory (%s)\n", tmp_str);
-		palacios_free(tmp_str);
+		palacios_kfree(tmp_str);
 		return -1;
 	    }
 	}
@@ -105,7 +106,7 @@ static int mkdir_recursive(const char * path, unsigned short perms) {
 	dirname_ptr = tmp_iter;
     }
     
-    palacios_free(tmp_str);
+    palacios_kfree(tmp_str);
 
     return 0;
 }
@@ -195,7 +196,7 @@ static void * palacios_file_open(const char * path, int mode, void * private_dat
 	}
     }
     
-    pfile = palacios_alloc(sizeof(struct palacios_file));
+    pfile = palacios_kmalloc(sizeof(struct palacios_file), GFP_KERNEL);
     if (!pfile) { 
 	ERROR("Cannot allocate in file open\n");
 	return NULL;
@@ -222,16 +223,16 @@ static void * palacios_file_open(const char * path, int mode, void * private_dat
     
     if (IS_ERR(pfile->filp)) {
 	ERROR("Cannot open file: %s\n", path);
-	palacios_free(pfile);
+	palacios_kfree(pfile);
 	return NULL;
     }
 
-    pfile->path = palacios_alloc(strlen(path));
+    pfile->path = palacios_kmalloc(strlen(path), GFP_KERNEL);
     
     if (!pfile->path) { 
 	ERROR("Cannot allocate in file open\n");
 	filp_close(pfile->filp,NULL);
-	palacios_free(pfile);
+	palacios_kfree(pfile);
 	return NULL;
     }
     strncpy(pfile->path, path, strlen(path));
@@ -256,8 +257,8 @@ static int palacios_file_close(void * file_ptr) {
     
     list_del(&(pfile->file_node));
 
-    palacios_free(pfile->path);    
-    palacios_free(pfile);
+    palacios_kfree(pfile->path);    
+    palacios_kfree(pfile);
 
     return 0;
 }
@@ -348,15 +349,15 @@ static int file_deinit( void ) {
     list_for_each_entry_safe(pfile, tmp, &(global_files), file_node) { 
         filp_close(pfile->filp, NULL);
         list_del(&(pfile->file_node));
-        palacios_free(pfile->path);    
-        palacios_free(pfile);
+        palacios_kfree(pfile->path);    
+        palacios_kfree(pfile);
     }
 
     return 0;
 }
 
 static int guest_file_init(struct v3_guest * guest, void ** vm_data) {
-    struct vm_file_state * state = palacios_alloc(sizeof(struct vm_file_state));
+    struct vm_file_state * state = palacios_kmalloc(sizeof(struct vm_file_state), GFP_KERNEL);
 
     if (!state) {
 	ERROR("Cannot allocate when intializing file services for guest\n");
@@ -381,11 +382,11 @@ static int guest_file_deinit(struct v3_guest * guest, void * vm_data) {
     list_for_each_entry_safe(pfile, tmp, &(state->open_files), file_node) { 
         filp_close(pfile->filp, NULL);
         list_del(&(pfile->file_node));
-        palacios_free(pfile->path);    
-        palacios_free(pfile);
+        palacios_kfree(pfile->path);    
+        palacios_kfree(pfile);
     }
 
-    palacios_free(state);
+    palacios_kfree(state);
     return 0;
 }
 

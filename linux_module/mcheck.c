@@ -13,6 +13,7 @@
 #include "palacios.h"
 #include "vm.h"
 #include "linux-exts.h"
+#include "mm.h"
 
 #define SCRUBBER_MCE 0x1
 #define V3_VM_INJECT_SCRUBBER_MCE (10224+20)

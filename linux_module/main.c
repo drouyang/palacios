@@ -39,9 +39,6 @@ int cpu_list_len = 0;
 module_param_array(cpu_list, int, &cpu_list_len, 0644);
 MODULE_PARM_DESC(cpu_list, "Comma-delimited list of CPUs that Palacios will run on");
 
-int mod_allocs = 0;
-int mod_frees = 0;
-
 
 static int v3_major_num = 0;
 
@@ -76,7 +73,7 @@ static long v3_dev_ioctl(struct file * filp,
 	case V3_CREATE_GUEST:{
 	    int vm_minor = 0;
 	    struct v3_guest_img user_image;
-	    struct v3_guest * guest = palacios_alloc(sizeof(struct v3_guest));
+	    struct v3_guest * guest = palacios_kmalloc(sizeof(struct v3_guest), GFP_KERNEL);
 
 	    if (IS_ERR(guest)) {
 		ERROR("Palacios: Error allocating Kernel guest_image\n");
@@ -133,7 +130,7 @@ out_err2:
 out_err1:
             guest_map[vm_minor] = NULL; 
 out_err:
-            palacios_free(guest);
+            palacios_kfree(guest);
 
             return -1;
 
@@ -370,8 +367,6 @@ static void __exit v3_exit(void) {
     remove_proc_entry("v3-guests", dir);
     remove_proc_entry("v3-mem", dir);
     remove_proc_entry("v3vee", NULL);
-
-    DEBUG("Palacios Module Mallocs = %d, Frees = %d\n", mod_allocs, mod_frees);
 }
 
 
@@ -379,19 +374,3 @@ static void __exit v3_exit(void) {
 module_init(v3_init);
 module_exit(v3_exit);
 
-
-
-void * trace_malloc(size_t size, gfp_t flags) {
-    void * addr = NULL;
-
-    mod_allocs++;
-    addr = kmalloc(size, flags);
-
-    return addr;
-}
-
-
-void trace_free(const void * objp) {
-    mod_frees++;
-    kfree(objp);
-}

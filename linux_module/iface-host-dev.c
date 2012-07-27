@@ -20,6 +20,7 @@
 #include "iface-host-dev.h"
 #include "linux-exts.h"
 #include "vm.h"
+#include "mm.h"
 
 /*
   There are two things in this file:
@@ -168,14 +169,14 @@ struct palacios_host_device_user {
 static void palacios_host_dev_user_free(struct palacios_host_device_user *dev)
 {
     if (dev->req) {
-	palacios_free(dev->req);
+	palacios_kfree(dev->req);
 	dev->req=0;
     } 
     if (dev->resp) { 
-	palacios_free(dev->resp);
+	palacios_kfree(dev->resp);
 	dev->resp=0;
     }
-    palacios_free(dev);
+    palacios_kfree(dev);
 }
 
 
@@ -213,7 +214,7 @@ static int palacios_resize_reqresp(struct palacios_host_dev_host_request_respons
     if ((*r)==0) { 
 	// allocate it
 	DEEP_DEBUG_PRINT("palacios: hostdev: attempt alloc\n");
-	*r = palacios_alloc(sizeof(struct palacios_host_dev_host_request_response)+data_size);
+	*r = palacios_kmalloc(sizeof(struct palacios_host_dev_host_request_response)+data_size, GFP_KERNEL);
 	DEEP_DEBUG_PRINT("palacios: hostdev: palacios_alloc done\n");
 	if ((*r)==0) { 
 	    ERROR("palacios: hostdev: failed to allocate\n");
@@ -235,10 +236,10 @@ static int palacios_resize_reqresp(struct palacios_host_dev_host_request_respons
 	    struct palacios_host_dev_host_request_response *new;
 
 	    if (!copy) { 
-		palacios_free(*r);
+		palacios_kfree(*r);
 		*r=0;
 	    }
-	    new = palacios_alloc(sizeof(struct palacios_host_dev_host_request_response)+data_size);
+	    new = palacios_kmalloc(sizeof(struct palacios_host_dev_host_request_response)+data_size, GFP_KERNEL);
 	    if (!new) { 
 		ERROR("palacios: hostdev: failed to reallocate\n");
 		return -1;
@@ -247,7 +248,7 @@ static int palacios_resize_reqresp(struct palacios_host_dev_host_request_respons
 		if (copy) { 
 		    memcpy(new->data,(*r)->data,(*r)->data_len-sizeof(struct palacios_host_dev_host_request_response));
 		    new->data_len=(*r)->data_len;
-		    palacios_free(*r);
+		    palacios_kfree(*r);
 		}
 		*r=new;
 		DEEP_DEBUG_PRINT("palacios: hostdev: reallocated\n");
@@ -367,7 +368,7 @@ static long host_dev_ioctl(struct file * fp, unsigned int val, unsigned long arg
 	    
 	    switch (op.type) { 
 		case PALACIOS_HOST_DEV_USER_REQUEST_READ_GUEST: {
-		    void *temp = palacios_alloc(op.len);
+		    void *temp = palacios_kmalloc(op.len, GFP_KERNEL);
 
 		    DEEP_DEBUG_PRINT("palacios: hostdev: read guest\n");
 
@@ -382,17 +383,17 @@ static long host_dev_ioctl(struct file * fp, unsigned int val, unsigned long arg
 						   temp,
 						   op.len) != op.len) {
 			ERROR("palacios: unable to read enough from guest for host device \"%s\"\n",dev->url);
-			palacios_free(temp);
+			palacios_kfree(temp);
 			return -EFAULT;
 		    }
 		    
 		    if (copy_to_user(op.data,temp,op.len)) { 
 			ERROR("palacios: unable to copy to user for host device \"%s\"\n",dev->url);
-			palacios_free(temp);
+			palacios_kfree(temp);
 			return -EFAULT;
 		    }
 
-		    palacios_free(temp);
+		    palacios_kfree(temp);
 
 		    return op.len;
 		}
@@ -404,7 +405,7 @@ static long host_dev_ioctl(struct file * fp, unsigned int val, unsigned long arg
 		    
 		    DEEP_DEBUG_PRINT("palacios: hostdev: write guest\n");
 
-		    temp = palacios_alloc(op.len);
+		    temp = palacios_kmalloc(op.len, GFP_KERNEL);
 
 		    if (!temp) { 
 			ERROR("palacios: unable to allocate enough for write guest request for host device \"%s\"\n",dev->url);
@@ -413,7 +414,7 @@ static long host_dev_ioctl(struct file * fp, unsigned int val, unsigned long arg
 		    
 		    if (copy_from_user(temp,op.data,op.len)) { 
 			ERROR("palacios: unable to copy from user for host device \"%s\"\n",dev->url);
-			palacios_free(temp);
+			palacios_kfree(temp);
 			return -EFAULT;
 		    }
 		    
@@ -423,11 +424,11 @@ static long host_dev_ioctl(struct file * fp, unsigned int val, unsigned long arg
 						    temp,
 						    op.len) != op.len) {
 			ERROR("palacios: unable to write enough to guest for host device \"%s\"\n",dev->url);
-			palacios_free(temp);
+			palacios_kfree(temp);
 			return -EFAULT;
 		    }
 
-		    palacios_free(temp);
+		    palacios_kfree(temp);
 		    
 		    return op.len;
 		}
@@ -650,11 +651,11 @@ static int host_dev_connect(struct v3_guest * guest, unsigned int cmd, unsigned 
 		    dev->connected=1;
 		    dev->waiting=0;
 		    if (dev->req) { 
-			palacios_free(dev->req);
+			palacios_kfree(dev->req);
 			dev->req=0;
 		    } 
 		    if (dev->resp) { 
-			palacios_free(dev->resp);
+			palacios_kfree(dev->resp);
 			dev->resp=0;
 		    }
 		    INFO("palacios: connected fd for device \"%s\"\n",url);
@@ -772,7 +773,7 @@ static v3_host_dev_t palacios_host_dev_open_deferred(char *url,
 
     INFO("palacios: creating host device \"%s\"\n",url);
 
-    dev = palacios_alloc(sizeof(struct palacios_host_device_user));
+    dev = palacios_kmalloc(sizeof(struct palacios_host_device_user), GFP_KERNEL);
     
     if (!dev) { 
 	ERROR("palacios: cannot allocate for host device \"%s\"\n",url);
@@ -1321,7 +1322,7 @@ static int host_dev_init( void ) {
 
 
 static int host_dev_guest_init(struct v3_guest * guest, void ** vm_data ) {
-    struct palacios_host_dev * host_dev = palacios_alloc(sizeof(struct palacios_host_dev));
+    struct palacios_host_dev * host_dev = palacios_kmalloc(sizeof(struct palacios_host_dev), GFP_KERNEL);
 
     if (!host_dev) { 
 	ERROR("palacios: failed to do guest_init for host device\n");
@@ -1343,7 +1344,7 @@ static int host_dev_guest_init(struct v3_guest * guest, void ** vm_data ) {
 
 static int host_dev_guest_deinit(struct v3_guest * guest, void * vm_data) {
 
-    palacios_free(vm_data);
+    palacios_kfree(vm_data);
     return 0;
 }
 

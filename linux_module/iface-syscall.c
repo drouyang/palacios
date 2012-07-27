@@ -14,6 +14,7 @@
 #include "palacios.h"
 #include "vm.h"
 #include "linux-exts.h"
+#include "mm.h"
 
 #include "iface-syscall.h"
 

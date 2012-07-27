@@ -10,6 +10,7 @@
 //static struct list_head pools;
 
 #include "palacios.h"
+#include "mm.h"
 
 #define OFFLINE_POOL_THRESHOLD 12
 
@@ -160,7 +161,7 @@ uintptr_t alloc_palacios_pgs(u64 num_pages, u32 alignment) {
 
 
 
-void free_palacios_pgs(uintptr_t pg_addr, int num_pages) {
+void free_palacios_pgs(uintptr_t pg_addr, u64 num_pages) {
     //DEBUG("Freeing Memory page %p\n", (void *)pg_addr);
 
     if ((pg_addr >= pool.base_addr) && 
@@ -214,7 +215,7 @@ int add_palacios_memory(uintptr_t base_addr, u64 num_pages) {
 	   (unsigned long long)(base_addr / (1024 * 1024)));
 
 
-    pool.bitmap = palacios_alloc(bitmap_size);
+    pool.bitmap = palacios_kmalloc(bitmap_size, GFP_KERNEL);
     
     if (IS_ERR(pool.bitmap)) {
 	ERROR("Error allocating Palacios MM bitmap\n");
@@ -242,7 +243,7 @@ int palacios_init_mm( void ) {
 
 int palacios_deinit_mm( void ) {
 
-    palacios_free(pool.bitmap);
+    palacios_kfree(pool.bitmap);
 
     pool.bitmap=0;
     pool.base_addr=0;
@@ -253,3 +254,70 @@ int palacios_deinit_mm( void ) {
     
     return 0;
 }
+
+
+
+
+#ifdef V3_CONFIG_DEBUG_MEM_PARANOID
+// The following can be used to track heap bugs
+// zero memory after allocation
+#define ALLOC_ZERO_MEM 0
+// pad allocations by this many bytes on both ends of block
+#define ALLOC_PAD      0
+
+static void * palacios_kmalloc_paranoid(size_t size, gfp_t flags) {
+    void * addr = NULL;
+
+    addr = kmalloc(size+2*ALLOC_PAD, flags);
+    
+    if (!addr) { 
+	ERROR("ALERT ALERT  kmalloc has FAILED FAILED FAILED\n");
+	return NULL;
+    }	
+    
+
+    
+#if ALLOC_ZERO_MEM
+    memset(addr, 0, size + 2 * ALLOC_PAD);
+#endif
+    
+    return addr + ALLOC_PAD;
+
+}
+
+static void palacios_kfree_paranoid(void * ptr) {
+    kfree(addr - ALLOC_PAD);
+}
+
+#endif
+
+void * palacios_kmalloc(size_t size, gfp_t flags) {
+
+    if (irqs_disabled() && ((flags & GFP_ATOMIC) == 0)) {
+	WARNING("Allocating memory with Interrupts disabled!!!\n");
+	WARNING("This is probably NOT want you want to do 99%% of the time\n");
+	WARNING("If still want to do this, you may dismiss this warning by setting the GFP_ATOMIC flag directly\n");
+	dump_stack();
+
+	flags &= ~GFP_KERNEL;
+	flags |= GFP_ATOMIC;
+    }
+
+#ifdef V3_CONFIG_DEBUG_MEM_PARANOID
+    return palacios_kmalloc_paranoid(size, flags);
+#else
+    return kmalloc(size, flags);
+#endif
+}
+
+
+void palacios_kfree(void * ptr) {
+#ifdef V3_CONFIG_DEBUG_MEM_PARANOID
+    return palacios_kfree_paranoid(ptr);
+#else
+    return kfree(ptr);
+#endif
+
+}
+
+

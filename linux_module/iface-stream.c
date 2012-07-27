@@ -18,7 +18,7 @@
 #include "linux-exts.h"
 #include "util-ringbuffer.h"
 #include "vm.h"
-
+#include "mm.h"
 
 
 // This is probably overkill
@@ -158,7 +158,7 @@ static ssize_t stream_write(struct file * filp, const char __user * buf, size_t 
     char * kern_buf = NULL;
     ssize_t bytes_written = 0;
     
-    kern_buf = palacios_alloc(size);
+    kern_buf = palacios_kmalloc(size, GFP_KERNEL);
     
     if (!kern_buf) { 
 	ERROR("Cannot allocate buffer in stream interface\n");
@@ -167,13 +167,13 @@ static ssize_t stream_write(struct file * filp, const char __user * buf, size_t 
 
     if (copy_from_user(kern_buf, buf, size)) {
 	ERROR("Stream Write Failed\n");
-	palacios_free(kern_buf);
+	palacios_kfree(kern_buf);
 	return -EFAULT;
     };
     
     bytes_written = stream->v3_stream->input(stream->v3_stream, kern_buf, size);
 
-    palacios_free(kern_buf);
+    palacios_kfree(kern_buf);
 
     return bytes_written;
 }
@@ -220,7 +220,7 @@ static void * palacios_stream_open(struct v3_stream * v3_stream, const char * na
 	return NULL;
     }
 
-    stream = palacios_alloc(sizeof(struct stream_state));
+    stream = palacios_kmalloc(sizeof(struct stream_state), GFP_KERNEL);
     if (!stream) { 
 	ERROR("Unable to allocate stream\n");
 	return NULL;
@@ -280,7 +280,7 @@ static void palacios_stream_close(struct v3_stream * v3_stream) {
 
     free_ringbuf(stream->out_ring);
     list_del(&(stream->stream_node));
-    palacios_free(stream);
+    palacios_kfree(stream);
 
 }
 
@@ -306,7 +306,7 @@ static int stream_deinit( void ) {
     list_for_each_entry_safe(stream, tmp, &(global_streams), stream_node) {
         free_ringbuf(stream->out_ring);
         list_del(&(stream->stream_node));
-        palacios_free(stream);
+        palacios_kfree(stream);
     }
 
     return 0;
@@ -365,7 +365,7 @@ static int stream_connect(struct v3_guest * guest, unsigned int cmd, unsigned lo
 
 
 static int guest_stream_init(struct v3_guest * guest, void ** vm_data) {
-    struct vm_global_streams * state = palacios_alloc(sizeof(struct vm_global_streams));
+    struct vm_global_streams * state = palacios_kmalloc(sizeof(struct vm_global_streams), GFP_KERNEL);
 
     if (!state) { 
 	ERROR("Unable to allocate state in stream init\n");
@@ -390,10 +390,10 @@ static int guest_stream_deinit(struct v3_guest * guest, void * vm_data) {
     list_for_each_entry_safe(stream, tmp, &(global_streams), stream_node) {
         free_ringbuf(stream->out_ring);
         list_del(&(stream->stream_node));
-        palacios_free(stream);
+        palacios_kfree(stream);
     }
     
-    palacios_free(state);
+    palacios_kfree(state);
     
     return 0;
 }

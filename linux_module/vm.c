@@ -23,6 +23,7 @@
 
 #include "palacios.h"
 #include "vm.h"
+#include "mm.h"
 #include "linux-exts.h"
 
 
@@ -70,7 +71,7 @@ int add_guest_ctrl(struct v3_guest * guest, unsigned int cmd,
 				  unsigned int cmd, unsigned long arg, 
 				  void * priv_data),
 		   void * priv_data) {
-    struct vm_ctrl * ctrl = palacios_alloc(sizeof(struct vm_ctrl));
+    struct vm_ctrl * ctrl = palacios_kmalloc(sizeof(struct vm_ctrl), GFP_KERNEL);
 
     if (ctrl == NULL) {
 	WARNING("Error: Could not allocate vm ctrl %d\n", cmd);
@@ -83,7 +84,7 @@ int add_guest_ctrl(struct v3_guest * guest, unsigned int cmd,
 
     if (__insert_ctrl(guest, ctrl) != NULL) {
 	WARNING("Could not insert guest ctrl %d\n", cmd);
-	palacios_free(ctrl);
+	palacios_kfree(ctrl);
 	return -1;
     }
     
@@ -124,7 +125,7 @@ int remove_guest_ctrl(struct v3_guest * guest, unsigned int cmd) {
 
     rb_erase(&(ctrl->tree_node), &(guest->vm_ctrls));
 
-    kfree(ctrl);
+    palacios_kfree(ctrl);
 
     return 0;
 }
@@ -141,7 +142,7 @@ static void free_guest_ctrls(struct v3_guest * guest) {
 	
 	WARNING("Cleaning up guest ctrl that was not removed explicitly (%d)\n", ctrl->cmd);
 
-	kfree(ctrl);
+	palacios_kfree(ctrl);
     }
 }
 
@@ -444,7 +445,7 @@ int free_palacios_vm(struct v3_guest * guest) {
 
 
     vfree(guest->img);
-    palacios_free(guest);
+    palacios_kfree(guest);
 
     return 0;
 }

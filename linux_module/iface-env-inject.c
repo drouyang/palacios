@@ -14,7 +14,7 @@
 #include "vm.h"
 #include "linux-exts.h"
 #include "iface-env-inject.h"
-
+#include "mm.h"
 
 static struct env_data * env_map[MAX_ENV_INJECT] = {[0 ... MAX_ENV_INJECT - 1] = 0};
 
@@ -38,10 +38,10 @@ static void free_inject_data (void) {
     for(i = 0; i < MAX_ENV_INJECT; i++) {
         if (env_map[i]) {
             for (j = 0; j < env_map[i]->num_strings; j++) {
-                palacios_free(env_map[i]->strings[j]);
+                palacios_kfree(env_map[i]->strings[j]);
 	    }
-            palacios_free(env_map[i]->strings);
-            palacios_free(env_map[i]);
+            palacios_kfree(env_map[i]->strings);
+            palacios_kfree(env_map[i]);
         }
     }
 }
@@ -59,7 +59,7 @@ static int vm_env_inject (struct v3_guest * guest, unsigned int cmd, unsigned lo
         return -EFAULT;
     }
 
-    env = palacios_alloc(sizeof(struct env_data));
+    env = palacios_kmalloc(sizeof(struct env_data), GFP_KERNEL);
     if (IS_ERR(env)) {
         ERROR("Palacios Error: could not allocate space for environment data\n");
         return -EFAULT;
@@ -73,12 +73,12 @@ static int vm_env_inject (struct v3_guest * guest, unsigned int cmd, unsigned lo
     DEBUG("Binary hooked on: %s\n", env->bin_name);
 
     //DEBUG("Palacios: Allocating space for %u env var string ptrs...\n", env->num_strings);
-    env->strings = palacios_alloc(env->num_strings*sizeof(char*));
+    env->strings = palacios_kmalloc(env->num_strings*sizeof(char *), GFP_KERNEL);
     if (IS_ERR(env->strings)) {
         ERROR("Palacios Error: could not allocate space for env var strings\n");
         return -EFAULT;
     }
-    memset(env->strings, 0, env->num_strings*sizeof(char*));
+    memset(env->strings, 0, env->num_strings * sizeof(char*));
 
     //INFO("Palacios: copying env var string pointers\n");
     if (copy_from_user(env->strings, (void __user *)env_arg.strings, env->num_strings*sizeof(char*))) {
@@ -87,7 +87,7 @@ static int vm_env_inject (struct v3_guest * guest, unsigned int cmd, unsigned lo
     }
 
     for (i = 0; i < env->num_strings; i++) {
-        char * tmp  = palacios_alloc(MAX_STRING_LEN);
+        char * tmp  = palacios_kmalloc(MAX_STRING_LEN, GFP_KERNEL);
         if (IS_ERR(tmp)) {
             ERROR("Palacios Error: could not allocate space for env var string #%d\n", i);
             return -EFAULT;

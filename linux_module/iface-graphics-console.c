@@ -21,7 +21,7 @@
 #include "palacios.h"
 #include "linux-exts.h"
 #include "vm.h"
-
+#include "mm.h"
 #include <linux/vmalloc.h>
 
 /*
@@ -318,7 +318,7 @@ static int graphics_console_deinit( void ) {
         if (gc->data) 
             vfree(gc->data);
 
-        palacios_free(gc);
+        palacios_kfree(gc);
     }
     
     return 0;
@@ -446,7 +446,7 @@ static int fb_input(struct v3_guest * guest,
 
 
 static int graphics_console_guest_init(struct v3_guest * guest, void ** vm_data) {
-    struct palacios_graphics_console * graphics_cons = palacios_alloc(sizeof(struct palacios_graphics_console));
+    struct palacios_graphics_console * graphics_cons = palacios_kmalloc(sizeof(struct palacios_graphics_console), GFP_KERNEL);
 
     if (!graphics_cons) { 
 	ERROR("palacios: filed to do guest_init for graphics console\n");
@@ -476,7 +476,7 @@ static int graphics_console_guest_deinit(struct v3_guest * guest, void * vm_data
 	vfree(graphics_cons->data);
     }
 
-    palacios_free(graphics_cons);
+    palacios_kfree(graphics_cons);
 
     return 0;
 }

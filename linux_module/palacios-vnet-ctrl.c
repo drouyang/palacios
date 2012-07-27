@@ -23,6 +23,7 @@
 #include <vnet/vnet_hashtable.h>
 #include "palacios-vnet.h"
 #include "palacios.h"
+#include "mm.h"
 
 #define VNET_SERVER_PORT 9000
 
@@ -544,7 +545,7 @@ static void delete_route(struct vnet_route_iter * route) {
 
     INFO("VNET Control: Route %d deleted from VNET\n", route->idx);
 
-    palacios_free(route);
+    palacios_kfree(route);
     route = NULL;
 }
 
@@ -593,7 +594,7 @@ route_write(struct file * file,
 	
 	if (strnicmp("ADD", token, strlen("ADD")) == 0) {
 	    struct vnet_route_iter * new_route = NULL;
-	    new_route = palacios_alloc(sizeof(struct vnet_route_iter));
+	    new_route = palacios_kmalloc(sizeof(struct vnet_route_iter), GFP_KERNEL);
 	    
 	    if (!new_route) {
 		ERROR("Cannot allocate new route\n");
@@ -604,13 +605,13 @@ route_write(struct file * file,
 	    
 	    if (parse_route_str(buf_iter, &(new_route->route)) == -1) {
 		ERROR("Cannot parse new route\n");
-		palacios_free(new_route);
+		palacios_kfree(new_route);
 		return -EFAULT;
 	    }
 	    
 	    if (inject_route(new_route) != 0) {
 		ERROR("Cannot inject new route\n");
-		palacios_free(new_route);
+		palacios_kfree(new_route);
 		return -EFAULT;
 	    }
 	} else if (strnicmp("DEL", token, strlen("DEL")) == 0) {
@@ -654,7 +655,7 @@ static void delete_link(struct vnet_link_iter * link){
     vnet_ctrl_s.num_links --;
     spin_unlock_irqrestore(&(vnet_ctrl_s.lock), flags);
 
-    palacios_free(link);
+    palacios_kfree(link);
     link = NULL;
 }
 
@@ -731,7 +732,7 @@ link_write(struct file * file, const char * buf, size_t size, loff_t * ppos) {
 		return -EFAULT;
 	    }
 
-	    link = palacios_alloc(sizeof(struct vnet_link_iter));
+	    link = palacios_kmalloc(sizeof(struct vnet_link_iter), GFP_KERNEL);
 	    if (!link) {
 		WARNING("VNET Control: Cannot allocate link\n");
 		return -EFAULT;

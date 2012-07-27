@@ -24,11 +24,6 @@
 
 #include "mm.h"
 
-// The following can be used to track heap bugs
-// zero memory after allocation
-#define ALLOC_ZERO_MEM 0
-// pad allocations by this many bytes on both ends of block
-#define ALLOC_PAD      0
 
 
 u32 pg_allocs = 0;
@@ -46,36 +41,40 @@ extern int cpu_list[NR_CPUS];
 extern int cpu_list_len;
 
 
-static char *print_buffer[NR_CPUS];
+static char * print_buffer[NR_CPUS];
 
 static void deinit_print_buffers(void)
 {
     int i;
 
-    for (i=0;i<NR_CPUS;i++) {
+    for (i = 0; i < NR_CPUS; i++) {
 	if (print_buffer[i]) { 
-	    palacios_free(print_buffer[i]);
-	    print_buffer[i]=0;
+	    palacios_kfree(print_buffer[i]);
+	    print_buffer[i] = 0;
 	}
     }
 }
+
+
 
 static int init_print_buffers(void)
 {
     int i;
     
-    memset(print_buffer,0,sizeof(char*)*NR_CPUS);
+    memset(print_buffer, 0, sizeof(char *) * NR_CPUS);
 
 #if !V3_PRINTK_OLD_STYLE_OUTPUT
 
-    for (i=0;i<NR_CPUS;i++) { 
-	print_buffer[i] = palacios_alloc(V3_PRINTK_BUF_SIZE);
+    for (i = 0; i < NR_CPUS; i++) { 
+	print_buffer[i] = palacios_kmalloc(V3_PRINTK_BUF_SIZE, GFP_KERNEL);
+
 	if (!print_buffer[i]) { 
 	    ERROR("Cannot allocate print buffer for cpu %d\n",i);
 	    deinit_print_buffers();
 	    return -1;
 	}
-	memset(print_buffer[i],0,V3_PRINTK_BUF_SIZE);
+
+	memset(print_buffer[i], 0, V3_PRINTK_BUF_SIZE);
     }
 
 #endif
@@ -87,7 +86,7 @@ static int init_print_buffers(void)
 /**
  * Prints a message to the console.
  */
-void palacios_print(const char *fmt, ...) {
+void palacios_print(const char * fmt, ...) {
 
 #if V3_PRINTK_OLD_STYLE_OUTPUT
 
@@ -97,12 +96,12 @@ void palacios_print(const char *fmt, ...) {
   vprintk(fmt, ap);
   va_end(ap);
 
-  return
+  return;
 
 #else 
 
   va_list ap;
-  char *buf;
+  char * buf = NULL;
   unsigned int cpu = palacios_get_cpu();
 
   buf = print_buffer[cpu];
@@ -113,20 +112,20 @@ void palacios_print(const char *fmt, ...) {
   } 
 
   va_start(ap, fmt);
-  vsnprintf(buf,V3_PRINTK_BUF_SIZE, fmt, ap);
+  vsnprintf(buf, V3_PRINTK_BUF_SIZE, fmt, ap);
   va_end(ap);
 
 #if V3_PRINTK_CHECK_7BIT
   {
-      char c=0;
+      char c = 0;
       int i;
-      for (i=0;i<strlen(buf);i++) { 
+      for (i = 0; i < strlen(buf); i++) { 
 	  if (buf[i] < 0) {
-	      c=buf[i];
+	      c = buf[i];
 	      break;
 	  }
       }
-      if (c!=0) { 
+      if (c != 0) { 
 	  printk(KERN_INFO "palacios (pcore %u): ALERT ALERT 8 BIT CHAR (c=%d) DETECTED\n", cpu,c);
       }
   }
@@ -146,7 +145,7 @@ void palacios_print(const char *fmt, ...) {
  * Allocates a contiguous region of pages of the requested size.
  * Returns the physical address of the first page in the region.
  */
-void *palacios_allocate_pages(int num_pages, unsigned int alignment) {
+void * palacios_allocate_pages(int num_pages, unsigned int alignment) {
     void * pg_addr = NULL;
 
     pg_addr = (void *)alloc_palacios_pgs(num_pages, alignment);
@@ -174,26 +173,6 @@ void palacios_free_pages(void * page_paddr, int num_pages) {
 }
 
 
-void *
-palacios_alloc_extended(unsigned int size, unsigned int flags) {
-    void * addr = NULL;
-
-    addr = kmalloc(size+2*ALLOC_PAD, flags);
-
-    if (!addr) { 
-       ERROR("ALERT ALERT  kmalloc has FAILED FAILED FAILED\n");
-       return NULL;
-    }	
-
-    mallocs++;
-
-#if ALLOC_ZERO_MEM
-    memset(addr,0,size+2*ALLOC_PAD);
-#endif
-
-    return addr+ALLOC_PAD;
-}
-
 
 /**
  * Allocates 'size' bytes of kernel memory.
@@ -202,16 +181,9 @@ palacios_alloc_extended(unsigned int size, unsigned int flags) {
 void *
 palacios_alloc(unsigned int size) {
 
-    // It is very important that this test remains since 
-    // this function is used extensively throughout palacios and the linux
-    // module, both in places where interrupts are off and where they are on
-    // a GFP_KERNEL call, when done with interrupts off can lead to DEADLOCK
-    if (irqs_disabled()) {
-	return palacios_alloc_extended(size,GFP_ATOMIC);
-    } else {
-	return palacios_alloc_extended(size,GFP_KERNEL);
-    }
+    mallocs++;
 
+    return palacios_kmalloc(size, GFP_KERNEL);
 }
 
 /**
@@ -223,7 +195,7 @@ palacios_free(
 )
 {
     frees++;
-    kfree(addr-ALLOC_PAD);
+    palacios_kfree(addr);
     return;
 }
 
@@ -290,7 +262,7 @@ static int lnx_thread_target(void * arg) {
 
     INFO("Palacios Thread (%s) EXITING\n", thread_info->name);
 
-    palacios_free(thread_info);
+    palacios_kfree(thread_info);
     // handle cleanup 
 
     do_exit(ret);
@@ -307,7 +279,7 @@ palacios_start_kernel_thread(
 	void *			arg,
 	char *			thread_name) {
 
-    struct lnx_thread_arg * thread_info = palacios_alloc(sizeof(struct lnx_thread_arg));
+    struct lnx_thread_arg * thread_info = palacios_kmalloc(sizeof(struct lnx_thread_arg), GFP_KERNEL);
 
     if (!thread_info) { 
 	ERROR("ALERT ALERT Unable to allocate thread\n");
@@ -331,7 +303,7 @@ palacios_start_thread_on_cpu(int cpu_id,
 			     void * arg, 
 			     char * thread_name ) {
     struct task_struct * thread = NULL;
-    struct lnx_thread_arg * thread_info = palacios_alloc(sizeof(struct lnx_thread_arg));
+    struct lnx_thread_arg * thread_info = palacios_kmalloc(sizeof(struct lnx_thread_arg), GFP_KERNEL);
 
     if (!thread_info) { 
 	ERROR("ALERT ALERT Unable to allocate thread to start on cpu\n");
@@ -347,14 +319,14 @@ palacios_start_thread_on_cpu(int cpu_id,
 
     if (IS_ERR(thread)) {
 	WARNING("Palacios error creating thread: %s\n", thread_name);
-	palacios_free(thread_info);
+	palacios_kfree(thread_info);
 	return NULL;
     }
 
     if (set_cpus_allowed_ptr(thread, cpumask_of(cpu_id)) != 0) {
 	WARNING("Attempt to start thread on disallowed CPU\n");
 	kthread_stop(thread);
-	palacios_free(thread_info);
+	palacios_kfree(thread_info);
 	return NULL;
     }
 
@@ -584,7 +556,7 @@ void palacios_yield_cpu_timed(unsigned int us)
 void *
 palacios_mutex_alloc(void)
 {
-    spinlock_t *lock = palacios_alloc(sizeof(spinlock_t));
+    spinlock_t * lock = palacios_alloc(sizeof(spinlock_t));
 
     if (lock) {
 	spin_lock_init(lock);
@@ -692,7 +664,7 @@ int palacios_vmm_init( void )
 	int minor = 0;
 	int i = 0;
 
-        cpu_mask = palacios_alloc((num_cpus / 8) + 1);
+        cpu_mask = palacios_kmalloc((num_cpus / 8) + 1, GFP_KERNEL);
 
 	if (!cpu_mask) { 
 	    ERROR("Cannot allocate cpu mask\n");
@@ -718,7 +690,7 @@ int palacios_vmm_init( void )
 
     if (init_print_buffers()) {
 	ERROR("Cannot initialize print buffers\n");
-	palacios_free(cpu_mask);
+	palacios_kfree(cpu_mask);
 	return -1;
     }
 

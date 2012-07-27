@@ -5,6 +5,7 @@
 
 #include <linux/slab.h>
 
+#include "mm.h"
 #include "palacios.h"
 #include "util-queue.h"
 
@@ -23,7 +24,7 @@ void deinit_queue(struct gen_queue * queue) {
 }
 
 struct gen_queue * create_queue(unsigned int max_entries) {
-    struct gen_queue * tmp_queue = palacios_alloc(sizeof(struct gen_queue));
+    struct gen_queue * tmp_queue = palacios_kmalloc(sizeof(struct gen_queue), GFP_KERNEL);
     if (!tmp_queue) { 
 	ERROR("Unable to allocate a queue\n");
 	return NULL;
@@ -40,7 +41,7 @@ int enqueue(struct gen_queue * queue, void * entry) {
 	return -1;
     }
 
-    q_entry = palacios_alloc(sizeof(struct queue_entry));
+    q_entry = palacios_kmalloc(sizeof(struct queue_entry), GFP_KERNEL);
     
     if (!q_entry) { 
 	ERROR("Unable to allocate a queue entry on enqueue\n");
@@ -71,7 +72,7 @@ void * dequeue(struct gen_queue * queue) {
 	
 	entry_val = tmp_entry->entry;
 	list_del(q_entry);
-	palacios_free(tmp_entry);
+	palacios_kfree(tmp_entry);
 
 	queue->num_entries--;
 

@@ -23,7 +23,7 @@
 #include <vnet/vnet_hashtable.h>
 #include "palacios-vnet.h"
 #include "palacios.h"
-
+#include "mm.h"
 
 #define VNET_SERVER_PORT 9000
 
@@ -109,7 +109,7 @@ static void _delete_link(struct vnet_link * link){
 	   link->dst_port, 
 	   link->idx);
 
-    palacios_free(link);
+    palacios_kfree(link);
     link = NULL;
 }
 
@@ -185,7 +185,7 @@ uint32_t vnet_brg_add_link(uint32_t ip, uint16_t port, vnet_brg_proto_t proto){
      struct vnet_link * new_link = NULL;
      uint32_t idx;
 
-     new_link = palacios_alloc(sizeof(struct vnet_link));
+     new_link = palacios_kmalloc(sizeof(struct vnet_link), GFP_KERNEL);
      if (!new_link) {
 	return -1;
      }
@@ -198,7 +198,7 @@ uint32_t vnet_brg_add_link(uint32_t ip, uint16_t port, vnet_brg_proto_t proto){
      idx = _create_link(new_link);
      if (idx < 0) {
 	WARNING("Could not create link\n");
-	palacios_free(new_link);
+	palacios_kfree(new_link);
 	return -1;
      }
 
@@ -413,7 +413,7 @@ static int _udp_server(void * arg) {
 
     INFO("Palacios VNET Bridge: UDP receiving server ..... \n");
 
-    pkt = palacios_alloc(MAX_PACKET_LEN);
+    pkt = palacios_kmalloc(MAX_PACKET_LEN, GFP_KERNEL);
 
     if (!pkt) { 
 	ERROR("Unable to allocate packet in VNET UDP Server\n");
@@ -460,7 +460,7 @@ static int _udp_server(void * arg) {
 
     INFO("VNET Server: UDP thread exiting\n");
 
-    palacios_free(pkt);
+    palacios_kfree(pkt);
 
     return 0;
 }
