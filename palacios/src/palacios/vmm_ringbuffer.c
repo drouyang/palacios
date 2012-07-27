@@ -23,7 +23,7 @@
 
 
 
-void NO_INST v3_init_ringbuf(struct v3_ringbuf * ring, uint_t size) {
+void v3_init_ringbuf(struct v3_ringbuf * ring, uint32_t size) {
     ring->buf = V3_Malloc(size);
 
     if (!(ring->buf)) {
@@ -38,8 +38,7 @@ void NO_INST v3_init_ringbuf(struct v3_ringbuf * ring, uint_t size) {
     ring->current_len = 0;
 }
 
-NO_INST 
-struct v3_ringbuf * v3_create_ringbuf(uint_t size) {
+struct v3_ringbuf * v3_create_ringbuf(uint32_t size) {
     struct v3_ringbuf * ring = (struct v3_ringbuf *)V3_Malloc(sizeof(struct v3_ringbuf));
 
     if (!ring) {
@@ -52,35 +51,35 @@ struct v3_ringbuf * v3_create_ringbuf(uint_t size) {
     return ring;
 }
 
-NO_INST 
+
 void v3_free_ringbuf(struct v3_ringbuf * ring) {
     V3_Free(ring->buf);
     V3_Free(ring);
 }
 
 
-NO_INST 
-static inline uchar_t * get_read_ptr(struct v3_ringbuf * ring) {
-    return (uchar_t *)(ring->buf + ring->start);
+
+static inline uint8_t * get_read_ptr(struct v3_ringbuf * ring) {
+    return (uint8_t *)(ring->buf + ring->start);
 }
 
-NO_INST 
-static inline uchar_t * get_write_ptr(struct v3_ringbuf * ring) {
-    return (uchar_t *)(ring->buf + ring->end);
+
+static inline uint8_t * get_write_ptr(struct v3_ringbuf * ring) {
+    return (uint8_t *)(ring->buf + ring->end);
 }
 
-NO_INST 
+
 static inline int get_read_section_size(struct v3_ringbuf * ring) {
     return ring->size - ring->start;
 }
 
-NO_INST 
+
 static inline int get_write_section_size(struct v3_ringbuf * ring) {
     return ring->size - ring->end;
 }
 
-NO_INST 
-static inline int is_read_loop(struct v3_ringbuf * ring, uint_t len) {
+
+static inline int is_read_loop(struct v3_ringbuf * ring, uint32_t len) {
     if ((ring->start >= ring->end) && (ring->current_len > 0)) {
 	// end is past the end of the buffer
 	if (get_read_section_size(ring) < len) {
@@ -90,8 +89,8 @@ static inline int is_read_loop(struct v3_ringbuf * ring, uint_t len) {
     return 0;
 }
 
-NO_INST 
-static inline int is_write_loop(struct v3_ringbuf * ring, uint_t len) {
+
+static inline int is_write_loop(struct v3_ringbuf * ring, uint32_t len) {
     if ((ring->end >= ring->start) && (ring->current_len < ring->size)) {
 	// end is past the end of the buffer
 	if (get_write_section_size(ring) < len) {
@@ -101,23 +100,23 @@ static inline int is_write_loop(struct v3_ringbuf * ring, uint_t len) {
     return 0;
 }
 
-NO_INST 
+
 int v3_ringbuf_avail_space(struct v3_ringbuf * ring) {
     return ring->size - ring->current_len;
 }
 
-NO_INST 
+
 int v3_ringbuf_data_len(struct v3_ringbuf * ring) {
     return ring->current_len;
 }
 
-NO_INST 
+
 int v3_ringbuf_capacity(struct v3_ringbuf * ring) {
     return ring->size;
 }
 
-NO_INST 
-int v3_ringbuf_read(struct v3_ringbuf * ring, uchar_t * dst, uint_t len) {
+
+int v3_ringbuf_read(struct v3_ringbuf * ring, uint8_t * dst, uint32_t len) {
     int read_len = 0;
     int ring_data_len = ring->current_len;
 
@@ -142,8 +141,8 @@ int v3_ringbuf_read(struct v3_ringbuf * ring, uchar_t * dst, uint_t len) {
 }
 
 
-NO_INST 
-int v3_ringbuf_peek(struct v3_ringbuf * ring, uchar_t * dst, uint_t len) {
+
+int v3_ringbuf_peek(struct v3_ringbuf * ring, uint8_t * dst, uint32_t len) {
     int read_len = 0;
     int ring_data_len = ring->current_len;
 
@@ -162,8 +161,8 @@ int v3_ringbuf_peek(struct v3_ringbuf * ring, uchar_t * dst, uint_t len) {
 }
 
 
-NO_INST 
-int v3_ringbuf_delete(struct v3_ringbuf * ring, uint_t len) {
+
+int v3_ringbuf_delete(struct v3_ringbuf * ring, uint32_t len) {
     int del_len = 0;
     int ring_data_len = ring->current_len;
 
@@ -181,8 +180,8 @@ int v3_ringbuf_delete(struct v3_ringbuf * ring, uint_t len) {
 }
 
 
-NO_INST 
-int v3_ringbuf_write(struct v3_ringbuf * ring, uchar_t * src, uint_t len) {
+
+int v3_ringbuf_write(struct v3_ringbuf * ring, uint8_t * src, uint32_t len) {
     int write_len = 0;
     int ring_avail_space = ring->size - ring->current_len;
   
@@ -216,7 +215,7 @@ int v3_ringbuf_write(struct v3_ringbuf * ring, uchar_t * src, uint_t len) {
 }
 
 
-NO_INST 
+
 void v3_print_ringbuf(struct v3_ringbuf * ring) {
     int ctr = 0;
   
