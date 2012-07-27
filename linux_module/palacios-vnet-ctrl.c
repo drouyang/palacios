@@ -63,6 +63,29 @@ struct vnet_ctrl_state {
 static struct vnet_ctrl_state vnet_ctrl_s;
 
 
+char *skip_blank(char **start)
+{
+    char *cur;
+    
+    do {
+	cur = strsep(start, " \t");
+    } while (cur != NULL && *cur=='\0');
+
+    return cur;
+}
+
+char *skip_lines(char **start)
+{
+    char *cur;
+    
+    do {
+	cur = strsep(start, "\r\n");
+    } while (cur != NULL && *cur=='\0');
+
+    return cur;
+}
+
+
 static int parse_mac_str(char * str, uint8_t * qual, uint8_t * mac) {
     char * token;
 
@@ -163,21 +186,21 @@ static int parse_route_str(char * str, struct v3_vnet_route * route) {
     struct vnet_link_iter * link = NULL;
 
     // src MAC
-    token = strsep(&str, " ");
+    token = skip_blank(&str);
     if (!token) {
 	return -1;
     }
     parse_mac_str(token, &(route->src_mac_qual), route->src_mac);
 
-    // dst MAC
-    token = strsep(&str, " ");
+    // Dst MAC
+    token = skip_blank(&str);
     if (!token) {
 	return -1;
     }
     parse_mac_str(token, &(route->dst_mac_qual), route->dst_mac);
 
     // dst LINK type
-    token = strsep(&str, " ");
+    token = skip_blank(&str);
     if (!token) {
 	return -1;
     }
@@ -193,7 +216,7 @@ static int parse_route_str(char * str, struct v3_vnet_route * route) {
     }
 
     // dst link
-    token = strsep(&str, " ");
+    token = skip_blank(&str);
     if (!token) {
 	return -1;
     }
@@ -240,7 +263,7 @@ static int parse_route_str(char * str, struct v3_vnet_route * route) {
     route->src_type = -1;
 
     // src LINK
-    token = strsep(&str, " ");
+    token = skip_blank(&str);
 
     INFO("SRC type = %s\n", token);
 
@@ -264,7 +287,7 @@ static int parse_route_str(char * str, struct v3_vnet_route * route) {
 	route->src_id = -1;
     } else if (route->src_type == LINK_EDGE) {
 	uint32_t src_ip;
-	token = strsep(&str, " ");
+	token = skip_blank(&str);
 
 	if (!token) {
 	    return -1;
@@ -400,13 +423,13 @@ static int route_seq_show(struct seq_file * s, void * v) {
 	    break;
 	case MAC_NOT:
 	    seq_printf(s, "not-%x:%x:%x:%x:%x:%x ", 
-		       route->src_mac[0], route->src_mac[1], route->src_mac[2],
-		       route->src_mac[3], route->src_mac[4], route->src_mac[5]);
+		       route->dst_mac[0], route->dst_mac[1], route->dst_mac[2],
+		       route->dst_mac[3], route->dst_mac[4], route->dst_mac[5]);
 	    break;
 	default:
 	    seq_printf(s, "%x:%x:%x:%x:%x:%x ", 
-		       route->src_mac[0], route->src_mac[1], route->src_mac[2],
-		       route->src_mac[3], route->src_mac[4], route->src_mac[5]);
+		       route->dst_mac[0], route->dst_mac[1], route->dst_mac[2],
+		       route->dst_mac[3], route->dst_mac[4], route->dst_mac[5]);
 	    break;
     }
 
@@ -585,9 +608,9 @@ route_write(struct file * file,
     route_buf[size] = '\0';
     INFO("Route written: %s\n", route_buf);
 
-    while ((buf_iter = strsep(&line_str, "\r\n"))) {
+    while ((buf_iter = skip_lines(&line_str))) {
 
-	token = strsep(&buf_iter, " ");
+	token = skip_blank(&buf_iter);
 	if (!token) {
 	    return -EFAULT;
 	}
@@ -619,7 +642,7 @@ route_write(struct file * file,
 	    uint32_t d_idx;
 	    struct vnet_route_iter * route = NULL;
 
-	    idx_str = strsep(&buf_iter, " ");
+	    idx_str = skip_blank(&buf_iter);
 	    
 	    if (!idx_str) {
 		WARNING("Missing route idx in DEL Route command\n");
@@ -693,10 +716,10 @@ link_write(struct file * file, const char * buf, size_t size, loff_t * ppos) {
 	return -EFAULT;
     }
 
-    while ((link_iter = strsep(&line_str, "\r\n"))) {
+    while ((link_iter = skip_lines(&line_str))) {
 	DEBUG("Link written: %s\n", link_buf);
 	
-	token = strsep(&link_iter, " ");
+	token = skip_blank(&link_iter);
 	
 	if (!token) {
 	    return -EFAULT;
@@ -711,7 +734,7 @@ link_write(struct file * file, const char * buf, size_t size, loff_t * ppos) {
 	    int link_idx;
 	    unsigned long flags;
 	    
-	    ip_str = strsep(&link_iter, " ");
+	    ip_str = skip_blank(&link_iter);
 	    
 	    if ((!ip_str) || (!link_iter)) {
 		WARNING("Missing fields in ADD Link command\n");
@@ -753,7 +776,7 @@ link_write(struct file * file, const char * buf, size_t size, loff_t * ppos) {
 	    char * idx_str = NULL;
 	    uint32_t d_idx;
 	    
-	    idx_str = strsep(&link_iter, " ");
+	    idx_str = skip_blank(&link_iter);
 	    
 	    if (!idx_str) {
 		WARNING("Missing link idx in DEL Link command\n");
@@ -809,7 +832,7 @@ debug_write(struct file * file, const char * buf, size_t size, loff_t * ppos) {
 	return -EFAULT;
     }
 
-    in_iter = strsep(&line_str, "\r\n");
+    in_iter = skip_lines(&line_str);
     level = simple_strtol(in_iter, &in_iter, 10);
 
     DEBUG("VNET Control: Set VNET Debug level to %d\n", level);
