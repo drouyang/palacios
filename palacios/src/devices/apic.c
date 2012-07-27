@@ -72,6 +72,8 @@ static char * deliverymode_str[] = {
 typedef enum { APIC_TMR_INT, APIC_THERM_INT, APIC_PERF_INT, 
 	       APIC_LINT0_INT, APIC_LINT1_INT, APIC_ERR_INT } apic_irq_type_t;
 
+#define MAX_IRQ_QUEUE_SIZE 256
+
 
 #define APIC_SHORTHAND_NONE        0x0
 #define APIC_SHORTHAND_SELF        0x1
@@ -255,6 +257,7 @@ struct apic_state {
 	
 	uint64_t num_entries;
 	struct list_head entries;
+	struct list_head free_list;
     } irq_queue ;
 
     uint32_t eoi;
@@ -281,7 +284,7 @@ static int apic_read(struct guest_info * core, addr_t guest_addr, void * dst, ui
 static int apic_write(struct guest_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data);
 
 // No lcoking done
-static void init_apic_state(struct apic_state * apic, uint32_t id) {
+static int init_apic_state(struct apic_state * apic, uint32_t id) {
     apic->base_addr = DEFAULT_BASE_ADDR;
 
     if (id == 0) { 
@@ -342,10 +345,33 @@ static void init_apic_state(struct apic_state * apic, uint32_t id) {
     apic->spec_eoi.val = 0x00000000;
 
 
-    INIT_LIST_HEAD(&(apic->irq_queue.entries));
-    v3_lock_init(&(apic->irq_queue.lock));
-    apic->irq_queue.num_entries = 0;
 
+    /* Initialize IRQ submission queue */
+    {
+	int i = 0;
+
+	
+	INIT_LIST_HEAD(&(apic->irq_queue.entries));
+	INIT_LIST_HEAD(&(apic->irq_queue.free_list));
+
+
+	v3_lock_init(&(apic->irq_queue.lock));
+	apic->irq_queue.num_entries = 0;
+ 
+	for (i = 0; i < MAX_IRQ_QUEUE_SIZE; i++) {
+	    struct irq_queue_entry * irq_entry = V3_Malloc(sizeof(struct irq_queue_entry));
+	    
+	    if (irq_entry == NULL) {
+		return -1;
+	    }
+
+	    memset(irq_entry, 0, sizeof(struct irq_queue_entry));
+
+	    list_add(&(irq_entry->list_node), &(apic->irq_queue.free_list));
+	}
+    }
+
+    return 0;
 }
 
 
@@ -448,20 +474,21 @@ static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num,
 	return -1;
     }
 
-    entry = V3_Malloc(sizeof(struct irq_queue_entry));
+    flags = v3_lock_irqsave(apic->irq_queue.lock);
 
-    if (entry == NULL) {
-	PrintError("Could not allocate irq queue entry\n");
+    if (list_empty(&(apic->irq_queue.free_list))) {
+	PrintError("IRQ Free list is exhausted. Cannot Inject IRQ %d.\n", irq_num);
+	v3_unlock_irqrestore(apic->irq_queue.lock, flags); 
 	return -1;
     }
+
+    entry = list_first_entry(&(apic->irq_queue.free_list), struct irq_queue_entry, list_node);
 
     entry->vector = irq_num;
     entry->ack = ack;
     entry->private_data = private_data;
 
-    flags = v3_lock_irqsave(apic->irq_queue.lock);
-    
-    list_add_tail(&(entry->list_node), &(apic->irq_queue.entries));
+    list_move_tail(&(entry->list_node), &(apic->irq_queue.entries));
     apic->irq_queue.num_entries++;
 
     v3_unlock_irqrestore(apic->irq_queue.lock, flags);
@@ -471,32 +498,30 @@ static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num,
 }
 
 static void drain_irq_entries(struct apic_state * apic) {
-
+ 
     while (1) {
 	unsigned int flags = 0;
 	struct irq_queue_entry * entry = NULL;
     
 	flags = v3_lock_irqsave(apic->irq_queue.lock);
 	
-	if (!list_empty(&(apic->irq_queue.entries))) {
-	    struct list_head * q_entry = apic->irq_queue.entries.next;
-	    entry = list_entry(q_entry, struct irq_queue_entry, list_node);
-
-	    apic->irq_queue.num_entries--;
-	    list_del(q_entry);
-	}
-	
-	v3_unlock_irqrestore(apic->irq_queue.lock, flags);
-
-	if (entry == NULL) {
+	if (list_empty(&(apic->irq_queue.entries))) {
+	    v3_unlock_irqrestore(apic->irq_queue.lock, flags);
 	    break;
 	}
+	
+	entry = list_first_entry(&(apic->irq_queue.entries), struct irq_queue_entry, list_node);
 
 	activate_apic_irq(apic, entry->vector, entry->ack, entry->private_data);
 
-	V3_Free(entry);
-    }
+	// paranoia: Clear irq entry for next use
+	memset(entry, 0, sizeof(struct irq_queue_entry));
 
+	apic->irq_queue.num_entries--;
+	list_move_tail(&(entry->list_node), &(apic->irq_queue.free_list));
+
+	v3_unlock_irqrestore(apic->irq_queue.lock, flags);	
+    }
 }
 
 
