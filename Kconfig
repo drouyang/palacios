@@ -44,6 +44,14 @@ config LINUX_KERN
 	help 
 	  This is the directory containing the linux source for the kernel module to be built
 
+config LINUX_USER_STATIC
+	depends on LINUX
+	bool "Statically link Linux user utilities" 
+	default n
+	help 
+	  If selected this will cause the Linux user utilities to be statically linked. 
+	  This is helpful if you are running in an embedded environment, such as BusyBox
+
 config MINIX
 	bool "MINIX 3"
 	help
