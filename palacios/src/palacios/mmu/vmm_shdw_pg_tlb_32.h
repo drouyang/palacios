@@ -25,6 +25,11 @@ static inline int activate_shadow_pt_32(struct guest_info * core) {
     struct cr3_32 * guest_cr3 = (struct cr3_32 *)&(core->shdw_pg_state.guest_cr3);
     struct shadow_page_data * shdw_page = create_new_shadow_pt(core);
 
+    if (shdw_page->page_pa & 0xffffffff00000000LL) {
+	PrintError("32 bit shadow paging cannot use high memory addr=%p\n", (void *)shdw_page->page_pa);
+	return -1;
+    }
+
     shdw_page->cr3 = shdw_page->page_pa;
     
     shadow_cr3->pdt_base_addr = PAGE_BASE_ADDR_4KB(shdw_page->page_pa);
@@ -153,6 +158,11 @@ static inline int handle_shadow_pagefault_32(struct guest_info * info, addr_t fa
 	struct shadow_page_data * shdw_page =  create_new_shadow_pt(info);
 	shadow_pt = (pte32_t *)V3_VAddr((void *)shdw_page->page_pa);
 
+	if (shdw_page->page_pa & 0xffffffff00000000LL) {
+	    PrintError("32 bit shadow paging cannot use high memory addr=%p\n", (void *)shdw_page->page_pa);
+	    return -1;
+	}
+
 	shadow_pde->present = 1;
 	shadow_pde->user_page = guest_pde->user_page;
 
@@ -272,6 +282,12 @@ static int handle_pte_shadow_pagefault_32(struct guest_info * info, addr_t fault
 		return -1;
 	    }
 
+	    if (shadow_pa & 0xffffffff00000000LL) {
+		PrintError("32 bit shadow paging cannot use high memory addr=%p\n", (void *)shadow_pa);
+		return -1;
+	    }
+
+
 	    shadow_pte->page_base_addr = PAGE_BASE_ADDR(shadow_pa);
 
 	    PrintDebug("\tMapping shadow page (%p)\n", (void *)BASE_TO_PAGE_ADDR(shadow_pte->page_base_addr));
@@ -384,6 +400,11 @@ static int handle_4MB_shadow_pagefault_pte_32(struct guest_info * info,
 		return -1;
 	    }
 
+	    if (shadow_pa & 0xffffffff00000000LL) {
+		PrintError("32 bit shadow paging cannot use high memory addr=%p\n", (void *)shadow_pa);
+		return -1;
+	    }
+
 	    shadow_pte->page_base_addr = PAGE_BASE_ADDR(shadow_pa);
 
 	    PrintDebug("\tMapping shadow page (%p)\n", (void *)BASE_TO_PAGE_ADDR(shadow_pte->page_base_addr));
@@ -481,6 +502,11 @@ static int handle_4MB_shadow_pagefault_pde_32(struct guest_info * info,
 
 	    PrintDebug("shadow PA = %p\n", (void *)shadow_pa);
 
+
+	    if (shadow_pa & 0xffffffff00000000LL) {
+		PrintError("32 bit shadow paging cannot use high memory addr=%p\n", (void *)shadow_pa);
+		return -1;
+	    }
 
             large_guest_pde->vmm_info = V3_LARGE_PG; /* For invalidations */
             large_shadow_pde->page_base_addr = PAGE_BASE_ADDR_4MB(shadow_pa);

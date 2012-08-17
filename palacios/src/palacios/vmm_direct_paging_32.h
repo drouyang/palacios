@@ -59,6 +59,12 @@ static inline int handle_passthrough_pagefault_32(struct guest_info * info,
     if (pde[pde_index].present == 0) {
 	pte = (pte32_t *)create_generic_pt_page();
 	
+	if ((addr_t)V3_PAddr(pte) & 0xffffffff00000000LL) {
+	    PrintError("Cannot use high memory for 32 bit direct mapped page tables (addr=%p)\n", 
+		       (void *)V3_PAddr(pte));
+	    return -1;
+	}
+
 	pde[pde_index].present = 1;
 	pde[pde_index].writable = 1;
 	pde[pde_index].user_page = 1;
@@ -90,6 +96,13 @@ static inline int handle_passthrough_pagefault_32(struct guest_info * info,
 		return -1;
     	    }
 	    
+
+	    if ((addr_t)host_addr & 0xffffffff00000000LL) {
+		PrintError("Cannot use high memory for 32 bit direct mapped page tables (addr=%p)\n", 
+			   (void *)host_addr);
+		return -1;
+	    }
+
 	    pte[pte_index].page_base_addr = PAGE_BASE_ADDR(host_addr);
 	} else {
 	    return region->unhandled(info, fault_addr, fault_addr, region, error_code);
