@@ -457,6 +457,12 @@ int v3_move_vm_core(struct v3_vm_info * vm, int vcore_id, int target_cpu) {
 
 int v3_stop_vm(struct v3_vm_info * vm) {
 
+    if ((vm->run_state != VM_RUNNING) && 
+	(vm->run_state != VM_SIMULATING)) {
+	PrintError("Tried to stop VM in invalid runstate (%d)\n", vm->run_state);
+	return -1;
+    }
+
     vm->run_state = VM_STOPPED;
 
     // Sanity check to catch any weird execution states
