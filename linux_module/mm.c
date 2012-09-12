@@ -118,7 +118,7 @@ uintptr_t alloc_palacios_pgs(u64 num_pages, u32 alignment) {
 	void *temp;
 	int order = get_order(num_pages * PAGE_SIZE);
 	 
-	pgs = alloc_pages(GFP_DMA32, order);
+	pgs = alloc_pages(GFP_KERNEL, order);
     
 	if (!pgs) { 
 	    ERROR("Could not allocate small number of contigious pages\n");
