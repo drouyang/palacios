@@ -514,8 +514,11 @@ static void drain_irq_entries(struct apic_state * apic) {
 
 	activate_apic_irq(apic, entry->vector, entry->ack, entry->private_data);
 
-	// paranoia: Clear irq entry for next use
-	memset(entry, 0, sizeof(struct irq_queue_entry));
+	// paranoia: Clear IRQ for next use
+	entry->vector = 0;
+	entry->ack = NULL;
+	entry->private_data = NULL;
+	
 
 	apic->irq_queue.num_entries--;
 	list_move_tail(&(entry->list_node), &(apic->irq_queue.free_list));
