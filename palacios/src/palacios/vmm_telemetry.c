@@ -256,7 +256,9 @@ static void print_telemetry_start(struct v3_vm_info *vm, char *hdr_buf)
     struct v3_telemetry_state * telemetry = &(vm->telemetry);
     uint64_t invoke_tsc = 0;
     rdtscll(invoke_tsc);
-    V3_Print("%stelemetry window tsc cnt: %u\n", hdr_buf, (uint32_t)(invoke_tsc - telemetry->prev_tsc));
+    V3_Print("%stelemetry tsc=%llu (window size: %llu)\n", hdr_buf, 
+	     invoke_tsc, (uint64_t)(invoke_tsc - telemetry->prev_tsc));	     
+
     telemetry->prev_tsc = invoke_tsc;
 }
 
@@ -271,7 +273,14 @@ static void print_core_telemetry(struct guest_info * core, char *hdr_buf)
     struct rb_node * node = v3_rb_first(&(core->core_telem.exit_root));
 
     V3_Print("Exit information for Core %d\n", core->vcpu_id);
-    
+
+    V3_Print("%sTime Breakdown: Host=%llu, Guest=%llu\n", hdr_buf,
+	     core->time_state.time_in_host, 
+	     core->time_state.time_in_guest);
+    core->time_state.time_in_host = 0;
+    core->time_state.time_in_guest = 0;
+
+
     if (!node) { 
     	V3_Print("No information yet for this core\n");
     	return;
@@ -299,12 +308,12 @@ static void print_core_telemetry(struct guest_info * core, char *hdr_buf)
 		continue;
 	}
 
-	V3_Print("%s%s:%sCnt=%u,%sAvg. Time=%u\n", 
+	V3_Print("%s%s:%sCnt=%u,%sAvg. Time=%llu\n", 
 		 hdr_buf, code_str,
 		 (strlen(code_str) > 13) ? "\t" : "\t\t",
 		 evt->cnt,
 		 (evt->cnt >= 100) ? "\t" : "\t\t",
-		 (uint32_t)(evt->handler_time / evt->cnt));
+		 (uint64_t)(evt->handler_time / evt->cnt));
     } while ((node = v3_rb_next(node)));
     return;
 }

@@ -807,6 +807,9 @@ int v3_start_svm_guest(struct guest_info * info) {
 	    break;
 	}
 
+
+	// check for single step mode
+
 	v3_wait_at_barrier(info);
 
 

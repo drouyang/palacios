@@ -55,6 +55,14 @@ struct vm_core_time {
     uint64_t last_update;      // Last time (in guest cycles) the 
                                // timers were updated
 
+
+    /* State tracking for debug purposes */
+    uint64_t tsc_at_last_entry;
+    uint64_t tsc_at_last_exit;
+    uint64_t time_in_guest;
+    uint64_t time_in_host;
+
+
     uint64_t initial_host_time;// Host time when VMM started. 
     struct v3_msr tsc_aux;     // Auxilliary MSR for RDTSCP
 

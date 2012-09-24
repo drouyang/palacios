@@ -26,88 +26,81 @@
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vmm_config.h>
 
-#define PRINT_TELEMETRY  1
-#define PRINT_CORE_STATE 2
-#define PRINT_ARCH_STATE 3
-#define PRINT_STACK      4
-#define PRINT_BACKTRACE  5
+#define PRINT_TELEMETRY  0x00000001
+#define PRINT_CORE_STATE 0x00000002
+#define PRINT_ARCH_STATE 0x00000004
+#define PRINT_STACK      0x00000008
+#define PRINT_BACKTRACE  0x00000010
 
-
-#define PRINT_ALL        100 // Absolutely everything
-#define PRINT_STATE      101 // telemetry, core state, arch state
-
-
+#define CLEAR_COUNTERS   0x40000000
+#define SINGLE_EXIT_MODE 0x80000000 // enable single exit when this flag is set, until flag is cleared
 
 
 static int core_handler(struct guest_info * core, uint32_t cmd) {
 
 
-    switch (cmd) {
+
+    if (cmd & PRINT_TELEMETRY) {
 #ifdef V3_CONFIG_TELEMETRY
-	case PRINT_TELEMETRY: 
-	    v3_print_core_telemetry(core);
-	    break;
+	v3_print_core_telemetry(core);
 #endif
-	
-	case PRINT_CORE_STATE:
-	    v3_raise_barrier(core->vm_info, NULL);
+    }	
 
-	    v3_print_guest_state(core);
-
-	    v3_lower_barrier(core->vm_info);
-	    break;
-	case PRINT_ARCH_STATE:
-	    v3_raise_barrier(core->vm_info, NULL);
-
-	    v3_print_arch_state(core);
-
-	    v3_lower_barrier(core->vm_info);
-	    break;
-	case PRINT_STACK:
-	    v3_raise_barrier(core->vm_info, NULL);
-
-	    v3_print_stack(core);
-
-	    v3_lower_barrier(core->vm_info);
-	    break;
-	case PRINT_BACKTRACE:
-	    v3_raise_barrier(core->vm_info, NULL);
-
-	    v3_print_backtrace(core);
-	    
-	    v3_lower_barrier(core->vm_info);
-	    break;
-
-	case PRINT_STATE:
-	    v3_raise_barrier(core->vm_info, NULL);
-
-#ifdef V3_CONFIG_TELEMETRY
-	    v3_print_core_telemetry(core);
-#endif
-	    v3_print_guest_state(core);
-	    v3_print_arch_state(core);
-
-	    v3_lower_barrier(core->vm_info);
-	    break;
-
+    if (cmd & PRINT_CORE_STATE) {
+	v3_print_guest_state(core);
     }
+    
+    if (cmd & PRINT_ARCH_STATE) {
+	v3_print_arch_state(core);
+    }
+
+    if (cmd & PRINT_STACK) {
+	v3_print_stack(core);
+    }
+
+    if (cmd & PRINT_BACKTRACE) {
+	v3_print_backtrace(core);
+    }
+
+    return 0;
+}
+
+static int clear_counters(struct guest_info * core) {
+    core->time_state.time_in_guest = 0;
+    core->time_state.time_in_host = 0;
 
     return 0;
 }
 
 
 static int evt_handler(struct v3_vm_info * vm, struct v3_debug_event * evt, void * priv_data) {
+    int i = 0;
+
+
+    v3_raise_barrier(vm, NULL);
+
 
     V3_Print("Debug Event Handler for core %d\n", evt->core_id);
 
-    if (evt->core_id == -1) {
-	int i = 0;
-	for (i = 0; i < vm->num_cores; i++) {
+ 
+    for (i = 0; i < vm->num_cores; i++) {
+	if ((evt->core_id == i) || (evt->core_id == -1)) {
+
+	    if (evt->cmd & CLEAR_COUNTERS) {
+		clear_counters(&(vm->cores[i]));
+	    }
+
 	    core_handler(&(vm->cores[i]), evt->cmd);
+
+	    if (evt->cmd & SINGLE_EXIT_MODE) {
+		vm->cores[i].brk_exit = vm->cores[i].num_exits + 1;
+	    } else {
+		vm->cores[i].brk_exit = 0;
+	    }
 	}
-    } else {
-	return core_handler(&vm->cores[evt->core_id], evt->cmd);
     }
+
+    v3_lower_barrier(vm);
 
     
     return 0;
@@ -221,6 +214,8 @@ static int v3_print_disassembly(struct guest_info * core) {
 
 void v3_print_guest_state(struct guest_info * core) {
     addr_t linear_addr = 0; 
+    addr_t host_addr = 0;
+
 
     V3_Print("RIP: %p\n", (void *)(addr_t)(core->rip));
     linear_addr = get_addr_linear(core, core->rip, &(core->segments.cs));
@@ -250,14 +245,65 @@ void v3_print_guest_state(struct guest_info * core) {
 
     v3_print_mem_map(core->vm_info);
 
+    if (core->mem_mode == PHYSICAL_MEM) {
+	v3_gpa_to_hva(core, linear_addr, &host_addr);
+    } else if (core->mem_mode == VIRTUAL_MEM) {
+	v3_gva_to_hva(core, linear_addr, &host_addr);
+    }
+    
+
+    V3_Print("Core %u: Instr (15 bytes) at %p:\n", core->vcpu_id, (void *)host_addr);
+    
+    v3_dump_mem((uint8_t *)host_addr - 15, 15);
+    V3_Print("Instruction Ptr here:\n");
+    v3_dump_mem((uint8_t *)host_addr, 15);
+
+
     v3_print_stack(core);
+
+    
 
     //  v3_print_disassembly(core);
 }
 
 
-void v3_print_arch_state(struct guest_info * core) {
+#include <palacios/vmcb.h>
+#include <palacios/vmcs.h>
 
+#include <palacios/vmm_msr.h>
+#include <palacios/vmm_lowlevel.h>
+void v3_print_arch_state(struct guest_info * core) {
+    extern v3_cpu_arch_t v3_mach_type;
+
+    struct v3_msr aperf;
+    struct v3_msr mperf;
+#define APERF 232
+#define MPERF 231
+
+    v3_get_msr(APERF, &aperf.hi, &aperf.lo);
+    v3_get_msr(MPERF, &mperf.hi, &mperf.lo);
+
+    V3_Print("APERF: %llu, MPERF: %llu\n", aperf.value, mperf.value);
+
+
+    switch (v3_mach_type) {
+#ifdef V3_CONFIG_SVM
+        case V3_SVM_CPU:
+        case V3_SVM_REV3_CPU:
+	    PrintDebugVMCB(core->vmm_data);
+            break;
+#endif
+#ifdef V3_CONFIG_VMX
+        case V3_VMX_CPU:
+        case V3_VMX_EPT_CPU:
+        case V3_VMX_EPT_UG_CPU:
+	    V3_Call_On_CPU(core->pcpu_id, v3_print_vmcs, NULL);
+            break;
+#endif
+        default:
+            PrintError("Invalid CPU Type 0x%x\n", v3_mach_type);
+            return;
+    }
 
 }
 

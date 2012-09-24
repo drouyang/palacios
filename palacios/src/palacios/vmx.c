@@ -1030,6 +1030,10 @@ int v3_vmx_enter(struct guest_info * info) {
 	}
 
 	guest_cycles = exit_tsc - entry_tsc;	
+	info->time_state.time_in_guest += guest_cycles;
+	info->time_state.time_in_host += ((exit_tsc - info->time_state.tsc_at_last_exit) - guest_cycles);
+	info->time_state.tsc_at_last_entry = entry_tsc;
+	info->time_state.tsc_at_last_exit = exit_tsc;
     }
 
     //  PrintDebug("VMX Exit: ret=%d\n", ret);
@@ -1208,8 +1212,20 @@ int v3_start_vmx_guest(struct guest_info * info) {
 	    return -1;
 	}
 
-	v3_wait_at_barrier(info);
-
+	// Check for single step mode...
+	if (info->brk_exit != 0) {
+	    V3_Print("Single Stepping Guest: (entry_tsc=%llu) (exit_tsc=%llu)\n", 
+		     info->time_state.tsc_at_last_entry,
+		     info->time_state.tsc_at_last_exit);
+	    
+	    while ((info->num_exits >= info->brk_exit) && 
+		   (info->brk_exit != 0)) {
+		v3_yield(info, -1);
+		v3_wait_at_barrier(info);
+	    }
+	} else {
+	    v3_wait_at_barrier(info);
+	}
 
 	if (info->vm_info->run_state == VM_STOPPED) {
 	    info->core_run_state = CORE_STOPPED;

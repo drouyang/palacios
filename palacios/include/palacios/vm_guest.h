@@ -109,6 +109,7 @@ struct guest_info {
     uint64_t yield_start_cycle;
     
     uint64_t num_exits;
+    uint64_t brk_exit;
 
 #ifdef V3_CONFIG_TELEMETRY
     struct v3_core_telemetry core_telem;
