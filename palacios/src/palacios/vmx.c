@@ -202,11 +202,10 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
     vmx_state->pri_proc_ctrls.monitor_exit = 1;
     vmx_state->pri_proc_ctrls.mwait_exit = 1;
 
-    // we don't need to handle a pause, although this is where
-    // we could pull out of a spin lock acquire or schedule to find its partner
     vmx_state->pri_proc_ctrls.pause_exit = 0;
 
     vmx_state->pri_proc_ctrls.tsc_offset = 1;
+
 #ifdef V3_CONFIG_TIME_VIRTUALIZE_TSC
     vmx_state->pri_proc_ctrls.rdtsc_exit = 1;
 #endif
@@ -958,8 +957,8 @@ int v3_vmx_enter(struct guest_info * info) {
     uint64_t guest_cycles = 0;
 
     // Conditionally yield the CPU if the timeslice has expired
-    v3_yield_cond(info,-1);
-
+    v3_yield_cond(info, -1);
+    
     // Update timer devices late after being in the VM so that as much 
     // of the time in the VM is accounted for as possible. Also do it before
     // updating IRQ entry state so that any interrupts the timers raise get 
@@ -1018,6 +1017,7 @@ int v3_vmx_enter(struct guest_info * info) {
     {	
 	uint64_t entry_tsc = 0;
 	uint64_t exit_tsc = 0;
+
 
 	if (vmx_info->state == VMX_UNLAUNCHED) {
 	    vmx_info->state = VMX_LAUNCHED;
@@ -1131,7 +1131,8 @@ int v3_vmx_enter(struct guest_info * info) {
     v3_enable_ints();
 
     // Conditionally yield the CPU if the timeslice has expired
-    v3_yield_cond(info,-1);
+    v3_yield_cond(info, -1);
+   
     v3_advance_time(info, NULL);
     v3_update_timers(info);
 
@@ -1166,7 +1167,7 @@ int v3_start_vmx_guest(struct guest_info * info) {
 		return 0;
 	    }
 
-            v3_yield(info,-1);
+            v3_yield(info, -1);
             //PrintDebug("VMX core %u: still waiting for INIT\n",info->vcpu_id);
         }
 	
