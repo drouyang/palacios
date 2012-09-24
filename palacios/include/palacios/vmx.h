@@ -100,7 +100,10 @@ struct vmx_sec_proc_ctrls {
 	    uint_t unrstrct_guest  : 1; /* un restricted guest (CAN RUN IN REAL MODE) */
 	    uint_t rsvd1           : 2;
 	    uint_t pause_loop_exit : 1;
-	    uint_t rsvd2           : 21;
+	    uint_t rdrand_exit     : 1;
+	    uint_t enable_invpcid  : 1;
+	    uint_t enable_vm_fns   : 1;
+	    uint_t rsvd2           : 18;
 	} __attribute__((packed));
     } __attribute__((packed));
 } __attribute__((packed));
