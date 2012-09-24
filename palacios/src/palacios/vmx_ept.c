@@ -153,7 +153,9 @@ int v3_handle_ept_fault(struct guest_info * core, addr_t fault_addr, struct ept_
 		// Full access
 		pde2mb[pde_index].read = 1;
 		pde2mb[pde_index].exec = 1;
-	       
+		pde2mb[pde_index].ipat = 1;
+		pde2mb[pde_index].mt = 6;
+
 		if (region->flags.write == 1) {
 		    pde2mb[pde_index].write = 1;
 		} else {
@@ -206,6 +208,8 @@ int v3_handle_ept_fault(struct guest_info * core, addr_t fault_addr, struct ept_
 	    // Full access
 	    pte[pte_index].read = 1;
 	    pte[pte_index].exec = 1;
+	    pte[pte_index].ipat = 1;
+	    pte[pte_index].mt = 6;
 
 	    if (region->flags.write == 1) {
 		pte[pte_index].write = 1;
