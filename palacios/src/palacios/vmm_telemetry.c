@@ -273,6 +273,7 @@ static void print_core_telemetry(struct guest_info * core, char *hdr_buf)
     struct rb_node * node = v3_rb_first(&(core->core_telem.exit_root));
 
     V3_Print("Exit information for Core %d\n", core->vcpu_id);
+    V3_Print("Exit Count=%llu\n", core->num_exits);
 
     V3_Print("%sTime Breakdown: Host=%llu, Guest=%llu\n", hdr_buf,
 	     core->time_state.time_in_host, 
