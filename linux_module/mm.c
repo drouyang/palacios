@@ -258,38 +258,7 @@ int palacios_deinit_mm( void ) {
 
 
 
-#ifdef V3_CONFIG_DEBUG_MEM_PARANOID
-// The following can be used to track heap bugs
-// zero memory after allocation
-#define ALLOC_ZERO_MEM 0
-// pad allocations by this many bytes on both ends of block
-#define ALLOC_PAD      0
 
-static void * palacios_kmalloc_paranoid(size_t size, gfp_t flags) {
-    void * addr = NULL;
-
-    addr = kmalloc(size+2*ALLOC_PAD, flags);
-    
-    if (!addr) { 
-	ERROR("ALERT ALERT  kmalloc has FAILED FAILED FAILED\n");
-	return NULL;
-    }	
-    
-
-    
-#if ALLOC_ZERO_MEM
-    memset(addr, 0, size + 2 * ALLOC_PAD);
-#endif
-    
-    return addr + ALLOC_PAD;
-
-}
-
-static void palacios_kfree_paranoid(void * ptr) {
-    kfree(addr - ALLOC_PAD);
-}
-
-#endif
 
 void * palacios_kmalloc(size_t size, gfp_t flags) {
 
@@ -303,21 +272,13 @@ void * palacios_kmalloc(size_t size, gfp_t flags) {
 	flags |= GFP_ATOMIC;
     }
 
-#ifdef V3_CONFIG_DEBUG_MEM_PARANOID
-    return palacios_kmalloc_paranoid(size, flags);
-#else
     return kmalloc(size, flags);
-#endif
 }
 
 
 void palacios_kfree(void * ptr) {
-#ifdef V3_CONFIG_DEBUG_MEM_PARANOID
-    return palacios_kfree_paranoid(ptr);
-#else
-    return kfree(ptr);
-#endif
 
+    return kfree(ptr);
 }
 
 

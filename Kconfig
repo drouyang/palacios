@@ -417,13 +417,6 @@ config DEBUG_MEM_ERRORS
 		This turns on debugging for memory translations and lookups
 
 
-config DEBUG_MEMORY_PARANOID
-	bool "Paranoid memory debugging"
-	default n
-	depends on DEBUG_ON
-	help
-		This enables paranoid memory allocation checks
-
 
 endmenu
 
