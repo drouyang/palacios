@@ -28,6 +28,7 @@
 #include <palacios/vmm_hashtable.h>
 #include <palacios/vmm_direct_paging.h>
 #include <palacios/vmm_debug.h>
+#include <palacios/vmm_mem.h>
 
 #include <palacios/vmm_dev_mgr.h>
 
@@ -228,6 +229,7 @@ int v3_chkpt_load(struct v3_chkpt_ctx * ctx, char * tag, uint64_t len, void * bu
 
 
 
+#if 0
 static int load_memory(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
 
     void * guest_mem_base = NULL;
@@ -279,6 +281,7 @@ static int save_memory(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
 
     return 0;
 }
+#endif
 
 #ifdef V3_CONFIG_LIVE_MIGRATION
 
@@ -816,7 +819,7 @@ int v3_chkpt_save_vm(struct v3_vm_info * vm, char * store, char * url) {
 	while (v3_raise_barrier(vm, NULL) == -1);
     }
 
-    if ((ret = save_memory(vm, chkpt)) == -1) {
+    if ((ret = v3_mem_save(vm, chkpt)) == -1) {
 	PrintError("Unable to save memory\n");
 	goto out;
     }
@@ -870,7 +873,7 @@ int v3_chkpt_load_vm(struct v3_vm_info * vm, char * store, char * url) {
 	while (v3_raise_barrier(vm, NULL) == -1);
     }
 
-    if ((ret = load_memory(vm, chkpt)) == -1) {
+    if ((ret = v3_mem_load(vm, chkpt)) == -1) {
 	PrintError("Unable to save memory\n");
 	goto out;
     }

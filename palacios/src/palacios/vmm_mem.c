@@ -30,11 +30,32 @@
 
 
 
-static int mem_offset_hypercall(struct guest_info * info, uint_t hcall_id, void * private_data) {
-    PrintDebug("V3Vee: Memory offset hypercall (offset=%p)\n", 
-	       (void *)(info->vm_info->mem_map.base_region.host_addr));
+struct v3_mem_region * v3_get_base_region(struct v3_vm_info * vm, addr_t gpa) {
+    struct v3_mem_map * map = &(vm->mem_map);
+    uint32_t block_index = gpa / V3_CONFIG_MEM_BLOCK_SIZE;
 
-    info->vm_regs.rbx = info->vm_info->mem_map.base_region.host_addr;
+    if (gpa > map->num_base_blocks * V3_CONFIG_MEM_BLOCK_SIZE) {
+	PrintError("Guest Address Exceeds Base Memory Size (ga=0x%p), (limit=0x%p)\n", 
+		   (void *)gpa, (void *)vm->mem_size);
+	v3_print_mem_map(vm);
+
+	return NULL;
+    }
+
+
+    return &(map->base_regions[block_index]);
+}
+
+
+
+static int mem_offset_hypercall(struct guest_info * info, uint_t hcall_id, void * private_data) {
+
+    /*
+      PrintDebug("V3Vee: Memory offset hypercall (offset=%p)\n", 
+      (void *)(info->vm_info->mem_map.base_region.host_addr));
+
+      info->vm_regs.rbx = info->vm_info->mem_map.base_region.host_addr;
+    */
 
     return 0;
 }
@@ -54,41 +75,52 @@ static int unhandled_err(struct guest_info * core, addr_t guest_va, addr_t guest
 
 int v3_init_mem_map(struct v3_vm_info * vm) {
     struct v3_mem_map * map = &(vm->mem_map);
-    addr_t mem_pages = vm->mem_size >> 12;
+    map->num_base_blocks = (vm->mem_size / V3_CONFIG_MEM_BLOCK_SIZE) + \
+	((vm->mem_size % V3_CONFIG_MEM_BLOCK_SIZE) > 0);
 
-    memset(&(map->base_region), 0, sizeof(struct v3_mem_region));
+    addr_t block_pages = V3_CONFIG_MEM_BLOCK_SIZE >> 12;
+
+    int i = 0;
 
     map->mem_regions.rb_node = NULL;
 
-    // There is an underlying region that contains all of the guest memory
-    // PrintDebug("Mapping %d pages of memory (%u bytes)\n", (int)mem_pages, (uint_t)info->mem_size);
+    
+    map->base_regions = V3_Malloc(sizeof(struct v3_mem_region) * map->num_base_blocks);
+    memset(map->base_regions, 0, sizeof(struct v3_mem_region) * map->num_base_blocks);
+	
+    for (i = 0; i < map->num_base_blocks; i++) {
+	struct v3_mem_region * region = &(map->base_regions[i]);
 
-    // 2MB page alignment needed for 2MB hardware nested paging
-    map->base_region.guest_start = 0;
-    map->base_region.guest_end = mem_pages * PAGE_SIZE_4KB;
-
+	// There is an underlying region that contains all of the guest memory
+	// PrintDebug("Mapping %d pages of memory (%u bytes)\n", (int)mem_pages, (uint_t)info->mem_size);
+	
+	// 2MB page alignment needed for 2MB hardware nested paging
+	region->guest_start = V3_CONFIG_MEM_BLOCK_SIZE * i;
+	region->guest_end = region->guest_start + V3_CONFIG_MEM_BLOCK_SIZE;
+	
 #ifdef V3_CONFIG_ALIGNED_PG_ALLOC
-    map->base_region.host_addr = (addr_t)V3_AllocAlignedPages(mem_pages, vm->mem_align);
+	region->host_addr = (addr_t)V3_AllocAlignedPages(block_pages, vm->mem_align);
 #else
-    map->base_region.host_addr = (addr_t)V3_AllocPages(mem_pages);
+	region->host_addr = (addr_t)V3_AllocPages(block_pages);
 #endif
-
-    if ((void*)map->base_region.host_addr == NULL) { 
-       PrintError("Could not allocate guest memory\n");
-       return -1;
+	
+	if ((void *)region->host_addr == NULL) { 
+	    PrintError("Could not allocate guest memory\n");
+	    return -1;
+	}
+	
+	// Clear the memory...
+	memset(V3_VAddr((void *)region->host_addr), 0, block_pages);
+	
+	region->flags.read = 1;
+	region->flags.write = 1;
+	region->flags.exec = 1;
+	region->flags.base = 1;
+	region->flags.alloced = 1;
+	
+	region->unhandled = unhandled_err;
     }
 
-    // Clear the memory...
-    memset(V3_VAddr((void *)map->base_region.host_addr), 0, mem_pages * PAGE_SIZE_4KB);
-
-
-    map->base_region.flags.read = 1;
-    map->base_region.flags.write = 1;
-    map->base_region.flags.exec = 1;
-    map->base_region.flags.base = 1;
-    map->base_region.flags.alloced = 1;
-    
-    map->base_region.unhandled = unhandled_err;
 
     v3_register_hypercall(vm, MEM_OFFSET_HCALL, mem_offset_hypercall, NULL);
 
@@ -97,11 +129,14 @@ int v3_init_mem_map(struct v3_vm_info * vm) {
 
 
 void v3_delete_mem_map(struct v3_vm_info * vm) {
-    struct rb_node * node = v3_rb_first(&(vm->mem_map.mem_regions));
-    struct v3_mem_region * reg;
+    struct v3_mem_map * map = &(vm->mem_map);
+    struct rb_node * node = v3_rb_first(&(map->mem_regions));
+    struct v3_mem_region * reg = NULL;
     struct rb_node * tmp_node = NULL;
-    addr_t mem_pages = vm->mem_size >> 12;
-  
+    addr_t block_pages = V3_CONFIG_MEM_BLOCK_SIZE >> 12;
+    int i = 0;
+    
+
     while (node) {
 	reg = rb_entry(node, struct v3_mem_region, tree_node);
 	tmp_node = node;
@@ -110,7 +145,13 @@ void v3_delete_mem_map(struct v3_vm_info * vm) {
 	v3_delete_mem_region(vm, reg);
     }
 
-    V3_FreePages((void *)(vm->mem_map.base_region.host_addr), mem_pages);
+    
+    for (i = 0; i < map->num_base_blocks; i++) {
+	struct v3_mem_region * region = &(map->base_regions[i]);
+	V3_FreePages((void *)(region->host_addr), block_pages);
+    }
+
+    V3_Free(map->base_regions);
 }
 
 
@@ -291,18 +332,8 @@ struct v3_mem_region * v3_get_mem_region(struct v3_vm_info * vm, uint16_t core_i
 	}
     }
 
-
     // There is not registered region, so we check if its a valid address in the base region
-
-    if (guest_addr > vm->mem_map.base_region.guest_end) {
-	PrintError("Guest Address Exceeds Base Memory Size (ga=0x%p), (limit=0x%p) (core=0x%x)\n", 
-		   (void *)guest_addr, (void *)vm->mem_map.base_region.guest_end, core_id);
-	v3_print_mem_map(vm);
-
-	return NULL;
-    }
-
-    return &(vm->mem_map.base_region);
+    return v3_get_base_region(vm, guest_addr);
 }
 
 
@@ -553,18 +584,23 @@ uint32_t v3_get_max_page_size(struct guest_info * core, addr_t page_addr, v3_cpu
 
 
 void v3_print_mem_map(struct v3_vm_info * vm) {
-    struct rb_node * node = v3_rb_first(&(vm->mem_map.mem_regions));
-    struct v3_mem_region * reg = &(vm->mem_map.base_region);
+    struct v3_mem_map * map = &(vm->mem_map);
+    struct rb_node * node = v3_rb_first(&(map->mem_regions));
+    struct v3_mem_region * reg = NULL;
     int i = 0;
 
     V3_Print("Memory Layout (all cores):\n");
     
+    V3_Print("Base Memory: (%d regions)\n", map->num_base_blocks);
 
-    V3_Print("Base Region (all cores):  0x%p - 0x%p -> 0x%p\n", 
-	       (void *)(reg->guest_start), 
-	       (void *)(reg->guest_end - 1), 
-	       (void *)(reg->host_addr));
-    
+    for (i = 0; i < map->num_base_blocks; i++) {
+	struct v3_mem_region * reg = &(map->base_regions[i]);
+
+	V3_Print("Base Region (all cores):  0x%p - 0x%p -> 0x%p\n", 
+		 (void *)(reg->guest_start), 
+		 (void *)(reg->guest_end - 1), 
+		 (void *)(reg->host_addr));
+    }
 
     // If the memory map is empty, don't print it
     if (node == NULL) {
@@ -588,3 +624,22 @@ void v3_print_mem_map(struct v3_vm_info * vm) {
     } while ((node = v3_rb_next(node)));
 }
 
+
+
+#ifdef V3_CONFIG_CHECKPOINT
+#include <palacios/vmm_checkpoint.h>
+int v3_mem_save(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
+
+
+
+    return 0;
+}
+
+
+int v3_mem_load(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
+
+
+    return 0;
+}
+
+#endif

@@ -64,6 +64,7 @@ config OTHER_OS
           (Formerly GeekOS)
 
 endchoice
+	
 
 config CRAY_XT
         bool "Red Storm (Cray XT3/XT4)"
@@ -125,6 +126,12 @@ endchoice
 
 menu "Supported host OS features"
       
+config MEM_BLOCK_SIZE
+	int "Allocation size for underlying VM memory"
+	default 0x8000000
+	help 
+	  This is the size in bytes of the underlying memory allocations used for the base memory regions.
+	  A good default value is 128MB (134217728 or 0x8000000 bytes)
 
 config ALIGNED_PG_ALLOC
 	bool "Host support for aligned page allocations"

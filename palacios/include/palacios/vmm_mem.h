@@ -78,9 +78,11 @@ struct v3_mem_region {
 
 
 struct v3_mem_map {
-    struct v3_mem_region base_region;
 
     struct rb_root mem_regions;
+
+    uint32_t num_base_blocks;
+    struct v3_mem_region * base_regions;
 };
 
 
@@ -89,7 +91,11 @@ void v3_delete_mem_map(struct v3_vm_info * vm);
 
 
 
-
+#ifdef V3_CONFIG_CHECKPOINT
+#include <palacios/vmm_checkpoint.h>
+int v3_mem_save(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
+int v3_mem_load(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
+#endif
 
 struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t core_id, 
 					       addr_t guest_addr_start, addr_t guest_addr_end);
@@ -106,6 +112,7 @@ int v3_add_shadow_mem(struct v3_vm_info * vm, uint16_t core_id,
 
 
 struct v3_mem_region * v3_get_mem_region(struct v3_vm_info * vm, uint16_t core_id, addr_t guest_addr);
+struct v3_mem_region * v3_get_base_region(struct v3_vm_info * vm, addr_t gpa);
 
 
 uint32_t v3_get_max_page_size(struct guest_info * core, addr_t fault_addr, v3_cpu_mode_t mode);

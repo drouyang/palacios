@@ -37,18 +37,26 @@ void V3_Init_Host_PCI(struct v3_host_pci_hooks * hooks) {
 
 
 /* This is ugly and should be abstracted out to a function in the memory manager */
-int V3_get_guest_mem_region(struct v3_vm_info * vm, struct v3_guest_mem_region * region) {
+int V3_get_guest_mem_region(struct v3_vm_info * vm, struct v3_guest_mem_region * region, uint64_t gpa) {
+    struct v3_mem_region * reg = NULL;
+
+    memset(region, 0, sizeof(struct v3_guest_mem_region));
 
     if (!vm) {
-	PrintError("Tried to get a nenregion from a NULL vm pointer\n");
-	return -1;
+	PrintError("Tried to get a mem region from a NULL vm pointer\n");
+	return 0;
     }
 
+    reg = v3_get_base_region(vm, gpa);
 
-    region->start = vm->mem_map.base_region.host_addr;
-    region->end = vm->mem_map.base_region.host_addr + (vm->mem_map.base_region.guest_end - vm->mem_map.base_region.guest_start);
+    if (reg == NULL) {
+	return 0;
+    }
 
-    return 0;
+    region->start = reg->host_addr;
+    region->end = reg->host_addr + (reg->guest_end - reg->guest_start);
+
+    return 1;
 }
 
 
