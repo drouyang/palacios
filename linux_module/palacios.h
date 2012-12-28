@@ -6,6 +6,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 
+#include <linux/proc_fs.h>
 
 /* Global Control IOCTLs */
 #define V3_CREATE_GUEST 12
@@ -117,7 +118,7 @@ int palacios_vmm_exit( void );
 
 
 // This is how a component finds the proc dir we are using for global state
-struct proc_dir_entry *palacios_get_procdir(void);
+extern struct proc_dir_entry * palacios_proc_dir;
 
 // Selected exported stubs, for use in other palacios components, like vnet
 // The idea is that everything uses the same stubs

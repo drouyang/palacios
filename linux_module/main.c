@@ -19,7 +19,8 @@
 #include <linux/spinlock.h>
 #include <linux/kthread.h>
 
-#include <linux/proc_fs.h>
+
+#include <linux/seq_file.h>
 
 #include <palacios/vmm.h>
 
@@ -40,10 +41,12 @@ module_param_array(cpu_list, int, &cpu_list_len, 0644);
 MODULE_PARM_DESC(cpu_list, "Comma-delimited list of CPUs that Palacios will run on");
 
 
+struct proc_dir_entry * palacios_proc_dir = NULL;
+
+
 static int v3_major_num = 0;
 
 static struct v3_guest * guest_map[MAX_VMS] = {[0 ... MAX_VMS - 1] = 0};
-static struct proc_dir_entry *dir = 0;
 
 struct class * v3_class = NULL;
 static struct cdev ctrl_dev;
@@ -201,41 +204,43 @@ static struct file_operations v3_ctrl_fops = {
 };
 
 
+/* PROC FILE OUTPUT */
 
-struct proc_dir_entry *palacios_get_procdir(void) 
-{
-    return dir;
-}
 
-static int read_guests(char * buf, char ** start, off_t off, int count,
-		       int * eof, void * data)
-{
-    int len = 0;
-    unsigned int i = 0;
-    
-    for(i = 0; i < MAX_VMS; i++) {
-	if (guest_map[i] != NULL) {
-	    if (len<count) { 
-		len += snprintf(buf+len, count-len,
-				"%s\t/dev/v3-vm%d\n", 
-				guest_map[i]->name, i);
-	    }
+/* This is OK, because at least for now there is no way we will exceed 4KB of data in the file. 
+ * If we ever do, we will need to implement a full seq_file implementation
+ */
+static int vm_seq_show(struct seq_file * s, void * v) {
+    int i;
+
+    for (i = 0; i < MAX_VMS; i++) {
+	if (guest_map[i]) {
+	    seq_printf(s, "/dev/v3-vm%d\t%s\n", 
+		       i, guest_map[i]->name);
 	}
     }
-    
-    return len;
+
+    return 0;
 }
 
-static int show_mem(char * buf, char ** start, off_t off, int count,
-		    int * eof, void * data)
-{
-    int len = 0;
+
+
+static int vm_proc_open(struct inode * inode, struct file * filp) {
+    return single_open(filp, vm_seq_show, NULL);
     
-    len = snprintf(buf,count, "%p\n", (void *)get_palacios_base_addr());
-    len += snprintf(buf+len,count-len, "%lld\n", get_palacios_num_pages());
-    
-    return len;
 }
+
+static const struct file_operations vm_proc_ops = {
+    .owner = THIS_MODULE,
+    .open = vm_proc_open, 
+    .read = seq_read, 
+    .llseek = seq_lseek,
+    .release = single_release,
+};
+
+
+
+/*** END PROC File functions */
 
 
 static int __init v3_init(void) {
@@ -286,32 +291,25 @@ static int __init v3_init(void) {
 	goto failure1;
     }
 
-    dir = proc_mkdir("v3vee", NULL);
-    if(dir) {
-	struct proc_dir_entry *entry;
+    palacios_proc_dir = proc_mkdir("v3vee", NULL);
+    /*
+    if (palacios_proc_dir) {
+	struct proc_dir_entry * entry = NULL;
 
-	entry = create_proc_read_entry("v3-guests", 0444, dir, 
-				       read_guests, NULL);
+	entry = create_proc_entry("v3-guests", 0444, palacios_proc_dir);
         if (entry) {
+	    entry->proc_fops = &vm_proc_ops;
 	    INFO("/proc/v3vee/v3-guests successfully created\n");
 	} else {
 	    ERROR("Could not create proc entry\n");
 	    goto failure1;
 	}
 	
-	entry = create_proc_read_entry("v3-mem", 0444, dir,
-				       show_mem, NULL);
-	if (entry) {
-	    INFO("/proc/v3vee/v3-mem successfully added\n");
-	} else {
-	    ERROR("Could not create proc entry\n");
-	    goto failure1;
-	}
     } else {
 	ERROR("Could not create proc entry\n");
 	goto failure1;
     }
-	
+    */
     return 0;
 
  failure1:
@@ -368,8 +366,7 @@ static void __exit v3_exit(void) {
 
     palacios_deinit_mm();
 
-    remove_proc_entry("v3-guests", dir);
-    remove_proc_entry("v3-mem", dir);
+    remove_proc_entry("v3-guests", palacios_proc_dir);
     remove_proc_entry("v3vee", NULL);
 }
 
@@ -377,4 +374,3 @@ static void __exit v3_exit(void) {
 
 module_init(v3_init);
 module_exit(v3_exit);
-
