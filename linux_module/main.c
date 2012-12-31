@@ -248,7 +248,10 @@ static int __init v3_init(void) {
     int ret = 0;
 
 
+    palacios_proc_dir = proc_mkdir("v3vee", NULL);
+
     palacios_init_mm();
+
 
     // Initialize Palacios
     palacios_vmm_init();
@@ -291,7 +294,7 @@ static int __init v3_init(void) {
 	goto failure1;
     }
 
-    palacios_proc_dir = proc_mkdir("v3vee", NULL);
+
     /*
     if (palacios_proc_dir) {
 	struct proc_dir_entry * entry = NULL;

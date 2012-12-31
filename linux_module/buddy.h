@@ -30,8 +30,11 @@ struct buddy_memzone {
  * This structure stores the state of a buddy system memory allocator object.
  */
 struct buddy_mempool {
+    struct buddy_memzone * zone; 
+
     unsigned long    base_addr;    /** physical base address of the memory pool */
-   
+
+
     unsigned long    pool_order;   /** Size of this memory pool = 2^pool_order */
 
     unsigned long    num_blocks;   /** number of bits in tag_bits */
@@ -39,6 +42,9 @@ struct buddy_mempool {
 				    *   0 = block is allocated
 				    *   1 = block is available
 				    */
+
+    unsigned long num_free_blocks;
+
     struct rb_node tree_node;
 };
 

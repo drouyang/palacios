@@ -22,11 +22,16 @@ static uintptr_t seed_addr = 0;
 uintptr_t alloc_palacios_pgs(u64 num_pages, u32 alignment) {
     uintptr_t addr = 0;
 
-    addr = buddy_alloc(memzone, get_order(num_pages * PAGE_SIZE));
+    BUG_ON(!memzone);
+
+    printk("Allocating %llu pages (%llu bytes) order=%d\n", 
+	   num_pages, num_pages * PAGE_SIZE, get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT);
+
+    addr = buddy_alloc(memzone, get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT);
     
     if (!addr) {
 	ERROR("Returning from alloc addr=%p, vaddr=%p\n", (void *)addr, __va(addr));
-    }   
+    }
 
     return addr;
 }
@@ -36,7 +41,7 @@ uintptr_t alloc_palacios_pgs(u64 num_pages, u32 alignment) {
 void free_palacios_pgs(uintptr_t pg_addr, u64 num_pages) {
     //DEBUG("Freeing Memory page %p\n", (void *)pg_addr);
     
-    buddy_free(memzone, pg_addr, get_order(num_pages * PAGE_SIZE));
+    buddy_free(memzone, pg_addr, get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT);
 }
 
 
@@ -49,7 +54,9 @@ int add_palacios_memory(uintptr_t base_addr, u64 num_pages) {
 	  (unsigned long long)(base_addr / (1024 * 1024)));
 
 
-   pool_order = fls(num_pages); 
+    //   pool_order = fls(num_pages); 
+
+   pool_order = get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT;
 
    buddy_add_pool(memzone, base_addr, pool_order);
    
@@ -70,41 +77,45 @@ int palacios_remove_memory(uintptr_t base_addr) {
 
 int palacios_init_mm( void ) {
 
-
     // Seed the allocator with a small set of pages to allow initialization to complete. 
     // For now we will just grab some random pages, but in the future we will need to grab NUMA specific regions
     // See: alloc_pages_node()
 
     {
-	struct page * pgs = alloc_pages(GFP_KERNEL, MAX_ORDER);
+	struct page * pgs = alloc_pages(GFP_KERNEL, MAX_ORDER - 1);
 	
 	if (!pgs) {
 	    ERROR("Could not allocate initial memory block\n");
+	    BUG_ON(!pgs);
+	    while (1);
 	    return -1;
 	}
 	
 	seed_addr = page_to_pfn(pgs) << PAGE_SHIFT;	
     }
 
-
     printk("Allocated seed region\n");
-    printk("Initializing Zone, order=%d\n", 
-	   get_order(V3_CONFIG_MEM_BLOCK_SIZE));
+    printk("Initializing Zone\n");
 
-    memzone = buddy_init(get_order(V3_CONFIG_MEM_BLOCK_SIZE), PAGE_SHIFT);
+    memzone = buddy_init(get_order(V3_CONFIG_MEM_BLOCK_SIZE) + PAGE_SHIFT, PAGE_SHIFT);
 
-    
-    
     if (memzone == NULL) {
 	ERROR("Could not initialization memory management\n");
 	return -1;
     }
 
-    printk("Zone initialized, Adding seed region\n");
+    printk("Zone initialized, Adding seed region (order=%d)\n", 
+	   (MAX_ORDER - 1) + PAGE_SHIFT);
 
-    buddy_add_pool(memzone, seed_addr, MAX_ORDER);
+    buddy_add_pool(memzone, seed_addr, (MAX_ORDER - 1) + PAGE_SHIFT);
 
-    while (1) schedule();
+    alloc_palacios_pgs(5, 4096);
+
+
+
+    alloc_palacios_pgs(32, 4096);
+
+
 
     return 0;
 }
