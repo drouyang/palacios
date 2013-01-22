@@ -430,11 +430,44 @@ endmenu
 
 menu "BIOS Selection"
 
+choice
+	prompt "Guest BIOS type"
+	default BOCHSBIOS
+
+config BOCHS_BIOS
+	bool "BOCHS BIOS"
+	help 
+	   This uses BOCHS BIOS as guest BIOS. In this case, you
+	   should consider using MPTABLE virtual device etc.
+
 config ROMBIOS_PATH
+	depends BOCHS_BIOS
 	string "Path to pre-built ROMBIOS binary"
 	default "./bios/rombios/BIOS-bochs-latest"
 	help
 	  This is the rombios that will be used for the guests
+
+config SEABIOS
+	bool "SEABIOS"
+	help
+	  This uses SEABIOS as a guest BIOS. This BIOS builds all
+	  necessary tables (E820, MPTABLE, ACPI and other), so 
+	  MPTABLE device is disabled.
+
+
+config SEABIOS_PATH
+	depends SEABIOS
+	string "Path to pre-built SEABIOS ROMBIOS binary"
+	default "./bios/seabios/bios.bin"  
+
+endchoice
+
+
+
+
+
+
+
 
 config VGABIOS_PATH
 	string "Path to pre-built VGABIOS binary"
