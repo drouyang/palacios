@@ -1220,7 +1220,11 @@ int v3_start_vmx_guest(struct guest_info * info) {
             V3_Print("VMX core %u: Instr (15 bytes) at %p:\n", info->vcpu_id, (void *)host_addr);
             v3_dump_mem((uint8_t *)host_addr, 15);
             
+	    V3_Print("Stack Trace:\n");
             v3_print_stack(info);
+
+	    V3_Print("Guest Kernel Backtrace\n");
+	    v3_print_backtrace(info);
 
 
 	    v3_print_vmcs();
