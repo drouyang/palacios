@@ -478,6 +478,26 @@ static inline int decode_cr(struct guest_info * core,
     return 0;
 }
 
+static struct v3_segment * get_instr_segment(struct guest_info * core, struct x86_instr * instr) {
+    struct v3_segment * seg = NULL;
+
+    if (instr->prefixes.cs_override) {
+	seg = &(core->segments.cs);
+    } else if (instr->prefixes.es_override) {
+	seg = &(core->segments.es);
+    } else if (instr->prefixes.ss_override) {
+	seg = &(core->segments.ss);
+    } else if (instr->prefixes.fs_override) {
+	seg = &(core->segments.fs);
+    } else if (instr->prefixes.gs_override) {
+	seg = &(core->segments.gs);
+    } else {
+	seg = &(core->segments.ds);
+    }
+
+    return seg;
+}
+
 
 
 #define ADDR_MASK(val, length) ({			      \
@@ -583,19 +603,7 @@ static  int decode_rm_operand16(struct guest_info * core,
     
 	
 	// get appropriate segment
-	if (instr->prefixes.cs_override) {
-	    seg = &(core->segments.cs);
-	} else if (instr->prefixes.es_override) {
-	    seg = &(core->segments.es);
-	} else if (instr->prefixes.ss_override) {
-	    seg = &(core->segments.ss);
-	} else if (instr->prefixes.fs_override) {
-	    seg = &(core->segments.fs);
-	} else if (instr->prefixes.gs_override) {
-	    seg = &(core->segments.gs);
-	} else {
-	    seg = &(core->segments.ds);
-	}
+	seg = get_instr_segment(core, instr);
 	
 	operand->operand = ADDR_MASK(get_addr_linear(core, base_addr, seg), 
 				     get_addr_width(core, instr));
@@ -760,20 +768,9 @@ static int decode_rm_operand32(struct guest_info * core,
 	}
     
 	// get appropriate segment
-	if (instr->prefixes.cs_override) {
-	    seg = &(core->segments.cs);
-	} else if (instr->prefixes.es_override) {
-	    seg = &(core->segments.es);
-	} else if (instr->prefixes.ss_override) {
-	    seg = &(core->segments.ss);
-	} else if (instr->prefixes.fs_override) {
-	    seg = &(core->segments.fs);
-	} else if (instr->prefixes.gs_override) {
-	    seg = &(core->segments.gs);
-	} else {
-	    seg = &(core->segments.ds);
-	}
-	
+	seg = get_instr_segment(core, instr);
+
+
 	operand->operand = ADDR_MASK(get_addr_linear(core, base_addr, seg), 
 				     get_addr_width(core, instr));
     }
@@ -781,6 +778,8 @@ static int decode_rm_operand32(struct guest_info * core,
 
     return (instr_cursor - modrm_instr);
 }
+
+
 
 
 int decode_rm_operand64(struct guest_info * core, uint8_t * modrm_instr, 
@@ -1022,23 +1021,9 @@ int decode_rm_operand64(struct guest_info * core, uint8_t * modrm_instr,
 	}
     
 
-	
-	//Segments should be ignored 
+	//Segments should be ignored in long mode
 	// get appropriate segment
-
-	if (instr->prefixes.cs_override) {
-	    seg = &(core->segments.cs);
-	} else if (instr->prefixes.es_override) {
-	    seg = &(core->segments.es);
-	} else if (instr->prefixes.ss_override) {
-	    seg = &(core->segments.ss);
-	} else if (instr->prefixes.fs_override) {
-	    seg = &(core->segments.fs);
-	} else if (instr->prefixes.gs_override) {
-	    seg = &(core->segments.gs);
-	} else {
-	    seg = &(core->segments.ds);
-	}
+	seg = get_instr_segment(core, instr);
 	
 
 	operand->operand = ADDR_MASK(get_addr_linear(core, base_addr, seg), 
