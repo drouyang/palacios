@@ -848,6 +848,10 @@ static int bar_update(struct pci_device * pci_dev, uint32_t offset,
     switch (bar->type) {
 	case PCI_BAR_IO: {
 	    int i = 0;
+	    uint32_t old_val = bar->val;
+
+	    *(uint32_t *)(pci_dev->config_space + offset) |= 0x1;
+	    bar->val = *(uint32_t *)(pci_dev->config_space + offset);
 
 	    PrintDebug("\tRehooking %d IO ports from base 0x%x to 0x%x for %d ports\n",
 		       bar->num_ports, PCI_IO_BASE(bar->val), PCI_IO_BASE(new_val),
@@ -861,38 +865,52 @@ static int bar_update(struct pci_device * pci_dev, uint32_t offset,
 	    for (i = 0; i < bar->num_ports; i++) {
 
 		PrintDebug("Rehooking PCI IO port (old port=%u) (new port=%u)\n",  
-			   PCI_IO_BASE(bar->val) + i, PCI_IO_BASE(new_val) + i);
+			   PCI_IO_BASE(old_val) + i, PCI_IO_BASE(bar->val) + i);
 
-		v3_unhook_io_port(pci_dev->vm, PCI_IO_BASE(bar->val) + i);
+		if (old_val != 0xffff) {
+		    v3_unhook_io_port(pci_dev->vm, PCI_IO_BASE(old_val) + i);
+		}
 
-		if (v3_hook_io_port(pci_dev->vm, PCI_IO_BASE(new_val) + i, 
+		if (v3_hook_io_port(pci_dev->vm, PCI_IO_BASE(bar->val) + i, 
 				    bar->io_read, bar->io_write, 
 				    bar->private_data) == -1) {
 
+		    int x = 0;
 		    PrintError("Could not hook PCI IO port (old port=%u) (new port=%u)\n",  
-			       PCI_IO_BASE(bar->val) + i, PCI_IO_BASE(new_val) + i);
-		    v3_print_io_map(pci_dev->vm);
-		    return -1;
+			       PCI_IO_BASE(old_val) + i, PCI_IO_BASE(bar->val) + i);
+		    //	       v3_print_io_map(pci_dev->vm);
+		    //         return -1;
+
+		    // unhook already hooked ports
+
+		    for (x = 0; x < i; x++) {
+			v3_unhook_io_port(pci_dev->vm, PCI_IO_BASE(bar->val) + x);
+		    }
+
+		    bar->val = 0xffff;
+
+		    break;
 		}
 	    }
 
-	    bar->val = new_val;
 
 	    break;
 	}
 	case PCI_BAR_MEM32: {
+
 	    v3_unhook_mem(pci_dev->vm, V3_MEM_CORE_ANY, (addr_t)(bar->val));
-	    
+
+	    bar->val = *(uint32_t *)(pci_dev->config_space + offset);	    
+
 	    if (bar->mem_read) {
-		v3_hook_full_mem(pci_dev->vm, V3_MEM_CORE_ANY, PCI_MEM32_BASE(new_val), 
-				 PCI_MEM32_BASE(new_val) + (bar->num_pages * PAGE_SIZE_4KB),
+		v3_hook_full_mem(pci_dev->vm, V3_MEM_CORE_ANY, PCI_MEM32_BASE(bar->val), 
+				 PCI_MEM32_BASE(bar->val) + (bar->num_pages * PAGE_SIZE_4KB),
 				 bar->mem_read, bar->mem_write, pci_dev->priv_data);
 	    } else {
 		PrintError("Write hooks not supported for PCI\n");
 		return -1;
 	    }
 
-	    bar->val = new_val;
 
 	    break;
 	}
@@ -1273,8 +1291,10 @@ static inline int init_bars(struct v3_vm_info * vm, struct pci_device * pci_dev)
 		    if (v3_hook_io_port(vm, bar->default_base_port + j,
 					bar->io_read, bar->io_write, 
 					bar->private_data) == -1) {
+			
 			PrintError("Could not hook default io port %x\n", bar->default_base_port + j);
 			return -1;
+						
 		    }
 		}
 	    }
