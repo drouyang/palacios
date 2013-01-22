@@ -21,10 +21,6 @@
 #define __VMM_TYPES_H
 
 #ifdef __V3VEE__
-//#include <palacios/vmm_stddef.h>
-
-
-
 
 typedef enum {SHADOW_PAGING, NESTED_PAGING} v3_paging_mode_t;
 typedef enum {VM_INVALID, VM_RUNNING, VM_STOPPED, VM_PAUSED, VM_ERROR, VM_SIMULATING} v3_vm_operating_mode_t;
