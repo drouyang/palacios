@@ -10,7 +10,6 @@
 #include "config.h" // CONFIG_*
 #include "ioport.h" // outb
 #include "pci_ids.h" // PCI_VENDOR_ID_INTEL
-#include "xen.h" // usingXen
 
 ASM32FLAT(
     ".global smm_relocation_start\n"
@@ -152,8 +151,6 @@ smm_init(void)
         return;
     if (!CONFIG_USE_SMM)
         return;
-    if (usingXen())
-	return;
 
     dprintf(3, "init smm\n");
     pci_find_init_device(smm_init_tbl, NULL);

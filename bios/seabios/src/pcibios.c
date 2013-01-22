@@ -9,7 +9,7 @@
 #include "util.h" // handle_1ab1
 #include "pci.h" // pci_config_readl
 #include "bregs.h" // struct bregs
-#include "biosvar.h" // GET_GLOBAL
+#include "biosvar.h" // GET_EBDA
 #include "pci_regs.h" // PCI_VENDOR_ID
 
 // romlayout.S
@@ -133,12 +133,11 @@ handle_1ab10d(struct bregs *regs)
 static void
 handle_1ab10e(struct bregs *regs)
 {
-    struct pir_header *pirtable_gf = GET_GLOBAL(PirAddr);
-    if (! pirtable_gf) {
+    struct pir_header *pirtable_g = (void*)(GET_GLOBAL(PirOffset) + 0);
+    if (! pirtable_g) {
         set_code_invalid(regs, RET_FUNC_NOT_SUPPORTED);
         return;
     }
-    struct pir_header *pirtable_g = GLOBALFLAT2GLOBAL(pirtable_gf);
 
     struct param_s {
         u16 size;

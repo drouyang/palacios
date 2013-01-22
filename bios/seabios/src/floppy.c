@@ -9,7 +9,7 @@
 #include "disk.h" // DISK_RET_SUCCESS
 #include "config.h" // CONFIG_FLOPPY
 #include "biosvar.h" // SET_BDA
-#include "util.h" // dprintf
+#include "util.h" // wait_irq
 #include "cmos.h" // inb_cmos
 #include "pic.h" // eoi_pic1
 #include "bregs.h" // struct bregs
@@ -185,28 +185,27 @@ static int
 wait_floppy_irq(void)
 {
     ASSERT16();
-    u8 frs;
+    u8 v;
     for (;;) {
         if (!GET_BDA(floppy_motor_counter))
             return -1;
-        frs = GET_BDA(floppy_recalibration_status);
-        if (frs & FRS_TIMEOUT)
+        v = GET_BDA(floppy_recalibration_status);
+        if (v & FRS_TIMEOUT)
             break;
-        // Could use yield_toirq() here, but that causes issues on
+        // Could use wait_irq() here, but that causes issues on
         // bochs, so use yield() instead.
         yield();
     }
 
-    frs &= ~FRS_TIMEOUT;
-    SET_BDA(floppy_recalibration_status, frs);
+    v &= ~FRS_TIMEOUT;
+    SET_BDA(floppy_recalibration_status, v);
     return 0;
 }
 
 static void
 floppy_prepare_controller(u8 floppyid)
 {
-    u8 frs = GET_BDA(floppy_recalibration_status);
-    SET_BDA(floppy_recalibration_status, frs & ~FRS_TIMEOUT);
+    CLEARBITS_BDA(floppy_recalibration_status, FRS_TIMEOUT);
 
     // turn on motor of selected drive, DMA & int enabled, normal operation
     u8 prev_reset = inb(PORT_FD_DOR) & 0x04;
@@ -321,8 +320,7 @@ floppy_drive_recal(u8 floppyid)
     data[1] = floppyid; // 0=drive0, 1=drive1
     floppy_pio(data, 2);
 
-    u8 frs = GET_BDA(floppy_recalibration_status);
-    SET_BDA(floppy_recalibration_status, frs | (1<<floppyid));
+    SETBITS_BDA(floppy_recalibration_status, 1<<floppyid);
     set_diskette_current_cyl(floppyid, 0);
 }
 
@@ -599,8 +597,7 @@ handle_0e(void)
         } while ((inb(PORT_FD_STATUS) & 0xc0) == 0xc0);
     }
     // diskette interrupt has occurred
-    u8 frs = GET_BDA(floppy_recalibration_status);
-    SET_BDA(floppy_recalibration_status, frs | FRS_TIMEOUT);
+    SETBITS_BDA(floppy_recalibration_status, FRS_TIMEOUT);
 
 done:
     eoi_pic1();

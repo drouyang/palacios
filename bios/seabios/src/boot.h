@@ -14,12 +14,10 @@ void boot_add_cbfs(void *data, const char *desc, int prio);
 void boot_prep(void);
 struct pci_device;
 int bootprio_find_pci_device(struct pci_device *pci);
-int bootprio_find_scsi_device(struct pci_device *pci, int target, int lun);
 int bootprio_find_ata_device(struct pci_device *pci, int chanid, int slave);
 int bootprio_find_fdc_device(struct pci_device *pci, int port, int fdid);
 int bootprio_find_pci_rom(struct pci_device *pci, int instance);
 int bootprio_find_named_rom(const char *name, int instance);
-struct usbdevice_s;
-int bootprio_find_usb(struct usbdevice_s *usbdev, int lun);
+int bootprio_find_usb(struct pci_device *pci, u64 path);
 
 #endif // __BOOT_H

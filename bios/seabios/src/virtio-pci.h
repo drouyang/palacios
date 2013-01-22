@@ -99,7 +99,6 @@ static inline void vp_del_vq(unsigned int ioaddr, int queue_index)
 }
 
 struct vring_virtqueue;
-u16 vp_init_simple(u16 bdf);
 int vp_find_vq(unsigned int ioaddr, int queue_index,
-               struct vring_virtqueue **p_vq);
+               struct vring_virtqueue *vq);
 #endif /* _VIRTIO_PCI_H_ */

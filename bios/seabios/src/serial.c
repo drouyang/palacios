@@ -46,7 +46,8 @@ serial_setup(void)
     dprintf(1, "Found %d serial ports\n", count);
 
     // Equipment word bits 9..11 determing # serial ports
-    set_equipment_flags(0xe00, count << 9);
+    u16 eqb = GET_BDA(equipment_list_flags);
+    SET_BDA(equipment_list_flags, (eqb & 0xf1ff) | (count << 9));
 }
 
 static u16
@@ -210,7 +211,8 @@ lpt_setup(void)
     dprintf(1, "Found %d lpt ports\n", count);
 
     // Equipment word bits 14..15 determing # parallel ports
-    set_equipment_flags(0xc000, count << 14);
+    u16 eqb = GET_BDA(equipment_list_flags);
+    SET_BDA(equipment_list_flags, (eqb & 0x3fff) | (count << 14));
 }
 
 static u16

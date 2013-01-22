@@ -59,7 +59,7 @@ mptable_init(void)
         cpu->apicid = i;
         cpu->apicver = apic_version;
         /* cpu flags: enabled, bootstrap cpu */
-        cpu->cpuflag = (apic_id_is_present(i) ? 0x01 : 0x00) | ((i==0) ? 0x02 : 0x00);
+        cpu->cpuflag = ((i<CountCPUs) ? 0x01 : 0x00) | ((i==0) ? 0x02 : 0x00);
         cpu->cpusignature = cpuid_signature;
         cpu->featureflag = cpuid_features;
         cpu++;
@@ -92,7 +92,7 @@ mptable_init(void)
     entrycount += bus - buses;
 
     /* ioapic */
-    u8 ioapic_id = BUILD_IOAPIC_ID;
+    u8 ioapic_id = CountCPUs;
     struct mpt_ioapic *ioapic = (void*)bus;
     memset(ioapic, 0, sizeof(*ioapic));
     ioapic->type = MPT_TYPE_IOAPIC;
@@ -169,7 +169,7 @@ mptable_init(void)
     intsrc->irqflag = 0; /* PO, EL default */
     intsrc->srcbus = isabusid; /* ISA */
     intsrc->srcbusirq = 0;
-    intsrc->dstapic = 0xff; /* to all local APICs */
+    intsrc->dstapic = 0; /* BSP == APIC #0 */
     intsrc->dstirq = 1; /* LINTIN1 */
     intsrc++;
     entrycount += intsrc - intsrcs;

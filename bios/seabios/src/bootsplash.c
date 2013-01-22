@@ -10,8 +10,67 @@
 #include "config.h" // CONFIG_*
 #include "util.h" // dprintf
 #include "jpeg.h" // splash
-#include "vbe.h" // struct vbe_info
-#include "bmp.h" // bmp_alloc
+#include "biosvar.h" // SET_EBDA
+#include "paravirt.h" // romfile_find
+#include "bmp.h"
+
+/****************************************************************
+ * VESA structures
+ ****************************************************************/
+
+struct vesa_info {
+    u32 vesa_signature;
+    u16 vesa_version;
+    struct segoff_s oem_string_ptr;
+    u8 capabilities[4];
+    struct segoff_s video_mode_ptr;
+    u16 total_memory;
+    u16 oem_software_rev;
+    struct segoff_s oem_vendor_name_ptr;
+    struct segoff_s oem_product_name_ptr;
+    struct segoff_s oem_product_rev_ptr;
+    u8 reserved[222];
+    u8 oem_data[256];
+} PACKED;
+
+#define VESA_SIGNATURE 0x41534556 // VESA
+#define VBE2_SIGNATURE 0x32454256 // VBE2
+
+struct vesa_mode_info {
+    u16 mode_attributes;
+    u8 win_a_attributes;
+    u8 win_b_attributes;
+    u16 win_granularity;
+    u16 win_size;
+    u16 win_a_segment;
+    u16 win_b_segment;
+    u32 win_func_ptr;
+    u16 bytes_per_scanline;
+    u16 x_resolution;
+    u16 y_resolution;
+    u8 x_charsize;
+    u8 y_charsize;
+    u8 number_of_planes;
+    u8 bits_per_pixel;
+    u8 number_of_banks;
+    u8 memory_model;
+    u8 bank_size;
+    u8 number_of_image_pages;
+    u8 reserved_page;
+    u8 red_mask_size;
+    u8 red_mask_pos;
+    u8 green_mask_size;
+    u8 green_mask_pos;
+    u8 blue_mask_size;
+    u8 blue_mask_pos;
+    u8 reserved_mask_size;
+    u8 reserved_mask_pos;
+    u8 direct_color_mode_info;
+    void *phys_base_ptr;
+    u32 offscreen_mem_offset;
+    u16 offscreen_mem_size;
+    u8 reserved[206];
+} PACKED;
 
 
 /****************************************************************
@@ -49,11 +108,11 @@ enable_vga_console(void)
 }
 
 static int
-find_videomode(struct vbe_info *vesa_info, struct vbe_mode_info *mode_info
+find_videomode(struct vesa_info *vesa_info, struct vesa_mode_info *mode_info
                , int width, int height, int bpp_req)
 {
     dprintf(3, "Finding vesa mode with dimensions %d/%d\n", width, height);
-    u16 *videomodes = SEGOFF_TO_FLATPTR(vesa_info->video_mode);
+    u16 *videomodes = SEGOFF_TO_FLATPTR(vesa_info->video_mode_ptr);
     for (;; videomodes++) {
         u16 videomode = *videomodes;
         if (videomode == 0xffff) {
@@ -64,7 +123,7 @@ find_videomode(struct vbe_info *vesa_info, struct vbe_mode_info *mode_info
         struct bregs br;
         memset(&br, 0, sizeof(br));
         br.ax = 0x4f01;
-        br.cx = videomode;
+        br.cx = (1 << 14) | videomode;
         br.di = FLATPTR_TO_OFFSET(mode_info);
         br.es = FLATPTR_TO_SEG(mode_info);
         call16_int10(&br);
@@ -72,8 +131,8 @@ find_videomode(struct vbe_info *vesa_info, struct vbe_mode_info *mode_info
             dprintf(1, "get_mode failed.\n");
             continue;
         }
-        if (mode_info->xres != width
-            || mode_info->yres != height)
+        if (mode_info->x_resolution != width
+            || mode_info->y_resolution != height)
             continue;
         u8 depth = mode_info->bits_per_pixel;
         if (bpp_req == 0) {
@@ -110,32 +169,32 @@ enable_bootsplash(void)
     u8 *picture = NULL; /* data buff used to be flushed to the video buf */
     struct jpeg_decdata *jpeg = NULL;
     struct bmp_decdata *bmp = NULL;
-    struct vbe_info *vesa_info = malloc_tmplow(sizeof(*vesa_info));
-    struct vbe_mode_info *mode_info = malloc_tmplow(sizeof(*mode_info));
+    struct vesa_info *vesa_info = malloc_tmplow(sizeof(*vesa_info));
+    struct vesa_mode_info *mode_info = malloc_tmplow(sizeof(*mode_info));
     if (!vesa_info || !mode_info) {
         warn_noalloc();
         goto done;
     }
 
     /* Check whether we have a VESA 2.0 compliant BIOS */
-    memset(vesa_info, 0, sizeof(struct vbe_info));
-    vesa_info->signature = VBE2_SIGNATURE;
+    memset(vesa_info, 0, sizeof(struct vesa_info));
+    vesa_info->vesa_signature = VBE2_SIGNATURE;
     struct bregs br;
     memset(&br, 0, sizeof(br));
     br.ax = 0x4f00;
     br.di = FLATPTR_TO_OFFSET(vesa_info);
     br.es = FLATPTR_TO_SEG(vesa_info);
     call16_int10(&br);
-    if (vesa_info->signature != VESA_SIGNATURE) {
+    if (vesa_info->vesa_signature != VESA_SIGNATURE) {
         dprintf(1,"No VBE2 found.\n");
         goto done;
     }
 
     /* Print some debugging information about our card. */
-    char *vendor = SEGOFF_TO_FLATPTR(vesa_info->oem_vendor_string);
-    char *product = SEGOFF_TO_FLATPTR(vesa_info->oem_product_string);
+    char *vendor = SEGOFF_TO_FLATPTR(vesa_info->oem_vendor_name_ptr);
+    char *product = SEGOFF_TO_FLATPTR(vesa_info->oem_product_name_ptr);
     dprintf(3, "VESA %d.%d\nVENDOR: %s\nPRODUCT: %s\n",
-            vesa_info->version>>8, vesa_info->version&0xff,
+            vesa_info->vesa_version>>8, vesa_info->vesa_version&0xff,
             vendor, product);
 
     int ret, width, height;
@@ -180,7 +239,7 @@ enable_bootsplash(void)
                     width, height, bpp_require);
         goto done;
     }
-    void *framebuffer = (void *)mode_info->phys_base;
+    void *framebuffer = mode_info->phys_base_ptr;
     int depth = mode_info->bits_per_pixel;
     dprintf(3, "mode: %04x\n", videomode);
     dprintf(3, "framebuffer: %p\n", framebuffer);
@@ -217,7 +276,7 @@ enable_bootsplash(void)
     dprintf(5, "Switching to graphics mode\n");
     memset(&br, 0, sizeof(br));
     br.ax = 0x4f02;
-    br.bx = videomode | VBE_MODE_LINEAR_FRAME_BUFFER;
+    br.bx = (1 << 14) | videomode;
     call16_int10(&br);
     if (br.ax != 0x4f) {
         dprintf(1, "set_mode failed.\n");

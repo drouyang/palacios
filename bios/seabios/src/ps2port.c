@@ -7,7 +7,8 @@
 
 #include "ioport.h" // inb
 #include "util.h" // dprintf
-#include "biosvar.h" // GET_LOW
+#include "paravirt.h" // romfile_loadint
+#include "biosvar.h" // GET_EBDA
 #include "ps2port.h" // ps2_kbd_command
 #include "pic.h" // eoi_pic1
 
@@ -131,8 +132,6 @@ i8042_aux_write(u8 c)
 void
 i8042_reboot(void)
 {
-    if (! CONFIG_PS2PORT)
-       return;
     int i;
     for (i=0; i<10; i++) {
         i8042_wait_write();
@@ -207,8 +206,6 @@ ps2_sendbyte(int aux, u8 command, int timeout)
     return 0;
 }
 
-u8 Ps2ctr VARLOW;
-
 static int
 __ps2_command(int aux, int command, u8 *param)
 {
@@ -217,7 +214,7 @@ __ps2_command(int aux, int command, u8 *param)
     int send = (command >> 12) & 0xf;
 
     // Disable interrupts and keyboard/mouse.
-    u8 ps2ctr = GET_LOW(Ps2ctr);
+    u8 ps2ctr = GET_EBDA(ps2ctr);
     u8 newctr = ((ps2ctr | I8042_CTR_AUXDIS | I8042_CTR_KBDDIS)
                  & ~(I8042_CTR_KBDINT|I8042_CTR_AUXINT));
     dprintf(6, "i8042 ctr old=%x new=%x\n", ps2ctr, newctr);
@@ -325,25 +322,21 @@ ps2_command(int aux, int command, u8 *param)
 int
 ps2_kbd_command(int command, u8 *param)
 {
-    if (! CONFIG_PS2PORT)
-        return -1;
     return ps2_command(0, command, param);
 }
 
 int
 ps2_mouse_command(int command, u8 *param)
 {
-    if (! CONFIG_PS2PORT)
-        return -1;
-
     // Update ps2ctr for mouse enable/disable.
     if (command == PSMOUSE_CMD_ENABLE || command == PSMOUSE_CMD_DISABLE) {
-        u8 ps2ctr = GET_LOW(Ps2ctr);
+        u16 ebda_seg = get_ebda_seg();
+        u8 ps2ctr = GET_EBDA2(ebda_seg, ps2ctr);
         if (command == PSMOUSE_CMD_ENABLE)
             ps2ctr = (ps2ctr | I8042_CTR_AUXINT) & ~I8042_CTR_AUXDIS;
         else
             ps2ctr = (ps2ctr | I8042_CTR_AUXDIS) & ~I8042_CTR_AUXINT;
-        SET_LOW(Ps2ctr, ps2ctr);
+        SET_EBDA2(ebda_seg, ps2ctr, ps2ctr);
     }
 
     return ps2_command(1, command, param);
@@ -371,7 +364,7 @@ handle_74(void)
     }
     v = inb(PORT_PS2_DATA);
 
-    if (!(GET_LOW(Ps2ctr) & I8042_CTR_AUXINT))
+    if (!(GET_EBDA(ps2ctr) & I8042_CTR_AUXINT))
         // Interrupts not enabled.
         goto done;
 
@@ -398,14 +391,11 @@ handle_09(void)
     }
     v = inb(PORT_PS2_DATA);
 
-    if (!(GET_LOW(Ps2ctr) & I8042_CTR_KBDINT))
+    if (!(GET_EBDA(ps2ctr) & I8042_CTR_KBDINT))
         // Interrupts not enabled.
         goto done;
 
     process_key(v);
-
-    // Some old programs expect ISR to turn keyboard back on.
-    i8042_command(I8042_CMD_KBD_ENABLE, NULL);
 
 done:
     eoi_pic1();
@@ -444,7 +434,7 @@ keyboard_init(void *data)
     }
 
     // Disable keyboard and mouse events.
-    SET_LOW(Ps2ctr, I8042_CTR_KBDDIS | I8042_CTR_AUXDIS);
+    SET_EBDA(ps2ctr, I8042_CTR_KBDDIS | I8042_CTR_AUXDIS);
 
 
     /* ------------------- keyboard side ------------------------*/
@@ -479,7 +469,7 @@ keyboard_init(void *data)
         return;
 
     // Keyboard Mode: disable mouse, scan code convert, enable kbd IRQ
-    SET_LOW(Ps2ctr, I8042_CTR_AUXDIS | I8042_CTR_XLATE | I8042_CTR_KBDINT);
+    SET_EBDA(ps2ctr, I8042_CTR_AUXDIS | I8042_CTR_XLATE | I8042_CTR_KBDINT);
 
     /* Enable keyboard */
     ret = ps2_kbd_command(ATKBD_CMD_ENABLE, NULL);

@@ -39,16 +39,16 @@ virtio_blk_op(struct disk_op_s *op, int write)
     u8 status = VIRTIO_BLK_S_UNSUPP;
     struct vring_list sg[] = {
         {
-            .addr       = MAKE_FLATPTR(GET_SEG(SS), &hdr),
-            .length     = sizeof(hdr),
+            .addr	= MAKE_FLATPTR(GET_SEG(SS), &hdr),
+            .length	= sizeof(hdr),
         },
         {
-            .addr       = op->buf_fl,
-            .length     = GET_GLOBAL(vdrive_g->drive.blksize) * op->count,
+            .addr	= op->buf_fl,
+            .length	= GET_GLOBAL(vdrive_g->drive.blksize) * op->count,
         },
         {
-            .addr       = MAKE_FLATPTR(GET_SEG(SS), &status),
-            .length     = sizeof(status),
+            .addr	= MAKE_FLATPTR(GET_SEG(SS), &status),
+            .length	= sizeof(status),
         },
     };
 
@@ -75,7 +75,7 @@ virtio_blk_op(struct disk_op_s *op, int write)
 }
 
 int
-process_virtio_blk_op(struct disk_op_s *op)
+process_virtio_op(struct disk_op_s *op)
 {
     if (! CONFIG_VIRTIO_BLK || CONFIG_COREBOOT)
         return 0;
@@ -103,17 +103,27 @@ init_virtio_blk(struct pci_device *pci)
     dprintf(1, "found virtio-blk at %x:%x\n", pci_bdf_to_bus(bdf),
             pci_bdf_to_dev(bdf));
     struct virtiodrive_s *vdrive_g = malloc_fseg(sizeof(*vdrive_g));
-    if (!vdrive_g) {
+    struct vring_virtqueue *vq = memalign_low(PAGE_SIZE, sizeof(*vq));
+    if (!vdrive_g || !vq) {
         warn_noalloc();
-        return;
+        goto fail;
     }
     memset(vdrive_g, 0, sizeof(*vdrive_g));
-    vdrive_g->drive.type = DTYPE_VIRTIO_BLK;
+    memset(vq, 0, sizeof(*vq));
+    vdrive_g->drive.type = DTYPE_VIRTIO;
     vdrive_g->drive.cntl_id = bdf;
+    vdrive_g->vq = vq;
 
-    u16 ioaddr = vp_init_simple(bdf);
+    u16 ioaddr = pci_config_readl(bdf, PCI_BASE_ADDRESS_0) &
+        PCI_BASE_ADDRESS_IO_MASK;
+
     vdrive_g->ioaddr = ioaddr;
-    if (vp_find_vq(ioaddr, 0, &vdrive_g->vq) < 0 ) {
+
+    vp_reset(ioaddr);
+    vp_set_status(ioaddr, VIRTIO_CONFIG_S_ACKNOWLEDGE |
+                  VIRTIO_CONFIG_S_DRIVER );
+
+    if (vp_find_vq(ioaddr, 0, vdrive_g->vq) < 0 ) {
         dprintf(1, "fail to find vq for virtio-blk %x:%x\n",
                 pci_bdf_to_bus(bdf), pci_bdf_to_dev(bdf));
         goto fail;
@@ -151,8 +161,8 @@ init_virtio_blk(struct pci_device *pci)
     return;
 
 fail:
-    free(vdrive_g->vq);
     free(vdrive_g);
+    free(vq);
 }
 
 void

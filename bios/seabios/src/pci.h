@@ -5,7 +5,6 @@
 
 #define PCI_ROM_SLOT 6
 #define PCI_NUM_REGIONS 7
-#define PCI_BRIDGE_NUM_REGIONS 2
 
 static inline u8 pci_bdf_to_bus(u16 bdf) {
     return bdf >> 8;
@@ -52,12 +51,15 @@ struct pci_device {
     u8 prog_if, revision;
     u8 header_type;
     u8 secondary_bus;
+    struct {
+        u32 addr;
+        u32 size;
+        int is64;
+    } bars[PCI_NUM_REGIONS];
 
     // Local information on device.
     int have_driver;
 };
-extern u64 pcimem_start, pcimem_end;
-extern u64 pcimem64_start, pcimem64_end;
 extern struct pci_device *PCIDevices;
 extern int MaxPCIBus;
 int pci_probe_host(void);
@@ -125,6 +127,8 @@ void create_pirtable(void);
  * PIR table
  ****************************************************************/
 
+extern u16 PirOffset;
+
 struct link_info {
     u8 link;
     u16 bitmap;
@@ -151,8 +155,6 @@ struct pir_header {
     u8 checksum;
     struct pir_slot slots[0];
 } PACKED;
-
-extern struct pir_header *PirAddr;
 
 #define PIR_SIGNATURE 0x52495024 // $PIR
 

@@ -34,7 +34,6 @@ init_dma(void)
 void VISIBLE16
 handle_resume(void)
 {
-    ASSERT16();
     debug_serial_setup();
     int status = inb_cmos(CMOS_RESET_CODE);
     outb_cmos(0, CMOS_RESET_CODE);
@@ -108,7 +107,6 @@ s3_resume(void)
         return;
     }
 
-    pic_setup();
     smm_init();
 
     s3_resume_vga_init();
@@ -120,7 +118,7 @@ s3_resume(void)
     memset(&br, 0, sizeof(br));
     dprintf(1, "Jump to resume vector (%x)\n", s3_resume_vector);
     br.code = FLATPTR_TO_SEGOFF((void*)s3_resume_vector);
-    farcall16big(&br);
+    call16big(&br);
 }
 
 // Attempt to invoke a hard-reboot.

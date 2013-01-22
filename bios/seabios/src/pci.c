@@ -5,10 +5,10 @@
 //
 // This file may be distributed under the terms of the GNU LGPLv3 license.
 
-#include "config.h" // CONFIG_*
 #include "pci.h" // pci_config_writel
 #include "ioport.h" // outl
 #include "util.h" // dprintf
+#include "paravirt.h" // romfile_loadint
 #include "farptr.h" // MAKE_FLATPTR
 #include "pci_regs.h" // PCI_VENDOR_ID
 #include "pci_ids.h" // PCI_CLASS_DISPLAY_VGA
@@ -235,14 +235,14 @@ pci_reboot(void)
 u32 VISIBLE32FLAT
 pci_readl_32(u32 addr)
 {
-    dprintf(9, "32: pci read : %x\n", addr);
+    dprintf(3, "32: pci read : %x\n", addr);
     return readl((void*)addr);
 }
 
 u32 pci_readl(u32 addr)
 {
     if (MODESEGMENT) {
-        dprintf(9, "16: pci read : %x\n", addr);
+        dprintf(3, "16: pci read : %x\n", addr);
         extern void _cfunc32flat_pci_readl_32(u32 addr);
         return call32(_cfunc32flat_pci_readl_32, addr, -1);
     } else {
@@ -258,7 +258,7 @@ struct reg32 {
 void VISIBLE32FLAT
 pci_writel_32(struct reg32 *reg32)
 {
-    dprintf(9, "32: pci write: %x, %x (%p)\n", reg32->addr, reg32->data, reg32);
+    dprintf(3, "32: pci write: %x, %x (%p)\n", reg32->addr, reg32->data, reg32);
     writel((void*)(reg32->addr), reg32->data);
 }
 
@@ -266,7 +266,7 @@ void pci_writel(u32 addr, u32 val)
 {
     struct reg32 reg32 = { .addr = addr, .data = val };
     if (MODESEGMENT) {
-        dprintf(9, "16: pci write: %x, %x (%x:%p)\n",
+        dprintf(3, "16: pci write: %x, %x (%x:%p)\n",
                 reg32.addr, reg32.data, GET_SEG(SS), &reg32);
         void *flatptr = MAKE_FLATPTR(GET_SEG(SS), &reg32);
         extern void _cfunc32flat_pci_writel_32(struct reg32 *reg32);

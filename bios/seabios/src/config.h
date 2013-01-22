@@ -38,7 +38,6 @@
 #define BUILD_ROM_START           0xc0000
 #define BUILD_BIOS_ADDR           0xf0000
 #define BUILD_BIOS_SIZE           0x10000
-#define BUILD_EXTRA_STACK_SIZE    0x800
 // 32KB for shadow ram copying (works around emulator deficiencies)
 #define BUILD_BIOS_TMP_ADDR       0x30000
 #define BUILD_SMM_INIT_ADDR       0x38000
@@ -48,11 +47,8 @@
 
 #define BUILD_PCIMEM_START        0xe0000000
 #define BUILD_PCIMEM_END          0xfec00000    /* IOAPIC is mapped at */
-#define BUILD_PCIMEM64_START      0x8000000000ULL
-#define BUILD_PCIMEM64_END        0x10000000000ULL
 
 #define BUILD_IOAPIC_ADDR         0xfec00000
-#define BUILD_IOAPIC_ID           0
 #define BUILD_HPET_ADDRESS        0xfed00000
 #define BUILD_APIC_ADDR           0xfee00000
 
