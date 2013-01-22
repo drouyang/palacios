@@ -128,7 +128,7 @@ menu "Supported host OS features"
       
 config MEM_BLOCK_SIZE
 	int "Allocation size for underlying VM memory"
-	default 0x8000000
+	default 134217728
 	help 
 	  This is the size in bytes of the underlying memory allocations used for the base memory regions.
 	  A good default value is 128MB (134217728 or 0x8000000 bytes)
@@ -433,7 +433,7 @@ menu "BIOS Selection"
 
 config ROMBIOS_PATH
 	string "Path to pre-built ROMBIOS binary"
-	default "./bios/seabios/out/bios.bin.raw"
+	default "./bios/seabios/out/bios.bin"
 	help
 	  This is the rombios that will be used for the guests
 
