@@ -38,6 +38,7 @@ obj-y := \
 	vmm_bitmap.o \
 	vmm_barrier.o \
 	vmm_timeout.o \
+	vmm_fw_cfg.o 
 
 
 obj-$(V3_CONFIG_XED) +=	vmm_xed.o

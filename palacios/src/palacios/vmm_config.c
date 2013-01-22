@@ -383,6 +383,10 @@ static int post_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	return -1;
     }
 
+    if (v3_fw_cfg_init(vm) == -1) {
+	PrintError("Error initializing Firmware Config state\n");
+	return -1;
+    }
 
     /* 
      * Initialize configured devices

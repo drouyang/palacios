@@ -21,10 +21,33 @@
 
 #ifdef __V3VEE__
 
+#include <palacios/vmm_types.h>
+
+#define FW_CFG_FILE_FIRST       0x20
+#define FW_CFG_FILE_SLOTS       0x10
+#define FW_CFG_MAX_ENTRY        (FW_CFG_FILE_FIRST + FW_CFG_FILE_SLOTS)
+
+typedef void (*v3_fw_cfg_cb)(void * opaque, uint8_t * data);
+
+struct v3_fw_cfg_entry {
+    uint32_t len;
+    uint8_t * data;
+    void * callback_opaque;
+    v3_fw_cfg_cb callback;
+};
+
+
+struct v3_fw_cfg_state {
+    struct v3_fw_cfg_entry entries[2][FW_CFG_MAX_ENTRY];
+    uint16_t cur_entry;
+    uint32_t cur_offset;
+};
+
 struct v3_vm_info;
 
-int v3_fw_cfg_init(struct v3_vm_info *vm);
-void v3_delete_fw_cfg(struct v3_vm_info *vm);
+
+int v3_fw_cfg_init(struct v3_vm_info * vm);
+void v3_fw_cfg_deinit(struct v3_vm_info * vm);
 
 #endif
 

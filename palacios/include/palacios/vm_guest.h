@@ -39,6 +39,7 @@
 #include <palacios/vmm_extensions.h>
 #include <palacios/vmm_barrier.h>
 #include <palacios/vmm_timeout.h>
+#include <palacios/vmm_fw_cfg.h>
 
 
 #ifdef V3_CONFIG_TELEMETRY
@@ -54,8 +55,6 @@ struct v3_sym_core_state;
 
 
 #include <palacios/vmm_config.h>
-
-struct v3_intr_state;
 
 
 
@@ -149,6 +148,9 @@ struct v3_vm_info {
     char name[128];
 
     v3_vm_class_t vm_class;
+
+    struct v3_fw_cfg_state fw_cfg_state;
+
 
     addr_t mem_size; /* In bytes for now */
     uint32_t mem_align;
