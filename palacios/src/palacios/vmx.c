@@ -1152,42 +1152,49 @@ int v3_vmx_enter(struct guest_info * info) {
 
 int v3_start_vmx_guest(struct guest_info * info) {
 
-    PrintDebug("Starting VMX core %u\n", info->vcpu_id);
+    V3_Print("Starting VMX core %u\n", info->vcpu_id);
+    
+    while (1) {
 
-    if (info->vcpu_id == 0) {
-	info->core_run_state = CORE_RUNNING;
-    } else {
+	if (info->core_run_state == CORE_STOPPED) {
 
-        PrintDebug("VMX core %u: Waiting for core initialization\n", info->vcpu_id);
+	    if (v3_is_core_bsp(info)) {
+		V3_Print("BSP (core %d) is in STOPPED state, starting immediately\n", info->vcpu_id);
+		info->core_run_state = CORE_RUNNING;
+	    } else {
+	    
+		V3_Print("VMX core %u is STOPPED: Waiting for core initialization\n", info->vcpu_id);
 
-        while (info->core_run_state == CORE_STOPPED) {
+		while (info->core_run_state == CORE_STOPPED) {
 
-	    if (info->vm_info->run_state == VM_STOPPED) {
-		// The VM was stopped before this core was initialized. 
-		return 0;
+		    if (info->vm_info->run_state == VM_STOPPED) {
+			// The VM was stopped before this core was initialized. 
+			return 0;
+		    }
+
+
+
+
+		    v3_yield(info, -1);
+		    //PrintDebug("VMX core %u: still waiting for INIT\n",info->vcpu_id);
+		}
+	
+		V3_Print("VMX core %u initialized\n", info->vcpu_id);
+
+		// We'll be paranoid about race conditions here
+		v3_wait_at_barrier(info);
 	    }
 
-            v3_yield(info, -1);
-            //PrintDebug("VMX core %u: still waiting for INIT\n",info->vcpu_id);
-        }
-	
-	PrintDebug("VMX core %u initialized\n", info->vcpu_id);
 
-	// We'll be paranoid about race conditions here
-	v3_wait_at_barrier(info);
-    }
+	    V3_Print("VMX core %u: I am starting at CS=0x%x (base=0x%p, limit=0x%x),  RIP=0x%p\n",
+		       info->vcpu_id, info->segments.cs.selector, (void *)(info->segments.cs.base),
+		       info->segments.cs.limit, (void *)(info->rip));
 
 
-    PrintDebug("VMX core %u: I am starting at CS=0x%x (base=0x%p, limit=0x%x),  RIP=0x%p\n",
-               info->vcpu_id, info->segments.cs.selector, (void *)(info->segments.cs.base),
-               info->segments.cs.limit, (void *)(info->rip));
+	    V3_Print("VMX core %u: Launching VMX VM on logical core %u\n", info->vcpu_id, info->pcpu_id);
 
-
-    PrintDebug("VMX core %u: Launching VMX VM on logical core %u\n", info->vcpu_id, info->pcpu_id);
-
-    v3_start_time(info);
-
-    while (1) {
+	    v3_start_time(info);
+	}
 
 	if (info->vm_info->run_state == VM_STOPPED) {
 	    info->core_run_state = CORE_STOPPED;

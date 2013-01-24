@@ -32,6 +32,7 @@
 #include <palacios/vmm_direct_paging.h>
 #include <palacios/vmm_barrier.h>
 #include <palacios/vmm_debug.h>
+#include <palacios/vmm_dev_mgr.h>
 
 
 v3_cpu_mode_t v3_get_vm_cpu_mode(struct guest_info * info) {
@@ -163,6 +164,26 @@ const uchar_t * v3_mem_mode_to_str(v3_mem_mode_t mode) {
 }
 
 
+#ifdef V3_CONFIG_APIC
+#include <devices/apic.h>
+#endif
+
+/* The BSP flag is housed in the APIC Base address MSR... 
+   With no APIC we default to BSP, otherwise we have to check
+ */
+int v3_is_core_bsp(struct guest_info * core) {
+    struct vm_device * apic_dev =  v3_find_dev(core->vm_info, "apic");
+
+    if (apic_dev == NULL) {
+	return 1;
+    } 
+
+#ifdef V3_CONFIG_APIC
+    return v3_apic_is_bsp(core, apic_dev);
+#else 
+    return 0;
+#endif
+}
 
 
 

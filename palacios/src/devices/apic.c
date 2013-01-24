@@ -195,6 +195,8 @@ struct apic_dev_state;
 struct apic_state {
     addr_t base_addr;
 
+    struct apic_dev_state * dev_state;
+
     /* MSRs */
     struct apic_msr base_addr_msr;
 
@@ -282,6 +284,21 @@ struct apic_dev_state {
 
 static int apic_read(struct guest_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data);
 static int apic_write(struct guest_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data);
+
+
+static int is_apic_bsp(struct apic_state * apic) {
+    return ((apic->base_addr_msr.value & 0x0000000000000100LL) != 0);
+}
+
+
+int v3_apic_is_bsp(struct guest_info * core, void * dev_data) {
+    struct apic_dev_state * apic_dev = (struct apic_dev_state *)
+	(((struct vm_device *)dev_data)->private_data);
+   struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]);
+   
+   return is_apic_bsp(apic);
+}
+
 
 // No lcoking done
 static int init_apic_state(struct apic_state * apic, uint32_t id) {
@@ -779,6 +796,7 @@ static int deliver_ipi(struct apic_state * src_apic,
 
 
     struct guest_info * dst_core = dst_apic->core;
+    //   struct apic_dev_state * dev_state = src_apic->dev_state;
 
 
     switch (ipi->mode) {
@@ -801,17 +819,30 @@ static int deliver_ipi(struct apic_state * src_apic,
 	}
 	case IPI_INIT: { 
 
-	    PrintDebug(" INIT delivery to core %u\n", dst_core->vcpu_id);
+	    V3_Print(" INIT delivery to core %u\n", dst_core->vcpu_id);
 
-	    // TODO: any APIC reset on dest core (shouldn't be needed, but not sure...)
+	    // This is either a deassert (does that matter??), or a core reset
+	    //        Apparently an INIT INIT SIPI is a common case....
+	    // For now if we are initing the BSP we'll just drop it, because that is kind of crazy....
 
-	    // Sanity check
-	    if (dst_apic->ipi_state != INIT_ST) { 
-		PrintError(" Warning: core %u is not in INIT state (mode = %d), ignored (assuming this is the deassert)\n",
-			   dst_core->vcpu_id, dst_apic->ipi_state);
-		// Only a warning, since INIT INIT SIPI is common
+	    if (is_apic_bsp(dst_apic)) {
+		PrintError("Attempted to INIT BSP CPU. Ignoring since I have no idea what the hell to do...\n");
+		// Ideally this should never happen...
 		break;
 	    }
+
+
+	    if (dst_apic->ipi_state != INIT_ST) { 
+		V3_Print("Acquiring Barrier from core %d\n", src_apic->core->vcpu_id);
+		
+		// We need to do this under barrier lock....
+		v3_raise_barrier(dst_core->vm_info, src_apic->core);
+		dst_core->core_run_state = CORE_STOPPED;
+		dst_apic->ipi_state = INIT_ST;
+		v3_lower_barrier(dst_core->vm_info);
+		V3_Print("Barrier Released\n");
+		
+	    } 
 
 	    // We transition the target core to SIPI state
 	    dst_apic->ipi_state = SIPI;  // note: locking should not be needed here
@@ -822,9 +853,9 @@ static int deliver_ipi(struct apic_state * src_apic,
 	    // in both cases, it will quickly notice this transition 
 	    // in particular, we should not need to force an exit here
 
-	    PrintDebug(" INIT delivery done\n");
+	    V3_Print(" INIT delivery done\n");
 
-	    break;							
+	    break;
 	}
 	case IPI_SIPI: { 
 
@@ -837,7 +868,7 @@ static int deliver_ipi(struct apic_state * src_apic,
 
 	    v3_reset_vm_core(dst_core, ipi->vector);
 
-	    PrintDebug(" SIPI delivery (0x%x -> 0x%x:0x0) to core %u\n",
+	    V3_Print(" SIPI delivery (0x%x -> 0x%x:0x0) to core %u\n",
 		       ipi->vector, dst_core->segments.cs.selector, dst_core->vcpu_id);
 	    // Maybe need to adjust the APIC?
 	    
@@ -1928,6 +1959,7 @@ static int apic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	struct guest_info * core = &(vm->cores[i]);
 
 	apic->core = core;
+	apic->dev_state = apic_dev;
 
 	init_apic_state(apic, i);
 

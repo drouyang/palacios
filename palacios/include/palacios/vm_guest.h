@@ -219,8 +219,12 @@ v3_cpu_mode_t v3_get_vm_cpu_mode(struct guest_info * info);
 v3_mem_mode_t v3_get_vm_mem_mode(struct guest_info * info);
 
 
+int v3_is_core_bsp(struct guest_info * core);
+
 const uchar_t * v3_cpu_mode_to_str(v3_cpu_mode_t mode);
 const uchar_t * v3_mem_mode_to_str(v3_mem_mode_t mode);
+
+
 
 
 

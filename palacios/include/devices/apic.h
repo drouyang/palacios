@@ -51,6 +51,7 @@ struct v3_gen_ipi {
 
 int v3_apic_send_ipi(struct v3_vm_info * vm, struct v3_gen_ipi * ipi, void * dev_data);
 
+int v3_apic_is_bsp(struct guest_info * core, void * dev_data);
 
 
 

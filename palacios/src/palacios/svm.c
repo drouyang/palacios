@@ -728,42 +728,46 @@ int v3_start_svm_guest(struct guest_info * info) {
 
     PrintDebug("Starting SVM core %u (on logical core %u)\n", info->vcpu_id, info->pcpu_id);
 
-    if (info->vcpu_id == 0) {
-	info->core_run_state = CORE_RUNNING;
-    } else  { 
-	PrintDebug("SVM core %u (on %u): Waiting for core initialization\n", info->vcpu_id, info->pcpu_id);
-
-	while (info->core_run_state == CORE_STOPPED) {
-	    
-	    if (info->vm_info->run_state == VM_STOPPED) {
-		// The VM was stopped before this core was initialized. 
-		return 0;
-	    }
-
-	    v3_yield(info,-1);
-	    //PrintDebug("SVM core %u: still waiting for INIT\n", info->vcpu_id);
-	}
-
-	PrintDebug("SVM core %u(on %u) initialized\n", info->vcpu_id, info->pcpu_id);
-
-	// We'll be paranoid about race conditions here
-	v3_wait_at_barrier(info);
-    } 
-
-    PrintDebug("SVM core %u(on %u): I am starting at CS=0x%x (base=0x%p, limit=0x%x),  RIP=0x%p\n", 
-	       info->vcpu_id, info->pcpu_id, 
-	       info->segments.cs.selector, (void *)(info->segments.cs.base), 
-	       info->segments.cs.limit, (void *)(info->rip));
-
-
-
-    PrintDebug("SVM core %u: Launching SVM VM (vmcb=%p) (on cpu %u)\n", 
-	       info->vcpu_id, (void *)info->vmm_data, info->pcpu_id);
-    //PrintDebugVMCB((vmcb_t*)(info->vmm_data));
-    
-    v3_start_time(info);
 
     while (1) {
+
+	if (info->core_run_state == CORE_STOPPED) {
+
+	    if (v3_is_core_bsp(info)) {
+		info->core_run_state = CORE_RUNNING;
+	    } else  { 
+		PrintDebug("SVM core %u (on %u): Waiting for core initialization\n", info->vcpu_id, info->pcpu_id);
+
+		while (info->core_run_state == CORE_STOPPED) {
+	    
+		    if (info->vm_info->run_state == VM_STOPPED) {
+			// The VM was stopped before this core was initialized. 
+			return 0;
+		    }
+
+		    v3_yield(info,-1);
+		    //PrintDebug("SVM core %u: still waiting for INIT\n", info->vcpu_id);
+		}
+
+		PrintDebug("SVM core %u(on %u) initialized\n", info->vcpu_id, info->pcpu_id);
+
+		// We'll be paranoid about race conditions here
+		v3_wait_at_barrier(info);
+	    } 
+
+	    PrintDebug("SVM core %u(on %u): I am starting at CS=0x%x (base=0x%p, limit=0x%x),  RIP=0x%p\n", 
+		       info->vcpu_id, info->pcpu_id, 
+		       info->segments.cs.selector, (void *)(info->segments.cs.base), 
+		       info->segments.cs.limit, (void *)(info->rip));
+
+
+
+	    PrintDebug("SVM core %u: Launching SVM VM (vmcb=%p) (on cpu %u)\n", 
+		       info->vcpu_id, (void *)info->vmm_data, info->pcpu_id);
+	    //PrintDebugVMCB((vmcb_t*)(info->vmm_data));
+    
+	    v3_start_time(info);
+	}
 
 	if (info->vm_info->run_state == VM_STOPPED) {
 	    info->core_run_state = CORE_STOPPED;

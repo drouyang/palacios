@@ -61,6 +61,14 @@ int v3_handle_halt(struct guest_info * info) {
 		/* asm("hlt"); */
 	    }
 
+	    // This is needed to ensure that an idled CPU can be reawoken via IPI
+	    v3_wait_at_barrier(info);
+
+	    if (info->core_run_state == CORE_STOPPED) {
+		// We have been initted and reset, bail out to catch the restart
+		break;
+	    }
+
 	}
 
 	/* V3_Print("palacios: done with halt\n"); */
