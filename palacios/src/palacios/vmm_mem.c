@@ -34,7 +34,8 @@ struct v3_mem_region * v3_get_base_region(struct v3_vm_info * vm, addr_t gpa) {
     struct v3_mem_map * map = &(vm->mem_map);
     uint32_t block_index = gpa / V3_CONFIG_MEM_BLOCK_SIZE;
 
-    if (gpa > map->num_base_blocks * V3_CONFIG_MEM_BLOCK_SIZE) {
+    if (gpa > (map->num_base_blocks * V3_CONFIG_MEM_BLOCK_SIZE) ||
+	(block_index >= map->num_base_blocks)) {
 	PrintError("Guest Address Exceeds Base Memory Size (ga=0x%p), (limit=0x%p)\n", 
 		   (void *)gpa, (void *)vm->mem_size);
 	v3_print_mem_map(vm);
