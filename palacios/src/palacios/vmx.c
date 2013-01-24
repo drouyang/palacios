@@ -1159,11 +1159,11 @@ int v3_start_vmx_guest(struct guest_info * info) {
 	if (info->core_run_state == CORE_STOPPED) {
 
 	    if (v3_is_core_bsp(info)) {
-		V3_Print("BSP (core %d) is in STOPPED state, starting immediately\n", info->vcpu_id);
+		PrintDebug("BSP (core %d) is in STOPPED state, starting immediately\n", info->vcpu_id);
 		info->core_run_state = CORE_RUNNING;
 	    } else {
 	    
-		V3_Print("VMX core %u is STOPPED: Waiting for core initialization\n", info->vcpu_id);
+		PrintDebug("VMX core %u is STOPPED: Waiting for core initialization\n", info->vcpu_id);
 
 		while (info->core_run_state == CORE_STOPPED) {
 
@@ -1179,19 +1179,19 @@ int v3_start_vmx_guest(struct guest_info * info) {
 		    //PrintDebug("VMX core %u: still waiting for INIT\n",info->vcpu_id);
 		}
 	
-		V3_Print("VMX core %u initialized\n", info->vcpu_id);
+		PrintDebug("VMX core %u initialized\n", info->vcpu_id);
 
 		// We'll be paranoid about race conditions here
 		v3_wait_at_barrier(info);
 	    }
 
 
-	    V3_Print("VMX core %u: I am starting at CS=0x%x (base=0x%p, limit=0x%x),  RIP=0x%p\n",
+	    PrintDebug("VMX core %u: I am starting at CS=0x%x (base=0x%p, limit=0x%x),  RIP=0x%p\n",
 		       info->vcpu_id, info->segments.cs.selector, (void *)(info->segments.cs.base),
 		       info->segments.cs.limit, (void *)(info->rip));
 
 
-	    V3_Print("VMX core %u: Launching VMX VM on logical core %u\n", info->vcpu_id, info->pcpu_id);
+	    PrintDebug("VMX core %u: Launching VMX VM on logical core %u\n", info->vcpu_id, info->pcpu_id);
 
 	    v3_start_time(info);
 	}

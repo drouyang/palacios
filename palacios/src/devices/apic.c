@@ -819,7 +819,7 @@ static int deliver_ipi(struct apic_state * src_apic,
 	}
 	case IPI_INIT: { 
 
-	    V3_Print(" INIT delivery to core %u\n", dst_core->vcpu_id);
+	    PrintDebug(" INIT delivery to core %u\n", dst_core->vcpu_id);
 
 	    // This is either a deassert (does that matter??), or a core reset
 	    //        Apparently an INIT INIT SIPI is a common case....
@@ -833,15 +833,13 @@ static int deliver_ipi(struct apic_state * src_apic,
 
 
 	    if (dst_apic->ipi_state != INIT_ST) { 
-		V3_Print("Acquiring Barrier from core %d\n", src_apic->core->vcpu_id);
 		
 		// We need to do this under barrier lock....
 		v3_raise_barrier(dst_core->vm_info, src_apic->core);
 		dst_core->core_run_state = CORE_STOPPED;
 		dst_apic->ipi_state = INIT_ST;
 		v3_lower_barrier(dst_core->vm_info);
-		V3_Print("Barrier Released\n");
-		
+
 	    } 
 
 	    // We transition the target core to SIPI state
@@ -853,7 +851,7 @@ static int deliver_ipi(struct apic_state * src_apic,
 	    // in both cases, it will quickly notice this transition 
 	    // in particular, we should not need to force an exit here
 
-	    V3_Print(" INIT delivery done\n");
+	    PrintDebug(" INIT delivery done\n");
 
 	    break;
 	}
@@ -868,7 +866,7 @@ static int deliver_ipi(struct apic_state * src_apic,
 
 	    v3_reset_vm_core(dst_core, ipi->vector);
 
-	    V3_Print(" SIPI delivery (0x%x -> 0x%x:0x0) to core %u\n",
+	    PrintDebug(" SIPI delivery (0x%x -> 0x%x:0x0) to core %u\n",
 		       ipi->vector, dst_core->segments.cs.selector, dst_core->vcpu_id);
 	    // Maybe need to adjust the APIC?
 	    
