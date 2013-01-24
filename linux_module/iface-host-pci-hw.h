@@ -134,12 +134,29 @@ static int setup_hw_pci_dev(struct host_pci_device * host_dev) {
 
 
     /* HARDCODED for now but this will need to depend on IOMMU support detection */
-    if (iommu_found()) {
-	printk("Setting host PCI device (%s) as IOMMU\n", host_dev->name);
-	v3_dev->iface = IOMMU;
-    } else {
-	printk("Setting host PCI device (%s) as SYMBIOTIC\n", host_dev->name);
-	v3_dev->iface = SYMBIOTIC;
+    {
+	bool iommu_avail = false;
+
+	
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,43)
+	//JRL: This version might not be correct...
+	iommu_avail = iommu_found();
+#else 
+	printk("checking for IOMMU\n");
+	iommu_avail = iommu_present(&pci_bus_type);
+
+#endif
+
+	printk("IOMMU status =%d\n", iommu_avail);
+
+	if (iommu_avail == true) {
+	    printk("Setting host PCI device (%s) as IOMMU\n", host_dev->name);
+	    v3_dev->iface = IOMMU;
+	} else {
+	    printk("Setting host PCI device (%s) as SYMBIOTIC\n", host_dev->name);
+	    v3_dev->iface = SYMBIOTIC;
+	}
+
     }
 
     return 0;
@@ -343,12 +360,15 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 	int flags = 0;
 	uintptr_t gpa = 0;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,43)
 	host_dev->hw_dev.iommu_domain = iommu_domain_alloc();
-
+#else 
+	host_dev->hw_dev.iommu_domain = iommu_domain_alloc(&pci_bus_type);
+#endif
 
 	while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
 	
-	    printk("Memory region: start=%p, end=%p\n", (void *)region.start, (void *)region.end);
+	    printk("Memory region: (GPA=%p), start=%p, end=%p\n", (void *)gpa, (void *)region.start, (void *)region.end);
 
 
 	    flags = IOMMU_READ | IOMMU_WRITE; // Need to see what IOMMU_CACHE means
@@ -362,7 +382,6 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 	    {	
 		u64 size = region.end - region.start;
 		u32 page_size = 512 * 4096; // assume large 64bit pages (2MB)
-		u64 dpa = 0; // same as gpa
 		u64 hpa = region.start;
 		
 		do {
@@ -370,31 +389,46 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 			page_size = 4096; // less than a 2MB granularity, so we switch to small pages (4KB)
 		    }
 		    
-		    printk("Mapping IOMMU region dpa=%p hpa=%p (size=%d)\n", (void *)dpa, (void *)hpa, page_size);
+		    printk("Mapping IOMMU region gpa=%p hpa=%p (size=%d)\n", (void *)gpa, (void *)hpa, page_size);
 		    
-		    if (iommu_map(host_dev->hw_dev.iommu_domain, dpa, hpa, 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,43)
+		    // JRL: Linux Cannot decide whether they want to specify mappings by order or by page size. So now we're back to page size.
+
+		    if (iommu_map(host_dev->hw_dev.iommu_domain, gpa, hpa, 
 				  get_order(page_size), flags)) {
-			printk("ERROR: Could not map sub region (DPA=%p) (HPA=%p) (order=%d)\n", 
-			       (void *)dpa, (void *)hpa, get_order(page_size));
-			break;
+			printk("ERROR: Could not map sub region (GPA=%p) (HPA=%p) (order=%d)\n", 
+			       (void *)gpa, (void *)hpa, get_order(page_size));
+			return -1;
 		    }
+#else 
+		    if (iommu_map(host_dev->hw_dev.iommu_domain, gpa, hpa, 
+				  page_size, flags)) {
+			printk("ERROR: Could not map sub region (GPA=%p) (HPA=%p) (size=%d)\n", 
+			       (void *)gpa, (void *)hpa, get_order(page_size));
+			return -1;
+		    }
+#endif
 		    
 		    hpa += page_size;
-		    dpa += page_size;
+		    gpa += page_size;
 		    
 		    size -= page_size;
 		} while (size);
 	    }
 #endif
 	    
-	    gpa = region.end;
+
 	}
 
 
 
 	if (iommu_attach_device(host_dev->hw_dev.iommu_domain, &(dev->dev))) {
 	    printk("ERROR attaching host PCI device to IOMMU domain\n");
+	    return -1;
 	}
+
+	dev->dev_flags |= PCI_DEV_FLAGS_ASSIGNED;
+	
 
     }
 

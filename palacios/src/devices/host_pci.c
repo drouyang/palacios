@@ -208,6 +208,7 @@ static int pci_bar_write(int bar_num, uint32_t * src, void * private_data) {
 
 
     if (vbar->type == PT_BAR_NONE) {
+	*src = 0;
 	return 0;
     } else if (vbar->type == PT_BAR_IO) {
 	int i = 0;

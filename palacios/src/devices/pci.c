@@ -824,16 +824,19 @@ static int bar_update(struct pci_device * pci_dev, uint32_t offset,
     struct v3_pci_bar * bar = (struct v3_pci_bar *)private_data;
     int bar_offset = offset & ~0x03;
     int bar_num = (bar_offset - 0x10) / 4;
-    uint32_t new_val = *(uint32_t *)src;
-    
-    PrintDebug("Updating BAR Register  (Dev=%s) (bar=%d) (old_val=0x%x) (new_val=0x%x)\n", 
-	       pci_dev->name, bar_num, bar->val, new_val);
+    uint32_t * new_val = NULL;
 
     // Cache the changes locally
     memcpy(&(pci_dev->config_space[offset]), src, length);
+    
+    // new_val is now active...
+    new_val = (uint32_t *)(pci_dev->config_space + bar_offset);
+
+    PrintDebug("Updating BAR Register  (Dev=%s) (bar=%d) (old_val=0x%x) (new_val=0x%x)\n", 
+	       pci_dev->name, bar_num, bar->val, *new_val);
 
     if (bar->type == PCI_BAR_PASSTHROUGH) {
-        if (bar->bar_write(bar_num, (void *)(pci_dev->config_space + bar_offset), bar->private_data) == -1) {
+        if (bar->bar_write(bar_num, (void *)new_val, bar->private_data) == -1) {
 	    PrintError("Error in Passthrough bar write operation\n");
 	    return -1;
 	}
@@ -843,20 +846,21 @@ static int bar_update(struct pci_device * pci_dev, uint32_t offset,
    
     // Else we are a virtualized BAR
 
-    *(uint32_t *)(pci_dev->config_space + offset) &= bar->mask;
+    *new_val &= bar->mask;
 
     switch (bar->type) {
 	case PCI_BAR_IO: {
 	    int i = 0;
 	    uint32_t old_val = bar->val;
 
-	    *(uint32_t *)(pci_dev->config_space + offset) |= 0x1;
-	    bar->val = *(uint32_t *)(pci_dev->config_space + offset);
+	    *new_val |= 0x1;
+	    bar->val = *new_val;
 
 	    PrintDebug("\tRehooking %d IO ports from base 0x%x to 0x%x for %d ports\n",
-		       bar->num_ports, PCI_IO_BASE(bar->val), PCI_IO_BASE(new_val),
+		       bar->num_ports, PCI_IO_BASE(old_val), PCI_IO_BASE(*new_val),
 		       bar->num_ports);
-		
+
+
 	    // only do this if pci device is enabled....
 	    if (!(pci_dev->config_header.status & 0x1)) {
 		PrintError("PCI Device IO space not enabled\n");
@@ -900,7 +904,7 @@ static int bar_update(struct pci_device * pci_dev, uint32_t offset,
 
 	    v3_unhook_mem(pci_dev->vm, V3_MEM_CORE_ANY, (addr_t)(bar->val));
 
-	    bar->val = *(uint32_t *)(pci_dev->config_space + offset);	    
+	    bar->val = *new_val;    
 
 	    if (bar->mem_read) {
 		v3_hook_full_mem(pci_dev->vm, V3_MEM_CORE_ANY, PCI_MEM32_BASE(bar->val), 
@@ -916,7 +920,7 @@ static int bar_update(struct pci_device * pci_dev, uint32_t offset,
 	}
 	case PCI_BAR_NONE: {
 	    PrintDebug("Reprogramming an unsupported BAR register (Dev=%s) (bar=%d) (val=%x)\n", 
-		       pci_dev->name, bar_num, new_val);
+		       pci_dev->name, bar_num, *new_val);
 	    break;
 	}
 	default:
