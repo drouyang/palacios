@@ -335,7 +335,7 @@ int v3_fw_cfg_init(struct v3_vm_info * vm) {
             ep = e;
         }
 
-q	
+
 
         node_mem[node] = ep->addr + ep->size - start;
 
