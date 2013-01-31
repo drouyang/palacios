@@ -147,15 +147,15 @@ static int handle_mem_hook(struct guest_info * core, addr_t guest_va, addr_t gue
     addr_t dst_mem_op_gpa = 0;
     int dst_req_size = -1;
 
+    
+    // Memory accesses take priority
+    {
+	struct mem_hook * access_hook = (struct mem_hook *)reg->priv_data; 
 
-    struct mem_hook *access_hook = NULL;
-
-    // Let access hooks take priority
-    access_hook = (struct mem_hook *) reg->priv_data; 
-    if (access_hook && access_hook->access) { 
-	return access_hook->access(core, guest_va, guest_pa, reg, access_info, access_hook->priv_data);
-    } 
-
+	if ((access_hook) && (access_hook->access)) { 
+	    return access_hook->access(core, guest_va, guest_pa, reg, access_info, access_hook->priv_data);
+	}
+    }
 
     /* Find and decode hooked instruction */
     if (core->mem_mode == PHYSICAL_MEM) { 
