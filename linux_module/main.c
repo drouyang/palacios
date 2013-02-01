@@ -27,6 +27,7 @@
 #include "palacios.h"
 #include "mm.h"
 #include "vm.h"
+#include "numa.h"
 
 #include "linux-exts.h"
 
@@ -177,8 +178,16 @@ out_err:
 
 	    break;
 	}
+	case V3_ADD_NUMA_TOPO: {
+	    /* F@%King Linux tries to hide the NUMA topology, so we have to pull it in from user space... */
+	    
+	    if (create_numa_topology_from_user(argp) == -1) {
+		ERROR("Could not create topology from user input\n");
+		return -EFAULT;
+	    }
 
-
+	    break;
+	}
 	default: {
 	    struct global_ctrl * ctrl = get_global_ctrl(ioctl);
 	    

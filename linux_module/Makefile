@@ -18,6 +18,7 @@ v3vee-y := 	palacios-stubs.o \
 		vm.o \
 		mm.o \
 		buddy.o \
+		numa.o \
 		util-queue.o \
 	        util-hashtable.o \
 		linux-exts.o

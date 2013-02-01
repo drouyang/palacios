@@ -16,6 +16,8 @@
 #define V3_ADD_PCI_HW_DEV 55
 #define V3_ADD_PCI_USER_DEV 56
 
+#define V3_ADD_NUMA_TOPO 60
+
 /* VM Specific IOCTLs */
 #define V3_VM_CONSOLE_CONNECT 20
 #define V3_VM_STREAM_CONNECT 21
@@ -54,6 +56,18 @@ struct v3_guest_img {
 struct v3_mem_region {
     unsigned long long base_addr;
     unsigned long long num_pages;
+} __attribute__((packed));
+
+struct v3_numa_topo {
+    unsigned int num_nodes;
+    unsigned int num_cpus;
+    unsigned int num_mem_regions;
+    /* Array of CPU->Node mappings  
+       (uint32_t)[num_cpus] */
+    /* Array of v3_mem_regions->Node mappings 
+       (struct v3_mem_region + uint32_t)[num_mem_regions] */
+    /* num_nodes^2 dimension table 
+       (uint32_t)[num_nodes * num_nodes] */
 } __attribute__((packed));
 
 struct v3_debug_cmd {
