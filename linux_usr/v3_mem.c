@@ -17,11 +17,14 @@
 #include "v3_ctrl.h"
 
 #define SYS_PATH "/sys/devices/system/memory/"
+#define NUMA_PATH "/sys/devices/system/node/"
 
 #define BUF_SIZE 128
 
 #define OFFLINE 1
 #define ONLINE 0
+
+int numa_node = -1;
 
 int dir_filter(const struct dirent * dir) {
     if (strncmp("memory", dir->d_name, 6) == 0) {
@@ -76,8 +79,11 @@ int get_block_status(int index) {
     memset(fname, 0, BUF_SIZE);
     memset(status_buf, 0, BUF_SIZE);
 
-    snprintf(fname, BUF_SIZE, "%smemory%d/state", SYS_PATH, index);
-
+    if (numa_node == -1) {
+	snprintf(fname, BUF_SIZE, "%smemory%d/state", SYS_PATH, index);
+    } else {
+	snprintf(fname, BUF_SIZE, "%snode%d/memory%d/state", NUMA_PATH, numa_node, index);
+    }
 		
     block_fd = open(fname, O_RDONLY);
 		
@@ -143,14 +149,27 @@ int main(int argc, char * argv[]) {
     int num_blocks = 0;    
     int reg_start = 0;
     int mem_ready = 0;
+    int c = 0;
 
-    if (argc != 2) {
-	printf("usage: v3_mem <num_blocks>\n");
+
+    opterr = 0;
+
+    while ((c = getopt(argc, argv, "n:")) != -1) {
+	switch (c) {
+	    case 'n':
+		numa_node = atoi(optarg);
+		break;
+	}
+    }
+
+
+    if (argc - optind + 1 < 2) {
+	printf("usage: v3_mem [-n node] <num_blocks>\n");
 	return -1;
     }
 
 
-    num_blocks = atoll(argv[1]);
+    num_blocks = atoll(argv[optind]);
 
     printf("Trying to find %d blocks of memory\n", num_blocks);
 
@@ -188,8 +207,28 @@ int main(int argc, char * argv[]) {
 	int i = 0;
 	int j = 0;
 	int last_block = 0;
+	char dir_path[512];
+	
+	memset(dir_path, 0, 512);
 
-	last_block = scandir(SYS_PATH, &namelist, dir_filter, dir_cmp);
+	if (numa_node == -1) {
+	    snprintf(dir_path, 512, SYS_PATH);
+	} else {
+	    snprintf(dir_path, 512, "%snode%d/", NUMA_PATH, numa_node);
+	}
+	
+	last_block = scandir(dir_path, &namelist, dir_filter, dir_cmp);
+
+	if (last_block == -1) {
+	    printf("Error scan directory (%s)\n", dir_path);
+	    return -1;
+	} else if (last_block == 0) {
+	    printf("Could not find any memory blocks at (%s)\n", dir_path);
+	    return -1;
+	}
+
+       
+
 	bitmap_entries = atoi(namelist[last_block - 1]->d_name + 6) + 1;
 
 	size = bitmap_entries / 8;
@@ -213,7 +252,11 @@ int main(int argc, char * argv[]) {
 	    memset(status_str, 0, BUF_SIZE);
 	    memset(fname, 0, BUF_SIZE);
 
-	    snprintf(fname, BUF_SIZE, "%s%s/removable", SYS_PATH, tmp_dir->d_name);
+	    if (numa_node == -1) {
+		snprintf(fname, BUF_SIZE, "%s%s/removable", SYS_PATH, tmp_dir->d_name);
+	    } else {
+		snprintf(fname, BUF_SIZE, "%snode%d/%s/removable", NUMA_PATH, numa_node, tmp_dir->d_name);
+	    }
 
 	    j = atoi(tmp_dir->d_name + 6);
 	    int major = j / 8;
@@ -224,7 +267,7 @@ int main(int argc, char * argv[]) {
 	    block_fd = open(fname, O_RDONLY);
             
 	    if (block_fd == -1) {
-		printf("Hotpluggable memory not supported...\n");
+		printf("Memory block is not removable (%s)\n", fname);
 		continue;
 	    }
 
