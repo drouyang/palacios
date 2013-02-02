@@ -143,7 +143,7 @@ int add_palacios_memory(unsigned long long base_addr, unsigned long num_pages) {
 
 
 int main(int argc, char * argv[]) {
-    unsigned int block_size_bytes = 0;
+    unsigned long long block_size_bytes = 0;
     int bitmap_entries = 0;
     unsigned char * bitmap = NULL;
     int num_blocks = 0;    
@@ -219,6 +219,8 @@ int main(int argc, char * argv[]) {
 	
 	last_block = scandir(dir_path, &namelist, dir_filter, dir_cmp);
 
+	printf("last_block = %d\n", last_block);
+
 	if (last_block == -1) {
 	    printf("Error scan directory (%s)\n", dir_path);
 	    return -1;
@@ -234,6 +236,8 @@ int main(int argc, char * argv[]) {
 	size = bitmap_entries / 8;
 	if (bitmap_entries % 8) size++;
 
+	printf("%d bitmap entries\n", size);
+
 	bitmap = malloc(size);
 
 	if (!bitmap) {
@@ -243,7 +247,7 @@ int main(int argc, char * argv[]) {
 
 	memset(bitmap, 0, size);
 
-	for (i = 0; j < bitmap_entries - 1; i++) {
+	for (i = 0; i < last_block - 1; i++) {
 	    struct dirent * tmp_dir = namelist[i];
 	    int block_fd = 0;	    
 	    char status_str[BUF_SIZE];
@@ -262,7 +266,7 @@ int main(int argc, char * argv[]) {
 	    int major = j / 8;
 	    int minor = j % 8;
 
-	    printf("Checking %s...", fname);
+	    printf("Checking %s (block=%d)...", fname, j);
 
 	    block_fd = open(fname, O_RDONLY);
             
@@ -294,7 +298,7 @@ int main(int argc, char * argv[]) {
     
     
     {
-	int i = 0;
+	unsigned long long i = 0;
 	int cur_idx = 0;
 	
 	for (i = 0; i <= bitmap_entries; i++) {
@@ -310,7 +314,7 @@ int main(int argc, char * argv[]) {
 		 *  To be safe, check whether blocks were offlined and start again if not 
 		 */
 		if (get_block_status(i) == OFFLINE) {
-		    add_palacios_memory(block_size_bytes * i, block_size_bytes / 4096);
+		    add_palacios_memory(block_size_bytes * i, block_size_bytes / 4096LL);
 		    cur_idx++;
 		}
 	    }
