@@ -53,6 +53,7 @@ void free_palacios_pgs(uintptr_t pg_addr, u64 num_pages) {
 int add_palacios_memory(uintptr_t base_addr, u64 num_pages) {
     int pool_order = 0;
 
+
     DEBUG("Managing %dMB of memory starting at %llu (%lluMB)\n", 
 	  (unsigned int)(num_pages * PAGE_SIZE) / (1024 * 1024), 
 	  (unsigned long long)base_addr, 
@@ -65,14 +66,10 @@ int add_palacios_memory(uintptr_t base_addr, u64 num_pages) {
 
    buddy_add_pool(memzone, base_addr, pool_order);
 
-   {
-       int i = 0;
-       for (i = 0; i < num_pages; i++) {
-	   uintptr_t addr = base_addr + (i * 4096);
-	   printk("%p on node %d\n", (void *)addr, numa_addr_to_node(addr));
-	   
-       }
-   }
+
+   printk("%p on node %d\n", (void *)base_addr, numa_addr_to_node(base_addr));
+
+
    
    return 0;
 }
