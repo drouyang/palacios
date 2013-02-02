@@ -2,8 +2,13 @@
  * (c) Jack Lange, 2013
  */
 
+#include <linux/mm.h>
+
 #include "palacios.h"
 
+
+
+#if 0
 struct mem_region {
     u64 start_addr;
     u64 end_addr;
@@ -51,6 +56,7 @@ int create_numa_topology_from_user(void __user * argp) {
 	    return -1;
 	}
 	
+
 	if (copy_from_user(topology.cpu_to_node_map, argp,
 			   sizeof(u32) * topology.num_cpus)) {
 	    ERROR("Could not copy cpu to node map from user space\n");
@@ -167,4 +173,26 @@ int create_numa_topology_from_user(void __user * argp) {
     }
     return 0;
 
+}
+
+
+#endif
+
+
+
+int numa_num_nodes(void) {
+    return num_online_nodes();
+}
+
+int numa_addr_to_node(uintptr_t phys_addr) {
+    return page_to_nid(pfn_to_page(phys_addr >> PAGE_SHIFT));
+}
+
+int numa_cpu_to_node(int cpu_id) {
+    return cpu_to_node(cpu_id);
+}
+
+
+int numa_get_distance(int node1, int node2) {
+    return node_distance(node1, node2);
 }

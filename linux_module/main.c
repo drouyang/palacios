@@ -178,6 +178,7 @@ out_err:
 
 	    break;
 	}
+#if 0
 	case V3_ADD_NUMA_TOPO: {
 	    /* F@%King Linux tries to hide the NUMA topology, so we have to pull it in from user space... */
 	    
@@ -188,6 +189,7 @@ out_err:
 
 	    break;
 	}
+#endif
 	default: {
 	    struct global_ctrl * ctrl = get_global_ctrl(ioctl);
 	    

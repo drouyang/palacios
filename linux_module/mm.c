@@ -12,10 +12,14 @@
 #include "palacios.h"
 #include "mm.h"
 #include "buddy.h"
+#include "numa.h"
 
 
 static struct buddy_memzone * memzone = NULL;
 static uintptr_t seed_addr = 0;
+
+
+
 
 
 // alignment is in bytes
@@ -32,6 +36,7 @@ uintptr_t alloc_palacios_pgs(u64 num_pages, u32 alignment) {
     if (!addr) {
 	ERROR("Returning from alloc addr=%p, vaddr=%p\n", (void *)addr, __va(addr));
     }
+
 
     return addr;
 }
@@ -59,6 +64,15 @@ int add_palacios_memory(uintptr_t base_addr, u64 num_pages) {
    pool_order = get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT;
 
    buddy_add_pool(memzone, base_addr, pool_order);
+
+   {
+       int i = 0;
+       for (i = 0; i < num_pages; i++) {
+	   uintptr_t addr = base_addr + (i * 4096);
+	   printk("%p on node %d\n", (void *)addr, numa_addr_to_node(addr));
+	   
+       }
+   }
    
    return 0;
 }
