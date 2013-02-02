@@ -131,13 +131,18 @@ struct guest_info {
 
     v3_core_operating_mode_t core_run_state;
 
-    void * core_thread; /* thread struct for virtual core */
+    /* thread struct for virtual core */
+    /* Opaque to us, used by the host OS */
+    void * core_thread; 
 
-    /* the logical cpu on which this core runs */
+    /* The physical cpu this core is currently running on*/
     uint32_t pcpu_id;
     
-    /* The virtual core # of this cpu (what the guest sees this core as) */
+    /* The virtual core number */
     uint32_t vcpu_id;
+
+    /* The NUMA zone this core is assigned to */
+    uint32_t numa_id; 
      
 };
 
