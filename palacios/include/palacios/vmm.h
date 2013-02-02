@@ -73,7 +73,7 @@ struct guest_info;
 	extern struct v3_os_hooks * os_hooks;		        	\
 	void * ptr = 0;					        	\
 	if ((os_hooks) && (os_hooks)->allocate_pages) {	        	\
-	    ptr = (os_hooks)->allocate_pages(num_pages,PAGE_SIZE_4KB);	\
+	    ptr = (os_hooks)->allocate_pages(num_pages, PAGE_SIZE_4KB, -1);	\
 	}						        	\
 	ptr;						        	\
     })
@@ -84,9 +84,20 @@ struct guest_info;
 	extern struct v3_os_hooks * os_hooks;		        	\
 	void * ptr = 0;					        	\
 	if ((os_hooks) && (os_hooks)->allocate_pages) {	        	\
-	    ptr = (os_hooks)->allocate_pages(num_pages,align);  	\
+	    ptr = (os_hooks)->allocate_pages(num_pages, align, -1);  	\
 	}						        	\
 	ptr;						        	\
+    })
+
+
+#define V3_AllocPagesNode(num_pages, node_id)				\
+    ({									\
+	extern struct v3_os_hooks * os_hooks;				\
+	void * ptr = 0;							\
+	if ((os_hooks) && (os_hooks)->allocate_pages) {			\
+	    ptr = (os_hooks)->allocate_pages(num_pages, PAGE_SIZE_4KB, node_id); \
+	}								\
+	ptr;								\
     })
 
 
@@ -308,7 +319,7 @@ struct v3_os_hooks {
     void (*print)(const char * format, ...)
   	__attribute__ ((format (printf, 1, 2)));
   
-    void *(*allocate_pages)(int num_pages, unsigned int alignment);
+    void *(*allocate_pages)(int num_pages, unsigned int alignment, int node_id);
     void (*free_pages)(void * page, int num_pages);
 
     void *(*malloc)(unsigned int size);

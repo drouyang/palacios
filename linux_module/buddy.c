@@ -153,7 +153,7 @@ int buddy_add_pool(struct buddy_memzone * zone,
 	return -1;
     }
 
-    mp = kmalloc(sizeof(struct buddy_mempool), GFP_KERNEL);
+    mp = kmalloc_node(zone->node_id, sizeof(struct buddy_mempool), GFP_KERNEL);
 
     if (IS_ERR(mp)) {
 	ERROR("Could not allocate mempool\n");
@@ -168,9 +168,9 @@ int buddy_add_pool(struct buddy_memzone * zone,
     /* Allocate a bitmap with 1 bit per minimum-sized block */
     mp->num_blocks = (1UL << pool_order) / (1UL << zone->min_order);
 
-    mp->tag_bits   = kmalloc(
-			     BITS_TO_LONGS(mp->num_blocks) * sizeof(long), GFP_KERNEL
-			     );
+    mp->tag_bits   = kmalloc_node(zone->node_id,
+				  BITS_TO_LONGS(mp->num_blocks) * sizeof(long), GFP_KERNEL
+				  );
 
     /* Initially mark all minimum-sized blocks as allocated */
     bitmap_zero(mp->tag_bits, mp->num_blocks);
@@ -523,7 +523,8 @@ void buddy_deinit(struct buddy_memzone * zone) {
 struct buddy_memzone *
 buddy_init(
 	unsigned long max_order,
-	unsigned long min_order
+	unsigned long min_order,
+	unsigned int node_id
 )
 {
     struct buddy_memzone * zone = NULL;
@@ -540,7 +541,7 @@ buddy_init(
     if (min_order > max_order)
 	return NULL;
 
-    zone = kmalloc(sizeof(struct buddy_memzone), GFP_KERNEL);
+    zone = kmalloc_node(node_id, sizeof(struct buddy_memzone), GFP_KERNEL);
 	
     if (IS_ERR(zone)) {
 	ERROR("Could not allocate memzone\n");
@@ -551,9 +552,10 @@ buddy_init(
 
     zone->max_order = max_order;
     zone->min_order  = min_order;
-    
+    zone->node_id = node_id;
+
     /* Allocate a list for every order up to the maximum allowed order */
-    zone->avail = kmalloc((max_order + 1) * sizeof(struct list_head), GFP_KERNEL);
+    zone->avail = kmalloc_node(node_id, (max_order + 1) * sizeof(struct list_head), GFP_KERNEL);
 
     /* Initially all lists are empty */
     for (i = 0; i <= max_order; i++) {

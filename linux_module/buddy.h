@@ -21,6 +21,10 @@ struct buddy_memzone {
     spinlock_t lock;               /** For now we will lock all zone operations...
 				    *   Hopefully this does not cause a performance issue 
 				    */
+
+    unsigned int node_id;         /** The NUMA node this zone allocates from 
+				   */
+
     
     unsigned long num_pools;
     struct rb_root mempools;
@@ -63,7 +67,8 @@ struct block {
 
 extern struct buddy_memzone *
 buddy_init(unsigned long pool_order,
-	   unsigned long min_order);
+	   unsigned long min_order,
+	   unsigned int node_id);
 
 extern void 
 buddy_deinit(struct buddy_memzone * zone);
