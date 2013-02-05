@@ -275,17 +275,6 @@ void v3_print_guest_state(struct guest_info * core) {
 void v3_print_arch_state(struct guest_info * core) {
     extern v3_cpu_arch_t v3_mach_type;
 
-    struct v3_msr aperf;
-    struct v3_msr mperf;
-#define APERF 232
-#define MPERF 231
-
-    v3_get_msr(APERF, &aperf.hi, &aperf.lo);
-    v3_get_msr(MPERF, &mperf.hi, &mperf.lo);
-
-    V3_Print("APERF: %llu, MPERF: %llu\n", aperf.value, mperf.value);
-
-
     switch (v3_mach_type) {
 #ifdef V3_CONFIG_SVM
         case V3_SVM_CPU:
