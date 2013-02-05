@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2007, Sandia National Laboratories */
 /* Modified by Jack Lange, 2012 */
 
@@ -153,7 +152,7 @@ int buddy_add_pool(struct buddy_memzone * zone,
 	return -1;
     }
 
-    mp = kmalloc_node(zone->node_id, sizeof(struct buddy_mempool), GFP_KERNEL);
+    mp = kmalloc_node(sizeof(struct buddy_mempool), GFP_KERNEL, zone->node_id);
 
     if (IS_ERR(mp)) {
 	ERROR("Could not allocate mempool\n");
@@ -168,8 +167,8 @@ int buddy_add_pool(struct buddy_memzone * zone,
     /* Allocate a bitmap with 1 bit per minimum-sized block */
     mp->num_blocks = (1UL << pool_order) / (1UL << zone->min_order);
 
-    mp->tag_bits   = kmalloc_node(zone->node_id,
-				  BITS_TO_LONGS(mp->num_blocks) * sizeof(long), GFP_KERNEL
+    mp->tag_bits   = kmalloc_node(
+				  BITS_TO_LONGS(mp->num_blocks) * sizeof(long), GFP_KERNEL, zone->node_id
 				  );
 
     /* Initially mark all minimum-sized blocks as allocated */
@@ -492,7 +491,15 @@ void buddy_deinit(struct buddy_memzone * zone) {
 
     spin_unlock_irqrestore(&(zone->lock), flags);
     
-    remove_proc_entry("v3-mem", palacios_proc_dir);
+    {
+	char proc_file_name[128];
+
+	memset(proc_file_name, 0, 128);
+	snprintf(proc_file_name, 128, "v3-mem%d", zone->node_id);
+
+	remove_proc_entry(proc_file_name, palacios_proc_dir);
+    }
+
 
     kfree(zone->avail);
     kfree(zone);
@@ -530,7 +537,7 @@ buddy_init(
     struct buddy_memzone * zone = NULL;
     unsigned long i;
 
-    DEBUG("Initializing Memory zone with up to %lu bit blocks\n", max_order);
+    DEBUG("Initializing Memory zone with up to %lu bit blocks on Node %d\n", max_order, node_id);
 
 
     /* Smallest block size must be big enough to hold a block structure */
@@ -541,8 +548,10 @@ buddy_init(
     if (min_order > max_order)
 	return NULL;
 
-    zone = kmalloc_node(node_id, sizeof(struct buddy_memzone), GFP_KERNEL);
+    zone = kmalloc_node(sizeof(struct buddy_memzone), GFP_KERNEL, node_id);
 	
+    printk("Allocated zone at %p\n", zone);
+
     if (IS_ERR(zone)) {
 	ERROR("Could not allocate memzone\n");
 	return NULL;
@@ -555,7 +564,9 @@ buddy_init(
     zone->node_id = node_id;
 
     /* Allocate a list for every order up to the maximum allowed order */
-    zone->avail = kmalloc_node(node_id, (max_order + 1) * sizeof(struct list_head), GFP_KERNEL);
+    zone->avail = kmalloc_node((max_order + 1) * sizeof(struct list_head), GFP_KERNEL, zone->node_id);
+
+    printk("Allocated free lists at %p\n", zone->avail);
 
     /* Initially all lists are empty */
     for (i = 0; i <= max_order; i++) {
@@ -571,9 +582,12 @@ buddy_init(
 
     {
 	struct proc_dir_entry * zone_entry = NULL;
+	char proc_file_name[128];
 
+	memset(proc_file_name, 0, 128);
+	snprintf(proc_file_name, 128, "v3-mem%d", zone->node_id);
 
-	zone_entry = create_proc_entry("v3-mem", 0444, palacios_proc_dir);
+	zone_entry = create_proc_entry(proc_file_name, 0444, palacios_proc_dir);
 	if (zone_entry) {
 	    zone_entry->proc_fops = &zone_proc_ops;
 	    zone_entry->data = zone;
