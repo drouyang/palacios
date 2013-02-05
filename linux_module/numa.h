@@ -13,6 +13,8 @@ int create_numa_topology_from_user(void __user * argp);
 void free_numa_topology();
 #endif
 
+int palacios_init_numa( void );
+
 int numa_num_nodes(void );
 int numa_cpu_to_node(int cpu_id);
 int numa_addr_to_node(uintptr_t phys_addr);

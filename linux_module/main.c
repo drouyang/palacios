@@ -268,6 +268,8 @@ static int __init v3_init(void) {
     palacios_vmm_init();
 
 
+    palacios_init_numa();
+
     // initialize extensions
     init_lnx_extensions();
 

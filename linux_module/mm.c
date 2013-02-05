@@ -140,7 +140,7 @@ int palacios_init_mm( void ) {
 	    seed_addrs[node_id] = page_to_pfn(pgs) << PAGE_SHIFT;	
 	}
 
-	printk("Allocated seed region on node %d\n", node_id);
+	printk("Allocated seed region on node %d (addr=%p)\n", node_id, (void *)seed_addrs[node_id]);
 	printk("Initializing Zone %d\n", node_id);
 
 	zone = buddy_init(get_order(V3_CONFIG_MEM_BLOCK_SIZE) + PAGE_SHIFT, PAGE_SHIFT, node_id);

@@ -141,7 +141,7 @@ struct guest_info {
     /* The virtual core number */
     uint32_t vcpu_id;
 
-    /* The NUMA zone this core is assigned to */
+    /* The physical NUMA zone this core is assigned to */
     uint32_t numa_id; 
      
 };

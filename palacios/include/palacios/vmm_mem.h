@@ -71,7 +71,8 @@ struct v3_mem_region {
 
     void * priv_data;
 
-    int core_id;
+    int core_id;  // The virtual core this region is assigned to (-1 means all cores)
+    int numa_id;  // The NUMA node this region is allocated from 
 
     struct rb_node tree_node; // This for memory regions mapped to the global map
 };

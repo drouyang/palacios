@@ -23,6 +23,7 @@
 #include <palacios/vmm_emulator.h>
 #include <palacios/vm_guest.h>
 #include <palacios/vmm_debug.h>
+#include <palacios/vmm_config.h>
 
 #include <palacios/vmm_shadow_paging.h>
 #include <palacios/vmm_direct_paging.h>
@@ -74,6 +75,44 @@ static int unhandled_err(struct guest_info * core, addr_t guest_va, addr_t guest
     return -1;
 }
 
+
+/* This isn't the fastest lookup in the world, 
+   but we cache the NUMA nodes in the region descriptor after this so it should be fine.
+   All subsequent lookups will go through that.
+*/
+static int gpa_to_node_from_cfg(struct v3_vm_info * vm, addr_t gpa) {
+    v3_cfg_tree_t * layout_cfg = v3_cfg_subtree(vm->cfg_data->cfg, "mem_layout");
+    v3_cfg_tree_t * region_desc = v3_cfg_subtree(layout_cfg, "region");
+
+    while (region_desc) {
+	char * start_addr_str = v3_cfg_val(region_desc, "start_addr");
+	char * end_addr_str = v3_cfg_val(region_desc, "end_addr");
+	char * node_id_str = v3_cfg_val(region_desc, "node");
+
+	addr_t start_addr = 0;
+	addr_t end_addr = 0;
+	int node_id = 0;
+	
+	if ((!start_addr_str) || (!end_addr_str) || (!node_id_str)) {
+	    PrintError("Invalid memory layout in configuration\n");
+	    return -1;
+	}
+	
+	start_addr = atox(start_addr_str);
+	end_addr = atox(end_addr_str);
+	node_id = atoi(node_id_str);
+
+	if ((gpa >= start_addr) && (gpa < end_addr)) {
+	    return node_id;
+	}
+
+	region_desc = v3_cfg_next_branch(region_desc);
+    }
+
+    return -1;
+}
+
+
 int v3_init_mem_map(struct v3_vm_info * vm) {
     struct v3_mem_map * map = &(vm->mem_map);
     map->num_base_blocks = (vm->mem_size / V3_CONFIG_MEM_BLOCK_SIZE) + \
@@ -89,8 +128,11 @@ int v3_init_mem_map(struct v3_vm_info * vm) {
     map->base_regions = V3_Malloc(sizeof(struct v3_mem_region) * map->num_base_blocks);
     memset(map->base_regions, 0, sizeof(struct v3_mem_region) * map->num_base_blocks);
 	
+    V3_Print("Initializing memory map with %d mem blocks\n", map->num_base_blocks);
+
     for (i = 0; i < map->num_base_blocks; i++) {
 	struct v3_mem_region * region = &(map->base_regions[i]);
+	int node_id = -1;
 
 	// There is an underlying region that contains all of the guest memory
 	// PrintDebug("Mapping %d pages of memory (%u bytes)\n", (int)mem_pages, (uint_t)info->mem_size);
@@ -98,13 +140,20 @@ int v3_init_mem_map(struct v3_vm_info * vm) {
 	// 2MB page alignment needed for 2MB hardware nested paging
 	region->guest_start = V3_CONFIG_MEM_BLOCK_SIZE * i;
 	region->guest_end = region->guest_start + V3_CONFIG_MEM_BLOCK_SIZE;
+
+	// We assume that the xml config was smart enough to align the layout to the block size
+	// If they didn't we're going to ignore their settings 
+	//     and use whatever node the first byte of the block is assigned to
+	node_id = gpa_to_node_from_cfg(vm, region->guest_start);
 	
-#ifdef V3_CONFIG_ALIGNED_PG_ALLOC
-	region->host_addr = (addr_t)V3_AllocAlignedPages(block_pages, vm->mem_align);
-#else
-	region->host_addr = (addr_t)V3_AllocPages(block_pages);
-#endif
+	V3_Print("Allocating block %d on node %d\n", i, node_id);
 	
+	if (node_id != -1) {
+	    region->host_addr = (addr_t)V3_AllocPagesNode(block_pages, node_id);
+	} else {
+	    region->host_addr = (addr_t)V3_AllocPages(block_pages);
+	}
+
 	if ((void *)region->host_addr == NULL) { 
 	    PrintError("Could not allocate guest memory\n");
 	    return -1;
