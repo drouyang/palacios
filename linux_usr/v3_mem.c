@@ -114,6 +114,62 @@ int get_block_status(int index) {
     return -1;
 }
 
+int get_block_removable(int index) {
+    int block_fd = 0;	    
+    char status_str[BUF_SIZE];
+    char fname[BUF_SIZE];
+
+    memset(status_str, 0, BUF_SIZE);
+    memset(fname, 0, BUF_SIZE);
+
+    snprintf(fname, BUF_SIZE, "%smemory%d/removable", SYS_PATH, index);
+
+    block_fd = open(fname, O_RDONLY);
+    
+    if (block_fd == -1) {
+	printf("Could not open block removable file (%s)\n", fname);
+	return -1;
+    }
+
+    if (read(block_fd, status_str, BUF_SIZE) <= 0) {
+	perror("Could not read block status");
+	return -1;
+    }
+
+    close(block_fd);
+
+    return atoi(status_str);
+}
+
+
+unsigned long long get_block_size() {
+    unsigned long long block_size_bytes = 0;
+    int tmp_fd = 0;
+    char tmp_buf[BUF_SIZE];
+
+    tmp_fd = open(SYS_PATH "block_size_bytes", O_RDONLY);
+
+    if (tmp_fd == -1) {
+	perror("Could not open block size file: " SYS_PATH "block_size_bytes");
+	return -1;
+    }
+        
+    if (read(tmp_fd, tmp_buf, BUF_SIZE) <= 0) {
+	perror("Could not read block size file: " SYS_PATH "block_size_bytes");
+	return -1;
+    }
+        
+    close(tmp_fd);
+
+    block_size_bytes = strtoll(tmp_buf, NULL, 16);
+
+    printf("Memory block size is %dMB (%d bytes)\n", block_size_bytes / (1024 * 1024), block_size_bytes);
+
+    return block_size_bytes;
+
+}
+
+
 
 int add_palacios_memory(unsigned long long base_addr, unsigned long num_pages) {
     int v3_fd = 0;
@@ -150,55 +206,77 @@ int main(int argc, char * argv[]) {
     int reg_start = 0;
     int mem_ready = 0;
     int c = 0;
+    int explicit = 0;
+    char * block_list_str = NULL;
 
 
     opterr = 0;
 
-    while ((c = getopt(argc, argv, "n:")) != -1) {
+    while ((c = getopt(argc, argv, "n:i:")) != -1) {
 	switch (c) {
 	    case 'n':
 		numa_node = atoi(optarg);
+		break;
+
+	    case 'i':
+		explicit = 1;
+		block_list_str = optarg;
 		break;
 	}
     }
 
 
-    if (argc - optind + 1 < 2) {
-	printf("usage: v3_mem [-n node] <num_blocks>\n");
+    if ((!explicit) && (argc - optind + 1 < 2)) {
+	printf("usage: \n");
+	printf("v3_mem [-n node] <num_blocks>\n");
+	printf("v3_mem -i <block_list>\n");
 	return -1;
     }
 
+
+
+    /* Figure out the block size */
+    block_size_bytes = get_block_size();
+
+    if (explicit) {
+	// We need to walk this as a list instead.
+	int block_id = atoi(block_list_str);
+
+	if (get_block_removable(block_id) != 1) {
+	    printf("Error: Block %d not removable\n", block_id);
+	    return -1;
+	}
+
+	if (get_block_status(block_id) != ONLINE) {
+	    printf("Error: Block %d is already offline\n", block_id);
+	    return -1;
+	}
+
+	if (offline_block(block_id) == -1) {
+	    printf("Error: Could not offline block %d\n", block_id);
+	    return -1;
+	}
+
+	// Double check block was offlined, it can sometimes fail
+	if (get_block_status(block_id) != OFFLINE) {
+	    printf("Error: Failed to offline block %d\n", block_id);
+	    return -1;
+	}
+	
+	printf("Adding block of memory at %p (block=%d)to Palacios\n", 
+	       block_size_bytes * block_id, block_id);
+	add_palacios_memory(block_size_bytes * block_id, block_size_bytes / 4096LL);
+	
+	return 0;
+    } 
 
     num_blocks = atoll(argv[optind]);
 
     printf("Trying to find %d blocks of memory\n", num_blocks);
 
-    /* Figure out the block size */
-    {
-	int tmp_fd = 0;
-	char tmp_buf[BUF_SIZE];
 
-	tmp_fd = open(SYS_PATH "block_size_bytes", O_RDONLY);
 
-	if (tmp_fd == -1) {
-	    perror("Could not open block size file: " SYS_PATH "block_size_bytes");
-	    return -1;
-	}
-        
-	if (read(tmp_fd, tmp_buf, BUF_SIZE) <= 0) {
-	    perror("Could not read block size file: " SYS_PATH "block_size_bytes");
-	    return -1;
-	}
-        
-	close(tmp_fd);
 
-	block_size_bytes = strtoll(tmp_buf, NULL, 16);
-
-	printf("Memory block size is %dMB (%d bytes)\n", block_size_bytes / (1024 * 1024), block_size_bytes);
-    }
-    
-
-    
 
     /* Scan the memory directories */
     {
@@ -249,40 +327,15 @@ int main(int argc, char * argv[]) {
 
 	for (i = 0; i < last_block - 1; i++) {
 	    struct dirent * tmp_dir = namelist[i];
-	    int block_fd = 0;	    
-	    char status_str[BUF_SIZE];
-	    char fname[BUF_SIZE];
 
-	    memset(status_str, 0, BUF_SIZE);
-	    memset(fname, 0, BUF_SIZE);
-
-	    if (numa_node == -1) {
-		snprintf(fname, BUF_SIZE, "%s%s/removable", SYS_PATH, tmp_dir->d_name);
-	    } else {
-		snprintf(fname, BUF_SIZE, "%snode%d/%s/removable", NUMA_PATH, numa_node, tmp_dir->d_name);
-	    }
 
 	    j = atoi(tmp_dir->d_name + 6);
 	    int major = j / 8;
 	    int minor = j % 8;
 
-	    printf("Checking %s (block=%d)...", fname, j);
-
-	    block_fd = open(fname, O_RDONLY);
+	    printf("Checking block %d...", j);
             
-	    if (block_fd == -1) {
-		printf("Memory block is not removable (%s)\n", fname);
-		continue;
-	    }
-
-	    if (read(block_fd, status_str, BUF_SIZE) <= 0) {
-		perror("Could not read block status");
-		return -1;
-	    }
-
-	    close(block_fd);
-            
-	    if (atoi(status_str) == 1) {
+	    if (get_block_removable(j) == 1) {
 		printf("Removable\n");
 		
 		// check if block is already offline
