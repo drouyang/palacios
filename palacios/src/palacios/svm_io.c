@@ -91,8 +91,8 @@ int v3_handle_svm_io_in(struct guest_info * core, struct svm_io_info * io_info) 
 
     if (hook == NULL) {
 	PrintDebug("IN operation on unhooked IO port 0x%x - returning zero\n", io_info->port);
-	core->vm_regs.rax >>= 8*read_size;
-	core->vm_regs.rax <<= 8*read_size;
+	core->vm_regs.rax >>= (8 * read_size);
+	core->vm_regs.rax <<= (8 * read_size);
 
     } else {
 	if (hook->read(core, io_info->port, &(core->vm_regs.rax), read_size, hook->priv_data) != read_size) {
@@ -120,7 +120,7 @@ int v3_handle_svm_io_ins(struct guest_info * core, struct svm_io_info * io_info)
     uint_t rep_num = 1;
     ullong_t mask = 0;
     struct v3_segment * theseg = &(core->segments.es); // default is ES
-    addr_t inst_ptr;
+    addr_t inst_ptr = 0;
 
 
     // This is kind of hacky...
@@ -139,8 +139,8 @@ int v3_handle_svm_io_ins(struct guest_info * core, struct svm_io_info * io_info)
 	return -1;
     }
 
-    while (is_prefix_byte(*((char *)inst_ptr))) {
-	switch (*((char *)inst_ptr)) {
+    while (is_prefix_byte(*((uint8_t *)inst_ptr))) {
+	switch (*((uint8_t *)inst_ptr)) {
 	    case PREFIX_CS_OVERRIDE:
 		theseg = &(core->segments.cs);
 		break;
@@ -165,6 +165,10 @@ int v3_handle_svm_io_ins(struct guest_info * core, struct svm_io_info * io_info)
 	inst_ptr++;
     }
 
+    /* 64 bit mode ops always use the unsegmented address space */
+    if (v3_get_vm_cpu_mode(core) == LONG) {
+	theseg = NULL;
+    }
 
     PrintDebug("INS on  port %d (0x%x)\n", io_info->port, io_info->port);
 
@@ -217,7 +221,7 @@ int v3_handle_svm_io_ins(struct guest_info * core, struct svm_io_info * io_info)
 
 	if (hook == NULL) {
 	    PrintDebug("INS operation on unhooked IO port 0x%x - returning zeros\n", io_info->port);
-	    memset((char*)host_addr,0,read_size);
+	    memset((char*)host_addr, 0, read_size);
 	    
 	} else {
 	    if (hook->read(core, io_info->port, (char *)host_addr, read_size, hook->priv_data) != read_size) {
@@ -359,6 +363,13 @@ int v3_handle_svm_io_outs(struct guest_info * core, struct svm_io_info * io_info
 	}
 	inst_ptr++;
     }
+
+  
+    /* 64 bit mode ops always use the unsegmented address space */
+    if (v3_get_vm_cpu_mode(core) == LONG) {
+	theseg = NULL;
+    }
+
 
     PrintDebug("OUTS size=%d for %d steps\n", write_size, rep_num);
 

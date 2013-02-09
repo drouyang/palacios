@@ -84,8 +84,8 @@ int v3_handle_vmx_io_in(struct guest_info * core, struct vmx_exit_info * exit_in
 
     if (hook == NULL) {
 	PrintDebug("IN operation on unhooked IO port 0x%x - returning zeros\n", io_qual.port);
-	core->vm_regs.rax >>= 8*read_size;
-	core->vm_regs.rax <<= 8*read_size;
+	core->vm_regs.rax >>= (8 * read_size);
+	core->vm_regs.rax <<= (8 * read_size);
 
     } else {
 	if (hook->read(core, io_qual.port, &(core->vm_regs.rax), read_size, hook->priv_data) != read_size) {
@@ -138,7 +138,7 @@ int v3_handle_vmx_io_ins(struct guest_info * core, struct vmx_exit_info * exit_i
         rdi_change = read_size;
     }
 
-    PrintDebug("INS size=%d for %ld steps\n", read_size, rep_num);
+    PrintDebug("INS size=%d for %d steps\n", read_size, rep_num);
 
 
 
@@ -247,7 +247,7 @@ int v3_handle_vmx_io_outs(struct guest_info * core, struct vmx_exit_info * exit_
 
 
 
-    PrintDebug("OUTS size=%d for %ld steps\n", write_size, rep_num);
+    PrintDebug("OUTS size=%d for %d steps\n", write_size, rep_num);
 
     if (v3_gva_to_hva(core, guest_va, &host_addr) == -1) {
         PrintError("Could not convert guest VA to host VA\n");
