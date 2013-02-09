@@ -113,6 +113,17 @@ static int gpa_to_node_from_cfg(struct v3_vm_info * vm, addr_t gpa) {
 }
 
 
+
+int v3_mem_write_gpa(struct guest_info * core, addr_t gpa, uint8_t * src, uint64_t len) {
+
+    return -1;
+}
+
+int v3_mem_read_gpa(struct guest_info * core, addr_t gpa, uint8_t * dst, uint64_t len) {
+    return -1;
+}
+
+
 int v3_init_mem_map(struct v3_vm_info * vm) {
     struct v3_mem_map * map = &(vm->mem_map);
     map->num_base_blocks = (vm->mem_size / V3_CONFIG_MEM_BLOCK_SIZE) + \
@@ -160,7 +171,7 @@ int v3_init_mem_map(struct v3_vm_info * vm) {
 	}
 	
 	// Clear the memory...
-	memset(V3_VAddr((void *)region->host_addr), 0, block_pages);
+	memset(V3_VAddr((void *)region->host_addr), 0, V3_CONFIG_MEM_BLOCK_SIZE);
 	
 	region->flags.read = 1;
 	region->flags.write = 1;
