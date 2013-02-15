@@ -257,10 +257,10 @@ int v3_decode(struct guest_info * info, addr_t instr_ptr, struct x86_instr * ins
 
         if (info->mem_mode == PHYSICAL_MEM) {
             status = v3_gpa_to_hva(info, get_addr_linear(info,
-                    (info->rip & ~0xfffULL) + 0x1000, &(info->segments.cs)), &instr_ptr2);
+                    (info->rip & ~0xfffULL) + 0x1000, V3_SEG_CS), &instr_ptr2);
         } else {
             status = v3_gva_to_hva(info, get_addr_linear(info,
-                    (info->rip & ~0xfffULL) + 0x1000, &(info->segments.cs)), &instr_ptr2);
+                    (info->rip & ~0xfffULL) + 0x1000, V3_SEG_CS), &instr_ptr2);
         }
         if (status == -1) {
             PrintError("Could not translate Instruction Address at second stage "

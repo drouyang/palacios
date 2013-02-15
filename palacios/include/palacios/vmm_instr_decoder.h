@@ -478,22 +478,20 @@ static inline int decode_cr(struct guest_info * core,
     return 0;
 }
 
-static struct v3_segment * get_instr_segment(struct guest_info * core, struct x86_instr * instr) {
-    struct v3_segment * seg = NULL;
+static v3_seg_type_t get_instr_segment(struct guest_info * core, struct x86_instr * instr) {
+    v3_seg_type_t seg = V3_SEG_DS;
 
     if (instr->prefixes.cs_override) {
-	seg = &(core->segments.cs);
+	seg = V3_SEG_CS;
     } else if (instr->prefixes.es_override) {
-	seg = &(core->segments.es);
+	seg = V3_SEG_ES;
     } else if (instr->prefixes.ss_override) {
-	seg = &(core->segments.ss);
+	seg = V3_SEG_SS;
     } else if (instr->prefixes.fs_override) {
-	seg = &(core->segments.fs);
+	seg = V3_SEG_FS;
     } else if (instr->prefixes.gs_override) {
-	seg = &(core->segments.gs);
-    } else {
-	seg = &(core->segments.ds);
-    }
+	seg = V3_SEG_GS;
+    } 
 
     return seg;
 }
@@ -543,7 +541,7 @@ static  int decode_rm_operand16(struct guest_info * core,
 	decode_gpr(core, modrm->rm, operand);
 
     } else {
-	struct v3_segment * seg = NULL;
+	v3_seg_type_t seg = V3_SEG_DS;
 
 	operand->type = MEM_OPERAND;
 
@@ -640,7 +638,7 @@ static int decode_rm_operand32(struct guest_info * core,
 	decode_gpr(core, modrm->rm, operand);
 
     } else {
-	struct v3_segment * seg = NULL;
+	v3_seg_type_t seg = V3_SEG_DS;
 
 	operand->type = MEM_OPERAND;
 
@@ -809,7 +807,7 @@ int decode_rm_operand64(struct guest_info * core, uint8_t * modrm_instr,
 	
 	decode_gpr(core, rm_val, operand);
     } else {
-	struct v3_segment * seg = NULL;
+	v3_seg_type_t seg = V3_SEG_DS;
 	uint8_t rm_val = modrm->rm;
 
 	operand->type = MEM_OPERAND;

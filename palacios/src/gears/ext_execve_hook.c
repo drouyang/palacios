@@ -163,9 +163,9 @@ int v3_execve_handler (struct guest_info * core, uint_t syscall_nr, void * priv_
     
     // TODO: make sure this returns immediately if we're not booted up already
     if (core->mem_mode == PHYSICAL_MEM) {
-        ret = v3_gpa_to_hva(core, get_addr_linear(core, (addr_t)core->vm_regs.rbx, &(core->segments.ds)), &hva);
+        ret = v3_gpa_to_hva(core, get_addr_linear(core, (addr_t)core->vm_regs.rbx, V3_SEG_DS), &hva);
     } else {
-        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)core->vm_regs.rbx, &(core->segments.ds)), &hva);      
+        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)core->vm_regs.rbx, V3_SEG_DS), &hva);      
     }
 
     if (ret == -1) {

@@ -279,7 +279,7 @@ static int parse_operands(struct guest_info * core, uint8_t * instr_ptr,
 
 
 	    /* Get the correct offse -- (seg + offset) */
-	    struct v3_segment * src_seg = get_instr_segment(core, instr);
+	    v3_seg_type_t src_seg = get_instr_segment(core, instr);
 	    addr_t offset = 0;
 
 	    if (addr_width == 2) {
@@ -318,7 +318,7 @@ static int parse_operands(struct guest_info * core, uint8_t * instr_ptr,
 
 
 	    /* Get the correct offse -- (seg + offset) */
-	    struct v3_segment * dst_seg = get_instr_segment(core, instr);
+	    v3_seg_type_t dst_seg = get_instr_segment(core, instr);
 	    addr_t offset = 0;
 
 	    if (addr_width == 2) {
@@ -440,12 +440,12 @@ static int parse_operands(struct guest_info * core, uint8_t * instr_ptr,
 
 	    instr->src_operand.type = MEM_OPERAND;
 	    instr->src_operand.size = operand_width;
-	    instr->src_operand.operand = get_addr_linear(core,  MASK(core->vm_regs.rsi, addr_width), &(core->segments.ds));
+	    instr->src_operand.operand = get_addr_linear(core,  MASK(core->vm_regs.rsi, addr_width), V3_SEG_DS);
 
 
 	    instr->dst_operand.type = MEM_OPERAND;
 	    instr->dst_operand.size = operand_width;
-	    instr->dst_operand.operand = get_addr_linear(core, MASK(core->vm_regs.rdi, addr_width), &(core->segments.es));
+	    instr->dst_operand.operand = get_addr_linear(core, MASK(core->vm_regs.rdi, addr_width), V3_SEG_ES);
 
 
 	    instr->src_operand.read = 1;
@@ -517,7 +517,7 @@ static int parse_operands(struct guest_info * core, uint8_t * instr_ptr,
 
 	    instr->dst_operand.type = MEM_OPERAND;
 	    instr->dst_operand.size = operand_width;
-	    instr->dst_operand.operand = get_addr_linear(core, MASK(core->vm_regs.rdi, addr_width), &(core->segments.es));
+	    instr->dst_operand.operand = get_addr_linear(core, MASK(core->vm_regs.rdi, addr_width), V3_SEG_ES);
 
 	    instr->src_operand.read = 1;
 	    instr->dst_operand.write = 1;

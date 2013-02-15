@@ -133,9 +133,9 @@ int v3_handle_swintr (struct guest_info * core) {
     struct x86_instr instr;
 
     if (core->mem_mode == PHYSICAL_MEM) { 
-        ret = v3_gpa_to_hva(core, get_addr_linear(core, core->rip, &(core->segments.cs)), (addr_t *)&instr_ptr);
+        ret = v3_gpa_to_hva(core, get_addr_linear(core, core->rip, V3_SEG_CS), (addr_t *)&instr_ptr);
     } else { 
-        ret = v3_gva_to_hva(core, get_addr_linear(core, core->rip, &(core->segments.cs)), (addr_t *)&instr_ptr);
+        ret = v3_gva_to_hva(core, get_addr_linear(core, core->rip, V3_SEG_CS), (addr_t *)&instr_ptr);
     }   
     
     if (ret == -1) {

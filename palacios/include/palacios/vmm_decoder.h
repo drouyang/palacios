@@ -39,6 +39,7 @@ typedef enum { V3_INVALID_OP,
 
 typedef enum {INVALID_OPERAND, REG_OPERAND, MEM_OPERAND, IMM_OPERAND} v3_operand_type_t;
 
+
 struct x86_operand {
     addr_t operand;
     uint_t size;
@@ -202,7 +203,9 @@ static inline v3_reg_t get_gpr_mask(struct guest_info * info) {
 
 
 
-static inline addr_t get_addr_linear(struct guest_info * info, addr_t addr, struct v3_segment * seg) {
+static inline addr_t get_addr_linear(struct guest_info * info, addr_t addr, v3_seg_type_t seg_type) {
+    struct v3_segment * seg = &(info->segments.seg_arr[seg_type]);
+
     switch (info->cpu_mode) {
 	case REAL: {
 	    return ((seg->selector & 0xffff) << 4) + (addr & 0xffff);
@@ -220,7 +223,7 @@ static inline addr_t get_addr_linear(struct guest_info * info, addr_t addr, stru
 	    // In long mode the segment bases are disregarded (forced to 0), unless using 
 	    // FS or GS, then the base addresses are added
 
-	    if (seg) {
+	    if ((seg_type == V3_SEG_FS) || (seg_type == V3_SEG_GS)) {
 		seg_base = seg->base;
 	    }
 

@@ -74,6 +74,8 @@ struct v3_dbg_regs {
     v3_reg_t dr7;
 };
 
+
+
 struct v3_segment {
     uint16_t selector;
     uint_t limit;
@@ -90,18 +92,33 @@ struct v3_segment {
 } __attribute__((packed));
 
 
+/* These are keyed to the array indices in the v3_segments struct */
+typedef enum {V3_SEG_CS = 0, 
+	      V3_SEG_DS = 1, 
+	      V3_SEG_ES = 2,
+	      V3_SEG_FS = 3,
+	      V3_SEG_GS = 4, 
+	      V3_SEG_SS = 5} v3_seg_type_t;
+
+
 struct v3_segments {
-    struct v3_segment cs;
-    struct v3_segment ds;
-    struct v3_segment es;
-    struct v3_segment fs;
-    struct v3_segment gs;
-    struct v3_segment ss;
-    struct v3_segment ldtr;
-    struct v3_segment gdtr;
-    struct v3_segment idtr;
-    struct v3_segment tr;
-};
+    union {
+	struct v3_segment seg_arr[10];
+
+	struct {
+	    struct v3_segment cs;
+	    struct v3_segment ds;
+	    struct v3_segment es;
+	    struct v3_segment fs;
+	    struct v3_segment gs;
+	    struct v3_segment ss;
+	    struct v3_segment ldtr;
+	    struct v3_segment gdtr;
+	    struct v3_segment idtr;
+	    struct v3_segment tr;
+	} __attribute__((packed));
+    } __attribute__((packed));
+} __attribute__((packed));
 
 
 #endif

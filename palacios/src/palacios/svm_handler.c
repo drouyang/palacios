@@ -321,7 +321,7 @@ int v3_handle_svm_exit(struct guest_info * info, addr_t exit_code, addr_t exit_i
 	    
 	    PrintError("Unhandled SVM Exit: %s\n", v3_svm_exit_code_to_str(exit_code));
 	    
-	    rip_addr = get_addr_linear(info, info->rip, &(info->segments.cs));
+	    rip_addr = get_addr_linear(info, info->rip, V3_SEG_CS);
 	    
 	    
 	    PrintError("SVM Returned:(VMCB=%p)\n", (void *)(info->vmm_data)); 

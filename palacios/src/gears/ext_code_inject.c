@@ -115,8 +115,8 @@ static int v3_restore_pre_mmap_state (struct guest_info * core, struct v3_code_i
     inject->code_region_gva = mmap_gva;
 
 	ret = v3_gva_to_hva(core, 
-						get_addr_linear(core, (addr_t)inject->rip, &(core->segments.cs)),
-						&rip_hva);
+			    get_addr_linear(core, (addr_t)inject->rip, V3_SEG_CS),
+			    &rip_hva);
     if (ret == -1) {
 		PrintError("Error translating RIP address: v3_restore_pre_mmap_state\n");
 		return -1;
@@ -140,8 +140,8 @@ static int v3_restore_pre_inject_state (struct guest_info * core, struct v3_code
     memcpy(&core->ctrl_regs, &inject->ctrl_regs, sizeof(struct v3_ctrl_regs));
 
 	ret = v3_gva_to_hva(core, 
-						get_addr_linear(core, (addr_t)inject->rip, &(core->segments.cs)),
-						&rip_hva);
+			    get_addr_linear(core, (addr_t)inject->rip, V3_SEG_CS),
+			    &rip_hva);
     if (ret == -1) {
 		PrintError("Error translating RIP address: v3_pre_inject_state\n");
 		return -1;
@@ -177,8 +177,8 @@ static int inject_code_finish (struct guest_info * core, unsigned int hcall_id, 
 
     // is the original int 80 page still paged in?
     if (v3_gva_to_hva(core, 
-                        get_addr_linear(core, (addr_t)inject->rip, &(core->segments.cs)),
-                        &hva) == -1) {
+		      get_addr_linear(core, (addr_t)inject->rip, V3_SEG_CS),
+		      &hva) == -1) {
         PrintError("No mapping in shadow page table: inject_code_finish\n");
         return -1;
     }
@@ -220,8 +220,8 @@ static int munmap_finish (struct guest_info * core, unsigned int hcall_id, void 
     }
 
     if (v3_gva_to_hva(core, 
-                        get_addr_linear(core, (addr_t)inject->rip, &(core->segments.cs)),
-                        &hva) == -1) {
+		      get_addr_linear(core, (addr_t)inject->rip, V3_SEG_CS),
+		      &hva) == -1) {
         PrintError("No mapping in shadow page table: inject_code_finish\n");
         return -1;
     }
@@ -259,8 +259,8 @@ static int mmap_pf_handler (struct guest_info * core, unsigned int hcall_id, voi
 
     // was page fault handled by guest kernel?
 	if (v3_gva_to_hva(core, 
-						get_addr_linear(core, gva, &(core->segments.ds)),
-						&hva) == -1) {
+			  get_addr_linear(core, gva, V3_SEG_DS),
+			  &hva) == -1) {
         PrintError("No mapping in shadow page table: mmap_pf_handler\n");
         return -1;
     }
@@ -273,8 +273,8 @@ static int mmap_pf_handler (struct guest_info * core, unsigned int hcall_id, voi
         memcpy(&core->ctrl_regs, &inject->ctrl_regs, sizeof(struct v3_ctrl_regs));
 
         if (v3_gva_to_hva(core, 
-                            get_addr_linear(core, inject->rip, &(core->segments.cs)),
-                            &hva) == -1) {
+			  get_addr_linear(core, inject->rip, V3_SEG_CS),
+			  &hva) == -1) {
             PrintError("No mapping for old RIP in shadow page table: mmap_pf_handler: %p\n", (void*)inject->rip);
             return -1;
         }
@@ -286,8 +286,8 @@ static int mmap_pf_handler (struct guest_info * core, unsigned int hcall_id, voi
         V3_Free(inject->old_code);
 
         if (v3_gva_to_hva(core, 
-                            get_addr_linear(core, core->rip, &(core->segments.cs)),
-                            &hva) == -1) {
+			  get_addr_linear(core, core->rip, V3_SEG_CS),
+			  &hva) == -1) {
             PrintError("No mapping for new RIP in shadow page table: mmap_pf_handler: %p\n", (void*)core->rip);
             return -1;
         }
@@ -442,8 +442,8 @@ static int v3_do_cont (struct guest_info * core, struct v3_code_inject_info * in
     }
 
 	ret = v3_gva_to_hva(core, 
-						get_addr_linear(core, check, &(core->segments.cs)),
-						&hva);
+			    get_addr_linear(core, check, V3_SEG_CS),
+			    &hva);
 
     // this should never happen...
 	if (ret == -1) {
@@ -493,8 +493,8 @@ int v3_do_inject (struct guest_info * core, struct v3_code_inject_info * inject,
     memset((void*)&err_code, 0, sizeof(pf_error_t));
 	
 	ret = v3_gva_to_hva(core, 
-						get_addr_linear(core, (addr_t)core->rip, &(core->segments.cs)),
-						&rip_hva);
+			    get_addr_linear(core, (addr_t)core->rip, V3_SEG_CS),
+			    &rip_hva);
 	if (ret == -1) {
 		PrintError("Error translating RIP address in v3_do_inject\n");
 		return -1;
@@ -505,7 +505,7 @@ int v3_do_inject (struct guest_info * core, struct v3_code_inject_info * inject,
     for (i = 0; i < PAGES_BACK; i++, elf_gva -= PAGE_SIZE) {
     
         ret = v3_gva_to_hva(core, 
-                            get_addr_linear(core, elf_gva, &(core->segments.cs)),
+                            get_addr_linear(core, elf_gva, V3_SEG_CS),
                             &elf_hva);
 
         // need to page in
@@ -578,8 +578,8 @@ int v3_do_static_inject (struct guest_info * core, struct v3_code_inject_info * 
 
 	
 	ret = v3_gva_to_hva(core, 
-						get_addr_linear(core, (addr_t)core->rip, &(core->segments.cs)),
-						&rip_hva);
+			    get_addr_linear(core, (addr_t)core->rip, V3_SEG_CS),
+			    &rip_hva);
 	if (ret == -1) {
 		PrintError("Error translating RIP address: v3_do_static_inject\n");
 		return -1;
@@ -605,7 +605,7 @@ int v3_do_static_inject (struct guest_info * core, struct v3_code_inject_info * 
             memset((void*)&err_code, 0, sizeof(pf_error_t));
 
             ret = v3_gva_to_hva(core, 
-                                get_addr_linear(core, (addr_t)inject->rip, &(core->segments.cs)),
+                                get_addr_linear(core, (addr_t)inject->rip, V3_SEG_CS),
                                 &rip_hva);
             if (ret == -1) {
                 PrintError("Error translating RIP address: v3_do_static_inject\n");

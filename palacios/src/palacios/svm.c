@@ -793,7 +793,7 @@ int v3_start_svm_guest(struct guest_info * info) {
 	    V3_Print("SVM core %u: exit_info2 low = 0x%.8x\n", info->vcpu_id, *(uint_t*)&(guest_ctrl->exit_info2));
 	    V3_Print("SVM core %u: exit_info2 high = 0x%.8x\n", info->vcpu_id, *(uint_t *)(((uchar_t *)&(guest_ctrl->exit_info2)) + 4));
 	    
-	    linear_addr = get_addr_linear(info, info->rip, &(info->segments.cs));
+	    linear_addr = get_addr_linear(info, info->rip, V3_SEG_CS);
 	    
 	    if (info->mem_mode == PHYSICAL_MEM) {
 		v3_gpa_to_hva(info, linear_addr, &host_addr);

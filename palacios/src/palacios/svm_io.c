@@ -119,7 +119,7 @@ int v3_handle_svm_io_ins(struct guest_info * core, struct svm_io_info * io_info)
     addr_t dst_addr = 0;
     uint_t rep_num = 1;
     ullong_t mask = 0;
-    struct v3_segment * theseg = &(core->segments.es); // default is ES
+    v3_seg_type_t theseg = V3_SEG_ES; // default is ES
     addr_t inst_ptr = 0;
 
 
@@ -134,7 +134,7 @@ int v3_handle_svm_io_ins(struct guest_info * core, struct svm_io_info * io_info)
     }
     
 
-    if (v3_gva_to_hva(core, get_addr_linear(core, core->rip, &(core->segments.cs)), &inst_ptr) == -1) {
+    if (v3_gva_to_hva(core, get_addr_linear(core, core->rip, V3_SEG_CS), &inst_ptr) == -1) {
 	PrintError("Can't access instruction\n");
 	return -1;
     }
@@ -142,22 +142,22 @@ int v3_handle_svm_io_ins(struct guest_info * core, struct svm_io_info * io_info)
     while (is_prefix_byte(*((uint8_t *)inst_ptr))) {
 	switch (*((uint8_t *)inst_ptr)) {
 	    case PREFIX_CS_OVERRIDE:
-		theseg = &(core->segments.cs);
+		theseg = V3_SEG_CS;
 		break;
 	    case PREFIX_SS_OVERRIDE:
-		theseg = &(core->segments.ss);
+		theseg = V3_SEG_SS;
 		break;
 	    case PREFIX_DS_OVERRIDE:
-		theseg = &(core->segments.ds);
+		theseg = V3_SEG_DS;
 		break;
 	    case PREFIX_ES_OVERRIDE:
-		theseg = &(core->segments.es);
+		theseg = V3_SEG_ES;
 		break;
 	    case PREFIX_FS_OVERRIDE:
-		theseg = &(core->segments.fs);
+		theseg = V3_SEG_FS;
 		break;
 	    case PREFIX_GS_OVERRIDE:
-		theseg = &(core->segments.gs);
+		theseg = V3_SEG_GS;
 		break;
 	    default:
 		break;
@@ -165,10 +165,6 @@ int v3_handle_svm_io_ins(struct guest_info * core, struct svm_io_info * io_info)
 	inst_ptr++;
     }
 
-    /* 64 bit mode ops always use the unsegmented address space */
-    if (v3_get_vm_cpu_mode(core) == LONG) {
-	theseg = NULL;
-    }
 
     PrintDebug("INS on  port %d (0x%x)\n", io_info->port, io_info->port);
 
@@ -284,7 +280,7 @@ int v3_handle_svm_io_outs(struct guest_info * core, struct svm_io_info * io_info
     uint_t rep_num = 1;
     ullong_t mask = 0;
     addr_t inst_ptr;
-    struct v3_segment * theseg = &(core->segments.ds); // default is DS
+    v3_seg_type_t theseg = V3_SEG_DS; // default is DS
 
     // This is kind of hacky...
     // direction can equal either 1 or -1
@@ -333,7 +329,7 @@ int v3_handle_svm_io_outs(struct guest_info * core, struct svm_io_info * io_info
   
 
 
-    if (v3_gva_to_hva(core, get_addr_linear(core, core->rip, &(core->segments.cs)), &inst_ptr) == -1) {
+    if (v3_gva_to_hva(core, get_addr_linear(core, core->rip, V3_SEG_CS), &inst_ptr) == -1) {
 	PrintError("Can't access instruction\n");
 	return -1;
     }
@@ -341,33 +337,27 @@ int v3_handle_svm_io_outs(struct guest_info * core, struct svm_io_info * io_info
     while (is_prefix_byte(*((char *)inst_ptr))) {
 	switch (*((char *)inst_ptr)) {
 	    case PREFIX_CS_OVERRIDE:
-		theseg = &(core->segments.cs);
+		theseg = V3_SEG_CS;
 		break;
 	    case PREFIX_SS_OVERRIDE:
-		theseg = &(core->segments.ss);
+		theseg = V3_SEG_SS;
 		break;
 	    case PREFIX_DS_OVERRIDE:
-		theseg = &(core->segments.ds);
+		theseg = V3_SEG_DS;
 		break;
 	    case PREFIX_ES_OVERRIDE:
-		theseg = &(core->segments.es);
+		theseg = V3_SEG_ES;
 		break;
 	    case PREFIX_FS_OVERRIDE:
-		theseg = &(core->segments.fs);
+		theseg = V3_SEG_FS;
 		break;
 	    case PREFIX_GS_OVERRIDE:
-		theseg = &(core->segments.gs);
+		theseg = V3_SEG_GS;
 		break;
 	    default:
 		break;
 	}
 	inst_ptr++;
-    }
-
-  
-    /* 64 bit mode ops always use the unsegmented address space */
-    if (v3_get_vm_cpu_mode(core) == LONG) {
-	theseg = NULL;
     }
 
 

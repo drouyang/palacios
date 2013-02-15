@@ -1094,7 +1094,7 @@ int v3_vmx_enter(struct guest_info * info) {
     //PrintDebug("VMX Exit taken, id-qual: %u-%lu\n", exit_info.exit_reason, exit_info.exit_qual);
 
     exit_log[info->num_exits % 10] = exit_info;
-    rip_log[info->num_exits % 10] = get_addr_linear(info, info->rip, &(info->segments.cs));
+    rip_log[info->num_exits % 10] = get_addr_linear(info, info->rip, V3_SEG_CS);
 
 #ifdef V3_CONFIG_SYMCALL
     if (info->sym_core_state.symcall_state.sym_call_active == 0) {
@@ -1214,7 +1214,7 @@ int v3_start_vmx_guest(struct guest_info * info) {
             
             V3_Print("VMX core %u\n", info->vcpu_id); 
 
-            linear_addr = get_addr_linear(info, info->rip, &(info->segments.cs));
+            linear_addr = get_addr_linear(info, info->rip, V3_SEG_CS);
             
             if (info->mem_mode == PHYSICAL_MEM) {
                 v3_gpa_to_hva(info, linear_addr, &host_addr);

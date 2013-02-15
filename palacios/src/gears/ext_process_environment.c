@@ -87,7 +87,7 @@ static int v3_copy_chunk_guest32(struct guest_info * core, addr_t gva, uint_t ar
 
     PrintDebug("Initiating copy into guest (32bit)\n");
     
-    ret = v3_gva_to_hva(core, get_addr_linear(core, gva, &(core->segments.ds)), &hva);
+    ret = v3_gva_to_hva(core, get_addr_linear(core, gva, V3_SEG_DS), &hva);
     if (ret == -1) {
         PrintDebug("Error translating gva in v3_copy_chunk_2guest\n");
         return -1;
@@ -182,13 +182,13 @@ static int v3_copy_chunk_vmm32(struct guest_info * core, const char ** argstrs, 
 
     PrintDebug("Initiating copy into vmm\n");
 
-    int ret = v3_gva_to_hva(core, get_addr_linear(core, core->vm_regs.rdx, &(core->segments.ds)), &envp);
+    int ret = v3_gva_to_hva(core, get_addr_linear(core, core->vm_regs.rdx, V3_SEG_DS), &envp);
     if (ret == -1) {
         PrintDebug("Error translating address in rdx\n");
         return 0;
     }
 
-    ret = v3_gva_to_hva(core, get_addr_linear(core, core->vm_regs.rcx, &(core->segments.ds)), &argv);
+    ret = v3_gva_to_hva(core, get_addr_linear(core, core->vm_regs.rcx, V3_SEG_DS), &argv);
     if (ret == -1) {
         PrintDebug("Error translating address in rcx\n");
         return 0;
@@ -197,7 +197,7 @@ static int v3_copy_chunk_vmm32(struct guest_info * core, const char ** argstrs, 
     cursor = (char*)argv;
     while (*((uint32_t*)cursor) != 0) {
         addr_t argvn;
-        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint32_t*)cursor), &(core->segments.ds)), &argvn);
+        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint32_t*)cursor), V3_SEG_DS), &argvn);
         if (ret == -1) {
             PrintDebug("Error translating address for argvn\n");
         }
@@ -221,7 +221,7 @@ static int v3_copy_chunk_vmm32(struct guest_info * core, const char ** argstrs, 
     int i = 0;
     while (*((uint32_t*)cursor) != 0) {
         addr_t argvn;
-        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint32_t*)cursor), &(core->segments.ds)), &argvn);
+        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint32_t*)cursor), V3_SEG_DS), &argvn);
         if (ret == -1) {
             PrintDebug("Error translating argvn address\n");
         }
@@ -264,7 +264,7 @@ static int v3_copy_chunk_vmm32(struct guest_info * core, const char ** argstrs, 
     cursor = (char*)envp;
     while (*((uint32_t*)cursor) != 0) {
         addr_t envpn;
-        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint32_t*)cursor), &(core->segments.ds)), &envpn);
+        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint32_t*)cursor), V3_SEG_DS), &envpn);
         if (ret == -1) {
             PrintDebug("Error translating address for envpn\n");
         }
@@ -287,7 +287,7 @@ static int v3_copy_chunk_vmm32(struct guest_info * core, const char ** argstrs, 
     i = 0;
     while (*((uint32_t*)cursor) != 0) {
         addr_t envpn;
-        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint32_t*)cursor), &(core->segments.ds)), &envpn);
+        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint32_t*)cursor), V3_SEG_DS), &envpn);
         if (ret == -1) {
             PrintDebug("Error translating address for envpn\n");
         }
@@ -369,7 +369,7 @@ static int v3_copy_chunk_guest64(struct guest_info * core, addr_t gva, uint_t ar
 
     PrintDebug("Initiating copy into guest (64bit)\n");
     
-    ret = v3_gva_to_hva(core, get_addr_linear(core, gva, &(core->segments.ds)), &hva);
+    ret = v3_gva_to_hva(core, get_addr_linear(core, gva, V3_SEG_DS), &hva);
     if (ret == -1) {
         PrintDebug("Error translating gva in v3_copy_chunk_2guest64\n");
         return -1;
@@ -460,13 +460,13 @@ static int v3_copy_chunk_vmm64(struct guest_info * core, const char ** argstrs, 
 
     PrintDebug("Initiating copy into vmm\n");
 
-    int ret = v3_gva_to_hva(core, get_addr_linear(core, core->vm_regs.rdx, &(core->segments.ds)), &envp);
+    int ret = v3_gva_to_hva(core, get_addr_linear(core, core->vm_regs.rdx, V3_SEG_DS), &envp);
     if (ret == -1) {
         PrintDebug("Error translating address in rdx\n");
         return 0;
     }
 
-    ret = v3_gva_to_hva(core, get_addr_linear(core, core->vm_regs.rcx, &(core->segments.ds)), &argv);
+    ret = v3_gva_to_hva(core, get_addr_linear(core, core->vm_regs.rcx, V3_SEG_DS), &argv);
     if (ret == -1) {
         PrintDebug("Error translating address in rcx\n");
         return 0;
@@ -475,7 +475,7 @@ static int v3_copy_chunk_vmm64(struct guest_info * core, const char ** argstrs, 
     cursor = (char*)argv;
     while (*((uint64_t*)cursor) != 0) {
         addr_t argvn;
-        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint64_t*)cursor), &(core->segments.ds)), &argvn);
+        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint64_t*)cursor), V3_SEG_DS), &argvn);
         if (ret == -1) {
             PrintDebug("Error translating address for argvn\n");
         }
@@ -499,7 +499,7 @@ static int v3_copy_chunk_vmm64(struct guest_info * core, const char ** argstrs, 
     int i = 0;
     while (*((uint64_t*)cursor) != 0) {
         addr_t argvn;
-        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint64_t*)cursor), &(core->segments.ds)), &argvn);
+        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint64_t*)cursor), V3_SEG_DS), &argvn);
         if (ret == -1) {
             PrintDebug("Error translating argvn address\n");
         }
@@ -542,7 +542,7 @@ static int v3_copy_chunk_vmm64(struct guest_info * core, const char ** argstrs, 
     cursor = (char*)envp;
     while (*((uint64_t*)cursor) != 0) {
         addr_t envpn;
-        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint64_t*)cursor), &(core->segments.ds)), &envpn);
+        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint64_t*)cursor), V3_SEG_DS), &envpn);
         if (ret == -1) {
             PrintDebug("Error translating address for envpn\n");
         }
@@ -566,7 +566,7 @@ static int v3_copy_chunk_vmm64(struct guest_info * core, const char ** argstrs, 
     i = 0;
     while (*((uint64_t*)cursor) != 0) {
         addr_t envpn;
-        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint64_t*)cursor), &(core->segments.ds)), &envpn);
+        ret = v3_gva_to_hva(core, get_addr_linear(core, (addr_t)*((uint64_t*)cursor), V3_SEG_DS), &envpn);
         if (ret == -1) {
             PrintDebug("Error translating address for envpn\n");
         }

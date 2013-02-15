@@ -159,9 +159,9 @@ static int handle_mem_hook(struct guest_info * core, addr_t guest_va, addr_t gue
 
     /* Find and decode hooked instruction */
     if (core->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_gpa_to_hva(core, get_addr_linear(core, core->rip, &(core->segments.cs)), (addr_t *)&instr_ptr);
+	ret = v3_gpa_to_hva(core, get_addr_linear(core, core->rip, V3_SEG_CS), (addr_t *)&instr_ptr);
     } else { 
-	ret = v3_gva_to_hva(core, get_addr_linear(core, core->rip, &(core->segments.cs)), (addr_t *)&instr_ptr);
+	ret = v3_gva_to_hva(core, get_addr_linear(core, core->rip, V3_SEG_CS), (addr_t *)&instr_ptr);
     }
 
     if (ret == -1) {

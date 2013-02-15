@@ -193,7 +193,7 @@ static int v3_print_disassembly(struct guest_info * core) {
     	}
 
     	/* look up host virtual address for this instruction */
-    	rip_linear = get_addr_linear(core, rip, &(core->segments.cs));
+    	rip_linear = get_addr_linear(core, rip, V3_SEG_CS);
     	if (safe_gva_to_hva(core, rip_linear, &rip_host) < 0) {
     	    rip++;
     	    continue;
@@ -218,7 +218,7 @@ void v3_print_guest_state(struct guest_info * core) {
 
 
     V3_Print("RIP: %p\n", (void *)(addr_t)(core->rip));
-    linear_addr = get_addr_linear(core, core->rip, &(core->segments.cs));
+    linear_addr = get_addr_linear(core, core->rip, V3_SEG_CS);
     V3_Print("RIP Linear: %p\n", (void *)linear_addr);
 
     V3_Print("NumExits: %u\n", (uint32_t)core->num_exits);
@@ -325,7 +325,7 @@ void v3_print_stack(struct guest_info * core) {
     int i = 0;
     v3_cpu_mode_t cpu_mode = v3_get_vm_cpu_mode(core);
 
-    linear_addr = get_addr_linear(core, core->vm_regs.rsp, &(core->segments.ss));
+    linear_addr = get_addr_linear(core, core->vm_regs.rsp, V3_SEG_SS);
  
     V3_Print("Stack at %p:\n", (void *)linear_addr);
    
@@ -368,7 +368,7 @@ void v3_print_backtrace(struct guest_info * core) {
     V3_Print("Performing Backtrace for Core %d\n", core->vcpu_id);
     V3_Print("\tRSP=%p, RBP=%p\n", (void *)core->vm_regs.rsp, (void *)core->vm_regs.rbp);
 
-    gla_rbp = get_addr_linear(core, core->vm_regs.rbp, &(core->segments.ss));
+    gla_rbp = get_addr_linear(core, core->vm_regs.rbp, V3_SEG_SS);
 
 
     for (i = 0; i < 30; i++) {

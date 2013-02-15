@@ -45,9 +45,9 @@ int v3_handle_cr0_write(struct guest_info * info) {
     struct x86_instr dec_instr;
     
     if (info->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, &(info->segments.cs)), 15, instr);
+	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, &(info->segments.cs)), 15, instr);
+	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
     }
     
     if (v3_decode(info, (addr_t)instr, &dec_instr) == -1) {
@@ -225,9 +225,9 @@ int v3_handle_cr0_read(struct guest_info * info) {
     struct x86_instr dec_instr;
     
     if (info->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, &(info->segments.cs)), 15, instr);
+	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, &(info->segments.cs)), 15, instr);
+	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
     }
     
     
@@ -299,9 +299,9 @@ int v3_handle_cr3_write(struct guest_info * info) {
     struct x86_instr dec_instr;
     
     if (info->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, &(info->segments.cs)), 15, instr);
+	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, &(info->segments.cs)), 15, instr);
+	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
     }
     
     if (v3_decode(info, (addr_t)instr, &dec_instr) == -1) {
@@ -376,9 +376,9 @@ int v3_handle_cr3_read(struct guest_info * info) {
     struct x86_instr dec_instr;
     
     if (info->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, &(info->segments.cs)), 15, instr);
+	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, &(info->segments.cs)), 15, instr);
+	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
     }
     
     if (v3_decode(info, (addr_t)instr, &dec_instr) == -1) {
@@ -443,9 +443,9 @@ int v3_handle_cr4_write(struct guest_info * info) {
     v3_cpu_mode_t cpu_mode = v3_get_vm_cpu_mode(info);
     
     if (info->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, &(info->segments.cs)), 15, instr);
+	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, &(info->segments.cs)), 15, instr);
+	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
     }
     
     if (v3_decode(info, (addr_t)instr, &dec_instr) == -1) {

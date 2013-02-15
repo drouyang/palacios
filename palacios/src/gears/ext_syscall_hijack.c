@@ -65,10 +65,10 @@ static void print_arg (struct  guest_info * core, v3_reg_t reg, uint8_t argnum) 
     PrintDebug("\t ARG%d: INT - %ld\n", argnum, (long) reg);
 
     if (core->mem_mode == PHYSICAL_MEM) {
-        ret = v3_gpa_to_hva(core, get_addr_linear(core, reg, &(core->segments.ds)), &hva);
+        ret = v3_gpa_to_hva(core, get_addr_linear(core, reg, V3_SEG_DS), &hva);
     }
     else { 
-        ret = v3_gva_to_hva(core, get_addr_linear(core, reg, &(core->segments.ds)), &hva);
+        ret = v3_gva_to_hva(core, get_addr_linear(core, reg, V3_SEG_DS), &hva);
     }
 
     PrintDebug("\t       STR - ");
@@ -209,12 +209,12 @@ static int syscall_setup (struct guest_info * core, unsigned int hcall_id, void 
 
 	
 	// now get the hva of the system call map so we can manipulate it in the VMM
-	if (v3_gva_to_hva(core, get_addr_linear(core, syscall_map_gva, &(core->segments.ds)), &syscall_map_hva) == 1) {
+	if (v3_gva_to_hva(core, get_addr_linear(core, syscall_map_gva, V3_SEG_DS), &syscall_map_hva) == 1) {
 		PrintError("Problem translating gva to hva for syscall map\n");
 		return -1;
 	}
 	
-	if (v3_gva_to_hva(core, get_addr_linear(core, ssa_gva, &(core->segments.ds)), &ssa_hva) == 1) {
+	if (v3_gva_to_hva(core, get_addr_linear(core, ssa_gva, V3_SEG_DS), &ssa_hva) == 1) {
 		PrintError("Problem translating gva to hva for syscall map\n");
 		return -1;
 	}
