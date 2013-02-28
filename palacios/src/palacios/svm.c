@@ -102,6 +102,9 @@ static int v3_svm_handle_efer_write(struct guest_info * core, uint_t msr, struct
 	hw_efer->svme = 1;
     }
 
+    core->segments.es.base = 0;
+    core->segments.es.limit = 0xffffffff;
+
     return 0;
 }
 
