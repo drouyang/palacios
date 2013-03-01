@@ -308,7 +308,7 @@ static int __init v3_init(void) {
     }
 
 
-    /*
+
     if (palacios_proc_dir) {
 	struct proc_dir_entry * entry = NULL;
 
@@ -325,7 +325,7 @@ static int __init v3_init(void) {
 	ERROR("Could not create proc entry\n");
 	goto failure1;
     }
-    */
+
     return 0;
 
  failure1:
