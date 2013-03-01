@@ -290,7 +290,7 @@ buddy_alloc(struct buddy_memzone *zone, unsigned long order)
 	    continue;
 
 	block = list_entry(list->next, struct block, link);
-	list_del(&block->link);
+	list_del(&(block->link));
 
 	mp = block->mp;
 
@@ -345,6 +345,12 @@ buddy_free(
 
     BUG_ON(zone == NULL);
     BUG_ON(order > zone->max_order);
+
+
+    if ((addr & ((1UL << zone->min_order) - 1)) != 0) {
+	ERROR("Attempting to free an invalid memory address (%p)\n", (void *)addr);
+	BUG_ON(1);
+    }
 
 
     /* Fixup requested order to be at least the minimum supported */
