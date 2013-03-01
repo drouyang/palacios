@@ -588,7 +588,7 @@ static void __init_vmx_vmcs(void * arg) {
     vmx_ret = vmcs_clear(vmx_state->vmcs_ptr_phys);
 
     if (vmx_ret != VMX_SUCCESS) {
-        PrintError("VMCLEAR failed\n");
+        PrintError("VMCLEAR failed (vmx_ret = %d)\n", vmx_ret);
         return; 
     }
 
