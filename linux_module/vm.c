@@ -304,7 +304,7 @@ static long v3_vm_ioctl(struct file * filp,
 	    evt.core_id = cmd.core;
 	    evt.cmd = cmd.cmd;
 
-	    INFO("Debugging VM\n");
+	    INFO("Debugging VM (core %d)\n");
 
 	    if (v3_deliver_debug_event(guest->v3_ctx, &evt) == -1) {
 		ERROR("Error could not deliver debug cmd\n");
