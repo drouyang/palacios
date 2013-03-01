@@ -65,13 +65,13 @@ int v3_free_passthrough_pts(struct guest_info * core) {
     switch(mode) {
 	case REAL:
 	case PROTECTED:
-	    delete_page_tables_32((pde32_t *)V3_VAddr((void *)(core->direct_map_pt)));
+	    delete_page_tables_32((pde32_t *)CR3_TO_PDE32_VA(core->direct_map_pt));
 	    break;
 	case PROTECTED_PAE:
 	case LONG:
 	case LONG_32_COMPAT:
 	    // Long mode will only use 32PAE page tables...
-	    delete_page_tables_32pae((pdpe32pae_t *)V3_VAddr((void *)(core->direct_map_pt)));
+	    delete_page_tables_32pae((pdpe32pae_t *)CR3_TO_PDPE32PAE_VA(core->direct_map_pt));
 	    break;
 	default:
 	    PrintError("Unknown CPU Mode\n");
@@ -81,6 +81,32 @@ int v3_free_passthrough_pts(struct guest_info * core) {
 
     return 0;
 }
+
+
+
+int v3_free_nested_pts(struct guest_info * core) {
+    v3_cpu_mode_t mode = v3_get_host_cpu_mode(core);
+
+    // Delete the old direct map page tables
+    switch(mode) {
+	case PROTECTED:
+	    delete_page_tables_32((pde32_t *)CR3_TO_PDE32_VA(core->direct_map_pt));
+	    break;
+	case PROTECTED_PAE:
+	    delete_page_tables_32pae((pdpe32pae_t *)CR3_TO_PDPE32PAE_VA(core->direct_map_pt));
+	    break;
+	case LONG:
+	    delete_page_tables_64((pml4e64_t *)CR3_TO_PML4E64_VA(core->direct_map_pt));
+	    break;
+	default:
+	    PrintError("Unknown CPU Mode\n");
+	    return -1;
+	    break;
+    }
+
+    return 0;
+}
+
 
 
 int v3_reset_passthrough_pts(struct guest_info * core) {

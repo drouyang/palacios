@@ -28,6 +28,7 @@
 
 int v3_init_passthrough_pts(struct guest_info * guest_info);
 int v3_free_passthrough_pts(struct guest_info * core);
+int v3_free_nested_pts(struct guest_info * core);
 
 int v3_reset_passthrough_pts(struct guest_info * guest_info);
 
