@@ -366,12 +366,26 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 	host_dev->hw_dev.iommu_domain = iommu_domain_alloc(&pci_bus_type);
 #endif
 
+	if (host_dev->hw_dev.iommu_domain == NULL) {
+	    printk("IOMMU ERROR: Could not allocate domain\n");
+	    return -1;
+	}
+
+
+	flags = IOMMU_READ | IOMMU_WRITE; // Need to see what IOMMU_CACHE means
+	
+	if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_CACHE_COHERENCY)) {
+	    flags |= IOMMU_CACHE;
+	}
+
+
+
 	while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
 	
 	    printk("Memory region: (GPA=%p), start=%p, end=%p\n", (void *)gpa, (void *)region.start, (void *)region.end);
 
 
-	    flags = IOMMU_READ | IOMMU_WRITE; // Need to see what IOMMU_CACHE means
+	    
 	
 	    /* This version could be wrong */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,38) 
@@ -392,7 +406,6 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 		    printk("Mapping IOMMU region gpa=%p hpa=%p (size=%d)\n", (void *)gpa, (void *)hpa, page_size);
 		    
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,43)
-		    // JRL: Linux Cannot decide whether they want to specify mappings by order or by page size. So now we're back to page size.
 
 		    if (iommu_map(host_dev->hw_dev.iommu_domain, gpa, hpa, 
 				  get_order(page_size), flags)) {
@@ -401,6 +414,8 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 			return -1;
 		    }
 #else 
+		    // JRL: Linux Cannot decide whether they want to specify mappings by order or by page size. So now we're back to page size.
+
 		    if (iommu_map(host_dev->hw_dev.iommu_domain, gpa, hpa, 
 				  page_size, flags)) {
 			printk("ERROR: Could not map sub region (GPA=%p) (HPA=%p) (size=%d)\n", 
