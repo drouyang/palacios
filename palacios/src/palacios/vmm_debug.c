@@ -131,9 +131,12 @@ void v3_print_segments(struct v3_segments * segs) {
 
     for (i = 0; seg_names[i] != NULL; i++) {
 
-	V3_Print("\t%s: Sel=%x, base=%p, limit=%x (long_mode=%d, db=%d)\n", seg_names[i], seg_ptr[i].selector, 
-		   (void *)(addr_t)seg_ptr[i].base, seg_ptr[i].limit,
-		   seg_ptr[i].long_mode, seg_ptr[i].db);
+	V3_Print("\t%s: Sel=%x, base=%p, limit=%x long_mode=%d, db=%d, type=%x )\n", seg_names[i], seg_ptr[i].selector, 
+		 (void *)(addr_t)seg_ptr[i].base, seg_ptr[i].limit,
+		 seg_ptr[i].long_mode, seg_ptr[i].db, seg_ptr[i].type);
+	V3_Print("\t\tSys=%d, dpl=%x, P=%d, avail=%d, gran.=%d, unusable=%d\n", 
+		 seg_ptr[i].system, seg_ptr[i].dpl, seg_ptr[i].present, 
+		 seg_ptr[i].avail, seg_ptr[i].granularity, seg_ptr[i].unusable);
 
     }
 }
@@ -217,6 +220,12 @@ void v3_print_guest_state(struct guest_info * core) {
     addr_t host_addr = 0;
 
 
+    V3_Print("=========================================\n");
+    V3_Print("=========================================\n");
+    V3_Print("Guest state for Core %d\n", core->vcpu_id);
+    V3_Print("=========================================\n");
+
+
     V3_Print("RIP: %p\n", (void *)(addr_t)(core->rip));
     linear_addr = get_addr_linear(core, core->rip, V3_SEG_CS);
     V3_Print("RIP Linear: %p\n", (void *)linear_addr);
@@ -261,10 +270,17 @@ void v3_print_guest_state(struct guest_info * core) {
 
     v3_print_stack(core);
 
-    
 
-    //  v3_print_disassembly(core);
+       //  v3_print_disassembly(core);
+
+
+
+    V3_Print("=========================================\n");
+    V3_Print("FINISHED CORE STATE for CORE %d\n", core->vcpu_id);
+    V3_Print("=========================================\n");
+    V3_Print("=========================================\n");
 }
+
 
 
 #include <palacios/vmcb.h>
@@ -274,6 +290,12 @@ void v3_print_guest_state(struct guest_info * core) {
 #include <palacios/vmm_lowlevel.h>
 void v3_print_arch_state(struct guest_info * core) {
     extern v3_cpu_arch_t v3_mach_type;
+
+
+    V3_Print("=========================================\n");
+    V3_Print("=========================================\n");
+    V3_Print("Arch state for Core %d\n", core->vcpu_id);
+    V3_Print("=========================================\n");
 
     switch (v3_mach_type) {
 #ifdef V3_CONFIG_SVM
@@ -294,13 +316,21 @@ void v3_print_arch_state(struct guest_info * core) {
             return;
     }
 
+    V3_Print("=========================================\n");
+    V3_Print("FINISHED ARCH STATE for CORE %d\n", core->vcpu_id);
+    V3_Print("=========================================\n");
+    V3_Print("=========================================\n");
+
 }
 
 
 void v3_print_guest_state_all(struct v3_vm_info * vm) {
     int i = 0;
 
+    V3_Print("=========================================\n");
     V3_Print("VM Core states for %s\n", vm->name);
+    V3_Print("=========================================\n");
+
 
     for (i = 0; i < 80; i++) {
 	V3_Print("-");
@@ -324,6 +354,12 @@ void v3_print_stack(struct guest_info * core) {
     addr_t host_addr = 0;
     int i = 0;
     v3_cpu_mode_t cpu_mode = v3_get_vm_cpu_mode(core);
+
+
+
+    V3_Print("=========================================\n");
+    V3_Print("Stack Trace for Core %d\n", core->vcpu_id);
+    V3_Print("=========================================\n");
 
     linear_addr = get_addr_linear(core, core->vm_regs.rsp, V3_SEG_SS);
  
@@ -356,6 +392,11 @@ void v3_print_stack(struct guest_info * core) {
 	}
     }
 
+
+    V3_Print("=========================================\n");
+    V3_Print("FINISHED STACK TRACE for CORE %d\n", core->vcpu_id);
+    V3_Print("=========================================\n");
+
 }    
 
 
@@ -365,7 +406,10 @@ void v3_print_backtrace(struct guest_info * core) {
     v3_cpu_mode_t cpu_mode = v3_get_vm_cpu_mode(core);
     struct v3_cfg_file * system_map = v3_cfg_get_file(core->vm_info, "System.map");
 
+    V3_Print("=========================================\n");
+    V3_Print("=========================================\n");
     V3_Print("Performing Backtrace for Core %d\n", core->vcpu_id);
+    V3_Print("=========================================\n");
     V3_Print("\tRSP=%p, RBP=%p\n", (void *)core->vm_regs.rsp, (void *)core->vm_regs.rbp);
 
     gla_rbp = get_addr_linear(core, core->vm_regs.rbp, V3_SEG_SS);
@@ -458,6 +502,11 @@ void v3_print_backtrace(struct guest_info * core) {
 	}
 
     }
+
+    V3_Print("=========================================\n");
+    V3_Print("=========================================\n");
+
+
 }
 
 

@@ -22,13 +22,16 @@
 
 #ifdef __V3VEE__
 
-#ifdef V3_CONFIG_TELEMETRY
+
 
 #include <palacios/vmm_rbtree.h>
+#include <palacios/vmm_hashtable.h>
 #include <palacios/vmm_list.h>
 
 struct guest_info;
 struct v3_vm_info;
+
+#ifdef V3_CONFIG_TELEMETRY
 
 struct v3_telemetry_state {
     uint32_t invoke_cnt;
@@ -47,8 +50,12 @@ struct v3_core_telemetry {
     uint64_t vmm_start_tsc;
 
     struct v3_telemetry_state * vm_telem;
+    
+    struct hashtable * counter_table;
 
 };
+
+
 
 
 void v3_init_telemetry(struct v3_vm_info * vm);
@@ -64,12 +71,28 @@ void v3_print_global_telemetry(struct v3_vm_info * vm);
 void v3_print_telemetry(struct v3_vm_info * vm, struct guest_info * core);
 
 
+void v3_telemetry_inc_core_counter(struct guest_info * core, char * counter_name);
+void v3_telemetry_reset_core_counter(struct guest_info * core, char * counter_name);
+
+void v3_telemetry_inc_vm_counter(struct v3_vm_info * vm, char * counter_name);
+void v3_telemetry_reset_vm_counter(struct v3_vm_info * vm, char * counter_name);
+
+
 void v3_add_telemetry_cb(struct v3_vm_info * vm, 
 			 void (*telemetry_fn)(struct v3_vm_info * vm, void * private_data, char * hdr),
 			 void * private_data);
 
+
+#else
+
+
+static void inline v3_telemetry_inc_core_counter(struct guest_info * core, char * counter_name) {
+    return;
+}
+
 #endif
 
 #endif
+
 
 #endif

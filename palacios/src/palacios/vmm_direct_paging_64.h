@@ -65,7 +65,9 @@ static inline int handle_passthrough_pagefault_64(struct guest_info * core, addr
     if (core->shdw_pg_mode == SHADOW_PAGING) {
 	pml = CR3_TO_PML4E64_VA(core->ctrl_regs.cr3);
     } else {
+
 	pml = CR3_TO_PML4E64_VA(core->direct_map_pt);
+
     }
 
     //Fix up the PML entry
@@ -122,15 +124,18 @@ static inline int handle_passthrough_pagefault_64(struct guest_info * core, addr
 
 		pde2mb[pde_index].page_base_addr = PAGE_BASE_ADDR_2MB(host_addr);
 	    } else {
+		v3_telemetry_inc_core_counter(core, "NPT_UNHANDLED_PAGE_FAULTS");
 		return region->unhandled(core, fault_addr, fault_addr, region, error_code);
 	    }
 	} else {
 	    // We fix all permissions on the first pass, 
 	    // so we only get here if its an unhandled exception
 
+	    v3_telemetry_inc_core_counter(core, "NPT_UNHANDLED_PAGE_FAULTS");
 	    return region->unhandled(core, fault_addr, fault_addr, region, error_code);
 	}
 
+	v3_telemetry_inc_core_counter(core, "NPT_LARGE_PAGE_FAULTS");
 	// All done
 	return 0;
     } 
@@ -170,14 +175,17 @@ static inline int handle_passthrough_pagefault_64(struct guest_info * core, addr
 		return -1;
    	    }
 
+	    v3_telemetry_inc_core_counter(core, "NPT_SMALL_PAGE_FAULTS");
 	    pte[pte_index].page_base_addr = PAGE_BASE_ADDR_4KB(host_addr);
 	} else {
+	    v3_telemetry_inc_core_counter(core, "NPT_UNHANDLED_PAGE_FAULTS");
 	    return region->unhandled(core, fault_addr, fault_addr, region, error_code);
 	}
     } else {
 	// We fix all permissions on the first pass, 
 	// so we only get here if its an unhandled exception
 
+	v3_telemetry_inc_core_counter(core, "NPT_UNHANDLED_PAGE_FAULTS");
 	return region->unhandled(core, fault_addr, fault_addr, region, error_code);
     }
 

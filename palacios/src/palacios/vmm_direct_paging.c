@@ -23,7 +23,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vm_guest.h>
-
+#include <palacios/vmm_telemetry.h>
 
 #ifndef V3_CONFIG_DEBUG_NESTED_PAGING
 #undef PrintDebug
@@ -52,8 +52,8 @@ static addr_t create_generic_pt_page() {
 #include "vmm_direct_paging_32pae.h"
 #include "vmm_direct_paging_64.h"
 
-int v3_init_passthrough_pts(struct guest_info * info) {
-    info->direct_map_pt = (addr_t)V3_PAddr((void *)create_generic_pt_page());
+int v3_init_passthrough_pts(struct guest_info * core) {
+    core->direct_map_pt = (addr_t)V3_PAddr((void *)create_generic_pt_page());
     return 0;
 }
 

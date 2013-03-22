@@ -512,6 +512,8 @@ int main(int argc, char* argv[]) {
 	if (FD_ISSET(STDIN_FILENO, &rset)) {
 	    int key = getch();
 
+
+
 	    if (key == 27) { // ESC
 		int key2 = getch();
 
@@ -537,38 +539,50 @@ int main(int argc, char* argv[]) {
 		    sc = 0x1d | 0x80;   // left ctrl up
 		    writeit(cons_fd,sc); 
 		}
+		
 
-#if 0
-	  } else if (key = 258) { // LEFT ARROW
+
+	  } else if (key == KEY_LEFT) { // LEFT ARROW
 		unsigned char sc = 0;
-		fprintf(stderr, "LEFT ARROW\n");
-		sc = 0xe0;
-		writeit(cons_fd, sc);
+		//	sc = 0xe0;
+		//writeit(cons_fd, sc);
 		sc = 0x4B;
 		writeit(cons_fd, sc);
 		sc = 0x4B | 0x80;;
 		writeit(cons_fd, sc);
-		sc = 0xe0 | 0x80;
-		writeit(cons_fd, sc);
-	    } else if (key == 259) { // RIGHT ARROW
+		//sc = 0xe0 | 0x80;
+		//writeit(cons_fd, sc);
+	    } else if (key == KEY_RIGHT) { // RIGHT ARROW
 		unsigned char sc = 0;
-		sc = 0x6D;
+		//sc = 0xe0;
+		//writeit(cons_fd, sc);
+		sc = 0x4D;
 		writeit(cons_fd, sc);
-		sc |= 0x80;
+		sc = 0x4d | 0x80;
 		writeit(cons_fd, sc);
-	    } else if (key == 260) { // UP ARROW
+		//sc = 0xe0 | 0x80;
+		//writeit(cons_fd, sc);
+	    } else if (key == KEY_UP) { // UP ARROW
 		unsigned char sc = 0;
-		sc = 0x68;
+		//sc = 0xe0;
+		//writeit(cons_fd, sc);
+		sc = 0x48;
 		writeit(cons_fd, sc);
-		sc |= 0x80;
+		sc = 0x48 | 0x80;
 		writeit(cons_fd, sc);
-	    } else if (key == 261) { // DOWN ARROW
+		//sc = 0xe0 | 0x80;
+		//writeit(cons_fd, sc);
+	    } else if (key == KEY_DOWN) { // DOWN ARROW
 		unsigned char sc = 0;
-		sc = 0x70;
+		//	sc = 0xe0;
+		//writeit(cons_fd, sc);
+		sc = 0x50;
 		writeit(cons_fd, sc);
-		sc |= 0x80;
+		sc = 0x50 | 0x80;
 		writeit(cons_fd, sc);
-#endif
+		//sc = 0xe0 | 0x80;
+		//writeit(cons_fd, sc);
+
 
             } else {
 		if (send_char_to_palacios_as_scancodes(cons_fd,key)) {

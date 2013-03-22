@@ -23,7 +23,7 @@
 
 
 
-void v3_set_vmcb_segment(struct vmcb_selector * vmcb_seg, struct v3_segment * seg) {
+void v3_set_vmcb_segment(struct vmcb_selector * vmcb_seg, struct v3_segment * seg, v3_seg_type_t seg_type) {
     vmcb_seg->selector = seg->selector;
     vmcb_seg->limit = seg->limit;
     vmcb_seg->base = seg->base;
@@ -35,10 +35,13 @@ void v3_set_vmcb_segment(struct vmcb_selector * vmcb_seg, struct v3_segment * se
     vmcb_seg->attrib.fields.L = seg->long_mode;
     vmcb_seg->attrib.fields.db = seg->db;
     vmcb_seg->attrib.fields.G = seg->granularity;
+
+
+
 }
 
 
-void v3_get_vmcb_segment(struct vmcb_selector * vmcb_seg, struct v3_segment * seg) {
+void v3_get_vmcb_segment(struct vmcb_selector * vmcb_seg, struct v3_segment * seg, v3_seg_type_t seg_type) {
     seg->selector = vmcb_seg->selector;
     seg->limit = vmcb_seg->limit;
     seg->base = vmcb_seg->base;
@@ -50,38 +53,52 @@ void v3_get_vmcb_segment(struct vmcb_selector * vmcb_seg, struct v3_segment * se
     seg->long_mode = vmcb_seg->attrib.fields.L;
     seg->db = vmcb_seg->attrib.fields.db;
     seg->granularity = vmcb_seg->attrib.fields.G;
+
+
+    if ((seg_type == V3_SEG_DS) || (seg_type == V3_SEG_ES)) {
+	/* Make sure the Segment accessed bit is always set. */
+	if (seg->present) {
+	    seg->type |= 0x1;
+	} else {
+	    // Clear the descriptor cache due to AMD weirdness...
+	    seg->base = 0;
+	    seg->limit = 0xffffffff;
+	}
+    }
+
 }
+
 
 
 void v3_set_vmcb_segments(vmcb_t * vmcb, struct v3_segments * segs) {
     vmcb_saved_state_t * guest_area = GET_VMCB_SAVE_STATE_AREA(vmcb);
 
-    v3_set_vmcb_segment(&(guest_area->cs), &(segs->cs));
-    v3_set_vmcb_segment(&(guest_area->ds), &(segs->ds));
-    v3_set_vmcb_segment(&(guest_area->es), &(segs->es));
-    v3_set_vmcb_segment(&(guest_area->fs), &(segs->fs));
-    v3_set_vmcb_segment(&(guest_area->gs), &(segs->gs));
-    v3_set_vmcb_segment(&(guest_area->ss), &(segs->ss));
-    v3_set_vmcb_segment(&(guest_area->ldtr), &(segs->ldtr));
-    v3_set_vmcb_segment(&(guest_area->gdtr), &(segs->gdtr));
-    v3_set_vmcb_segment(&(guest_area->idtr), &(segs->idtr));
-    v3_set_vmcb_segment(&(guest_area->tr), &(segs->tr));
+    v3_set_vmcb_segment(&(guest_area->cs), &(segs->cs), V3_SEG_CS);
+    v3_set_vmcb_segment(&(guest_area->ds), &(segs->ds), V3_SEG_DS);
+    v3_set_vmcb_segment(&(guest_area->es), &(segs->es), V3_SEG_ES);
+    v3_set_vmcb_segment(&(guest_area->fs), &(segs->fs), V3_SEG_FS);
+    v3_set_vmcb_segment(&(guest_area->gs), &(segs->gs), V3_SEG_GS);
+    v3_set_vmcb_segment(&(guest_area->ss), &(segs->ss), V3_SEG_SS);
+    v3_set_vmcb_segment(&(guest_area->ldtr), &(segs->ldtr), V3_SEG_LDTR);
+    v3_set_vmcb_segment(&(guest_area->gdtr), &(segs->gdtr), V3_SEG_GDTR);
+    v3_set_vmcb_segment(&(guest_area->idtr), &(segs->idtr), V3_SEG_IDTR);
+    v3_set_vmcb_segment(&(guest_area->tr), &(segs->tr), V3_SEG_TR);
 }
 
 
 void v3_get_vmcb_segments(vmcb_t * vmcb, struct v3_segments * segs) {
     vmcb_saved_state_t * guest_area = GET_VMCB_SAVE_STATE_AREA(vmcb);
 
-    v3_get_vmcb_segment(&(guest_area->cs), &(segs->cs));
-    v3_get_vmcb_segment(&(guest_area->ds), &(segs->ds));
-    v3_get_vmcb_segment(&(guest_area->es), &(segs->es));
-    v3_get_vmcb_segment(&(guest_area->fs), &(segs->fs));
-    v3_get_vmcb_segment(&(guest_area->gs), &(segs->gs));
-    v3_get_vmcb_segment(&(guest_area->ss), &(segs->ss));
-    v3_get_vmcb_segment(&(guest_area->ldtr), &(segs->ldtr));
-    v3_get_vmcb_segment(&(guest_area->gdtr), &(segs->gdtr));
-    v3_get_vmcb_segment(&(guest_area->idtr), &(segs->idtr));
-    v3_get_vmcb_segment(&(guest_area->tr), &(segs->tr));
+    v3_get_vmcb_segment(&(guest_area->cs), &(segs->cs), V3_SEG_CS);
+    v3_get_vmcb_segment(&(guest_area->ds), &(segs->ds), V3_SEG_DS);
+    v3_get_vmcb_segment(&(guest_area->es), &(segs->es), V3_SEG_ES);
+    v3_get_vmcb_segment(&(guest_area->fs), &(segs->fs), V3_SEG_FS);
+    v3_get_vmcb_segment(&(guest_area->gs), &(segs->gs), V3_SEG_GS);
+    v3_get_vmcb_segment(&(guest_area->ss), &(segs->ss), V3_SEG_SS);
+    v3_get_vmcb_segment(&(guest_area->ldtr), &(segs->ldtr), V3_SEG_LDTR);
+    v3_get_vmcb_segment(&(guest_area->gdtr), &(segs->gdtr), V3_SEG_GDTR);
+    v3_get_vmcb_segment(&(guest_area->idtr), &(segs->idtr), V3_SEG_IDTR);
+    v3_get_vmcb_segment(&(guest_area->tr), &(segs->tr), V3_SEG_TR);
 }
 
 

@@ -182,6 +182,9 @@ struct hashtable_iter {
 
 struct hashtable_iter * v3_create_htable_iter(struct hashtable * htable);
 
+void v3_free_htable_iter(struct hashtable_iter * iter);
+
+
 /* - return the value of the (key,value) pair at the current position */
 //extern inline 
 addr_t v3_htable_get_iter_key(struct hashtable_iter * iter);
@@ -216,7 +219,6 @@ int v3_htable_iter_remove(struct hashtable_iter * iter, int free_key);
  *          matching the supplied key.
  *          returns zero if not found. */
 int v3_htable_iter_search(struct hashtable_iter * iter, struct hashtable * htable, addr_t key);
-
 
 
 

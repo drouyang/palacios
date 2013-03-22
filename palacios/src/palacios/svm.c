@@ -642,6 +642,11 @@ int v3_svm_enter(struct guest_info * info) {
 	rdtscll(exit_tsc);
 
 	guest_cycles = exit_tsc - entry_tsc;
+
+	info->time_state.time_in_guest += guest_cycles;
+	info->time_state.time_in_host += ((exit_tsc - info->time_state.tsc_at_last_exit) - guest_cycles);
+	info->time_state.tsc_at_last_entry = entry_tsc;
+	info->time_state.tsc_at_last_exit = exit_tsc;
     }
 
 
