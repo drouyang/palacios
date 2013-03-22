@@ -607,6 +607,11 @@ struct hashtable_iter * v3_create_htable_iter(struct hashtable * htable) {
 }
 
 
+void v3_free_htable_iter(struct hashtable_iter * iter) {
+    V3_Free(iter);
+}
+
+
 addr_t v3_htable_get_iter_key(struct hashtable_iter * iter) {
     return iter->entry->key; 
 }
