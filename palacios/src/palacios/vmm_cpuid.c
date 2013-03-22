@@ -67,6 +67,15 @@ void v3_init_cpuid_map(struct v3_vm_info * vm) {
     // disable ARAT
     v3_cpuid_add_fields(vm, 0x00000006, (1 << 2), 0, 0, 0, 0, 0, 0, 0);
 
+    // disable MCA MSRs
+    v3_cpuid_add_fields(vm, 0x00000001, 0, 0, 0, 0, 0, 0, (1 << 14), 0);
+    v3_cpuid_add_fields(vm, 0x80000001, 0, 0, 0, 0, 0, 0, (1 << 14), 0);
+
+    // disable MCE
+    v3_cpuid_add_fields(vm, 0x00000001, 0, 0, 0, 0, 0, 0, (1 << 7), 0);
+    v3_cpuid_add_fields(vm, 0x80000001, 0, 0, 0, 0, 0, 0, (1 << 7), 0);
+
+
 }
 
 
