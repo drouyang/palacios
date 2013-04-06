@@ -382,9 +382,6 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 	    return -1;
 	}
 
-	if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_INTR_REMAP)) {
-	    printk("IOMMU SUPPORTS INTERRUPT REMAPPING\n");
-	}
 
 
 	flags = IOMMU_READ | IOMMU_WRITE; // Need to see what IOMMU_CACHE means
