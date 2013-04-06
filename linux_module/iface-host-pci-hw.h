@@ -133,7 +133,6 @@ static int setup_hw_pci_dev(struct host_pci_device * host_dev) {
     }
 
 
-    /* HARDCODED for now but this will need to depend on IOMMU support detection */
     {
 	bool iommu_avail = false;
 
@@ -184,7 +183,7 @@ static irqreturn_t host_pci_intx_irq_handler(int irq, void * priv_data) {
 
 static irqreturn_t host_pci_msi_irq_handler(int irq, void * priv_data) {
     struct host_pci_device * host_dev = priv_data;
-    //    printk("Host PCI MSI IRQ Handler (%d)\n", irq);
+    // printk(KERN_ERR "Host PCI MSI IRQ Handler (%d)\n", irq);
 
     V3_host_pci_raise_irq(&(host_dev->v3_dev), 0);
 
@@ -250,21 +249,33 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 
 	    break;
 	case HOST_PCI_CMD_MSI_ENABLE:
-	    printk("Passthrough PCI device Enabling MSI\n");
+
+	    printk(KERN_ERR "Passthrough PCI device Enabling MSI\n");
+
+
 	    
 	    if (!dev->msi_enabled) {
-		pci_enable_msi(dev);
 
-		if (request_irq(dev->irq, host_pci_msi_irq_handler, 
-				0, "V3Vee_host_PCI_MSI", (void *)host_dev)) {
-		    printk("Error Requesting IRQ %d for Passthrough MSI IRQ\n", dev->irq);
+		printk("Enabling MSI\n");
+
+		if (pci_enable_msi(dev) != 0) {
+		    printk(KERN_ERR "Error enabling MSI for host device %s\n", host_dev->name);
+		    return -1;
 		}
 	    }
 
+	    printk(KERN_ERR "MSI Has been Enabled\n");
+
+	    if (request_irq(dev->irq, host_pci_msi_irq_handler, 
+			    0, "V3Vee_host_PCI_MSI", (void *)host_dev)) {
+		printk("Error Requesting IRQ %d for Passthrough MSI IRQ\n", dev->irq);
+		pci_disable_msi(dev);
+		return -1;
+	    }
+
+	    printk(KERN_ERR "IRQ requested\n");
+
 	    break;
-
-
-
 	case HOST_PCI_CMD_MSIX_ENABLE: {
 	    int i = 0;
 	    
@@ -378,11 +389,12 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
 	flags = IOMMU_READ | IOMMU_WRITE; // Need to see what IOMMU_CACHE means
 	
+	/* Disable this for now, because it causes Intel DMAR faults for invalid bits set in PTE
 	if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_CACHE_COHERENCY)) {
 	    printk("IOMMU SUPPORTS CACHE COHERENCY FOR DMA REMAPPING\n");
 	    flags |= IOMMU_CACHE;
 	}
-
+	*/
 
 
 	while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
@@ -403,13 +415,17 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 		u32 page_size = 512 * 4096; // assume large 64bit pages (2MB)
 		u64 hpa = region.start;
 		
+
+		printk("Memory region: GPA=%p, HPA=%p, size=%p\n", (void *)gpa, (void *)hpa, (void *)size);
+
+
 		do {
 		    if (size < page_size) {
 			page_size = 4096; // less than a 2MB granularity, so we switch to small pages (4KB)
 		    }
-		    
-		    printk("Mapping IOMMU region gpa=%p hpa=%p (size=%d)\n", (void *)gpa, (void *)hpa, page_size);
-		    
+
+		    //  printk("Mapping IOMMU region gpa=%p hpa=%p (size=%d)\n", (void *)gpa, (void *)hpa, page_size);
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,43)
 
 		    if (iommu_map(host_dev->hw_dev.iommu_domain, gpa, hpa, 
@@ -433,13 +449,17 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 		    gpa += page_size;
 		    
 		    size -= page_size;
-		} while (size);
+		} while (size > 0);
 	    }
 #endif
 	    
 
 	}
 
+
+	if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_INTR_REMAP)) {
+	    printk("IOMMU SUPPORTS INTERRUPT REMAPPING\n");
+	}
 
 
 	if (iommu_attach_device(host_dev->hw_dev.iommu_domain, &(dev->dev))) {
@@ -453,12 +473,17 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
     }
 
 
+
+    /* Currently broken because PIIX4 support is not yet working
+
     printk("Requesting Threaded IRQ handler for IRQ %d\n", dev->irq);
-    // setup regular IRQs until advanced IRQ mechanisms are enabled
+
+    //    setup regular IRQs until advanced IRQ mechanisms are enabled
     if (request_threaded_irq(dev->irq, NULL, host_pci_intx_irq_handler, 
 			     IRQF_ONESHOT, "V3Vee_Host_PCI_INTx", (void *)host_dev)) {
 	printk("ERROR Could not assign IRQ to host PCI device (%s)\n", host_dev->name);
     }
+    */
 
 
 
