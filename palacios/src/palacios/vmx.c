@@ -60,33 +60,6 @@ static addr_t host_vmcs_ptrs[V3_CONFIG_MAX_CPUS] = { [0 ... V3_CONFIG_MAX_CPUS -
 extern int v3_vmx_launch(struct v3_gprs * vm_regs, struct guest_info * info, struct v3_ctrl_regs * ctrl_regs);
 extern int v3_vmx_resume(struct v3_gprs * vm_regs, struct guest_info * info, struct v3_ctrl_regs * ctrl_regs);
 
-static int inline check_vmcs_write(vmcs_field_t field, addr_t val) {
-    int ret = 0;
-
-    ret = vmcs_write(field, val);
-
-    if (ret != VMX_SUCCESS) {
-        PrintError("VMWRITE error on %s!: %d\n", v3_vmcs_field_to_str(field), ret);
-        return 1;
-    }
-
-
-    
-
-    return 0;
-}
-
-static int inline check_vmcs_read(vmcs_field_t field, void * val) {
-    int ret = 0;
-
-    ret = vmcs_read(field, val);
-
-    if (ret != VMX_SUCCESS) {
-        PrintError("VMREAD error on %s!: %d\n", v3_vmcs_field_to_str(field), ret);
-    }
-
-    return ret;
-}
 
 
 
@@ -242,6 +215,8 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 
     /* Temporary GPF trap */
     //  vmx_state->excp_bmap.gp = 1;
+
+    //vmx_state->excp_bmap.ud = 1;
 
     // Setup Guests initial PAT field
     vmx_ret |= check_vmcs_write(VMCS_GUEST_PAT, 0x0007040600070406LL);
@@ -507,9 +482,11 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 
     }    
 
+
+    /* Initialize FPU context. This is hacky and not well documented.... */
+    v3_fpu_init(core);
+
     /* Sanity check ctrl/reg fields against hw_defaults */
-
-
 
 
     /*** Write all the info to the VMCS ***/
@@ -975,6 +952,9 @@ int v3_vmx_enter(struct guest_info * info) {
 	vmx_info->state = VMX_UNLAUNCHED;
     }
 
+    // Update FPU state, this must come before the guest state is serialized back to the VMCS
+    v3_fpu_on_entry(info);
+
     v3_vmx_restore_vmcs(info);
 
 
@@ -986,21 +966,25 @@ int v3_vmx_enter(struct guest_info * info) {
     update_irq_entry_state(info);
 #endif
 
+    /*
     {
 	addr_t guest_cr3;
 	vmcs_read(VMCS_GUEST_CR3, &guest_cr3);
 	vmcs_write(VMCS_GUEST_CR3, guest_cr3);
     }
-
+    */
 
     // Perform last-minute time setup prior to entering the VM
     v3_vmx_config_tsc_virtualization(info);
+
+
 
     if (v3_update_vmcs_host_state(info)) {
 	v3_enable_ints();
         PrintError("Could not write host state\n");
         return -1;
     }
+
     
     if (vmx_info->pin_ctrls.active_preempt_timer) {
 	/* Preemption timer is active */

@@ -40,6 +40,7 @@
 #include <palacios/vmm_barrier.h>
 #include <palacios/vmm_timeout.h>
 #include <palacios/vmm_fw_cfg.h>
+#include <palacios/vmm_fpu.h>
 
 
 #ifdef V3_CONFIG_TELEMETRY
@@ -101,6 +102,7 @@ struct guest_info {
     struct v3_dbg_regs dbg_regs;
     struct v3_segments segments;
     struct v3_msrs     msrs;
+    struct v3_fpu_state fpu_state;
 
 
     void * vmm_data;

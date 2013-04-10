@@ -486,7 +486,7 @@ int v3_stop_vm(struct v3_vm_info * vm) {
  	    break;
 	}
 
-	v3_yield(NULL,-1);
+	v3_yield(NULL, -1);
     }
     
     V3_Print("VM stopped. Returning\n");
@@ -534,7 +534,7 @@ static int sim_callback(struct guest_info * core, void * private_data) {
     V3_Print("Simulation callback activated (guest_rip=%p)\n", (void *)core->rip);
 
     while (v3_bitmap_check(timeout_map, core->vcpu_id) == 1) {
-	v3_yield(NULL,-1);
+	v3_yield(NULL, -1);
     }
 
     return 0;
@@ -605,7 +605,7 @@ int v3_simulate_vm(struct v3_vm_info * vm, unsigned int msecs) {
 	    break;
 	}
 
-	v3_yield(NULL,-1);
+	v3_yield(NULL, -1);
     }
 
 
@@ -715,11 +715,16 @@ void v3_yield_cond(struct guest_info * info, int usec) {
 	//           (void *)cur_cycle, (void *)info->yield_start_cycle, 
 	//	   (void *)info->yield_cycle_period);
 	
+
+	v3_fpu_deactivate(info);
+
 	if (usec < 0) { 
 	    V3_Yield();
 	} else {
 	    V3_Sleep(usec);
 	}
+
+	//	v3_fpu_load(info);
 
         info->yield_start_cycle +=  info->vm_info->yield_cycle_period;
     }
@@ -735,6 +740,11 @@ void v3_yield_cond(struct guest_info * info, int usec) {
  * usec >=0 => the timed yield is used, which also usually implies interruptible
  */ 
 void v3_yield(struct guest_info * info, int usec) {
+    
+    if (info) {
+	v3_fpu_deactivate(info);
+    }
+
     if (usec < 0) { 
 	V3_Yield();
     } else {
@@ -742,6 +752,7 @@ void v3_yield(struct guest_info * info, int usec) {
     }
 
     if (info) {
+	//	v3_fpu_load(info);
         info->yield_start_cycle +=  info->vm_info->yield_cycle_period;
     }
 }

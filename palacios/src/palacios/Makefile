@@ -10,6 +10,7 @@ obj-y := \
 	vmm_direct_paging.o \
 	vmm_emulator.o \
 	vmm_excp.o \
+	vmm_fpu.o \
 	vmm_halt.o \
 	vmm_mwait.o \
 	vmm_hashtable.o \
