@@ -284,6 +284,7 @@ struct key_code {
     unsigned char capital;
 };
 
+
 static const struct key_code ascii_to_key_code[] = {             // ASCII Value Serves as Index
     NO_KEY,         NO_KEY,         NO_KEY,         NO_KEY,      // 0x00 - 0x03
     NO_KEY,         NO_KEY,         NO_KEY,         { 0x0E, 0 }, // 0x04 - 0x07
@@ -509,25 +510,80 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (FD_ISSET(STDIN_FILENO, &rset)) {
-	    unsigned char key = getch();
+	    int key = getch();
 
-	    if (key == '\\') { // ESC
-		break;
-	    } else if (key == '`') {
-		unsigned char sc = 0x44; // F10
-		writeit(cons_fd,sc);
-		sc |= 0x80;
-		writeit(cons_fd,sc);
-            } else if (key == '~') {  // CTRL-C 
-                unsigned char sc;
-                sc = 0x1d;  // left ctrl down
-                writeit(cons_fd,sc);
-                sc = 0x2e; // c down
-		writeit(cons_fd,sc);
-		sc = 0x2e | 0x80;   // c up
-                writeit(cons_fd,sc);
-                sc = 0x1d | 0x80;   // left ctrl up
-                writeit(cons_fd,sc);
+
+
+	    if (key == 27) { // ESC
+		int key2 = getch();
+
+		if (key2 == '`') {
+		    break;
+		} else if (key2 == 27) {
+		    unsigned char sc = 0;
+		    sc = 0x01;
+		    writeit(cons_fd, sc);
+		    sc |= 0x80;
+		    writeit(cons_fd, sc);
+		} else {
+		    unsigned char sc = 0;
+
+		    sc = 0x1d;  // left ctrl down
+		    writeit(cons_fd,sc);
+
+		    if (send_char_to_palacios_as_scancodes(cons_fd, key2)) {
+			printf("Error sending key to console\n");
+			return -1;
+		    }
+
+		    sc = 0x1d | 0x80;   // left ctrl up
+		    writeit(cons_fd,sc); 
+		}
+		
+
+
+	  } else if (key == KEY_LEFT) { // LEFT ARROW
+		unsigned char sc = 0;
+		//	sc = 0xe0;
+		//writeit(cons_fd, sc);
+		sc = 0x4B;
+		writeit(cons_fd, sc);
+		sc = 0x4B | 0x80;;
+		writeit(cons_fd, sc);
+		//sc = 0xe0 | 0x80;
+		//writeit(cons_fd, sc);
+	    } else if (key == KEY_RIGHT) { // RIGHT ARROW
+		unsigned char sc = 0;
+		//sc = 0xe0;
+		//writeit(cons_fd, sc);
+		sc = 0x4D;
+		writeit(cons_fd, sc);
+		sc = 0x4d | 0x80;
+		writeit(cons_fd, sc);
+		//sc = 0xe0 | 0x80;
+		//writeit(cons_fd, sc);
+	    } else if (key == KEY_UP) { // UP ARROW
+		unsigned char sc = 0;
+		//sc = 0xe0;
+		//writeit(cons_fd, sc);
+		sc = 0x48;
+		writeit(cons_fd, sc);
+		sc = 0x48 | 0x80;
+		writeit(cons_fd, sc);
+		//sc = 0xe0 | 0x80;
+		//writeit(cons_fd, sc);
+	    } else if (key == KEY_DOWN) { // DOWN ARROW
+		unsigned char sc = 0;
+		//	sc = 0xe0;
+		//writeit(cons_fd, sc);
+		sc = 0x50;
+		writeit(cons_fd, sc);
+		sc = 0x50 | 0x80;
+		writeit(cons_fd, sc);
+		//sc = 0xe0 | 0x80;
+		//writeit(cons_fd, sc);
+
+
             } else {
 		if (send_char_to_palacios_as_scancodes(cons_fd,key)) {
 		    printf("Error sending key to console\n");

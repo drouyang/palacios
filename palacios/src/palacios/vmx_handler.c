@@ -35,6 +35,9 @@
 #include <palacios/vmm_mwait.h>
 #include <palacios/vmx_ept.h>
 
+#include <palacios/vmm_decoder.h>
+#include <palacios/vm_guest_mem.h>
+
 
 #ifndef V3_CONFIG_DEBUG_VMX
 #undef PrintDebug
@@ -108,6 +111,44 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
                 }
 	    } else if ((uint8_t)exit_info->int_info == 2) {
 		// NMI. Don't do anything
+	    } else if ((uint8_t)exit_info->int_info == 6) {
+		V3_Print("Invalid OPCODE Exception\n");
+		{
+		    addr_t linear_addr = 0;
+		    addr_t host_addr = 0;
+
+		    v3_print_guest_state(info);
+
+		    V3_Print("VMX core %u\n", info->vcpu_id); 
+		
+		    linear_addr = get_addr_linear(info, info->rip, V3_SEG_CS);
+		
+		    if (info->mem_mode == PHYSICAL_MEM) {
+			v3_gpa_to_hva(info, linear_addr, &host_addr);
+		    } else if (info->mem_mode == VIRTUAL_MEM) {
+			v3_gva_to_hva(info, linear_addr, &host_addr);
+		    }
+		
+		    V3_Print("VMX core %u: Host Address of rip = 0x%p\n", info->vcpu_id, (void *)host_addr);
+		
+		    V3_Print("VMX core %u: Instr (15 bytes) at %p:\n", info->vcpu_id, (void *)host_addr);
+		    v3_dump_mem((uint8_t *)host_addr, 15);
+		
+		    V3_Print("Stack Trace:\n");
+		    v3_print_stack(info);
+		
+		    V3_Print("Guest Kernel Backtrace\n");
+		    v3_print_backtrace(info);
+		}
+
+
+		v3_raise_exception(info, UD_EXCEPTION);
+
+	    } else if ((uint8_t)exit_info->int_info == 7) {
+		/* FPU accessed. */
+
+		v3_fpu_activate(info);
+	   
             } else {
                 PrintError("Unknown exception: 0x%x\n", (uint8_t)exit_info->int_info);
                 v3_print_GPRs(info);
@@ -297,6 +338,12 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 	    // This just forces an exit and is handled outside the switch
 	    break;
 	    
+	case VMX_EXIT_XSETBV:
+	    V3_Print("XSETBV\n");
+	    
+	    v3_fpu_handle_xsetbv(info);
+
+	    break;
         default:
             PrintError("Unhandled VMX_EXIT: %s (%u), %lu (0x%lx)\n", 
 		       v3_vmx_exit_code_to_str(basic_info->reason),

@@ -58,7 +58,6 @@
 
 
 
-
 static inline int vmcs_clear(addr_t vmcs_ptr) {
     uint64_t vmcs_ptr_64 __attribute__ ((aligned(8))) = (uint64_t)vmcs_ptr;
     uint8_t ret_valid = 0;
@@ -163,6 +162,39 @@ static inline int vmcs_write(vmcs_field_t vmcs_field, addr_t value) {
 
     return VMX_SUCCESS;
 }
+
+
+
+
+static int inline check_vmcs_write(vmcs_field_t field, addr_t val) {
+    int ret = 0;
+
+    ret = vmcs_write(field, val);
+
+    if (ret != VMX_SUCCESS) {
+        PrintError("VMWRITE error on %s!: %d\n", v3_vmcs_field_to_str(field), ret);
+        return 1;
+    }
+
+
+    
+
+    return 0;
+}
+
+static int inline check_vmcs_read(vmcs_field_t field, void * val) {
+    int ret = 0;
+
+    ret = vmcs_read(field, val);
+
+    if (ret != VMX_SUCCESS) {
+        PrintError("VMREAD error on %s!: %d\n", v3_vmcs_field_to_str(field), ret);
+    }
+
+    return ret;
+}
+
+
 
 
 static inline int vmx_on(addr_t vmxon_ptr) {

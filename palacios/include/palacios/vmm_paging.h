@@ -28,67 +28,6 @@
 #include <palacios/vmm_util.h>
 
 
-/*
-
-In the following, when we say "page table", we mean the whole 2 or 4 layer
-page table (PDEs, PTEs), etc.
-
-
-guest-visible paging state
-This is the state that the guest thinks the machine is using
-It consists of
-- guest physical memory
-The physical memory addresses the guest is allowed to use
-(see shadow page maps, below)
-- guest page tables 
-(we care about when the current one changes)
-- guest paging registers (these are never written to hardware)
-CR0
-CR3
-
-
-shadow paging state
-This the state that the machine will actually use when the guest
-is running.  It consists of:
-- current shadow page table
-This is the page table actually useed when the guest is running.
-It is changed/regenerated when the guest page table changes
-It mostly reflects the guest page table, except that it restricts 
-physical addresses to those the VMM allocates to the guest.
-- shadow page maps
-This is a mapping from guest physical memory addresses to
-the current location of the guest physical memory content.   
-It maps from regions of physical memory addresses to regions 
-located in physical memory or elsewhere.  
-(8192,16384) -> MEM(8912,...)
-(0,8191) -> DISK(65536,..) 
-- guest paging registers (these are written to guest state)
-CR0
-CR3
-
-host paging state
-This is the state we expect to be operative when the VMM is running.
-Typically, this is set up by the host os into which we have embedded
-the VMM, but we include the description here for clarity.
-- current page table
-This is the page table we use when we are executing in 
-the VMM (or the host os)
-- paging regisers
-CR0
-CR3
-
-
-The reason why the shadow paging state and the host paging state are
-distinct is to permit the guest to use any virtual address it wants,
-irrespective of the addresses the VMM or the host os use.  These guest
-virtual addresses are reflected in the shadow paging state.  When we
-exit from the guest, we switch to the host paging state so that any
-virtual addresses that overlap between the guest and VMM/host now map
-to the physical addresses epxected by the VMM/host.  On AMD SVM, this
-switch is done by the hardware.  On Intel VT, the switch is done
-by the hardware as well, but we are responsible for manually updating
-the host state in the vmcs before entering the guest.
-*/
 
 
 

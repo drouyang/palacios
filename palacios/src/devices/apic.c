@@ -909,12 +909,6 @@ static struct apic_state * find_physical_apic(struct apic_dev_state * apic_dev, 
 
     flags = v3_lock_irqsave(apic_dev->state_lock);
 
-    if ( (dst_idx > 0) && (dst_idx < apic_dev->num_apics) ) { 
-	// see if it simply is the core id
-	if (apic_dev->apics[dst_idx].lapic_id.apic_id == dst_idx) { 
-	     dst_apic = &(apic_dev->apics[dst_idx]);
-	}
-    }
 
     for (i = 0; i < apic_dev->num_apics; i++) { 
 	if (apic_dev->apics[i].lapic_id.apic_id == dst_idx) { 
@@ -1526,6 +1520,7 @@ static int apic_write(struct guest_info * core, addr_t guest_addr, void * src, u
 
 	    // Action Registers
 	case EOI_OFFSET:
+	    v3_telemetry_inc_core_counter(core, "APIC_EOI");
 	    // do eoi 
 	    apic_do_eoi(core, apic);
 	    break;
@@ -1547,6 +1542,9 @@ static int apic_write(struct guest_info * core, addr_t guest_addr, void * src, u
 	    tmp_ipi.ack = NULL;
 	    tmp_ipi.private_data = NULL;
 	    
+
+	    v3_telemetry_inc_core_counter(core, "APIC_XMIT_IPI");
+
 
 	    //	    V3_Print("apic %u: core %u: sending cmd 0x%llx to apic %u\n", 
 	    //       apic->lapic_id.val, core->vcpu_id,
@@ -1671,6 +1669,8 @@ static void apic_inject_timer_intr(struct guest_info *core,
     PrintDebug("apic %u: core %u: Raising APIC Timer interrupt (periodic=%d) (icnt=%d)\n",
 	       apic->lapic_id.val, core->vcpu_id,
 	       apic->tmr_vec_tbl.tmr_mode, apic->tmr_init_cnt);
+
+    v3_telemetry_inc_core_counter(core, "APIC_TIMER_INJECTION");
 
     if (apic_intr_pending(core, priv_data)) {
         PrintDebug("apic %u: core %u: Overriding pending IRQ %d\n", 

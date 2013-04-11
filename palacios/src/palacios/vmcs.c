@@ -30,32 +30,6 @@
 
 
 
-static int inline check_vmcs_write(vmcs_field_t field, addr_t val) {
-    int ret = 0;
-    ret = vmcs_write(field, val);
-
-    if (ret != VMX_SUCCESS) {
-        PrintError("VMWRITE error on %s!: %d\n", v3_vmcs_field_to_str(field), ret);
-        return 1;
-    }
-
-    return 0;
-}
-
-static int inline check_vmcs_read(vmcs_field_t field, void * val) {
-    int ret = 0;
-    ret = vmcs_read(field, val);
-
-    if (ret != VMX_SUCCESS) {
-        PrintError("VMREAD error on %s!: %d\n", v3_vmcs_field_to_str(field), ret);
-    }
-
-    return ret;
-}
-
-
-
-
 
 
 

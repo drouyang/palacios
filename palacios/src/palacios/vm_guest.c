@@ -447,9 +447,12 @@ int v3_free_core(struct guest_info * core) {
 
     if (core->shdw_pg_mode == SHADOW_PAGING) {
 	v3_deinit_shdw_pg_state(core);
+	v3_free_passthrough_pts(core);
+    } else if (core->shdw_pg_mode == NESTED_PAGING) {
+	v3_free_nested_pts(core);
     }
 
-    v3_free_passthrough_pts(core);
+
 
 #ifdef V3_CONFIG_TELEMETRY
     v3_deinit_core_telemetry(core);

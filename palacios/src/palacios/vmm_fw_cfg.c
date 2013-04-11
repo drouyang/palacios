@@ -11,7 +11,9 @@
  * All rights reserved.
  *
  * Author: Alexander Kudryavtsev <alexk@ispras.ru>
- * Based on QEMU implementation.
+ *         Adapted from QEMU implementation.
+ * Author: Jack Lange <jacklange@cs.pitt.edu>
+ *         NUMA modifications
  *
  * This is free software.  You are permitted to use,
  * redistribute, and modify it as specified in the file "V3VEE_LICENSE".
@@ -21,6 +23,7 @@
 #include <palacios/vmm_mem.h>
 #include <palacios/vmm.h>
 #include <palacios/vm_guest.h>
+
 
 #define FW_CFG_CTL_PORT     0x510
 #define FW_CFG_DATA_PORT    0x511
@@ -235,6 +238,8 @@ static struct e820_table * e820_populate(struct v3_vm_info * vm) {
 
 int v3_fw_cfg_init(struct v3_vm_info * vm) {
 
+
+
     struct v3_fw_cfg_state * cfg_state = &(vm->fw_cfg_state);
     int ret = 0;
 
@@ -290,75 +295,123 @@ int v3_fw_cfg_init(struct v3_vm_info * vm) {
                      sizeof(struct hpet_fw_config));
     */
 
-	/*
-    if (vm->num_nodes != 0) {
-        int i, j;
-        uint64_t * numa_fw_cfg = V3_Malloc((1 + vm->num_cores + vm->num_nodes) * 8);
-        uint64_t core_to_node[vm->num_cores];
-
-        memset(numa_fw_cfg, 0, (1 + vm->num_cores + vm->num_nodes) * 8);
-        numa_fw_cfg[0] = vm->num_nodes;
-
-        for (i = 0; i < vm->num_cores; i++) {
-            for (j = 0; j < vm->num_nodes; j++) {
-                if (vm->node_cpumask[j] & (1 << i)) {
-                    core_to_node[i] = j;
-                    break;
-                }
-            }
-        }
-
-        memcpy(numa_fw_cfg + 1, core_to_node, sizeof(core_to_node));
-
-        uint64_t node_mem[vm->num_nodes];
-        memset(node_mem, 0, sizeof(node_mem));
 
 
+    /* NUMA layout */
+    {
+	v3_cfg_tree_t * layout_cfg = v3_cfg_subtree(vm->cfg_data->cfg, "mem_layout");
+	char * num_nodes_str = v3_cfg_val(layout_cfg, "vnodes");
+	int num_nodes = 0;
+	
+	/* locations in fw_cfg NUMA array for each info region. */
+	int node_offset = 0;
+	int core_offset = 1;
+	int mem_offset = 1 + vm->num_cores;
+	
+	if (num_nodes_str) {
+	    num_nodes = atoi(num_nodes_str);
+	}
 
-        struct v3_e820_entry *e, *ep;
-        uint64_t start, end = 0;
-        int node;
+	if (num_nodes > 0) {
+	    uint64_t * numa_fw_cfg = NULL;
+	    int i = 0;
 
-        // Ranges for one node can only be consequent. List is sorted by address.
-        e = list_first_entry(&vm->mem_map.e820_list, struct v3_e820_entry, list);
-        node = e->node;
-        start = e->addr;
+	    // Allocate the global NUMA configuration array
+	    numa_fw_cfg = V3_Malloc((1 + vm->num_cores + num_nodes) * sizeof(uint64_t));
 
-        list_for_each_entry(e, &vm->mem_map.e820_list, list) {
+	    if (numa_fw_cfg == NULL) {
+		PrintError("Could not allocate fw_cfg NUMA config space\n");
+		return -1;
+	    }
 
-            if (e->node != node) {
-                end = e->addr;
-                node_mem[node] = end - start;
-                node = e->node;
-                start = end;
-            }
-            ep = e;
-        }
+	    memset(numa_fw_cfg, 0, (1 + vm->num_cores + num_nodes) * sizeof(uint64_t));
 
-
-
-        node_mem[node] = ep->addr + ep->size - start;
-
-        PrintDebug("Node configuration is:\n");
-
-        for (i = 0; i < vm->num_nodes; i++) {
-            PrintDebug("  Node %d: CPUs: ", i);
-
-            for (j = 0; j < vm->num_cores; ++j) {
-                if (vm->node_cpumask[i] & (1 << j)) {
-                    PrintDebug("%d ", j);
+	    // First 8 bytes is the number of NUMA zones
+	    numa_fw_cfg[node_offset] = num_nodes;
+	    
+	    
+	    // Next region is array of core->node mappings
+	    for (i = 0; i < vm->num_cores; i++) {
+		char * vnode_str = v3_cfg_val(vm->cores[i].core_cfg_data, "vnode");
+		
+		if (vnode_str == NULL) {
+		    // if no cpu was specified then NUMA layout is randomized, and we're screwed...
+		    numa_fw_cfg[core_offset + i] = 0;
+		} else {
+		    numa_fw_cfg[core_offset + i] = (uint64_t)atoi(vnode_str);
 		}
-            }
+	    }
 
-            PrintDebug("Memory: 0x%llx bytes.\n", node_mem[i]);
-            numa_fw_cfg[vm->num_cores + 1 + i] = node_mem[i];
-        }
 
-        fw_cfg_add_bytes(cfg_state, FW_CFG_NUMA, (uint8_t *)numa_fw_cfg,
-                (1 + vm->num_cores + vm->num_nodes) * 8);
+
+	    /* Final region is an array of node->mem_size mappings
+	     * this assumes that memory is assigned to NUMA nodes in consecutive AND contiguous blocks
+	     * NO INTERLEAVING ALLOWED
+	     * e.g. node 0 points to the first x bytes of memory, node 1 points to the next y bytes, etc
+	     *     The array only stores the x,y,... values, indexed by the node ID
+	     *     We should probably fix this, but that will require modifications to SEABIOS
+	     * 
+	     *
+	     * For now we will assume that the xml data is set accordingly, so we will just walk through the mem regions specified there.
+	     *   NOTE: This will overwrite configurations if multiple xml regions are defined for each node
+	     */
+
+	    {
+		v3_cfg_tree_t * region_desc = v3_cfg_subtree(layout_cfg, "region");
+		
+		while (region_desc) {
+		    char * start_addr_str = v3_cfg_val(region_desc, "start_addr");
+		    char * end_addr_str = v3_cfg_val(region_desc, "end_addr");
+		    char * vnode_id_str = v3_cfg_val(region_desc, "vnode");
+		    
+		    addr_t start_addr = 0;
+		    addr_t end_addr = 0;
+		    int vnode_id = 0;
+
+		    if ((!start_addr_str) || (!end_addr_str) || (!vnode_id_str)) {
+			PrintError("Invalid memory layout in configuration\n");
+			V3_Free(numa_fw_cfg);
+			return -1;
+		    }
+		    
+		    start_addr = atox(start_addr_str);
+		    end_addr = atox(end_addr_str);
+		    vnode_id = atoi(vnode_id_str);
+		    
+		    numa_fw_cfg[mem_offset + vnode_id] = end_addr - start_addr;
+
+		    region_desc = v3_cfg_next_branch(region_desc);
+		}
+	    }
+
+
+	    /* Print the NUMA mapping being passed in */
+	    {
+		uint64_t region_start = 0;
+		
+		V3_Print("NUMA CONFIG: (nodes=%llu)\n", numa_fw_cfg[0]);
+	
+		for (i = 0; i < vm->num_cores; i++) {
+		    V3_Print("\tCore %d -> Node %llu\n", i, numa_fw_cfg[core_offset + i]);
+		}
+	
+		for (i = 0; i < num_nodes; i++) {
+		    V3_Print("\tMem (%p - %p) -> Node %d\n", (void *)region_start, 
+			     (void *)numa_fw_cfg[mem_offset + i], i);
+		    
+		    region_start += numa_fw_cfg[mem_offset + i];
+		}
+	    }
+
+
+	    // Register the NUMA cfg array with the FW_CFG interface
+	    fw_cfg_add_bytes(cfg_state, FW_CFG_NUMA, (uint8_t *)numa_fw_cfg,
+			     (1 + vm->num_cores + num_nodes) * sizeof(uint64_t));
+
+	}
     }
 
-*/
+
     return 0;
 }
 

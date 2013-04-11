@@ -26,6 +26,7 @@
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vmm_direct_paging.h>
 #include <palacios/vmm_ctrl_regs.h>
+#include <palacios/vmm_fpu.h>
 
 #ifndef V3_CONFIG_DEBUG_VMX
 #undef PrintDebug
@@ -39,20 +40,27 @@ static int handle_mov_from_cr3(struct guest_info * info, v3_reg_t * cr3_reg);
 
 int v3_vmx_handle_cr0_access(struct guest_info * info, struct vmx_exit_cr_qual * cr_qual, struct vmx_exit_info * exit_info) {
 
-    if (cr_qual->access_type < 2) {
+    if (cr_qual->access_type < 3) {
         v3_reg_t * reg = get_reg_ptr(info, cr_qual);
         
         if (cr_qual->access_type == 0) {
-
+	    // Mov to cr
             if (handle_mov_to_cr0(info, reg, exit_info) != 0) {
                 PrintError("Could not handle CR0 write\n");
                 return -1;
             }
-        } else {
+        } else if (cr_qual->access_type == 1) {
             // Mov from cr
 	    PrintError("Mov From CR0 not handled\n");
 	    return -1;
-        }
+        } else if (cr_qual->access_type == 2) {
+	    // clts
+	    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(info->ctrl_regs.cr0);	    
+	    
+	    guest_cr0->ts = 0;
+	    
+	    v3_fpu_activate(info);
+	}
 
         return 0;
     }

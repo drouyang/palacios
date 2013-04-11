@@ -93,12 +93,16 @@ struct v3_segment {
 
 
 /* These are keyed to the array indices in the v3_segments struct */
-typedef enum {V3_SEG_CS = 0, 
-	      V3_SEG_DS = 1, 
-	      V3_SEG_ES = 2,
-	      V3_SEG_FS = 3,
-	      V3_SEG_GS = 4, 
-	      V3_SEG_SS = 5} v3_seg_type_t;
+typedef enum { V3_SEG_CS   = 0, 
+	       V3_SEG_DS   = 1, 
+	       V3_SEG_ES   = 2,
+	       V3_SEG_FS   = 3,
+	       V3_SEG_GS   = 4, 
+	       V3_SEG_SS   = 5,
+	       V3_SEG_LDTR = 6,
+	       V3_SEG_GDTR = 7,
+	       V3_SEG_IDTR = 8,
+	       V3_SEG_TR   = 9 } v3_seg_type_t;
 
 
 struct v3_segments {

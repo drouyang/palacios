@@ -57,7 +57,7 @@ uintptr_t alloc_palacios_pgs(u64 num_pages, u32 alignment, int node_id) {
 
 
 void free_palacios_pgs(uintptr_t pg_addr, u64 num_pages) {
-    int node_id = numa_addr_to_node(pg_addr);;
+    int node_id = numa_addr_to_node(pg_addr);
 
     //DEBUG("Freeing Memory page %p\n", (void *)pg_addr);
     
@@ -137,7 +137,7 @@ int palacios_init_mm( void ) {
 		return -1;
 	    }
 
-	    seed_addrs[node_id] = page_to_pfn(pgs) << PAGE_SHIFT;	
+	    seed_addrs[node_id] = page_to_pfn(pgs) << PAGE_SHIFT;
 	}
 
 	printk("Allocated seed region on node %d (addr=%p)\n", node_id, (void *)seed_addrs[node_id]);
@@ -175,7 +175,7 @@ int palacios_deinit_mm( void ) {
 
 	if (seed_addrs[i]) {
 	    // free the seed regions
-	    free_pages(seed_addrs[i], MAX_ORDER);
+	    free_pages((uintptr_t)__va(seed_addrs[i]), MAX_ORDER - 1);
 	}
     }
 

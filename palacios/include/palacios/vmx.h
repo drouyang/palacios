@@ -185,12 +185,13 @@ struct tss_descriptor {
 #endif
 } __attribute__((packed));
 
+/*
 struct vmcs_host_state {
     struct v3_segment  gdtr;
     struct v3_segment  idtr;
     struct v3_segment  tr;
 };
-
+*/
 
 struct vmcs_msr_save_area {
     union {
@@ -219,7 +220,7 @@ struct vmcs_msr_save_area {
 struct vmx_data {
     vmx_state_t state;
     vmxassist_state_t assist_state;
-    struct vmcs_host_state host_state;
+    //   struct vmcs_host_state host_state;
 
 
 
