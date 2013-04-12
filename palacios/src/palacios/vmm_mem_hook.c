@@ -357,7 +357,8 @@ int v3_hook_write_mem(struct v3_vm_info * vm, uint16_t core_id,
     hook->read = NULL;
     hook->priv_data = priv_data;
 
-    entry = v3_create_mem_region(vm, core_id, guest_addr_start, guest_addr_end);
+    entry = v3_create_mem_region(vm, core_id, 0,
+				 guest_addr_start, guest_addr_end);
 
     hook->region = entry;
 
@@ -404,7 +405,7 @@ int v3_hook_full_mem(struct v3_vm_info * vm, uint16_t core_id,
     hook->read = read;
     hook->priv_data = priv_data;
 
-    entry = v3_create_mem_region(vm, core_id, guest_addr_start, guest_addr_end);
+    entry = v3_create_mem_region(vm, core_id, 0, guest_addr_start, guest_addr_end);
 
     if (!entry) {
 	PrintError("Cannot create memory region\n");
@@ -457,7 +458,7 @@ int v3_hook_access_mem(struct v3_vm_info * vm, uint16_t core_id,
     hook->access = access;
     hook->priv_data = priv_data;
 
-    entry = v3_create_mem_region(vm, core_id, guest_addr_start, guest_addr_end);
+    entry = v3_create_mem_region(vm, core_id, 0, guest_addr_start, guest_addr_end);
 
     if (!entry) {
 	PrintError("Cannot create memory region\n");

@@ -168,6 +168,7 @@ static int pci_bar_init(int bar_num, uint32_t * dst, void * private_data) {
 	bar_val = PCI_MEM32_BAR_VAL(hbar->addr, hbar->prefetchable);
 
 	v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+			  V3_MEM_FLAGS_READABLE | V3_MEM_FLAGS_WRITABLE | V3_MEM_FLAGS_UNCACHABLE, 
 			  hbar->addr, hbar->addr + hbar->size - 1,
 			  hbar->addr);
 	
@@ -175,6 +176,7 @@ static int pci_bar_init(int bar_num, uint32_t * dst, void * private_data) {
 	bar_val = PCI_MEM24_BAR_VAL(hbar->addr, hbar->prefetchable);
 
 	v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+			  V3_MEM_FLAGS_READABLE | V3_MEM_FLAGS_WRITABLE | V3_MEM_FLAGS_UNCACHABLE, 
 			  hbar->addr, hbar->addr + hbar->size - 1,
 			  hbar->addr);
     } else if (hbar->type == PT_BAR_MEM64_LO) {
@@ -184,6 +186,7 @@ static int pci_bar_init(int bar_num, uint32_t * dst, void * private_data) {
 	bar_val = PCI_MEM64_HI_BAR_VAL(hbar->addr, hbar->prefetchable);
 
 	v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+			  V3_MEM_FLAGS_READABLE | V3_MEM_FLAGS_WRITABLE | V3_MEM_FLAGS_UNCACHABLE, 
 			  hbar->addr, hbar->addr + hbar->size - 1,
 			  hbar->addr);	
     }
@@ -264,6 +267,7 @@ static int pci_bar_write(int bar_num, uint32_t * src, void * private_data) {
 		   (uint32_t)vbar->addr, vbar->size, (uint32_t)vbar->addr + vbar->size, (void *)hbar->addr);
 
 	v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+			  V3_MEM_FLAGS_READABLE | V3_MEM_FLAGS_WRITABLE | V3_MEM_FLAGS_UNCACHABLE, 
 			  vbar->addr, 
 			  vbar->addr + vbar->size - 1,
 			  hbar->addr);
@@ -300,8 +304,9 @@ static int pci_bar_write(int bar_num, uint32_t * src, void * private_data) {
 		   (void *)(addr_t)vbar->addr, (void *)(addr_t)vbar->size, 
 		   (void *)(addr_t)(vbar->addr + vbar->size));
 
-	if (v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, vbar->addr, 
-			      vbar->addr + vbar->size - 1, hbar->addr) == -1) {
+	if (v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+			      V3_MEM_FLAGS_READABLE | V3_MEM_FLAGS_WRITABLE | V3_MEM_FLAGS_UNCACHABLE, 
+			      vbar->addr, vbar->addr + vbar->size - 1, hbar->addr) == -1) {
 
 	    PrintDebug("Fail to insert shadow region (%p, %p)  -> %p\n",
 		       (void *)(addr_t)vbar->addr,
@@ -391,8 +396,9 @@ static int pt_exp_rom_write(struct pci_device * pci_dev, uint32_t * src, void * 
 	PrintDebug("Adding pci Passthrough exp_rom_base remapping: start=0x%x, size=%u, end=0x%x\n", 
 		   (uint32_t)vrom->addr, vrom->size, (uint32_t)vrom->addr + vrom->size);
       
-	if (v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, vrom->addr, 
-			      vrom->addr + vrom->size - 1, hrom->addr) == -1) {
+	if (v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+			      V3_MEM_FLAGS_READABLE | V3_MEM_FLAGS_WRITABLE | V3_MEM_FLAGS_UNCACHABLE | V3_MEM_FLAGS_EXECABLE, 
+			      vrom->addr, vrom->addr + vrom->size - 1, hrom->addr) == -1) {
 	    PrintError("Failed to remap pci exp_rom: start=0x%x, size=%u, end=0x%x\n", 
 		       (uint32_t)vrom->addr, vrom->size, (uint32_t)vrom->addr + vrom->size);
 	    return -1;
