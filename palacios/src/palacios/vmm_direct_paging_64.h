@@ -117,6 +117,13 @@ static inline int handle_passthrough_pagefault_64(struct guest_info * core, addr
 		    pde2mb[pde_index].writable = 0;
 		}
 
+
+
+		if (region->flags.uncached == 1) {
+		    pde2mb[pde_index].write_through = 1;
+		    pde2mb[pde_index].cache_disable = 1;
+		}
+
 		if (v3_gpa_to_hpa(core, fault_addr, &host_addr) == -1) {
 		    PrintError("Error Could not translate fault addr (%p)\n", (void *)fault_addr);
 		    return -1;
@@ -169,6 +176,12 @@ static inline int handle_passthrough_pagefault_64(struct guest_info * core, addr
 	    } else {
 		pte[pte_index].writable = 0;
 	    }
+
+	    if (region->flags.uncached == 1) {
+		pte[pte_index].write_through = 1;
+		pte[pte_index].cache_disable = 1;
+	    }
+
 
     	    if (v3_gpa_to_hpa(core, fault_addr, &host_addr) == -1) {
 		PrintError("Error Could not translate fault addr (%p)\n", (void *)fault_addr);

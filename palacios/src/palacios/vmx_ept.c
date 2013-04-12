@@ -151,14 +151,20 @@ int v3_handle_ept_fault(struct guest_info * core, addr_t fault_addr, struct ept_
 	    if ( (region->flags.alloced == 1) && 
 		 (region->flags.read == 1)) {
 		// Full access
-		pde2mb[pde_index].read = 1;
-		pde2mb[pde_index].exec = 1;
 		pde2mb[pde_index].ipat = 1;
 
-		if (region->flags.base == 1) {
-		    pde2mb[pde_index].mt = 6;
-		} else {
+		if (region->flags.read == 1) {
+		    pde2mb[pde_index].read = 1;
+		}
+
+		if (region->flags.exec == 1) {
+		    pde2mb[pde_index].exec = 1;
+		}
+
+		if (region->flags.uncached == 1) {
 		    pde2mb[pde_index].mt = 0;
+		} else {
+		    pde2mb[pde_index].mt = 6;
 		}
 
 		if (region->flags.write == 1) {
@@ -211,14 +217,20 @@ int v3_handle_ept_fault(struct guest_info * core, addr_t fault_addr, struct ept_
 	if ( (region->flags.alloced == 1) && 
 	     (region->flags.read == 1)) {
 	    // Full access
-	    pte[pte_index].read = 1;
-	    pte[pte_index].exec = 1;
 	    pte[pte_index].ipat = 1;
 
-	    if (region->flags.base == 1) {
-		pte[pte_index].mt = 6;
-	    } else {
+	    if (region->flags.read == 1) {
+		pte[pte_index].read = 1;
+	    }
+
+	    if (region->flags.exec == 1) {
+		pte[pte_index].exec = 1;
+	    }
+
+	    if (region->flags.uncached == 1) {
 		pte[pte_index].mt = 0;
+	    } else {
+		pte[pte_index].mt = 6;
 	    }
 
 	    if (region->flags.write == 1) {
