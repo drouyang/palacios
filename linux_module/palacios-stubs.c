@@ -115,21 +115,7 @@ void palacios_print(const char * fmt, ...) {
   vsnprintf(buf, V3_PRINTK_BUF_SIZE, fmt, ap);
   va_end(ap);
 
-#if V3_PRINTK_CHECK_7BIT
-  {
-      char c = 0;
-      int i;
-      for (i = 0; i < strlen(buf); i++) { 
-	  if (buf[i] < 0) {
-	      c = buf[i];
-	      break;
-	  }
-      }
-      if (c != 0) { 
-	  printk(KERN_INFO "palacios (pcore %u): ALERT ALERT 8 BIT CHAR (c=%d) DETECTED\n", cpu,c);
-      }
-  }
-#endif
+
 
   printk(KERN_INFO "palacios (pcore %u): %s",cpu,buf);
 
