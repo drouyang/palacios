@@ -216,9 +216,15 @@ void v3_delete_mem_map(struct v3_vm_info * vm) {
 }
 
 
-struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t core_id, 
+struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t core_id, uint16_t flags, 
 					       addr_t guest_addr_start, addr_t guest_addr_end) {
     struct v3_mem_region * entry = NULL;
+
+
+    if (flags & V3_MEM_FLAGS_BASE) {
+	PrintError("Cannot dynamnically create base regions\n");
+	return NULL;
+    }
 
     if (guest_addr_start >= guest_addr_end) {
 	PrintError("Region start is after region end\n");
@@ -236,6 +242,7 @@ struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t cor
 
     entry->guest_start = guest_addr_start;
     entry->guest_end = guest_addr_end;
+    entry->flags.value = flags;
     entry->core_id = core_id;
     entry->unhandled = unhandled_err;
 
@@ -246,22 +253,18 @@ struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t cor
 
 
 int v3_add_shadow_mem( struct v3_vm_info * vm, uint16_t core_id,
+		       uint16_t             mem_flags, 
 		       addr_t               guest_addr_start,
 		       addr_t               guest_addr_end,
 		       addr_t               host_addr)
 {
     struct v3_mem_region * entry = NULL;
 
-    entry = v3_create_mem_region(vm, core_id, 
+    entry = v3_create_mem_region(vm, core_id, mem_flags | V3_MEM_FLAGS_ALLOCATED, 
 				 guest_addr_start, 
 				 guest_addr_end);
 
     entry->host_addr = host_addr;
-
-    entry->flags.read = 1;
-    entry->flags.write = 1;
-    entry->flags.exec = 1;
-    entry->flags.alloced = 1;
 
     if (v3_insert_mem_region(vm, entry) == -1) {
 	V3_Free(entry);

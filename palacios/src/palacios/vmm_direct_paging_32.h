@@ -91,6 +91,12 @@ static inline int handle_passthrough_pagefault_32(struct guest_info * info,
 		pte[pte_index].writable = 0;
 	    }
 
+	    if (region->flags.uncached == 1) {
+		pte[pte_index].write_through = 1;
+		pte[pte_index].cache_disable = 1;
+	    }
+
+
     	    if (v3_gpa_to_hpa(info, fault_addr, &host_addr) == -1) {
 		PrintError("Could not translate fault address (%p)\n", (void *)fault_addr);
 		return -1;

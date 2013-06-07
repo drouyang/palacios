@@ -39,6 +39,14 @@ struct v3_vm_info;
 #define V3_MEM_CORE_ANY ((uint16_t)-1)
 
 
+#define V3_MEM_FLAGS_READABLE   0x0001
+#define V3_MEM_FLAGS_WRITABLE   0x0002
+#define V3_MEM_FLAGS_EXECABLE   0x0004
+#define V3_MEM_FLAGS_BASE       0x0008
+#define V3_MEM_FLAGS_ALLOCATED  0x0010
+#define V3_MEM_FLAGS_UNCACHABLE 0x0020
+
+
 
 typedef struct {
     union {
@@ -47,11 +55,12 @@ typedef struct {
 	    // These reflect the VMM's intent for the shadow or nested pts 
 	    // that will implement the region.   The guest's intent is in
 	    // its own page tables.
-	    uint8_t read   : 1;
-	    uint8_t write  : 1;
-	    uint8_t exec   : 1;
-	    uint8_t base   : 1;
-	    uint8_t alloced : 1;
+	    uint16_t read   : 1;
+	    uint16_t write  : 1;
+	    uint16_t exec   : 1;
+	    uint16_t base   : 1;
+	    uint16_t alloced : 1;
+	    uint16_t uncached : 1;
 	} __attribute__((packed));
     } __attribute__((packed));
 } __attribute__((packed)) v3_mem_flags_t;
@@ -98,7 +107,7 @@ int v3_mem_save(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
 int v3_mem_load(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
 #endif
 
-struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t core_id, 
+struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t core_id, uint16_t flags,  
 					       addr_t guest_addr_start, addr_t guest_addr_end);
 
 int v3_insert_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg);
@@ -107,7 +116,7 @@ void v3_delete_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg);
 
 
 /* This is a shortcut function for creating + inserting a memory region which redirects to host memory */
-int v3_add_shadow_mem(struct v3_vm_info * vm, uint16_t core_id,
+int v3_add_shadow_mem(struct v3_vm_info * vm, uint16_t core_id, uint16_t mem_flags, 
 		      addr_t guest_addr_start, addr_t guest_addr_end, addr_t host_addr);
 
 
