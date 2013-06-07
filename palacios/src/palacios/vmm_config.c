@@ -593,7 +593,7 @@ static int setup_memory_map(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
     
 	if (v3_add_shadow_mem(vm, V3_MEM_CORE_ANY, 
-			      V3_MEM_FLAGS_READABLE | V3_MEM_FLAGS_WRITABLE | V3_MEM_FLAGS_EXECABLE,
+			      V3_MEM_RD | V3_MEM_WR | V3_MEM_EXEC,
 			      start_addr, end_addr, host_addr) == -1) {
 	    PrintError("Could not map memory region: %p-%p => %p\n", 
 		       (void *)start_addr, (void *)end_addr, (void *)host_addr);

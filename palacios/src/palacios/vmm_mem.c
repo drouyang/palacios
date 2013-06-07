@@ -221,7 +221,7 @@ struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t cor
     struct v3_mem_region * entry = NULL;
 
 
-    if (flags & V3_MEM_FLAGS_BASE) {
+    if (flags & V3_MEM_BASE) {
 	PrintError("Cannot dynamnically create base regions\n");
 	return NULL;
     }
@@ -260,7 +260,7 @@ int v3_add_shadow_mem( struct v3_vm_info * vm, uint16_t core_id,
 {
     struct v3_mem_region * entry = NULL;
 
-    entry = v3_create_mem_region(vm, core_id, mem_flags | V3_MEM_FLAGS_ALLOCATED, 
+    entry = v3_create_mem_region(vm, core_id, mem_flags | V3_MEM_ALLOC, 
 				 guest_addr_start, 
 				 guest_addr_end);
 
