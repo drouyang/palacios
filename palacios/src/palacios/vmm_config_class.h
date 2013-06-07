@@ -77,7 +77,7 @@ static int post_config_pc(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
 	// SEABIOS gets mapped into end of 4GB region
 	if (v3_add_shadow_mem(vm, V3_MEM_CORE_ANY, 
-			      V3_MEM_FLAGS_READABLE | V3_MEM_FLAGS_WRITABLE | V3_MEM_FLAGS_EXECABLE, 
+			      V3_MEM_RD | V3_MEM_WR | V3_MEM_EXEC, 
 			      0xfffe0000, 0xffffffff, 
 			      (addr_t)V3_PAddr(rombios_dst)) == -1) {
 	    PrintError("Error mapping SEABIOS to end of memory\n");

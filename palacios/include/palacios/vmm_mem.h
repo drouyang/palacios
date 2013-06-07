@@ -39,12 +39,13 @@ struct v3_vm_info;
 #define V3_MEM_CORE_ANY ((uint16_t)-1)
 
 
-#define V3_MEM_FLAGS_READABLE   0x0001
-#define V3_MEM_FLAGS_WRITABLE   0x0002
-#define V3_MEM_FLAGS_EXECABLE   0x0004
-#define V3_MEM_FLAGS_BASE       0x0008
-#define V3_MEM_FLAGS_ALLOCATED  0x0010
-#define V3_MEM_FLAGS_UNCACHABLE 0x0020
+// Memory region flags 
+#define V3_MEM_RD     0x0001
+#define V3_MEM_WR     0x0002
+#define V3_MEM_EXEC   0x0004
+#define V3_MEM_BASE   0x0008
+#define V3_MEM_ALLOC  0x0010
+#define V3_MEM_UC     0x0020
 
 
 
