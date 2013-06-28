@@ -26,7 +26,7 @@
 #include <palacios/vmm_sprintf.h>
 #include <palacios/vm_guest.h>
 #include <palacios/vmm_types.h>
-
+#include <palacios/vmm_telemetry.h>
 
 #include <palacios/vmm_queue.h>
 #include <palacios/vmm_lock.h>
