@@ -689,7 +689,7 @@ int palacios_vmm_init( void )
 
     INFO("palacios_init starting - calling init_v3\n");
 
-    Init_V3(&palacios_os_hooks, cpu_mask, num_cpus);
+    Init_V3(&palacios_os_hooks, cpu_mask, num_cpus, NULL);
 
     return 0;
 

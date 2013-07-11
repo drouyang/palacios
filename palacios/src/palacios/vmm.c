@@ -26,6 +26,7 @@
 #include <palacios/vmm_sprintf.h>
 #include <palacios/vmm_extensions.h>
 #include <palacios/vmm_timeout.h>
+#include <palacios/vmm_options.h>
 
 
 #ifdef V3_CONFIG_SVM
@@ -100,7 +101,7 @@ static void deinit_cpu(void * arg) {
 }
 
 
-void Init_V3(struct v3_os_hooks * hooks, char * cpu_mask, int num_cpus) {
+void Init_V3(struct v3_os_hooks * hooks, char * cpu_mask, int num_cpus, char * options) {
     int i = 0;
     int minor = 0;
     int major = 0;
@@ -115,6 +116,13 @@ void Init_V3(struct v3_os_hooks * hooks, char * cpu_mask, int num_cpus) {
 
     for (i = 0; i < V3_CONFIG_MAX_CPUS; i++) {
 	v3_cpu_types[i] = V3_INVALID_CPU;
+    }
+
+
+    // Setup options from host OS
+    if (V3_init_options(options) == -1) {
+	PrintError("Error parsing VMM options. Aborting Initialization.\n");
+	return;
     }
 
     // Register all the possible device types
