@@ -31,6 +31,33 @@
 #endif
 
 
+
+/*
+  8259 IRQ layout
+ 
+  Master  Slave    Typical Legacy Use
+  --------------------------------------------------------------
+  IRQ0             Timer (8254)
+  IRQ1             Keyboard (8042)
+  IRQ2              ****NOT USED - Slave chip inputs here
+          IRQ8     RTC
+          IRQ9     VGA / previous IRQ2 (or PCI via PIRQ LINK B)
+          IRQ10    unused (or PCI via PIRQ LINK C)
+          IRQ11    unused (or PCI via PIRQ LINK D)
+          IRQ12    PS/2 Mouse (8042)
+          IRQ13    Coprocessor error
+          IRQ14    First IDE controller
+          IRQ15    Second IDE controller
+  IRQ3             Second and Fourth Serial Port (COM2/4)
+  IRQ4             First and Third serial port (COM1/3)
+  IRQ5             Second Parallel Port (or PCI via PIRQ LINK A)
+  IRQ6             Floppy controller
+  IRQ7             First Parallel Port
+
+*/
+
+
+
 typedef enum {RESET, ICW1, ICW2, ICW3, ICW4,  READY} pic_state_t;
 
 static const uint_t MASTER_PORT1 = 0x20;
@@ -170,6 +197,7 @@ struct pic_internal {
 };
 
 
+#if 0
 static void DumpPICState(struct pic_internal *p)
 {
 
@@ -200,7 +228,7 @@ static void DumpPICState(struct pic_internal *p)
     PrintDebug("8259 PIC: slave_icw4=0x%x\n",p->slave_icw4);
 
 }
-
+#endif
 
 static int pic_raise_intr(struct v3_vm_info * vm, void * private_data, struct v3_irq * irq) {
     struct pic_internal * state = (struct pic_internal*)private_data;
@@ -208,7 +236,6 @@ static int pic_raise_intr(struct v3_vm_info * vm, void * private_data, struct v3
 
     if (irq_num == 2) {
 	irq_num = 9;
-	state->master_irr |= 0x04;
     }
 
     PrintDebug("8259 PIC: Raising irq %d in the PIC\n", irq_num);
@@ -217,9 +244,10 @@ static int pic_raise_intr(struct v3_vm_info * vm, void * private_data, struct v3
 	state->master_irr |= 0x01 << irq_num;
     } else if ((irq_num > 7) && (irq_num < 16)) {
 	state->slave_irr |= 0x01 << (irq_num - 8);
+	state->master_irr |= 0x01 << 2;
     } else {
 	PrintDebug("8259 PIC: Invalid IRQ raised (%d)\n", irq_num);
-	return -1;
+	return 0;
     }
 
     state->irq_ack_cbs[irq_num].ack = irq->ack;
@@ -234,23 +262,29 @@ static int pic_raise_intr(struct v3_vm_info * vm, void * private_data, struct v3
 }
 
 
+
+// This function is a hard lower, meaning we will delete any pending edge triggered interrupts
 static int pic_lower_intr(struct v3_vm_info * vm, void * private_data, struct v3_irq * irq) {
     struct pic_internal * state = (struct pic_internal*)private_data;
     uint8_t irq_num = irq->irq;
 
 
+    if (irq_num == 2) {
+	irq_num = 9;
+    }
+
     PrintDebug("[pic_lower_intr] IRQ line %d now low\n", irq_num);
     if (irq_num <= 7) {
-
 	state->master_irr &= ~(1 << irq_num);
+
 	if ((state->master_irr & ~(state->master_imr)) == 0) {
 	    PrintDebug("\t\tFIXME: Master maybe should do sth\n");
 	}
     } else if ((irq_num > 7) && (irq_num < 16)) {
-
 	state->slave_irr &= ~(1 << (irq_num - 8));
+
 	if ((state->slave_irr & (~(state->slave_imr))) == 0) {
-	    PrintDebug("\t\tFIXME: Slave maybe should do sth\n");
+	    state->master_irr &= ~(0x04);
 	}
     }
     return 0;
@@ -262,7 +296,8 @@ static int pic_intr_pending(struct guest_info * info, void * private_data) {
     struct pic_internal * state = (struct pic_internal*)private_data;
 
     if ((state->master_irr & ~(state->master_imr)) || 
-	(state->slave_irr & ~(state->slave_imr))) {
+	( (state->slave_irr & ~(state->slave_imr)) && 
+	  (state->master_imr & 0x40))) {
 	return 1;
     }
 
@@ -272,44 +307,43 @@ static int pic_intr_pending(struct guest_info * info, void * private_data) {
 static int pic_get_intr_number(struct guest_info * info, void * private_data) {
     struct pic_internal * state = (struct pic_internal *)private_data;
     int i = 0;
+    int j = 0;
     int irq = -1;
 
     PrintDebug("8259 PIC: getnum: master_irr: 0x%x master_imr: 0x%x\n", state->master_irr, state->master_imr);
     PrintDebug("8259 PIC: getnum: slave_irr: 0x%x slave_imr: 0x%x\n", state->slave_irr, state->slave_imr);
 
-    for (i = 0; i < 16; i++) {
-	if (i <= 7) {
-	    if (((state->master_irr & ~(state->master_imr)) >> i) & 0x01) {
-		//state->master_isr |= (0x1 << i);
-		// reset the irr
-		//state->master_irr &= ~(0x1 << i);
-		PrintDebug("8259 PIC: IRQ: %d, master_icw2: %x\n", i, state->master_icw2);
-		irq = i + state->master_icw2;
-		break;
+    for (i = 0; i < 8; i++) {
+	if (((state->master_irr & ~(state->master_imr)) >> i) & 0x01) {
+	    //state->master_isr |= (0x1 << i);
+	    // reset the irr
+	    //state->master_irr &= ~(0x1 << i);
+	    
+	    // The IRQs slaved off of the master (at pin 2) take priority over master pins 3 - 7
+	    if (i == 2) {
+		for (j = 0; j < 8; j++) {
+		    if (((state->slave_irr & ~(state->slave_imr)) >> j) & 0x01) {
+			//state->slave_isr |= (0x1 << (i - 8));
+			irq = j + state->slave_icw2;
+			break;
+		    }
+		}
+
+		if (irq > 0) {
+		    break;
+		} else {
+		    PrintDebug("8259 PIC: Invalid slave IRQ signalled on Master\n");
+		}
 	    }
-	} else {
-	    if (((state->slave_irr & ~(state->slave_imr)) >> (i - 8)) & 0x01) {
-		//state->slave_isr |= (0x1 << (i - 8));
-		//state->slave_irr &= ~(0x1 << (i - 8));
-		PrintDebug("8259 PIC: IRQ: %d, slave_icw2: %x\n", i, state->slave_icw2);
-		irq = (i - 8) + state->slave_icw2;
-		break;
-	    }
+
+	    PrintDebug("8259 PIC: IRQ: %d, master_icw2: %x\n", i, state->master_icw2);
+	    irq = i + state->master_icw2;
+	    break;
 	}
     }
 
-#if 1
-    if ((i == 15) || (i == 6)) { 
-	DumpPICState(state);
-    }
-#endif
-  
-    if (i == 16) { 
-	return -1;
-    } else {
-	PrintDebug("8259 PIC: get num is returning %d\n",irq);
-	return irq;
-    }
+    PrintDebug("8259 PIC: get num is returning %d\n",irq);
+    return irq;
 }
 
 
@@ -325,7 +359,7 @@ static int pic_begin_irq(struct guest_info * info, void * private_data, int irq)
        irq += 8;
     } else {
        //    PrintError("8259 PIC: Could not find IRQ (0x%x) to Begin\n",irq);
-       return -1;
+       return 0;
     }
     
     if (irq <= 7) {
@@ -344,10 +378,16 @@ static int pic_begin_irq(struct guest_info * info, void * private_data, int irq)
 	// This should always be true: See pic_get_intr_number
 	if (((state->slave_irr & ~(state->slave_imr)) >> (irq - 8)) & 0x01) {
 	   state->slave_isr |= (0x1 << (irq - 8));
-	   
+	   state->master_isr |= 0x04;
+
 	   if (!(state->slave_elcr & (0x1 << (irq - 8)))) {
 	       state->slave_irr &= ~(0x1 << (irq - 8));
 	   }
+	   
+	   if (!(state->master_elcr & 0x04)) {
+	       state->master_irr &= ~0x04;
+	   }
+
 	} else {
 	   PrintDebug("8259 PIC: (slave) Ignoring begin_irq for %d since I don't own it\n", irq);
 	}
@@ -625,6 +665,11 @@ static int write_slave_port1(struct guest_info * core, ushort_t port, void * src
 	    } else {
 		PrintError("8259 PIC: Command not handled or invalid  (wr_Slave1)\n");
 		return -1;
+	    }
+
+	    // Clear the master pin 2 if slave irqs are all acked
+	    if (state->slave_irr == 0) {
+		state->master_irr &= ~0x04;
 	    }
 
 	    state->slave_ocw2 = cw;
