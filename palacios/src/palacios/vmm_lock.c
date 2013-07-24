@@ -26,6 +26,9 @@ extern struct v3_os_hooks * os_hooks;
 
 
 int v3_lock_init(v3_lock_t * lock) {
+    V3_ASSERT(os_hooks);
+    V3_ASSERT(os_hooks->mutex_alloc);
+
     *lock = (addr_t)(os_hooks->mutex_alloc());
 
     if (!(*lock)) {
@@ -37,23 +40,38 @@ int v3_lock_init(v3_lock_t * lock) {
 
 
 void v3_lock_deinit(v3_lock_t * lock) {
+    V3_ASSERT(os_hooks);
+    V3_ASSERT(os_hooks->mutex_free);
+
     os_hooks->mutex_free((void *)*lock);
     *lock = 0;
 }
 
 void v3_lock(v3_lock_t lock) {
+    V3_ASSERT(os_hooks);
+    V3_ASSERT(os_hooks->mutex_lock);
+
     os_hooks->mutex_lock((void *)lock, 0);    
 }
 
 void v3_unlock(v3_lock_t lock) {
+    V3_ASSERT(os_hooks);
+    V3_ASSERT(os_hooks->mutex_unlock);
+
     os_hooks->mutex_unlock((void *)lock);
 }
 
 addr_t v3_lock_irqsave(v3_lock_t lock) {
+    V3_ASSERT(os_hooks);
+    V3_ASSERT(os_hooks->mutex_lock_irqsave);
+
     return (addr_t) (os_hooks->mutex_lock_irqsave((void *)lock, 1));
 }
 
 
 void v3_unlock_irqrestore(v3_lock_t lock, addr_t irq_state) {
+    V3_ASSERT(os_hooks);
+    V3_ASSERT(os_hooks->mutex_unlock_irqrestore);
+
     os_hooks->mutex_unlock_irqrestore((void *)lock,(void*)irq_state);
 }
