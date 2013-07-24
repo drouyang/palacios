@@ -345,11 +345,13 @@ int v3_hook_write_mem(struct v3_vm_info * vm, uint16_t core_id,
     struct v3_mem_region * entry = NULL;
     struct mem_hook * hook = V3_Malloc(sizeof(struct mem_hook));
     struct v3_mem_hooks * hooks = &(vm->mem_hooks);
-
+    
     if (!hook) {
 	PrintError("Cannot allocate in hooking memory for full access\n");
 	return -1;
     }
+    
+    
 
     memset(hook, 0, sizeof(struct mem_hook));
 
@@ -369,7 +371,8 @@ int v3_hook_write_mem(struct v3_vm_info * vm, uint16_t core_id,
     entry->flags.read = 1;
     entry->flags.exec = 1;
     entry->flags.alloced = 1;
-
+    entry->flags.uncached = 1;
+    
     if (v3_insert_mem_region(vm, entry) == -1) {
 	V3_Free(entry);
 	V3_Free(hook);
