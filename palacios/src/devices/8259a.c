@@ -238,7 +238,6 @@ static int pic_raise_intr(struct v3_vm_info * vm, void * private_data, struct v3
 	irq_num = 9;
     }
 
-    PrintDebug("8259 PIC: Raising irq %d in the PIC\n", irq_num);
 
     if (irq_num <= 7) {
 	state->master_irr |= 0x01 << irq_num;
@@ -297,7 +296,7 @@ static int pic_intr_pending(struct guest_info * info, void * private_data) {
 
     if ((state->master_irr & ~(state->master_imr)) || 
 	( (state->slave_irr & ~(state->slave_imr)) && 
-	  (state->master_imr & 0x40))) {
+	  (state->master_imr & 0x04))) {
 	return 1;
     }
 
@@ -334,15 +333,15 @@ static int pic_get_intr_number(struct guest_info * info, void * private_data) {
 		} else {
 		    PrintDebug("8259 PIC: Invalid slave IRQ signalled on Master\n");
 		}
-	    }
+	    } else {
+		PrintDebug("8259 PIC: IRQ: %d, master_icw2: %x\n", i, state->master_icw2);
+		irq = i + state->master_icw2;
 
-	    PrintDebug("8259 PIC: IRQ: %d, master_icw2: %x\n", i, state->master_icw2);
-	    irq = i + state->master_icw2;
-	    break;
+		break;
+	    }
 	}
     }
 
-    PrintDebug("8259 PIC: get num is returning %d\n",irq);
     return irq;
 }
 
