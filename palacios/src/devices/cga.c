@@ -1253,7 +1253,7 @@ static int cga_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     PrintDebug("PA of array: %p\n", (void *)(video_state->framebuf_pa));
 
     if ((passthrough_str != NULL) &&
-	(strcasecmp(passthrough_str, "enable") == 0)) {;
+	(strcasecmp(passthrough_str, "enable") == 0)) {
 	video_state->passthrough = 1;
     }
 
