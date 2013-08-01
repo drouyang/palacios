@@ -261,8 +261,11 @@ static int __init v3_init(void) {
 
     palacios_proc_dir = proc_mkdir("v3vee", NULL);
 
-    palacios_init_mm();
-
+    if (palacios_init_mm() == -1) {
+	ERROR("Error initializing memory subsystem\n");
+	palacios_deinit_mm();
+	return -1;
+    }
 
     // Initialize Palacios
     palacios_vmm_init();
