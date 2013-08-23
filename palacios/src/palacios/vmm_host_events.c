@@ -127,7 +127,8 @@ int v3_deliver_keyboard_event(struct v3_vm_info * vm,
 
     host_evts = &(vm->host_event_hooks);
 
-    if (vm->run_state != VM_RUNNING) {
+    if ((vm->run_state != VM_RUNNING) && 
+	(vm->run_state != VM_SIMULATING)) {
 	return -1;
     }
 
@@ -149,7 +150,8 @@ int v3_deliver_mouse_event(struct v3_vm_info * vm,
 
     host_evts = &(vm->host_event_hooks);
 
-    if (vm->run_state != VM_RUNNING) {
+    if ((vm->run_state != VM_RUNNING) &&
+	(vm->run_state != VM_SIMULATING)) {
 	return -1;
     }
 
@@ -171,7 +173,8 @@ int v3_deliver_timer_event(struct v3_vm_info * vm,
 
     host_evts = &(vm->host_event_hooks);
 
-    if (vm->run_state != VM_RUNNING) {
+    if ((vm->run_state != VM_RUNNING) && 
+	(vm->run_state != VM_SIMULATING)) {
 	return -1;
     }
 
@@ -192,7 +195,8 @@ int v3_deliver_serial_event(struct v3_vm_info * vm,
 
     host_evts = &(vm->host_event_hooks);
 
-    if (vm->run_state != VM_RUNNING) {
+    if ((vm->run_state != VM_RUNNING) && 
+	(vm->run_state != VM_SIMULATING)) {
 	return -1;
     }
 
@@ -215,7 +219,8 @@ int v3_deliver_console_event(struct v3_vm_info * vm,
 
     host_evts = &(vm->host_event_hooks);
 
-    if (vm->run_state != VM_RUNNING) {
+    if ((vm->run_state != VM_RUNNING) && 
+	(vm->run_state != VM_SIMULATING)) {
 	return -1;
     }
 
@@ -238,7 +243,8 @@ int v3_deliver_debug_event(struct v3_vm_info * vm,
 
     host_evts = &(vm->host_event_hooks);
 
-    if (vm->run_state != VM_RUNNING) {
+    if ((vm->run_state != VM_RUNNING) && 
+	(vm->run_state != VM_SIMULATING)) {
 	return -1;
     }
 

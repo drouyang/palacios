@@ -98,9 +98,6 @@ int add_palacios_memory(uintptr_t base_addr, u64 num_pages) {
 
 
 
-
-
-
 int palacios_remove_memory(uintptr_t base_addr) {
     int node_id = numa_addr_to_node(base_addr);
 
@@ -108,6 +105,7 @@ int palacios_remove_memory(uintptr_t base_addr) {
 
     return 0;
 }
+
 
 
 int palacios_init_mm( void ) {
@@ -153,7 +151,10 @@ int palacios_init_mm( void ) {
 	printk("Zone initialized, Adding seed region (order=%d)\n", 
 	       (MAX_ORDER - 1) + PAGE_SHIFT);
 
-	buddy_add_pool(zone, seed_addrs[node_id], (MAX_ORDER - 1) + PAGE_SHIFT);
+	if (buddy_add_pool(zone, seed_addrs[node_id], (MAX_ORDER - 1) + PAGE_SHIFT) == -1) {
+	    ERROR("Error adding buddy pool\n");
+	    return -1;
+	}
 
 	memzones[node_id] = zone;
     }
@@ -178,6 +179,9 @@ int palacios_deinit_mm( void ) {
 	    free_pages((uintptr_t)__va(seed_addrs[i]), MAX_ORDER - 1);
 	}
     }
+
+    kfree(seed_addrs);
+    kfree(memzones);
 
     return 0;
 }
