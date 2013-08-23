@@ -160,7 +160,7 @@ config DEBUG_VIRTIO_SYM
 
 config LINUX_VIRTIO_CONSOLE
         bool "Enable Virtio Console Device"
-        default n
+        default y
 	depends on PCI
         help
           Enable the Virtio Console
@@ -168,7 +168,7 @@ config LINUX_VIRTIO_CONSOLE
 
 config LINUX_VIRTIO_NET
         bool "Enable Virtio Network Device"
-        default n
+        default y
 	depends on PCI && VNET
         help
           Enable the Virtio Net
@@ -322,7 +322,7 @@ config DEBUG_PCI
 
 config PCI_FRONT
 	bool "PCI front-end device"
-	default y 
+	default n
 	depends on PCI && HOST_DEVICE
 	help 
 	  PCI front-end device for a host-based PCI device implementation
@@ -447,7 +447,7 @@ config DEBUG_VGA
 
 config CGA
 	bool "CGA"
-	default n
+	default y
 	help
 	  Includes the Virtual CGA video support
 
@@ -468,7 +468,7 @@ config TELNET_CONSOLE
 
 config CURSES_CONSOLE
 	bool "Curses Virtual Console"
-	default n
+	default y
 	depends on CGA && CONSOLE
 	help
 	  Includes the virtual curses console 
