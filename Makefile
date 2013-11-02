@@ -473,7 +473,11 @@ endif
 ifdef V3_CONFIG_LINUX
 DEFAULT_EXTRA_TARGETS=linux_module
 else
+ifdef V3_CONFIG_KITTEN
+DEFAULT_EXTRA_TARGETS=kitten_module
+else
 DEFAULT_EXTRA_TARGETS=
+endif
 endif
 
 # The all: target is the default when no target is given on the
@@ -630,6 +634,12 @@ linux_module/v3vee.ko: linux_module/*.c linux_module/*.h libv3vee.a
 
 linux_module: linux_module/v3vee.ko 
 
+
+kitten_module/v3vee.ko: kitten_module/*.c kitten_module/*.h libv3vee.a
+	cd kitten_module/ && make -j 8
+	cp kitten_module/v3vee.ko v3vee.ko
+
+kitten_module: kitten_module/v3vee.ko
 
 
 palacios.asm: palacios

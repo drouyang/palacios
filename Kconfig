@@ -16,6 +16,13 @@ config KITTEN
 	help
 	  This enables the necesary options to compile Palacios with Kitten
 
+config KITTEN_KERN
+	depends on KITTEN
+	string "Kitten Kernel Source Directory"
+	default "../kitten"
+	help
+	    This is the directory containing the source for the Kitten KErnel to link against.
+
 config LINUX
 	bool "Linux Module"
 	select BUILT_IN_STDLIB
