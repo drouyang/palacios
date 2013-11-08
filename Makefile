@@ -637,7 +637,6 @@ linux_module: linux_module/v3vee.ko
 
 kitten_module/v3vee.ko: kitten_module/*.c kitten_module/*.h libv3vee.a
 	cd kitten_module/ && make -j 8
-	cp kitten_module/v3vee.ko v3vee.ko
 
 kitten_module: kitten_module/v3vee.ko
 

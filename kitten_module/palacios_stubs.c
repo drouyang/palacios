@@ -45,21 +45,19 @@
 /**
  * Global guest state... only one guest is supported currently.
  */
-static struct v3_vm_info * g_vm_guest = NULL;
 static struct v3_vm_info * irq_to_guest_map[NUM_IDT_ENTRIES];
-static paddr_t guest_iso_start;
-static size_t guest_iso_size;
 
 /**
  * Sends a keyboard key press event to Palacios for handling.
  */
 void
 send_key_to_palacios(
-	unsigned char		status,
-	unsigned char		scan_code
+		     struct v3_guest * guest, 
+		     unsigned char		status,
+		     unsigned char		scan_code
 )
 {
-	if (!g_vm_guest)
+	if (!guest)
 		return;
 
 	struct v3_keyboard_event event = {
@@ -67,7 +65,7 @@ send_key_to_palacios(
 		.scan_code = scan_code,
 	};
 
-	v3_deliver_keyboard_event(g_vm_guest, &event);
+	v3_deliver_keyboard_event(guest->v3_ctx, &event);
 }
 
 /**
@@ -75,17 +73,18 @@ send_key_to_palacios(
  */
 void
 send_tick_to_palacios(
-	unsigned int		period_us
+		      struct v3_guest * guest, 
+		      unsigned int		period_us
 )
 {
-	if (!g_vm_guest)
+	if (!guest)
 		return;
 
 	struct v3_timer_event event = {
 		.period_us = period_us,
 	};
 
-	v3_deliver_timer_event(g_vm_guest, &event);
+	v3_deliver_timer_event(guest->v3_ctx, &event);
 }
 
 /**
@@ -94,8 +93,6 @@ send_tick_to_palacios(
  */
 static void
 palacios_print(
-	void *			vm,
-	int			vcore,
 	const char *		format,
 	...
 )
@@ -116,8 +113,7 @@ static void *
 palacios_allocate_pages(
 	int			num_pages,
 	unsigned int		alignment,	// must be power of two
-	int			node_id,
-	int			constraint
+	int			node_id
 )
 {
 	struct pmem_region result;
@@ -471,7 +467,7 @@ palacios_mutex_unlock_irqrestore(
 /**
  * Structure used by the Palacios hypervisor to interface with the host kernel.
  */
-struct v3_os_hooks palacios_os_hooks = {
+static struct v3_os_hooks palacios_os_hooks = {
 	.print			= palacios_print,
 	.allocate_pages		= palacios_allocate_pages,
 	.free_pages		= palacios_free_pages,
@@ -497,49 +493,16 @@ struct v3_os_hooks palacios_os_hooks = {
 	.start_thread_on_cpu	= palacios_start_thread_on_cpu,
 };
 
-/**
- * Starts a guest operating system.
- */
-static int
-palacios_run_guest(void *arg)
+
+int palacios_vmm_init(char * options) 
 {
-	unsigned int mask;
-	struct v3_vm_info * vm_info = v3_create_vm((void *) __va(guest_iso_start), NULL, NULL);
-	
-	if (!vm_info) {
-		printk(KERN_ERR "Could not create guest context\n");
-		return -1;
-	}
-
-	g_vm_guest = vm_info;
-
-	printk(KERN_INFO "Starting Guest OS...\n");
-
-	// set the mask to inclue all available CPUs
-	// we assume we will start on CPU 0
-	mask=~((((signed int)1<<(sizeof(unsigned int)*8-1))>>(sizeof(unsigned int)*8-1))<<cpus_weight(cpu_online_map));
-
-	return v3_start_vm(vm_info, mask);
+    Init_V3(&palacios_os_hooks, NULL, cpus_weight(cpu_online_map), options);
+    return 0;
 }
 
-/**
- * Kicks off a kernel thread to start and manage a guest operating system.
- */
-static int
-sys_v3_start_guest(
-	paddr_t			iso_start,
-	size_t			iso_size
-)
-{
-	if (current->uid != 0)
-		return -EPERM;
 
-	guest_iso_start = iso_start;
-	guest_iso_size  = iso_size;
 
-	return palacios_run_guest(0);
-}
-
+#if 0
 /**
  * Direct keyboard interrupts to the Palacios hypervisor.
  */
@@ -559,37 +522,8 @@ palacios_keyboard_interrupt(
 		return IRQ_NONE;
 
 	uint8_t key = inb(KB_DATA_PORT);
-	send_key_to_palacios(status, key);
+	send_key_to_palacios(NULL, status, key);
 
 	return IRQ_HANDLED;
 }
-
-static char *options;
-
-/**
- * Initialize the Palacios hypervisor.
- */
-static int
-palacios_init(void)
-{
-
-	printk(KERN_INFO "---- Initializing Palacios hypervisor support\n");
-	printk(KERN_INFO "cpus_weight(cpu_online_map)=0x%x\n",cpus_weight(cpu_online_map));
-
-	Init_V3(&palacios_os_hooks, NULL, cpus_weight(cpu_online_map), options);
-
-	irq_request(
-		IRQ1_VECTOR,
-		&palacios_keyboard_interrupt,
-		0,
-		"keyboard",
-		NULL
-	);
-
-	syscall_register(__NR_v3_start_guest, (syscall_ptr_t) sys_v3_start_guest);
-
-	return 0;
-}
-
-DRIVER_INIT( "module", palacios_init );
-DRIVER_PARAM( options, charp);
+#endif
