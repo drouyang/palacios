@@ -8,7 +8,18 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_host_events.h>
 
+
+
+#define V3_CREATE_GUEST 12
+#define V3_FREE_GUEST 13
+
+
 #define MAX_VMS 32
+
+struct vm_path {
+    char file_name[256];
+    char vm_name[128];
+} __attribute__((packed));
 
 struct v3_guest {
     void * v3_ctx;
