@@ -139,6 +139,8 @@ int init_vm_extensions(struct v3_guest * guest) {
 
 	ext->impl = ext_impl;
 
+	printk("Calling guest init\n");
+
 	ext_impl->guest_init(guest, &(ext->vm_data));
 
 	list_add(&(ext->node), &(guest->exts));

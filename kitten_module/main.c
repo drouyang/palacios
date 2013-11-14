@@ -21,6 +21,7 @@
 #include <arch/pisces/pisces_file.h>
 
 #include "palacios.h"
+#include "kitten-exts.h"
 
 //static struct v3_guest * guest_map[MAX_VMS] = {[0 ... MAX_VMS - 1] = 0};
 static char * options = NULL;
@@ -77,6 +78,8 @@ palacios_ioctl(struct file * filp,
 {
     void __user * argp = (void __user *)arg;
 
+    printk("Palacios IOCTL: %d\n", ioctl);
+
     switch (ioctl) {
 	case V3_CREATE_GUEST: {
 	    struct vm_path guest_path;
@@ -84,6 +87,8 @@ palacios_ioctl(struct file * filp,
 	    u64 img_size = 0;
 	    u64 file_handle = 0;
 	    u8 * img_ptr = NULL;
+
+	    printk("Creating Guest IOCTL\n");
 
 	    memset(&guest_path, 0, sizeof(struct vm_path));
 	    
@@ -100,6 +105,8 @@ palacios_ioctl(struct file * filp,
 
 	    memset(guest, 0, sizeof(struct v3_guest));
 	    
+	    INIT_LIST_HEAD(&(guest->exts));
+
 	    file_handle = pisces_file_open(guest_path.file_name, O_RDONLY);
 	    
 	    if (file_handle == 0) {
@@ -109,6 +116,9 @@ palacios_ioctl(struct file * filp,
 
 	    img_size = pisces_file_size(file_handle);
 
+	    printk("Image size=%llu\n", img_size);
+
+	    
 	    {
 		struct pmem_region result;
 		int status = 0;
@@ -116,23 +126,32 @@ palacios_ioctl(struct file * filp,
 		status = pmem_alloc_umem(img_size, 0, &result);
 
 		if (status) {
+		    printk("Error allocating User memory\n");
 		    return -1;
 		}
 
 		status = pmem_zero(&result);
 		
 		if (status) {
+		    printk("Error zeroing User memory\n");
 		    return -1;
 		}
 
 		img_ptr = __va(result.start);
 	    }
+	    
+
+//	    img_ptr = kmem_alloc(img_size);
+
+	    printk("Reading Image File to %p\n", img_ptr);
 
 	    pisces_file_read(file_handle, img_ptr, img_size, 0);
+	    pisces_file_close(file_handle);
 
 
-	    printk("%s\n", img_ptr + 50);
+	    init_vm_extensions(guest);
 
+	    guest->v3_ctx = v3_create_vm(img_ptr, guest, guest_path.vm_name);
 
 	    break;
 	}
@@ -160,16 +179,19 @@ static struct kfs_fops palacios_ctrl_fops = {
 static int
 palacios_init(void)
 {
-
-	printk(KERN_INFO "---- Initializing Palacios hypervisor support\n");
+    	printk(KERN_INFO "---- Initializing Palacios hypervisor support\n");
 	printk(KERN_INFO "cpus_weight(cpu_online_map)=0x%x\n", cpus_weight(cpu_online_map));
 
 	palacios_vmm_init(options);
 
+	init_lwk_extensions();
+
 	//	syscall_register(__NR_v3_start_guest, (syscall_ptr_t) sys_v3_start_guest);
 
 
-	kfs_create("./palacios-cmd", 
+	printk("creating palacios command file\n");
+
+	kfs_create("/palacios-cmd", 
 		   NULL, 
 		   &palacios_ctrl_fops,
 		   0777, 

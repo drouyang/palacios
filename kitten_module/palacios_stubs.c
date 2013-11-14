@@ -119,6 +119,8 @@ palacios_allocate_pages(
 	struct pmem_region result;
 	int status;
 
+	printk("Allocating %d pages (alignment = %x)\n", num_pages, alignment);
+
 	/* Allocate from the user-managed physical memory pool */
 	status = pmem_alloc_umem(num_pages * PAGE_SIZE, alignment, &result);
 	if (status)
