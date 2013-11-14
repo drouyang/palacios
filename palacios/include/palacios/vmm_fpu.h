@@ -72,22 +72,28 @@ struct v3_fpu_state {
 
     struct {
 	union {
-	    uint8_t flags;
+	    uint64_t flags;
 
 	    struct {
-		uint8_t fpu_activated : 1;     /* We set this flag whenever the guest begins using the FPU, 
+		uint64_t fpu_activated : 1;     /* We set this flag whenever the guest begins using the FPU, 
 						* The flag is cleared whenever we save the state and re-enable traps for FPU accesses
 						*/
 		
-		uint8_t disable_fpu_exits : 1; /* This flag indicates whether TS exits should bet set to trap on the next entry. 
+		uint64_t disable_fpu_exits : 1; /* This flag indicates whether TS exits should bet set to trap on the next entry. 
 						* When the exit is trapped we do a restore of the FPU, and mark it as activated 
 						*/
 		
-		uint8_t enable_fpu_exits : 1;  /*
+		uint64_t enable_fpu_exits : 1;  /*
 						*
 						*/
 
-		uint8_t last_ts_value : 1;
+		uint64_t last_ts_value : 1;
+
+		/*  Set based on the actual hardware settings in CR4. */
+		uint64_t osxsave_enabled  : 1; 
+		uint64_t osfxsr_enabled   : 1; 	  
+		/* ** */
+
 	    } __attribute__((packed));
 	} __attribute__((packed));
     } __attribute__((packed));

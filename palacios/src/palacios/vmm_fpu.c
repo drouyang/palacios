@@ -43,6 +43,20 @@ static inline addr_t get_cr0() {
 
 
 
+static inline addr_t get_cr4() {
+    addr_t cr4 = 0;
+
+    __asm__ __volatile__ ( "movq    %%cr4, %0; "
+                           : "=q"(cr4)
+                           :
+    );
+
+
+    return cr4;
+}
+
+
+
 static inline uint64_t xgetbv() {
     uint32_t eax = 0;
     uint32_t edx = 0;
@@ -139,22 +153,46 @@ int v3_fpu_init(struct guest_info * core) {
     
     struct v3_fpu_state * fpu = &(core->fpu_state);
     struct v3_fpu_arch * arch_state = &(fpu->arch_state);
+    struct cr4_32 cr4 = {get_cr4()};
 
 
     V3_Print("Initializing FPU for core %d\n", core->vcpu_id);
 
     memset(arch_state, 0, sizeof(struct v3_fpu_arch));
 
+    // is OSXSAVE supported 
+    if (cr4.osx) {
+	fpu->osxsave_enabled = 1;
+
+	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, (1 << 26), 1, 0, 0);
+
+    } else {
+	// Disable XSAVE (cpuid 0x01, ECX bit 26)
+	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, (1 << 26), 0, 0, 0);
+    }
+
+    if (cr4.osf_xsr) {
+	fpu->osfxsr_enabled = 1;
+
+	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), 1);
+
+    } else {
+	// Disable XSAVE (cpuid 0x01, ECX bit 26)
+	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), 0);
+    }
+
+
     arch_state->cwd = 0x37f;
     arch_state->mxcsr = 0x1f80;
-    
 
-    fpu->guest_xcr0 = XCR0_INIT_STATE;
-    fpu->host_xcr0 = xgetbv();
-
-
-    V3_Print("Guest XCR0=%p\n", (void *)fpu->guest_xcr0);
-    V3_Print("Host XCR0=%p\n", (void *)fpu->host_xcr0);
+    if (fpu->osxsave_enabled) {
+	fpu->guest_xcr0 = XCR0_INIT_STATE;
+	fpu->host_xcr0 = xgetbv();
+	
+	
+	V3_Print("Guest XCR0=%p\n", (void *)fpu->guest_xcr0);
+	V3_Print("Host XCR0=%p\n", (void *)fpu->host_xcr0);
+    }
 
     return 0;
 }
@@ -222,19 +260,38 @@ int v3_fpu_deactivate(struct guest_info * core) {
 	
 	// if TS is clear, then save state and clear host_cr0.TS
 
-	__asm__ __volatile__ ("fxsave %0\r\n"
-			      : 
-			      : "m"(fpu->arch_state)
-			      : "memory"
-			      );
+	if (fpu->osxsave_enabled) {
+
+	    __asm__ __volatile__ ("xsave %0\r\n"
+				  : 
+				  : "m"(fpu->arch_state)
+				  : "memory"
+				  );
+
+	} else if (fpu->osfxsr_enabled) {
+
+	    __asm__ __volatile__ ("fxsave %0\r\n"
+				  : 
+				  : "m"(fpu->arch_state)
+				  : "memory"
+				  );
+	} else {
+	    __asm__ __volatile__ ("fsave %0\r\n"
+				  : 
+				  : "m"(fpu->arch_state)
+				  : "memory"
+				  );
+	}
 			      
 
 	fpu->fpu_activated = 0;
 	fpu->enable_fpu_exits = 1;
     }
 
-    fpu->guest_xcr0 = xgetbv();
-    xsetbv(fpu->host_xcr0);
+    if (fpu->osxsave_enabled) {
+	fpu->guest_xcr0 = xgetbv();
+	xsetbv(fpu->host_xcr0);
+    }
 
     v3_telemetry_inc_core_counter(core, "FPU_DEACTIVATE");
 
@@ -250,14 +307,29 @@ int v3_fpu_activate(struct guest_info * core) {
     fpu->fpu_activated = 1;
     fpu->disable_fpu_exits = 1;
 
-    xsetbv(fpu->guest_xcr0);
+   if (fpu->osxsave_enabled) {
+       xsetbv(fpu->guest_xcr0);
 
-    // restore state
-    __asm__ __volatile__ ("fxrstor %0 \r\n"
-			  : 
-			  : "m"(fpu->arch_state)
-			  : "memory"
-			  );
+       // restore state
+       __asm__ __volatile__ ("xrstor %0 \r\n"
+			     : 
+			     : "m"(fpu->arch_state)
+			     : "memory"
+			     );
+   } else if (fpu->osfxsr_enabled) {
+       // restore state
+       __asm__ __volatile__ ("fxrstor %0 \r\n"
+			     : 
+			     : "m"(fpu->arch_state)
+			     : "memory"
+			     );
+   } else {
+       __asm__ __volatile__ ("frstor %0 \r\n"
+			     : 
+			     : "m"(fpu->arch_state)
+			     : "memory"
+			     );
+   }
 
 
     v3_telemetry_inc_core_counter(core, "FPU_ACTIVATE");
@@ -279,10 +351,12 @@ int v3_fpu_handle_xsetbv(struct guest_info * core) {
 	return -1;
     }
 
-    fpu->guest_xcr0 = (uint32_t)(core->vm_regs.rax);
-    fpu->guest_xcr0 += (core->vm_regs.rdx << 32);
-    
-    xsetbv(fpu->guest_xcr0);
+   if (fpu->osxsave_enabled) {
+       fpu->guest_xcr0 = (uint32_t)(core->vm_regs.rax);
+       fpu->guest_xcr0 += (core->vm_regs.rdx << 32);
+       
+       xsetbv(fpu->guest_xcr0);
+   }
 
     core->rip += 3;
 
