@@ -28,11 +28,6 @@
 
 
 
-
-
-
-
-
 typedef enum { ES = 0, 
 	       CS = 2,
  	       SS = 4,
@@ -254,7 +249,10 @@ int v3_vmx_restore_vmcs(struct guest_info * info, struct vmx_hw_info * hw_info) 
     check_vmcs_write(VMCS_GUEST_RFLAGS, info->ctrl_regs.rflags);
 
 #ifdef __V3_64BIT__
-    check_vmcs_write(VMCS_GUEST_EFER, info->ctrl_regs.efer);
+    if (hw_info->caps.virt_efer) {
+	check_vmcs_write(VMCS_GUEST_EFER, info->ctrl_regs.efer);
+    }
+
     check_vmcs_write(VMCS_ENTRY_CTRLS, vmx_info->entry_ctrls.value);
 #endif
 
@@ -486,16 +484,18 @@ int v3_update_vmcs_host_state(struct guest_info * info, struct vmx_hw_info * hw_
 
 
     // EFER
-    v3_get_msr(EFER_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
-    vmx_ret |= check_vmcs_write(VMCS_HOST_EFER, tmp_msr.value);
-
+    if (hw_info->caps.virt_efer) {
+	v3_get_msr(EFER_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
+	vmx_ret |= check_vmcs_write(VMCS_HOST_EFER, tmp_msr.value);
+    }
     // PERF GLOBAL CONTROL
 
     // PAT
 
-    v3_get_msr(IA32_PAT_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
-    vmx_ret |= check_vmcs_write(VMCS_HOST_PAT, tmp_msr.value);  
-
+    if (hw_info->caps.virt_pat) {
+	v3_get_msr(IA32_PAT_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
+	vmx_ret |= check_vmcs_write(VMCS_HOST_PAT, tmp_msr.value);  
+    }
 
     // save STAR, LSTAR, FMASK, KERNEL_GS_BASE MSRs in MSR load/store area
     {

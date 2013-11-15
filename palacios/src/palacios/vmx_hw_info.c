@@ -100,6 +100,9 @@ int v3_init_vmx_hw(struct vmx_hw_info * hw_info) {
     get_ex_ctrl_caps(hw_info, &(hw_info->entry_ctrls), VMX_ENTRY_CTLS_MSR, VMX_TRUE_ENTRY_CTLS_MSR);
 
 
+    get_cr_fields(&(hw_info->cr0), VMX_CR0_FIXED1_MSR, VMX_CR0_FIXED0_MSR);
+    get_cr_fields(&(hw_info->cr4), VMX_CR4_FIXED1_MSR, VMX_CR4_FIXED0_MSR);
+
     /* Get secondary PROCBASED controls if secondary controls are available (optional or required) */
     /* Intel Manual 3B. Sect. G.3.3 */
     if ( ((hw_info->proc_ctrls.req_mask & 0x80000000) == 0) || 
@@ -127,13 +130,18 @@ int v3_init_vmx_hw(struct vmx_hw_info * hw_info) {
 	     ((hw_info->sec_proc_ctrls.req_val & 0x00000080) != 0)) {
 	    V3_Print("Intel VMX: Unrestricted Guest supported\n");
 	    hw_info->caps.unrestricted_guest = 1;
+	    
+	    // Intel has a bug(?) in the CR0 fixed bits detection with UG support
+	    // We have to manually remove the PG and PE flags from the mask
+	    hw_info->cr0.req_mask &= ~(0x80000001);
+	    hw_info->cr0.req_val  &= ~(0x80000001);
+
+
 	}
 
 
     }
 
-    get_cr_fields(&(hw_info->cr0), VMX_CR0_FIXED1_MSR, VMX_CR0_FIXED0_MSR);
-    get_cr_fields(&(hw_info->cr4), VMX_CR4_FIXED1_MSR, VMX_CR4_FIXED0_MSR);
 
 
     if ( ((hw_info->pin_ctrls.req_mask & 0x00000040) == 0) ||
