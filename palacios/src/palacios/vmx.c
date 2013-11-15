@@ -1094,7 +1094,6 @@ int v3_vmx_enter(struct guest_info * info) {
 	uint64_t entry_tsc = 0;
 	uint64_t exit_tsc = 0;
 
-
 	if (vmx_info->state == VMX_UNLAUNCHED) {
 	    vmx_info->state = VMX_LAUNCHED;
 	    rdtscll(entry_tsc);
