@@ -768,7 +768,7 @@ int v3_vmx_load_core(struct guest_info * core, void * ctx){
 
     vmcs_load(vmcs_page_paddr);
 
-    v3_vmx_save_vmcs(core);
+    v3_vmx_save_vmcs(core, &hw_info);
 
     shadow_cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
 
