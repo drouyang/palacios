@@ -4,6 +4,8 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/log2.h>
+#include <linux/version.h>
+
 #include "buddy.h"
 #include "palacios.h"
 
@@ -472,9 +474,14 @@ zone_mem_show(struct seq_file * s, void * v) {
 
 
 static int zone_proc_open(struct inode * inode, struct file * filp) {
-    struct proc_dir_entry * proc_entry = PDE(inode);
-    printk("proc_entry at %p, data at %p\n", proc_entry, proc_entry->data);
-    return single_open(filp, zone_mem_show, proc_entry->data);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+    void * data = PDE(inode)->data;
+#else 
+    void * data = inode->i_private;
+#endif
+
+    printk("proc_entry data at %p\n", data);
+    return single_open(filp, zone_mem_show, data);
 }
 
 
@@ -593,13 +600,23 @@ buddy_init(
 	memset(proc_file_name, 0, 128);
 	snprintf(proc_file_name, 128, "v3-mem%d", zone->node_id);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
 	zone_entry = create_proc_entry(proc_file_name, 0444, palacios_proc_dir);
+
 	if (zone_entry) {
 	    zone_entry->proc_fops = &zone_proc_ops;
 	    zone_entry->data = zone;
 	} else {
 	    printk(KERN_ERR "Error creating memory zone proc file\n");
 	}
+
+#else 
+	zone_entry = proc_create_data(proc_file_name, 0444, palacios_proc_dir, &zone_proc_ops, zone);
+
+	if (!zone_entry) {
+	    printk(KERN_ERR "Error creating memory zone proc file\n");
+	}
+#endif
 
     }
 

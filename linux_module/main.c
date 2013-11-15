@@ -19,7 +19,7 @@
 #include <linux/spinlock.h>
 #include <linux/kthread.h>
 
-
+#include <linux/version.h>
 #include <linux/seq_file.h>
 
 #include <palacios/vmm.h>
@@ -314,7 +314,7 @@ static int __init v3_init(void) {
 
     if (palacios_proc_dir) {
 	struct proc_dir_entry * entry = NULL;
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
 	entry = create_proc_entry("v3-guests", 0444, palacios_proc_dir);
         if (entry) {
 	    entry->proc_fops = &vm_proc_ops;
@@ -323,6 +323,14 @@ static int __init v3_init(void) {
 	    ERROR("Could not create proc entry\n");
 	    goto failure1;
 	}
+#else 
+	entry = proc_create_data("v3-guests", 0444, palacios_proc_dir, &vm_proc_ops, NULL);
+
+	if (!entry) {
+	    ERROR("Could not create proc entry (%s)\n", "v3-guests");
+	    goto failure1;
+	}
+#endif
 	
     } else {
 	ERROR("Could not create proc entry\n");

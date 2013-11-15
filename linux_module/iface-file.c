@@ -269,7 +269,11 @@ static unsigned long long palacios_file_size(void * file_ptr) {
     struct kstat s;
     int ret;
     
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,9,10)
     ret = vfs_getattr(filp->f_path.mnt, filp->f_path.dentry, &s);
+#else 
+    ret = vfs_getattr(&(filp->f_path), &s);
+#endif
 
     if (ret != 0) {
 	ERROR("Failed to fstat file\n");
