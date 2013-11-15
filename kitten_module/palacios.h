@@ -13,6 +13,9 @@
 #define V3_CREATE_GUEST 12
 #define V3_FREE_GUEST 13
 
+#define V3_VM_LAUNCH 25
+#define V3_VM_STOP 26
+
 
 #define MAX_VMS 32
 

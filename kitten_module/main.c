@@ -23,12 +23,12 @@
 #include "palacios.h"
 #include "kitten-exts.h"
 
-//static struct v3_guest * guest_map[MAX_VMS] = {[0 ... MAX_VMS - 1] = 0};
+static struct v3_guest * guest_map[MAX_VMS] = {[0 ... MAX_VMS - 1] = 0};
 static char * options = NULL;
 
 
 
-/*
+
 static int register_vm(struct v3_guest * guest) {
     int i = 0;
 
@@ -42,35 +42,8 @@ static int register_vm(struct v3_guest * guest) {
     return -1;
 }
 
-*/
 
 
-/**
- * Starts a guest operating system.
- */
-#if 0
-static int
-palacios_run_guest(void *arg)
-{
-	unsigned int mask = 0;
-	struct v3_vm_info * vm_info = v3_create_vm(NULL, NULL, NULL);
-	
-	if (!vm_info) {
-		printk(KERN_ERR "Could not create guest context\n");
-		return -1;
-	}
-
-
-	printk(KERN_INFO "Starting Guest OS...\n");
-
-	// set the mask to inclue all available CPUs
-	// we assume we will start on CPU 0
-	//	mask=~((((signed int)1<<(sizeof(unsigned int)*8-1))>>(sizeof(unsigned int)*8-1))<<cpus_weight(cpu_online_map));
-
-	return v3_start_vm(vm_info, mask);
-}
-
-#endif
 
 static long
 palacios_ioctl(struct file * filp,
@@ -87,6 +60,7 @@ palacios_ioctl(struct file * filp,
 	    u64 img_size = 0;
 	    u64 file_handle = 0;
 	    u8 * img_ptr = NULL;
+	    int guest_id = 0;
 
 	    printk("Creating Guest IOCTL\n");
 
@@ -105,6 +79,15 @@ palacios_ioctl(struct file * filp,
 
 	    memset(guest, 0, sizeof(struct v3_guest));
 	    
+
+	    guest_id =  register_vm(guest);
+
+	    if (guest_id == -1) {
+		printk("Error registering VM in Kitten\n");
+		kmem_free(guest);
+		return -1;
+	    }
+
 	    INIT_LIST_HEAD(&(guest->exts));
 
 	    file_handle = pisces_file_open(guest_path.file_name, O_RDONLY);
@@ -153,6 +136,26 @@ palacios_ioctl(struct file * filp,
 
 	    guest->v3_ctx = v3_create_vm(img_ptr, guest, guest_path.vm_name);
 
+	    printk("Created VM (id=%d)\n", guest_id);
+
+	    return guest_id;
+	}
+	case V3_VM_LAUNCH: {
+	    int guest_id = (int)arg;
+	    struct v3_guest * guest = guest_map[guest_id];
+	    unsigned int mask = 0;
+
+	    printk("STarting VM to Palacios %d\n", guest_id);
+	
+	    if (!guest) {
+		printk("No Guest registered at %d\n", guest_id);
+		return -1;
+	    }
+
+	    mask =~ ((((signed int)1 << (sizeof(unsigned int) * 8 - 1)) >> (sizeof(unsigned int) * 8 - 1 )) << cpus_weight(cpu_online_map));
+
+
+	    return v3_start_vm(guest->v3_ctx, mask);
 	    break;
 	}
 	default:
