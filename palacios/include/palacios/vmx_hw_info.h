@@ -52,7 +52,8 @@ struct vmx_basic_msr {
 	    uint32_t hi;
 	} __attribute__((packed));
 
-	struct {    uint32_t revision;
+	struct {   
+	    uint32_t revision;
 	    uint64_t regionSize   : 13;
 	    uint64_t rsvd1         : 3; /* Always 0 */
 	    uint64_t physWidth     : 1; /* VMCS address field widths 
@@ -157,6 +158,16 @@ struct vmx_hw_info {
     struct vmx_cr_field cr0;
     struct vmx_cr_field cr4;
 
+    struct {
+	uint64_t virt_pat           : 1;
+	uint64_t virt_efer          : 1;
+	uint64_t preempt_timer      : 1;
+	uint64_t sec_proc_ctrls     : 1;
+	uint64_t ept                : 1;
+	uint64_t unrestricted_guest : 1;
+	uint64_t rsvd               : 58;
+    } __attribute__((packed)) caps;
+
 };
 
 
@@ -164,7 +175,7 @@ struct vmx_hw_info {
 
 int v3_init_vmx_hw(struct vmx_hw_info * hw_info);
 
-uint32_t v3_vmx_get_ctrl_features(struct vmx_ctrl_field * fields);
+
 
 
 

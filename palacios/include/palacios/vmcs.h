@@ -28,6 +28,7 @@
 
 #include <palacios/vmm_types.h>
 #include <palacios/vm_guest.h>
+#include <palacios/vmx_hw_info.h>
 
 /* VM-Exit Controls */
 /* INTEL MANUAL: 20-16 vol. 3B */
@@ -373,11 +374,11 @@ const char * v3_vmcs_field_to_str(vmcs_field_t field);
 void v3_print_vmcs();
 
 
-int v3_vmx_save_vmcs(struct guest_info * info);
-int v3_vmx_restore_vmcs(struct guest_info * info);
+int v3_vmx_save_vmcs(struct guest_info * info, struct vmx_hw_info * hw_info);
+int v3_vmx_restore_vmcs(struct guest_info * info, struct vmx_hw_info * hw_info);
 
 
-int v3_update_vmcs_host_state(struct guest_info * info);
+int v3_update_vmcs_host_state(struct guest_info * info, struct vmx_hw_info * hw_info);
 int v3_update_vmcs_ctrl_fields(struct guest_info * info);
 
 

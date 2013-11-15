@@ -115,12 +115,6 @@ static int debug_efer_write(struct guest_info * core, uint_t msr, struct v3_msr 
 static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state) {
     int vmx_ret = 0;
 
-    /* Get Available features */
-    struct vmx_pin_ctrls avail_pin_ctrls;
-    avail_pin_ctrls.value = v3_vmx_get_ctrl_features(&(hw_info.pin_ctrls));
-    /* ** */
-
-
     // disable global interrupts for vm state initialization
     v3_disable_ints();
 
@@ -143,8 +137,12 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
     vmx_state->sec_proc_ctrls.value = hw_info.sec_proc_ctrls.def_val;
 
     /* Print Control MSRs */
-    V3_Print("CR0 MSR: req_val=%p, req_mask=%p\n", (void *)(addr_t)hw_info.cr0.req_val, (void *)(addr_t)hw_info.cr0.req_mask);
-    V3_Print("CR4 MSR: req_val=%p, req_mask=%p\n", (void *)(addr_t)hw_info.cr4.req_val, (void *)(addr_t)hw_info.cr4.req_mask);
+    V3_Print("CR0 MSR: req_val=%p, req_mask=%p\n", 
+	     (void *)(addr_t)hw_info.cr0.req_val, 
+	     (void *)(addr_t)hw_info.cr0.req_mask);
+    V3_Print("CR4 MSR: req_val=%p, req_mask=%p\n", 
+	     (void *)(addr_t)hw_info.cr4.req_val, 
+	     (void *)(addr_t)hw_info.cr4.req_mask);
 
 
 
@@ -162,7 +160,7 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 
 
     /* We enable the preemption timer by default to measure accurate guest time */
-    if (avail_pin_ctrls.active_preempt_timer) {
+    if (hw_info.caps.preempt_timer) {
 	V3_Print("VMX Preemption Timer is available\n");
 	vmx_state->pin_ctrls.active_preempt_timer = 1;
 	vmx_state->exit_ctrls.save_preempt_timer = 1;
@@ -202,24 +200,29 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 
 
 
-    // Restore host's EFER register on each VM EXIT
-    vmx_state->exit_ctrls.ld_efer = 1;
+    if (hw_info.caps.virt_efer) {
+	// Restore host's EFER register on each VM EXIT
+	vmx_state->exit_ctrls.ld_efer = 1;
+	
+	// Save/restore guest's EFER register to/from VMCS on VM EXIT/ENTRY
+	vmx_state->exit_ctrls.save_efer = 1;
+	vmx_state->entry_ctrls.ld_efer  = 1;
+    }
 
-    // Save/restore guest's EFER register to/from VMCS on VM EXIT/ENTRY
-    vmx_state->exit_ctrls.save_efer = 1;
-    vmx_state->entry_ctrls.ld_efer  = 1;
+    if (hw_info.caps.virt_pat) {
+	vmx_state->exit_ctrls.save_pat = 1;
+	vmx_state->exit_ctrls.ld_pat = 1;
+	vmx_state->entry_ctrls.ld_pat = 1;
 
-    vmx_state->exit_ctrls.save_pat = 1;
-    vmx_state->exit_ctrls.ld_pat = 1;
-    vmx_state->entry_ctrls.ld_pat = 1;
+	// Setup Guests initial PAT field
+	vmx_ret |= check_vmcs_write(VMCS_GUEST_PAT, 0x0007040600070406LL);
+    }
 
     /* Temporary GPF trap */
     //  vmx_state->excp_bmap.gp = 1;
 
     //vmx_state->excp_bmap.ud = 1;
 
-    // Setup Guests initial PAT field
-    vmx_ret |= check_vmcs_write(VMCS_GUEST_PAT, 0x0007040600070406LL);
 
     /* Setup paging */
     if (core->shdw_pg_mode == SHADOW_PAGING) {
@@ -299,8 +302,13 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 	    return -1;
 	}
 
-	// Hook all accesses to EFER register
-	v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
+	if (hw_info.caps.virt_efer) {
+	    // Hook all accesses to EFER register
+	    v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
+	} else {
+	    PrintError("Sweet merciful christ.... EFER virtualization not supported with EPT\n");
+	    return -1;
+	}
 
     } else if ((core->shdw_pg_mode == NESTED_PAGING) && 
 	       (v3_mach_type == V3_VMX_EPT_UG_CPU)) {
@@ -397,9 +405,15 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 	    return -1;
 	}
 
-	// Hook all accesses to EFER register
-	//	v3_hook_msr(core->vm_info, EFER_MSR, &debug_efer_read, &debug_efer_write, core);
-	v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
+	if (hw_info.caps.virt_efer) {
+	    // Hook all accesses to EFER register
+	    //	v3_hook_msr(core->vm_info, EFER_MSR, &debug_efer_read, &debug_efer_write, core);
+	    v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
+	} else {
+	    PrintError("Sweet merciful christ.... EFER virtualization not supported with EPT\n");
+	    return -1;
+	}
+
     } else {
 	PrintError("Invalid Virtual paging mode (pg_mode=%d) (mach_type=%d)\n", core->shdw_pg_mode, v3_mach_type);
 	return -1;
@@ -469,8 +483,12 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 	msr_ret |= v3_hook_msr(core->vm_info, FS_BASE_MSR, NULL, NULL, NULL);
 	msr_ret |= v3_hook_msr(core->vm_info, GS_BASE_MSR, NULL, NULL, NULL);
 
-	msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR, NULL, NULL, NULL);
-
+	if (hw_info.caps.virt_pat) {
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR, NULL, NULL, NULL);
+	} else {
+	    // Handle these ops, and serialize on entry/exit
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR, NULL, NULL, NULL);
+	}
 	// Not sure what to do about this... Does not appear to be an explicit hardware cache version...
 	msr_ret |= v3_hook_msr(core->vm_info, IA32_CSTAR_MSR, NULL, NULL, NULL);
 
@@ -487,6 +505,80 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
     v3_fpu_init(core);
 
     /* Sanity check ctrl/reg fields against hw_defaults */
+
+    {
+
+	int ret = 0;
+
+	if ((vmx_state->pin_ctrls.value & hw_info.pin_ctrls.req_mask) != (hw_info.pin_ctrls.req_val)) {
+	    PrintError("INTEL COMPAT ERROR: Pin Controls (val=0x%x, req_mask=0x%x, req_val=0x%x)\n", 
+		       vmx_state->pin_ctrls.value, hw_info.pin_ctrls.req_mask, hw_info.pin_ctrls.req_val);
+	    PrintError("Bit Errors: 0x%x\n", 
+		       (vmx_state->pin_ctrls.value & hw_info.pin_ctrls.req_mask) ^ (hw_info.pin_ctrls.req_val));
+	    ret = -1;
+	}
+
+	if ((vmx_state->pri_proc_ctrls.value & hw_info.proc_ctrls.req_mask) != (hw_info.proc_ctrls.req_val)) {
+	    PrintError("INTEL COMPAT ERROR: Proc Controls (val=0x%x, req_mask=0x%x, req_val=0x%x)\n", 
+		       vmx_state->pri_proc_ctrls.value, hw_info.proc_ctrls.req_mask, hw_info.proc_ctrls.req_val);
+	    PrintError("Bit Errors: 0x%x\n", 
+		       (vmx_state->pri_proc_ctrls.value & hw_info.proc_ctrls.req_mask) ^ (hw_info.proc_ctrls.req_val));
+	    ret = -1;
+	}
+
+	if ((vmx_state->exit_ctrls.value & hw_info.exit_ctrls.req_mask) != (hw_info.exit_ctrls.req_val)) {
+	    PrintError("INTEL COMPAT ERROR: Exit Controls (val=0x%x, req_mask=0x%x, req_val=0x%x)\n", 
+		       vmx_state->exit_ctrls.value, hw_info.exit_ctrls.req_mask, hw_info.exit_ctrls.req_val);
+	    PrintError("Bit Errors: 0x%x\n", 
+		       (vmx_state->exit_ctrls.value & hw_info.exit_ctrls.req_mask) ^ (hw_info.exit_ctrls.req_val));
+	    ret = -1;
+	}
+
+	if ((vmx_state->entry_ctrls.value & hw_info.entry_ctrls.req_mask) != (hw_info.entry_ctrls.req_val)) {
+	    PrintError("INTEL COMPAT ERROR: Entry Controls (val=0x%x, req_mask=0x%x, req_val=0x%x)\n", 
+		       vmx_state->entry_ctrls.value, hw_info.entry_ctrls.req_mask, hw_info.entry_ctrls.req_val);
+	    PrintError("Bit Errors: 0x%x\n", 
+		       (vmx_state->entry_ctrls.value & hw_info.entry_ctrls.req_mask) ^ (hw_info.entry_ctrls.req_val));
+	    ret = -1;
+	}
+
+	if ((vmx_state->sec_proc_ctrls.value & hw_info.sec_proc_ctrls.req_mask) != (hw_info.sec_proc_ctrls.req_val)) {
+	    PrintError("INTEL COMPAT ERROR: Sec Controls (val=0x%x, req_mask=0x%x, req_val=0x%x)\n", 
+		       vmx_state->sec_proc_ctrls.value, hw_info.sec_proc_ctrls.req_mask, 
+		       hw_info.sec_proc_ctrls.req_val);
+	    PrintError("Bit Errors: 0x%x\n", 
+		       (vmx_state->sec_proc_ctrls.value & hw_info.sec_proc_ctrls.req_mask) ^ (hw_info.sec_proc_ctrls.req_val));
+	    ret = -1;
+	}
+
+
+	if ((core->ctrl_regs.cr0 & hw_info.cr0.req_mask) != (hw_info.cr0.req_val)) {
+	    PrintError("INTEL COMPAT ERROR: CR0 (val=%p, req_mask=%p, req_val=%p)\n", 
+		       (void *)core->ctrl_regs.cr0, 
+		       (void *)hw_info.cr0.req_mask, 
+		       (void *)hw_info.cr0.req_val);
+	    PrintError("Bit Errors: 0x%llx\n", 
+		       ((core->ctrl_regs.cr0 & hw_info.cr0.req_mask) ^ (hw_info.cr0.req_val)));
+	    ret = -1;
+	}
+	if ((core->ctrl_regs.cr4 & hw_info.cr4.req_mask) != (hw_info.cr4.req_val)) {
+	    PrintError("INTEL COMPAT ERROR: CR4 (val=%p, req_mask=%p, req_val=%p)\n", 
+		       (void *)core->ctrl_regs.cr4, 
+		       (void *)hw_info.cr4.req_mask, 
+		       (void *)hw_info.cr4.req_val);
+	    PrintError("Bit Errors: 0x%llx\n", 
+		       ((core->ctrl_regs.cr4 & hw_info.cr4.req_mask) ^ (hw_info.cr4.req_val)));
+	    ret = -1;
+	}
+
+
+
+
+	if (ret == -1) {
+	    return -1;
+	}
+	
+    }
 
 
     /*** Write all the info to the VMCS ***/
@@ -955,7 +1047,7 @@ int v3_vmx_enter(struct guest_info * info) {
     // Update FPU state, this must come before the guest state is serialized back to the VMCS
     v3_fpu_on_entry(info);
 
-    v3_vmx_restore_vmcs(info);
+    v3_vmx_restore_vmcs(info, &hw_info);
 
 
 #ifdef V3_CONFIG_SYMCALL
@@ -979,7 +1071,7 @@ int v3_vmx_enter(struct guest_info * info) {
 
 
 
-    if (v3_update_vmcs_host_state(info)) {
+    if (v3_update_vmcs_host_state(info, &hw_info)) {
 	v3_enable_ints();
         PrintError("Could not write host state\n");
         return -1;
@@ -1054,7 +1146,7 @@ int v3_vmx_enter(struct guest_info * info) {
     v3_advance_time(info, &guest_cycles);
 
     /* Update guest state */
-    v3_vmx_save_vmcs(info);
+    v3_vmx_save_vmcs(info, &hw_info);
 
     // info->cpl = info->segments.cs.selector & 0x3;
 
@@ -1337,13 +1429,10 @@ void v3_init_vmx_cpu(int cpu_id) {
     PrintDebug("VMXON pointer: 0x%p\n", (void *)host_vmcs_ptrs[cpu_id]);    
 
     {
-	struct vmx_sec_proc_ctrls sec_proc_ctrls;
-	sec_proc_ctrls.value = v3_vmx_get_ctrl_features(&(hw_info.sec_proc_ctrls));
-	
-	if (sec_proc_ctrls.enable_ept == 0) {
+	if (hw_info.caps.ept == 0) {
 	    V3_Print("VMX EPT (Nested) Paging not supported\n");
 	    v3_cpu_types[cpu_id] = V3_VMX_CPU;
-	} else if (sec_proc_ctrls.unrstrct_guest == 0) {
+	} else if (hw_info.caps.unrestricted_guest == 0) {
 	    V3_Print("VMX EPT (Nested) Paging supported\n");
 	    v3_cpu_types[cpu_id] = V3_VMX_EPT_CPU;
 	} else {

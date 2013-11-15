@@ -191,7 +191,7 @@ int v3_update_vmcs_ctrl_fields(struct guest_info * info) {
 
 
 
-int v3_vmx_save_vmcs(struct guest_info * info) {
+int v3_vmx_save_vmcs(struct guest_info * info, struct vmx_hw_info * hw_info) {
     struct vmx_data * vmx_info = (struct vmx_data *)(info->vmm_data);
     int error = 0;
 
@@ -237,7 +237,7 @@ int v3_vmx_save_vmcs(struct guest_info * info) {
 }
 
 
-int v3_vmx_restore_vmcs(struct guest_info * info) {
+int v3_vmx_restore_vmcs(struct guest_info * info, struct vmx_hw_info * hw_info) {
     struct vmx_data * vmx_info = (struct vmx_data *)(info->vmm_data);
     int error = 0;
 
@@ -280,7 +280,7 @@ int v3_vmx_restore_vmcs(struct guest_info * info) {
 
 
 
-int v3_update_vmcs_host_state(struct guest_info * info) {
+int v3_update_vmcs_host_state(struct guest_info * info, struct vmx_hw_info * hw_info) {
     int vmx_ret = 0;
     addr_t tmp;
     struct v3_msr tmp_msr;

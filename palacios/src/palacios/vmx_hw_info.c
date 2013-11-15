@@ -25,16 +25,6 @@
 // Intel VMX Feature MSRs
 
 
-uint32_t v3_vmx_get_ctrl_features(struct vmx_ctrl_field * fields) {
-    // features are available if they are hardwired to 1, or the mask is 0 (they can be changed)
-    uint32_t features = 0;
-   
-    features = fields->req_val;
-    features |= ~(fields->req_mask);
-
-    return features;
-}
-
 
 static int get_ex_ctrl_caps(struct vmx_hw_info * hw_info, struct vmx_ctrl_field * field, 
 			    uint32_t old_msr, uint32_t true_msr) {
@@ -61,8 +51,8 @@ static int get_ex_ctrl_caps(struct vmx_hw_info * hw_info, struct vmx_ctrl_field 
 
 
 static int get_ctrl_caps(struct vmx_ctrl_field * field, uint32_t msr) {
-    uint32_t mbz = 0; /* Bit is 0 => MBZ */
-    uint32_t mb1 = 0; /* Bit is 1 => MB1 */
+    uint32_t mbz = 0; /* (32-64) Bit is 0 => MBZ */
+    uint32_t mb1 = 0; /* (0-31) Bit is 1 => MB1 */
     
     v3_get_msr(msr, &mbz, &mb1);
     
@@ -113,25 +103,64 @@ int v3_init_vmx_hw(struct vmx_hw_info * hw_info) {
     /* Get secondary PROCBASED controls if secondary controls are available (optional or required) */
     /* Intel Manual 3B. Sect. G.3.3 */
     if ( ((hw_info->proc_ctrls.req_mask & 0x80000000) == 0) || 
-	 ((hw_info->proc_ctrls.req_val & 0x80000000) == 1) ) {
-      
+	 ((hw_info->proc_ctrls.req_val & 0x80000000) != 0) ) {
+
+	hw_info->caps.sec_proc_ctrls = 1;
+
 	get_ctrl_caps(&(hw_info->sec_proc_ctrls), VMX_PROCBASED_CTLS2_MSR);
 
-        /* Get EPT data only if available - Intel 3B, G.10 */
-        /* EPT is available if processor has secondary controls (already tested) */
-        /* and if procbased_ctls2[33]==1  or procbased_ctrls2[37]==1 */
 
-        struct v3_msr proc2;
-
-        v3_get_msr(VMX_PROCBASED_CTLS2_MSR,&(proc2.hi),&(proc2.lo));
-	
-	if ( (proc2.hi & 0x2) || (proc2.hi & 0x20) ) {
-	  v3_get_msr(VMX_EPT_VPID_CAP_MSR, &(hw_info->ept_info.hi), &(hw_info->ept_info.lo));
+	// Grab the EPT info MSR if either EPT or VPIDs are available in Secondary proc ctrls
+	if ( ((hw_info->sec_proc_ctrls.req_mask & 0x00000002) == 0) || 
+	     ((hw_info->sec_proc_ctrls.req_val & 0x00000002) != 0) ) {
+	    V3_Print("Intel VMX: EPT supported\n");
+	    hw_info->caps.ept = 1;
+	    v3_get_msr(VMX_EPT_VPID_CAP_MSR, &(hw_info->ept_info.hi), &(hw_info->ept_info.lo)); 
+	} else if ( ((hw_info->sec_proc_ctrls.req_mask & 0x00000002) == 0) || 
+	     ((hw_info->sec_proc_ctrls.req_val & 0x00000002) != 0) ) {
+	    v3_get_msr(VMX_EPT_VPID_CAP_MSR, &(hw_info->ept_info.hi), &(hw_info->ept_info.lo)); 
 	}
+
+
+
+	if ( ((hw_info->sec_proc_ctrls.req_mask & 0x00000080) == 0) ||
+	     ((hw_info->sec_proc_ctrls.req_val & 0x00000080) != 0)) {
+	    V3_Print("Intel VMX: Unrestricted Guest supported\n");
+	    hw_info->caps.unrestricted_guest = 1;
+	}
+
+
     }
 
     get_cr_fields(&(hw_info->cr0), VMX_CR0_FIXED1_MSR, VMX_CR0_FIXED0_MSR);
     get_cr_fields(&(hw_info->cr4), VMX_CR4_FIXED1_MSR, VMX_CR4_FIXED0_MSR);
+
+
+    if ( ((hw_info->pin_ctrls.req_mask & 0x00000040) == 0) ||
+	 ((hw_info->pin_ctrls.req_val & 0x00000040) != 0)) {
+        V3_Print("Intel VMX: Preemption Timer supported\n");
+	hw_info->caps.preempt_timer = 1;
+    }
+
+    /* Check if we can virtualize the PAT
+     * There are 3 fields (2 exit ctrls, 1 entry ctrl) but we only check one
+     */
+    if ( ((hw_info->exit_ctrls.req_mask & 0x00040000) == 0) ||
+	 ((hw_info->exit_ctrls.req_val & 0x00040000) != 0)) {
+        V3_Print("Intel VMX: Virtualized PAT supported\n");
+	hw_info->caps.virt_pat = 1;
+    }
+
+
+    if ( ((hw_info->exit_ctrls.req_mask & 0x00100000) == 0) ||
+	 ((hw_info->exit_ctrls.req_val & 0x00100000) != 0)) {
+        V3_Print("Intel VMX: Virtualized EFER supported\n");
+	hw_info->caps.virt_efer = 1;
+    }
+
+
+
+
 
     return 0;
 }
