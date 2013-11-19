@@ -16,13 +16,9 @@
 #define V3_VM_LAUNCH 25
 #define V3_VM_STOP 26
 
+#define V3_ADD_PCI_HW_DEV 55
 
 #define MAX_VMS 32
-
-struct vm_path {
-    char file_name[256];
-    char vm_name[128];
-} __attribute__((packed));
 
 struct v3_guest {
     void * v3_ctx;
@@ -37,6 +33,13 @@ struct v3_guest {
     struct list_head exts;
 
 };
+
+struct v3_hw_pci_dev {
+    char name[128];
+    unsigned int bus;
+    unsigned int dev;
+    unsigned int func;
+} __attribute__((packed));
 
 
 /**

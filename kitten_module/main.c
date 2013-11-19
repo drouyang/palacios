@@ -23,6 +23,11 @@
 #include "palacios.h"
 #include "kitten-exts.h"
 
+struct vm_path {
+    char file_name[256];
+    char vm_name[128];
+} __attribute__((packed));
+
 static struct v3_guest * guest_map[MAX_VMS] = {[0 ... MAX_VMS - 1] = 0};
 static char * options = NULL;
 
