@@ -123,9 +123,8 @@ static int pisces_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u
 static int pisces_pci_setup_device(struct v3_host_pci_dev * v3_dev) {
     struct pisces_pci_setup_cmd setup_cmd;
     struct pisces_pci_setup_cmd * setup_resp = NULL;
-    u64 ret = 0;
-
     struct pisces_pci_device * host_dev = v3_dev->host_data;
+    u64 ret = 0;
 
     if (host_dev->type != PASSTHROUGH) {
         printk("Error in config pci cmd handler\n");
@@ -136,6 +135,10 @@ static int pisces_pci_setup_device(struct v3_host_pci_dev * v3_dev) {
     setup_cmd.cmd.data_len = sizeof(struct pisces_pci_setup_cmd)
         - sizeof(struct pisces_cmd);
 
+    strncpy(setup_cmd.name, host_dev->name, 128);
+    setup_cmd.domain = 0;
+    setup_cmd.bus = host_dev->hw_dev.bus;
+    setup_cmd.devfn = host_dev->hw_dev.devfn;
     pisces_exec_lcall((struct pisces_cmd *)&setup_cmd, (struct pisces_resp **)&setup_resp);
 
     ret = setup_resp->resp.status;
@@ -196,32 +199,26 @@ static int register_pci_hw_dev(unsigned int cmd, unsigned long arg) {
     host_dev->hw_dev.devfn = PCI_DEVFN(hw_dev_arg.dev, hw_dev_arg.func);
 
 
-    spin_lock_irqsave(&lock, flags);
     if (!find_dev_by_name(hw_dev_arg.name)) {
+        spin_lock_irqsave(&lock, flags);
         list_add(&(host_dev->dev_node), &device_list);
-        ret = 1;
-    }
-    spin_unlock_irqrestore(&lock, flags);
-
-    if (ret == 0) {
+        spin_unlock_irqrestore(&lock, flags);
+    } else {
         // Error device already exists
         kmem_free(host_dev);
         return -EFAULT;
     }
 
-
     {
-        int ret = 0;
-        struct pci_dev * dev = NULL;
         struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
 
         host_dev->hw_dev.intx_disabled = 1;
         spin_lock_init(&(host_dev->hw_dev.intx_lock));
 
-        pisces_pci_setup_device(v3_dev);
+        ret = pisces_pci_setup_device(v3_dev);
     }
 
-    return 0;
+    return ret;
 }
 
 

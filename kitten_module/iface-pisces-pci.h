@@ -42,11 +42,16 @@ struct pisces_pci_device {
     struct list_head dev_node;
 };
 
+
 struct pisces_pci_setup_cmd {
     union {
         struct pisces_cmd cmd;
         struct pisces_resp resp;
     } __attribute__((packed));
+    char name[128];
+    u32 domain;
+    u32 bus;
+    u32 devfn;
     u64 iommu_present;
     struct v3_host_pci_bar bars[6];
     struct v3_host_pci_bar exp_rom;
