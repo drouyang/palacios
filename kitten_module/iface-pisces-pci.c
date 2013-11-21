@@ -34,33 +34,6 @@ static struct pisces_pci_device * find_dev_by_name(char * name) {
 }
 
 
-static struct v3_host_pci_dev * pisces_pci_request_dev(char * url, void * v3_ctx) {
-
-    unsigned long flags;
-    struct pisces_pci_device * host_dev = NULL;
-
-    spin_lock_irqsave(&lock, flags);
-    host_dev = find_dev_by_name(url);
-    spin_unlock_irqrestore(&lock, flags);
-
-    if (host_dev == NULL) {
-        printk("Could not find host device (%s)\n", url);
-        return NULL;
-    }
-
-    if (host_dev->type != PASSTHROUGH) {
-        printk("Unsupported Host device type\n");
-        return NULL;
-    }
-
-    /*
-     * setup iommu
-     */
-
-    return &(host_dev->v3_dev);
-}
-
-
 static int pisces_pci_config_write(struct v3_host_pci_dev * v3_dev, unsigned int reg_num, 
         void * src, unsigned int length) {
     struct pisces_pci_device * host_dev = v3_dev->host_data;
@@ -109,6 +82,55 @@ static int pisces_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u
 
     return 0;
 }
+
+
+/* request Linux to
+ * - setup IOMMU
+ */
+static struct v3_host_pci_dev * pisces_pci_request_dev(char * url, void * v3_ctx) {
+
+    struct pisces_pci_request_dev_cmd request_dev_cmd;
+    struct pisces_pci_request_dev_cmd * request_dev_resp = NULL;
+    struct pisces_pci_device * host_dev = NULL;
+    unsigned long flags;
+
+    spin_lock_irqsave(&lock, flags);
+    host_dev = find_dev_by_name(url);
+    spin_unlock_irqrestore(&lock, flags);
+
+    if (host_dev == NULL) {
+        printk("Could not find host device (%s)\n", url);
+        return NULL;
+    }
+
+    if (host_dev->type != PASSTHROUGH) {
+        printk("Unsupported Host device type\n");
+        return NULL;
+    }
+
+    request_dev_cmd.cmd.cmd = PISCES_LCALL_PCI_REQUEST_DEV;
+    request_dev_cmd.cmd.data_len = sizeof(struct pisces_pci_request_dev_cmd)
+        - sizeof(struct pisces_cmd);
+
+    /* TODO: fill in cmd data */
+
+    pisces_exec_lcall((struct pisces_cmd *)&request_dev_cmd, 
+        (struct pisces_resp **)&request_dev_resp);
+    //reserve_hw_pci_dev(host_dev, v3_ctx);
+
+    ret = setup_resp->resp.status;
+    if (ret < 0) {
+        printk("pisces_pci_setup_device lcall failed\n");
+        goto out;
+    }
+
+    return &(host_dev->v3_dev);
+
+out:
+    return NULL;
+}
+
+
 
 /* request Linux to
  * - pci_enable_device(dev)

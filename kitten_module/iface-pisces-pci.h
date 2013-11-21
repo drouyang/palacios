@@ -58,4 +58,42 @@ struct pisces_pci_setup_cmd {
     uint8_t cfg_space[256];
 };
 
+struct pisces_pci_request_dev_cmd {
+    union {
+        struct pisces_cmd cmd;
+        struct pisces_resp resp;
+    } __attribute__((packed));
+};
+
+
+struct pisces_pci_config_r_cmd {
+    union {
+        struct pisces_cmd cmd;
+        struct pisces_resp resp;
+    } __attribute__((packed));
+};
+
+
+struct pisces_pci_config_w_cmd {
+    union {
+        struct pisces_cmd cmd;
+        struct pisces_resp resp;
+    } __attribute__((packed));
+};
+
+
+struct pisces_pci_ack_irq_cmd {
+    union {
+        struct pisces_cmd cmd;
+        struct pisces_resp resp;
+    } __attribute__((packed));
+};
+
+
+struct pisces_pci_cmd_cmd {
+    union {
+        struct pisces_cmd cmd;
+        struct pisces_resp resp;
+    } __attribute__((packed));
+};
 #endif
