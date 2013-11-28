@@ -54,7 +54,7 @@ int v3_init_ept(struct guest_info * core, struct vmx_hw_info * hw_info) {
     ept_info = &(hw_info->ept_info);
 
     /* TODO: Should we set this to WB?? */
-    ept_ptr->psmt = 0;
+    ept_ptr->psmt = 6;
 
     if (ept_info->pg_walk_len4) {
 	ept_ptr->pwl1 = 3;
