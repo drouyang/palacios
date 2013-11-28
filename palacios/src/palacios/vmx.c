@@ -295,7 +295,8 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 	vmx_state->pri_proc_ctrls.sec_ctrls = 1; // Enable secondary proc controls
 	vmx_state->sec_proc_ctrls.enable_ept = 1; // enable EPT paging
 
-
+	vmx_state->sec_proc_ctrls.enable_vpid = 1;
+	check_vmcs_write(VMCS_VPID, 2);
 
 	if (v3_init_ept(core, &hw_info) == -1) {
 	    PrintError("Error initializing EPT\n");
@@ -383,6 +384,10 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 	vmx_state->pri_proc_ctrls.sec_ctrls = 1; // Enable secondary proc controls
 	vmx_state->sec_proc_ctrls.enable_ept = 1; // enable EPT paging
 	vmx_state->sec_proc_ctrls.unrstrct_guest = 1; // enable unrestricted guest operation
+
+
+	vmx_state->sec_proc_ctrls.enable_vpid = 1;
+	check_vmcs_write(VMCS_VPID, 2);
 
 
 	/* Disable shadow paging stuff */
@@ -507,7 +512,6 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
     /* Sanity check ctrl/reg fields against hw_defaults */
 
     {
-
 	int ret = 0;
 
 	if ((vmx_state->pin_ctrls.value & hw_info.pin_ctrls.req_mask) != (hw_info.pin_ctrls.req_val)) {
@@ -551,7 +555,6 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 	    ret = -1;
 	}
 
-
 	if ((core->ctrl_regs.cr0 & hw_info.cr0.req_mask) != (hw_info.cr0.req_val)) {
 	    PrintError("INTEL COMPAT ERROR: CR0 (val=%p, req_mask=%p, req_val=%p)\n", 
 		       (void *)core->ctrl_regs.cr0, 
@@ -561,6 +564,7 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 		       ((core->ctrl_regs.cr0 & hw_info.cr0.req_mask) ^ (hw_info.cr0.req_val)));
 	    ret = -1;
 	}
+
 	if ((core->ctrl_regs.cr4 & hw_info.cr4.req_mask) != (hw_info.cr4.req_val)) {
 	    PrintError("INTEL COMPAT ERROR: CR4 (val=%p, req_mask=%p, req_val=%p)\n", 
 		       (void *)core->ctrl_regs.cr4, 
@@ -571,13 +575,9 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 	    ret = -1;
 	}
 
-
-
-
 	if (ret == -1) {
 	    return -1;
 	}
-	
     }
 
 

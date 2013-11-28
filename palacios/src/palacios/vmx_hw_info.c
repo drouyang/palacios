@@ -82,7 +82,6 @@ static int get_cr_fields(struct vmx_cr_field * field, uint32_t fixed_1_msr, uint
 
 
 
-
 int v3_init_vmx_hw(struct vmx_hw_info * hw_info) {
     //  extern v3_cpu_arch_t v3_cpu_types[];
 
@@ -91,14 +90,12 @@ int v3_init_vmx_hw(struct vmx_hw_info * hw_info) {
     v3_get_msr(VMX_BASIC_MSR, &(hw_info->basic_info.hi), &(hw_info->basic_info.lo));
     v3_get_msr(VMX_MISC_MSR, &(hw_info->misc_info.hi), &(hw_info->misc_info.lo));
 
-
     PrintError("BASIC_MSR: Lo: %x, Hi: %x\n", hw_info->basic_info.lo, hw_info->basic_info.hi);
 
     get_ex_ctrl_caps(hw_info, &(hw_info->pin_ctrls), VMX_PINBASED_CTLS_MSR, VMX_TRUE_PINBASED_CTLS_MSR);
     get_ex_ctrl_caps(hw_info, &(hw_info->proc_ctrls), VMX_PROCBASED_CTLS_MSR, VMX_TRUE_PROCBASED_CTLS_MSR);
     get_ex_ctrl_caps(hw_info, &(hw_info->exit_ctrls), VMX_EXIT_CTLS_MSR, VMX_TRUE_EXIT_CTLS_MSR);
     get_ex_ctrl_caps(hw_info, &(hw_info->entry_ctrls), VMX_ENTRY_CTLS_MSR, VMX_TRUE_ENTRY_CTLS_MSR);
-
 
     get_cr_fields(&(hw_info->cr0), VMX_CR0_FIXED1_MSR, VMX_CR0_FIXED0_MSR);
     get_cr_fields(&(hw_info->cr4), VMX_CR4_FIXED1_MSR, VMX_CR4_FIXED0_MSR);
@@ -112,7 +109,6 @@ int v3_init_vmx_hw(struct vmx_hw_info * hw_info) {
 
 	get_ctrl_caps(&(hw_info->sec_proc_ctrls), VMX_PROCBASED_CTLS2_MSR);
 
-
 	// Grab the EPT info MSR if either EPT or VPIDs are available in Secondary proc ctrls
 	if ( ((hw_info->sec_proc_ctrls.req_mask & 0x00000002) == 0) || 
 	     ((hw_info->sec_proc_ctrls.req_val & 0x00000002) != 0) ) {
@@ -125,24 +121,17 @@ int v3_init_vmx_hw(struct vmx_hw_info * hw_info) {
 	}
 
 
-
 	if ( ((hw_info->sec_proc_ctrls.req_mask & 0x00000080) == 0) ||
 	     ((hw_info->sec_proc_ctrls.req_val & 0x00000080) != 0)) {
 	    V3_Print("Intel VMX: Unrestricted Guest supported\n");
 	    hw_info->caps.unrestricted_guest = 1;
-	    
+
 	    // Intel has a bug(?) in the CR0 fixed bits detection with UG support
 	    // We have to manually remove the PG and PE flags from the mask
 	    hw_info->cr0.req_mask &= ~(0x80000001);
 	    hw_info->cr0.req_val  &= ~(0x80000001);
-
-
 	}
-
-
     }
-
-
 
     if ( ((hw_info->pin_ctrls.req_mask & 0x00000040) == 0) ||
 	 ((hw_info->pin_ctrls.req_val & 0x00000040) != 0)) {
@@ -159,16 +148,11 @@ int v3_init_vmx_hw(struct vmx_hw_info * hw_info) {
 	hw_info->caps.virt_pat = 1;
     }
 
-
     if ( ((hw_info->exit_ctrls.req_mask & 0x00100000) == 0) ||
 	 ((hw_info->exit_ctrls.req_val & 0x00100000) != 0)) {
         V3_Print("Intel VMX: Virtualized EFER supported\n");
 	hw_info->caps.virt_efer = 1;
     }
-
-
-
-
 
     return 0;
 }
