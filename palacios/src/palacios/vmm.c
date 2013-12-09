@@ -715,15 +715,21 @@ v3_cpu_mode_t v3_get_host_cpu_mode() {
 
 
 void v3_yield_cond(struct guest_info * info, int usec) {
-    uint64_t cur_cycle;
+    uint64_t cur_cycle = 0;
+
+
     cur_cycle = v3_get_host_time(&info->time_state);
+    v3_telemetry_inc_core_counter(info, "YIELD_COND");
+
 
     if (cur_cycle > (info->yield_start_cycle + info->vm_info->yield_cycle_period)) {
-	//PrintDebug("Conditional Yield (cur_cyle=%p, start_cycle=%p, period=%p)\n", 
-	//           (void *)cur_cycle, (void *)info->yield_start_cycle, 
-	//	   (void *)info->yield_cycle_period);
-	
+	v3_telemetry_inc_core_counter(info, "YIELD_COND triggered");
 
+	/*
+       V3_Print("Conditional Yield (cur_cyle=%p, start_cycle=%p, period=%p)\n", 
+	           (void *)cur_cycle, (void *)info->yield_start_cycle, 
+		   (void *)info->vm_info->yield_cycle_period);
+	*/
 	v3_fpu_deactivate(info);
 
 	if (usec < 0) { 
@@ -736,6 +742,7 @@ void v3_yield_cond(struct guest_info * info, int usec) {
 
         info->yield_start_cycle +=  info->vm_info->yield_cycle_period;
     }
+
 }
 
 
@@ -761,7 +768,7 @@ void v3_yield(struct guest_info * info, int usec) {
 
     if (info) {
 	//	v3_fpu_load(info);
-        info->yield_start_cycle +=  info->vm_info->yield_cycle_period;
+	//        info->yield_start_cycle = ;
     }
 }
 
