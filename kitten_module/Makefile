@@ -7,13 +7,17 @@ EXTRA_CFLAGS  += -I$(PWD)/../palacios/include/ -include autoconf.h -DMODULE=1 -D
 
 
 v3vee-y := 	main.o \
+		vm.o \
 		palacios_stubs.o \
 		kitten-exts.o \
-		iface-pisces-pci.o
+		iface-pisces-console.o
+
+
+#		iface-pisces-pci.o
 
 
 
-v3vee-$(V3_CONFIG_FILE) += iface-file.o
+v3vee-$(V3_CONFIG_FILE) += iface-pisces-file.o
 
 #v3vee-$(V3_CONFIG_PCI_PASSTHROUGH) += iface-pci-passthrough.o
 

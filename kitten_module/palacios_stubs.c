@@ -227,7 +227,7 @@ palacios_xcall(
 	cpus_clear(cpu_mask);
 	cpu_set(cpu_id, cpu_mask);
 
-	printk(KERN_DEBUG
+	printk(KERN_WARNING
 		"Palacios making xcall to cpu %d from cpu %d.\n",
 		cpu_id, current->cpu_id);
 
@@ -277,6 +277,10 @@ palacios_interrupt_cpu(
 	int                     vector
 )
 {
+
+	printk("Interrupting CPU %d from %d\n", cpu_id, current->cpu_id);
+	return;
+
 	if (cpu_id != current->cpu_id) {
 		if (vector == 0) 
 			xcall_reschedule(cpu_id);

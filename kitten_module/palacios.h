@@ -3,10 +3,12 @@
 
 #include <lwk/types.h>
 #include <lwk/list.h>
-//#include <linux/rbtree.h>
+#include <lwk/rbtree.h>
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_host_events.h>
+
+//#include "kitten-exts.h"
 
 
 
@@ -15,6 +17,10 @@
 
 #define V3_VM_LAUNCH 25
 #define V3_VM_STOP 26
+
+#define V3_VM_CONSOLE_CONNECT 30
+#define V3_VM_CONSOLE_DISCONNECT 31
+#define V3_VM_KEYBOARD_EVENT 32
 
 #define V3_ADD_PCI_HW_DEV 55
 
@@ -29,7 +35,9 @@ struct v3_guest {
     char name[128];
 
 
-    //    struct rb_root vm_ctrls;
+    int guest_id;
+
+    struct rb_root vm_ctrls;
     struct list_head exts;
 
 };

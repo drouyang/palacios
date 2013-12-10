@@ -32,6 +32,19 @@ struct global_ctrl {
     struct rb_node tree_node;
 };
 
+
+
+
+int add_guest_ctrl(struct v3_guest * guest, unsigned int cmd, 
+		   int (*handler)(struct v3_guest * guest, 
+				  unsigned int cmd, unsigned long arg, 
+				  void * priv_data),
+		   void * priv_data);
+int  call_guest_ctrl(struct v3_guest * guest, unsigned int cmd, unsigned long arg);
+int remove_guest_ctrl(struct v3_guest * guest, unsigned int cmd);
+
+void free_guest_ctrls(struct v3_guest * guest);
+
 int add_global_ctrl(unsigned int cmd, 
 		    int (*handler)(unsigned int cmd, unsigned long arg));
 

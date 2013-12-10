@@ -22,6 +22,7 @@
 
 #include "palacios.h"
 #include "kitten-exts.h"
+#include "vm.h"
 
 struct vm_path {
     char file_name[256];
@@ -93,75 +94,57 @@ palacios_ioctl(struct file * filp,
 		return -1;
 	    }
 
-	    INIT_LIST_HEAD(&(guest->exts));
+
+	    guest->guest_id = guest_id;
 
 	    file_handle = pisces_file_open(guest_path.file_name, O_RDONLY);
-	    
+    
 	    if (file_handle == 0) {
 		printk("Error: Could not open VM image file (%s)\n", guest_path.file_name);
 		return -1;
 	    }
-
+    
 	    img_size = pisces_file_size(file_handle);
-
+    
 	    printk("Image size=%llu\n", img_size);
-
-	    
+    
+    
 	    {
 		struct pmem_region result;
 		int status = 0;
-
+	
 		status = pmem_alloc_umem(img_size, 0, &result);
-
+	
 		if (status) {
 		    printk("Error allocating User memory\n");
 		    return -1;
 		}
-
+	
 		status = pmem_zero(&result);
-		
+	
 		if (status) {
 		    printk("Error zeroing User memory\n");
 		    return -1;
 		}
-
+	
 		img_ptr = __va(result.start);
 	    }
-	    
-
-//	    img_ptr = kmem_alloc(img_size);
-
+    
+    
+	    //	    img_ptr = kmem_alloc(img_size);
+    
 	    printk("Reading Image File to %p\n", img_ptr);
-
+    
 	    pisces_file_read(file_handle, img_ptr, img_size, 0);
 	    pisces_file_close(file_handle);
 
+	    guest->img = img_ptr;
+	    guest->img_size = img_size;
 
-	    init_vm_extensions(guest);
-
-	    guest->v3_ctx = v3_create_vm(img_ptr, guest, guest_path.vm_name);
-
-	    printk("Created VM (id=%d)\n", guest_id);
+	    palacios_create_vm(guest);
 
 	    return guest_id;
-	}
-	case V3_VM_LAUNCH: {
-	    int guest_id = (int)arg;
-	    struct v3_guest * guest = guest_map[guest_id];
-	    unsigned int mask = 0;
 
-	    printk("STarting VM to Palacios %d\n", guest_id);
-	
-	    if (!guest) {
-		printk("No Guest registered at %d\n", guest_id);
-		return -1;
-	    }
-
-	    mask =~ ((((signed int)1 << (sizeof(unsigned int) * 8 - 1)) >> (sizeof(unsigned int) * 8 - 1 )) << cpus_weight(cpu_online_map));
-
-
-	    return v3_start_vm(guest->v3_ctx, mask);
-	    break;
 	}
 	default:
 	    return -EINVAL;
@@ -180,6 +163,20 @@ static struct kfs_fops palacios_ctrl_fops = {
     //	.close = palacios_close,
     .unlocked_ioctl = palacios_ioctl,
 };
+
+
+extern void v3_print_guest_state_all(struct v3_vm_info * vm);
+static void
+dbg_handler(struct pt_regs * regs, unsigned int vector) {
+
+
+	printk("DBG Handler\n");
+
+	v3_print_guest_state_all(guest_map[0]->v3_ctx);
+
+	return;
+}
+
 
 /**
  * Initialize the Palacios hypervisor.
@@ -206,8 +203,13 @@ palacios_init(void)
 		   NULL, 0);
 
 
+	set_idtvec_handler(169, dbg_handler);
+
 	return 0;
 }
 
 DRIVER_INIT( "module", palacios_init );
 DRIVER_PARAM(options, charp);
+
+
+

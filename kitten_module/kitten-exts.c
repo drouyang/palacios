@@ -11,6 +11,142 @@ static struct {} null_ext  __attribute__((__used__))                    \
 
 
 
+/* 
+ * VM Controls
+ */
+
+struct vm_ctrl {
+    unsigned int cmd;
+
+    int (*handler)(struct v3_guest * guest, 
+		   unsigned int cmd, unsigned long arg, 
+		   void * priv_data);
+
+    void * priv_data;
+
+    struct rb_node tree_node;
+};
+
+
+
+static inline struct vm_ctrl * __insert_ctrl(struct v3_guest * vm, 
+					     struct vm_ctrl * ctrl) {
+    struct rb_node ** p = &(vm->vm_ctrls.rb_node);
+    struct rb_node * parent = NULL;
+    struct vm_ctrl * tmp_ctrl = NULL;
+
+    while (*p) {
+	parent = *p;
+	tmp_ctrl = rb_entry(parent, struct vm_ctrl, tree_node);
+
+	if (ctrl->cmd < tmp_ctrl->cmd) {
+	    p = &(*p)->rb_left;
+	} else if (ctrl->cmd > tmp_ctrl->cmd) {
+	    p = &(*p)->rb_right;
+	} else {
+	    return tmp_ctrl;
+	}
+    }
+
+    rb_link_node(&(ctrl->tree_node), parent, p);
+
+    return NULL;
+}
+
+
+
+int add_guest_ctrl(struct v3_guest * guest, unsigned int cmd, 
+		   int (*handler)(struct v3_guest * guest, 
+				  unsigned int cmd, unsigned long arg, 
+				  void * priv_data),
+		   void * priv_data) {
+    struct vm_ctrl * ctrl = kmem_alloc(sizeof(struct vm_ctrl));
+
+    if (ctrl == NULL) {
+	printk("Error: Could not allocate vm ctrl %d\n", cmd);
+	return -1;
+    }
+
+    ctrl->cmd = cmd;
+    ctrl->handler = handler;
+    ctrl->priv_data = priv_data;
+
+    if (__insert_ctrl(guest, ctrl) != NULL) {
+	printk("Could not insert guest ctrl %d\n", cmd);
+	kmem_free(ctrl);
+	return -1;
+    }
+    
+    rb_insert_color(&(ctrl->tree_node), &(guest->vm_ctrls));
+
+    return 0;
+}
+
+
+
+
+static struct vm_ctrl * get_ctrl(struct v3_guest * guest, unsigned int cmd) {
+    struct rb_node * n = guest->vm_ctrls.rb_node;
+    struct vm_ctrl * ctrl = NULL;
+
+    while (n) {
+	ctrl = rb_entry(n, struct vm_ctrl, tree_node);
+
+	if (cmd < ctrl->cmd) {
+	    n = n->rb_left;
+	} else if (cmd > ctrl->cmd) {
+	    n = n->rb_right;
+	} else {
+	    return ctrl;
+	}
+    }
+    
+    return NULL;
+}
+
+int call_guest_ctrl(struct v3_guest * guest, unsigned int cmd, unsigned long arg) {
+    struct vm_ctrl * ctrl = get_ctrl(guest, cmd);;
+
+    if (ctrl == NULL) {
+	printk("Error Could not find guest control for cmd %d\n", cmd);
+	return -EINVAL;
+    }
+	
+    return ctrl->handler(guest, cmd, arg, ctrl->priv_data);;	
+}
+
+int remove_guest_ctrl(struct v3_guest * guest, unsigned int cmd) {
+    struct vm_ctrl * ctrl = get_ctrl(guest, cmd);
+
+    if (ctrl == NULL) {
+	printk("Could not find control (%d) to remove\n", cmd);
+	return -1;
+    }
+
+    rb_erase(&(ctrl->tree_node), &(guest->vm_ctrls));
+
+    kmem_free(ctrl);
+
+    return 0;
+}
+
+void free_guest_ctrls(struct v3_guest * guest) {
+    struct rb_node * node = rb_first(&(guest->vm_ctrls));
+    struct vm_ctrl * ctrl = NULL;
+
+    while (node) {
+	ctrl = rb_entry(node, struct vm_ctrl, tree_node);
+	node = rb_next(node);
+	
+	printk("Cleaning up guest ctrl that was not removed explicitly (%d)\n", ctrl->cmd);
+
+	kmem_free(ctrl);
+    }
+}
+
+
+
+
 /*                 */
 /* Global controls */
 /*                 */
@@ -89,9 +225,9 @@ struct global_ctrl * get_global_ctrl(unsigned int cmd) {
 
 
 
-/*             */
-/* VM Controls */
-/*             */
+/*               */
+/* VM Extensions */
+/*               */
 
 struct vm_ext {
     struct kitten_ext * impl;
@@ -119,6 +255,8 @@ int init_vm_extensions(struct v3_guest * guest) {
     struct kitten_ext * ext_impl = __start__v3_lwk_exts[0];
     int i = 0;
 
+    printk("Initializing VM extensions\n");
+
     while (ext_impl != __stop__v3_lwk_exts[0]) {
 	struct vm_ext * ext = NULL;
 
@@ -128,7 +266,7 @@ int init_vm_extensions(struct v3_guest * guest) {
 	    continue;
 	}
 	
-	printk(KERN_INFO "Registering Kitten Extension (%s)\n", ext_impl->name);
+	printk(KERN_INFO "Registering Kitten VM Extension (%s)\n", ext_impl->name);
 
 	ext = kmem_alloc(sizeof(struct vm_ext));
 	
@@ -177,6 +315,8 @@ int init_lwk_extensions( void ) {
     extern struct kitten_ext * __stop__v3_lwk_exts[];
     struct kitten_ext * tmp_ext = __start__v3_lwk_exts[0];
     int i = 0;
+
+    printk("Initializing LWK extensions\n");
 
     while (tmp_ext != __stop__v3_lwk_exts[0]) {
 
