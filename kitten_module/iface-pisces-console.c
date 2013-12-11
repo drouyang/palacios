@@ -281,7 +281,11 @@ static int enqueue(struct palacios_console * cons, struct cons_msg * msg) {
 
     memcpy(&(buf->msgs[buf->write_idx]), msg, sizeof(struct cons_msg));
     
-    buf->cur_entries++;
+    __asm__ __volatile__ ("lock incw %1;"
+			  : "+m"(buf->cur_entries)
+			  :
+			  : "memory");
+
     buf->write_idx++;
     buf->write_idx %= buf->total_entries;
 
@@ -294,19 +298,27 @@ static int enqueue(struct palacios_console * cons, struct cons_msg * msg) {
 static int post_msg(struct palacios_console * cons, struct cons_msg * msg) {
     //    DEBUG("Posting Console message\n");
 
-    while (enqueue(cons, msg) == -1) {	
-	if (cons->ring_buf->kick_ipi_vec != 0) {
-	    // send IPI
-	    lapic_send_ipi_to_apic(cons->ring_buf->kick_apic, cons->ring_buf->kick_ipi_vec);
-	} 
+    if (enqueue(cons, msg) == -1) {
 	
 	printk("CONSOLE RING BUFFER OVERFLOW\n");
+	printk("CONSOLE RING BUFFER OVERFLOW\n");
 
-	schedule();
+	if (cons->ring_buf->kick_ipi_vec != 0) {	    
+	    lapic_send_ipi_to_apic(cons->ring_buf->kick_apic, cons->ring_buf->kick_ipi_vec);
+	} 
+
+	while (enqueue(cons, msg) == -1) {
+	    schedule_timeout(2000);
+
+	    if (cons->ring_buf->kick_ipi_vec != 0) {	    
+		lapic_send_ipi_to_apic(cons->ring_buf->kick_apic, cons->ring_buf->kick_ipi_vec);
+	    } 
+	}
     }
 
+
     if (cons->ring_buf->kick_ipi_vec != 0) {
-	    lapic_send_ipi_to_apic(cons->ring_buf->kick_apic, cons->ring_buf->kick_ipi_vec);
+	lapic_send_ipi_to_apic(cons->ring_buf->kick_apic, cons->ring_buf->kick_ipi_vec);
 	// send IPI
     } 
 
