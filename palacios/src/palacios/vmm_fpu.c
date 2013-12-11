@@ -174,13 +174,16 @@ int v3_fpu_init(struct guest_info * core) {
     if (cr4.osf_xsr) {
 	fpu->osfxsr_enabled = 1;
 
-	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), 1);
-
+	//
     } else {
-	// Disable XSAVE (cpuid 0x01, ECX bit 26)
-	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), 0);
+	// Disable FXSAVE (cpuid 0x01, EDX bit 24)
+	//	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), 0);
     }
 
+    // We enable it in the guest, regardless of whether the host supports it
+    // If the host has it disabled, then presumably there will never be a conflict
+    v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), 1);
+    
 
     arch_state->cwd = 0x37f;
     arch_state->mxcsr = 0x1f80;
