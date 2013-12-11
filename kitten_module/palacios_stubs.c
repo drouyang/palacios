@@ -278,9 +278,6 @@ palacios_interrupt_cpu(
 )
 {
 
-	printk("Interrupting CPU %d from %d\n", cpu_id, current->cpu_id);
-	return;
-
 	if (cpu_id != current->cpu_id) {
 		if (vector == 0) 
 			xcall_reschedule(cpu_id);
