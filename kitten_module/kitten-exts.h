@@ -55,6 +55,6 @@ struct global_ctrl * get_global_ctrl(unsigned int cmd);
 #define register_extension(ext)					\
     static struct kitten_ext * _lwk_ext				\
     __attribute__((used))					\
-	__attribute__((unused, __section__("_v3_lwk_exts"),		\
-		       aligned(sizeof(void *))))		\
+	 __attribute__((unused, __section__("_v3_lwk_exts"),	\
+			aligned(sizeof(void *))))		\
 	= ext;

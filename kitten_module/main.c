@@ -50,7 +50,6 @@ static int register_vm(struct v3_guest * guest) {
 
 
 
-
 static long
 palacios_ioctl(struct file * filp,
 	       unsigned int ioctl, unsigned long arg) 
@@ -144,6 +143,17 @@ palacios_ioctl(struct file * filp,
 	    palacios_create_vm(guest);
 
 	    return guest_id;
+
+	}
+	case V3_ADD_CPU: {
+	    int cpu_id = (int)arg;
+	    
+	    if (v3_add_cpu(cpu_id) != 0) {
+		printk(KERN_ERR "Error adding CPU %d to Palacios\n", cpu_id);
+		return -EFAULT;
+	    }
+
+	    return 0;
 
 	}
 	default:

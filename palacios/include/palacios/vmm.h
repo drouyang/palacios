@@ -396,5 +396,8 @@ int v3_free_vm(struct v3_vm_info * vm);
 
 int v3_deliver_irq(struct v3_vm_info * vm, struct v3_interrupt * intr);
 
+int v3_add_cpu(int cpu_id);
+
+
 
 #endif

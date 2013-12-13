@@ -11,6 +11,7 @@
 //#include "kitten-exts.h"
 
 
+#define V3_ADD_CPU 1
 
 #define V3_CREATE_GUEST 12
 #define V3_FREE_GUEST 13

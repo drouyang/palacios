@@ -48,10 +48,12 @@ struct v3_os_hooks * os_hooks = NULL;
 int v3_dbg_enable = 0;
 
 
-
+extern void lapic_set_timer_freq(unsigned int hz);
 
 static void init_cpu(void * arg) {
     uint32_t cpu_id = (uint32_t)(addr_t)arg;
+
+    lapic_set_timer_freq(1000);
 
 #ifdef V3_CONFIG_SVM
     if (v3_is_svm_capable()) {
@@ -98,6 +100,17 @@ static void deinit_cpu(void * arg) {
 	    PrintError("CPU has no virtualization Extensions\n");
 	    break;
     }
+}
+
+int v3_add_cpu(int cpu_id) {
+    if (os_hooks == NULL) {
+	PrintError("Error Tried to add a CPU to unitialized VMM\n");
+	return -1;
+    }
+
+    os_hooks->call_on_cpu(cpu_id, &init_cpu, (void *)(addr_t)cpu_id);
+
+    return 0;
 }
 
 

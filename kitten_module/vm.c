@@ -5,6 +5,7 @@
 
 #include <lwk/kfs.h>
 #include <arch/uaccess.h>
+#include <arch/apic.h>
 
 #include "palacios.h"
 #include "kitten-exts.h"
