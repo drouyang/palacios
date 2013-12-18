@@ -34,8 +34,8 @@ void V3_Init_SchedEvents(struct v3_sched_hooks * hooks) {
 }
 
 int v3_hook_core_preemptions(struct guest_info * core, 
-			     void (*sched_in)(struct guest_info * core, int cpu), 
-			     void (*sched_out)(struct guest_info * core, int cpu)) {
+			     int (*sched_in)(struct guest_info * core, int cpu), 
+			     int (*sched_out)(struct guest_info * core, int cpu)) {
     if ((sched_hooks == NULL) || 
 	(sched_hooks->hook_sched_evts == NULL)) {
 	PrintError("Error: Scheduler event hooks not initialized correctly\n");
@@ -55,8 +55,8 @@ int v3_hook_core_preemptions(struct guest_info * core,
 
 
 int v3_unhook_core_preemptions(struct guest_info * core, 
-			       void (*sched_in)(struct guest_info * core, int cpu), 
-			       void (*sched_out)(struct guest_info * core, int cpu)) {
+			       int (*sched_in)(struct guest_info * core, int cpu), 
+			       int (*sched_out)(struct guest_info * core, int cpu)) {
     if ((sched_hooks == NULL) || 
 	(sched_hooks->unhook_sched_evts == NULL)) {
 	PrintError("Error: Scheduler event hooks not initialized correctly\n");

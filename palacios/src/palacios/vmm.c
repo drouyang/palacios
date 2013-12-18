@@ -236,11 +236,27 @@ struct v3_vm_info * v3_create_vm(void * cfg, void * priv_data, char * name) {
 }
 
 
+#ifdef V3_CONFIG_HOST_SCHED_EVENTS
+#include <interfaces/sched_events.h>
+static int core_sched_in(struct guest_info * core, int cpu) {
+    v3_telemetry_inc_core_counter(core, "CORE_SCHED_IN");
+    return 0;
+}
+
+static int core_sched_out(struct guest_info * core, int cpu) {
+    v3_telemetry_inc_core_counter(core, "CORE_SCHED_OUT");
+    return 0;
+}
+#endif
 
 
 static int start_core(void * p)
 {
     struct guest_info * core = (struct guest_info *)p;
+
+#ifdef V3_CONFIG_HOST_SCHED_EVENTS
+    v3_hook_core_preemptions(core, core_sched_in, core_sched_out);
+#endif
 
 
     PrintDebug("virtual core %u (on logical core %u): in start_core (RIP=%p)\n", 
