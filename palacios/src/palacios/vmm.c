@@ -47,13 +47,16 @@ v3_cpu_arch_t v3_mach_type = V3_INVALID_CPU;
 struct v3_os_hooks * os_hooks = NULL;
 int v3_dbg_enable = 0;
 
-
+#ifdef V3_CONFIG_KITTEN
 extern void lapic_set_timer_freq(unsigned int hz);
+#endif
 
 static void init_cpu(void * arg) {
     uint32_t cpu_id = (uint32_t)(addr_t)arg;
 
+#ifdef V3_CONFIG_KITTEN
     lapic_set_timer_freq(1000);
+#endif
 
 #ifdef V3_CONFIG_SVM
     if (v3_is_svm_capable()) {
