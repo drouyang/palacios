@@ -353,6 +353,12 @@ struct v3_os_hooks {
     void (*call_on_cpu)(int logical_cpu, void (*fn)(void * arg), void * arg);
     void * (*start_thread_on_cpu)(int cpu_id, int (*fn)(void * arg), void * arg, char * thread_name);
     int (*move_thread_to_cpu)(int cpu_id,  void * thread);
+
+    int (*hook_sched_outs)(int (*fn)(void * arg), void * arg);
+    int (*unhook_sched_outs)(int (*fn)(void * arg), void * arg);
+    int (*hook_sched_ins)(int (*fn)(void * arg), void * arg);
+    int (*unhook_sched_ins)(int (*fn)(void * arg), void * arg);
+
 };
 
 

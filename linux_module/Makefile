@@ -27,6 +27,7 @@ v3vee-$(V3_CONFIG_CONSOLE) += iface-console.o
 v3vee-$(V3_CONFIG_FILE) += iface-file.o
 v3vee-$(V3_CONFIG_STREAM) +=	iface-stream.o \
 				util-ringbuffer.o
+v3vee-$(V3_CONFIG_HOST_SCHED_EVENTS) += iface-sched-events.o
 v3vee-$(V3_CONFIG_EXT_INSPECTOR) += inspector.o
 v3vee-$(V3_CONFIG_PACKET) += iface-packet.o
 v3vee-$(V3_CONFIG_SOCKET) += iface-socket.o
@@ -37,11 +38,6 @@ v3vee-$(V3_CONFIG_GRAPHICS_CONSOLE) += iface-graphics-console.o
 v3vee-$(V3_CONFIG_VNET) += 	palacios-vnet.o \
 				palacios-vnet-ctrl.o   \
 				palacios-vnet-brg.o
-
-v3vee-$(V3_CONFIG_HOST_HYPERCALL) += iface-host-hypercall.o
-v3vee-$(V3_CONFIG_EXT_CODE_INJECT) += iface-code-inject.o
-v3vee-$(V3_CONFIG_EXT_ENV_INJECT) += iface-env-inject.o
-v3vee-$(V3_CONFIG_EXT_SELECTIVE_SYSCALL_EXIT) += iface-syscall.o
 
 
 v3vee-$(V3_CONFIG_HOST_PCI) += iface-host-pci.o
