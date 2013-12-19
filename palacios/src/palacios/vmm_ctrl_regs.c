@@ -40,33 +40,36 @@ static int handle_mov_to_cr0(struct guest_info * info, struct x86_instr * dec_in
 
 // First Attempt = 494 lines
 // current = 106 lines
-int v3_handle_cr0_write(struct guest_info * info) {
+int v3_handle_cr0_write(struct guest_info * core) {
     uchar_t instr[15];
     int ret;
     struct x86_instr dec_instr;
     
-    if (info->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
+    if (core->mem_mode == PHYSICAL_MEM) { 
+	ret = v3_read_gpa_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(info, get_addr_linear(info, info->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gva_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     }
     
-    if (v3_decode(info, (addr_t)instr, &dec_instr) == -1) {
+    if (v3_decode(core, (addr_t)instr, &dec_instr) == -1) {
 	PrintError("Could not decode instruction\n");
 	return -1;
     }
 
     
     if (dec_instr.op_type == V3_OP_LMSW) {
-	if (handle_lmsw(info, &dec_instr) == -1) {
+	v3_telemetry_inc_core_counter(core, "LMSW traps");
+	if (handle_lmsw(core, &dec_instr) == -1) {
 	    return -1;
 	}
     } else if (dec_instr.op_type == V3_OP_MOV2CR) {
-	if (handle_mov_to_cr0(info, &dec_instr) == -1) {
+	v3_telemetry_inc_core_counter(core, "MOV_TO_CR0 traps");
+	if (handle_mov_to_cr0(core, &dec_instr) == -1) {
 	    return -1;
 	}
     } else if (dec_instr.op_type == V3_OP_CLTS) {
-	if (handle_clts(info, &dec_instr) == -1) {
+	v3_telemetry_inc_core_counter(core, "CLTS traps");
+	if (handle_clts(core, &dec_instr) == -1) {
 	    return -1;
 	}
     } else {
@@ -74,7 +77,7 @@ int v3_handle_cr0_write(struct guest_info * info) {
 	return -1;
     }
     
-    info->rip += dec_instr.instr_length;
+    core->rip += dec_instr.instr_length;
     
     return 0;
 }
@@ -130,17 +133,21 @@ static int handle_mov_to_cr0(struct guest_info * info, struct x86_instr * dec_in
 	struct efer_64 * guest_efer  = (struct efer_64 *)&(info->shdw_pg_state.guest_efer);
 	struct efer_64 * shadow_efer = (struct efer_64 *)&(info->ctrl_regs.efer);
 	
-	// Check long mode LME to set LME
-	if (guest_efer->lme == 1) {
-	    PrintDebug("Enabing Long Mode\n");
-	    guest_efer->lma = 1;
-	    
-	    shadow_efer->lma = 1;
-	    shadow_efer->lme = 1;
-	    
-	    PrintDebug("New EFER %p\n", (void *)*(addr_t *)(shadow_efer));
+	if (v3_get_vm_mem_mode(info) == VIRTUAL_MEM) {
+
+	    // Check long mode LME to set LME
+
+	    if (guest_efer->lme == 1) {
+		PrintDebug("Enabing Long Mode\n");
+		guest_efer->lma = 1;
+		
+		shadow_efer->lma = 1;
+		shadow_efer->lme = 1;
+		
+		PrintDebug("New EFER %p\n", (void *)*(addr_t *)(shadow_efer));
+	    }
 	}
-	
+
 	if (info->shdw_pg_mode == SHADOW_PAGING) {
 	    if (v3_get_vm_mem_mode(info) == VIRTUAL_MEM) {
 		

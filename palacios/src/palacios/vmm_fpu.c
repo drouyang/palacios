@@ -239,6 +239,16 @@ int v3_fpu_init(struct guest_info * core) {
 
     fpu->enable_fpu_exits = 1;
 
+    
+    /* to stop complaints over atomic allocs */
+    v3_telemetry_inc_core_counter(core, "FPU_EXITS_DISABLE");
+    v3_telemetry_inc_core_counter(core, "FPU_EXITS_ENABLE");
+    v3_telemetry_inc_core_counter(core, "FPU_DEACTIVATE");
+    v3_telemetry_inc_core_counter(core, "FPU_ACTIVATE");
+    v3_telemetry_inc_core_counter(core, "CORE_SCHED_OUT");
+    v3_telemetry_inc_core_counter(core, "CORE_SCHED_IN");
+
+
     return 0;
 }
 

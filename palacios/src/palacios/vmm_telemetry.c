@@ -283,7 +283,9 @@ void v3_telemetry_end_exit(struct guest_info * info, uint_t exit_code) {
 
     // check if the exit count has expired
     if ((telemetry->exit_cnt % telemetry->vm_telem->granularity) == 0) {
-	v3_print_telemetry(info->vm_info, info);
+	if (info->vcpu_id == 0) {
+	    v3_print_telemetry(info->vm_info, info);
+	}
     }
 }
 

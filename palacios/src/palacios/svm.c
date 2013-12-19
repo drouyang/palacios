@@ -421,6 +421,8 @@ static int update_irq_exit_state(struct guest_info * info) {
 	info->intr_core_state.irq_started = 1;
 	info->intr_core_state.irq_pending = 0;
 
+	v3_telemetry_inc_core_counter(info, "IRQS_BEGUN");
+
 	v3_injecting_intr(info, info->intr_core_state.irq_vector, V3_EXTERNAL_IRQ);
     }
 
@@ -504,6 +506,8 @@ static int update_irq_entry_state(struct guest_info * info) {
 
 		info->intr_core_state.irq_pending = 1;
 		info->intr_core_state.irq_vector = irq;
+
+		v3_telemetry_inc_core_counter(info, "IRQS_INJECTED");
 		
 		break;
 	    }
