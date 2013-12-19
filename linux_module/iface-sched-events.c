@@ -33,7 +33,7 @@ static void v3_sched_in(struct preempt_notifier * pn, int cpu) {
 	notifier->sched_in(notifier->arg, cpu);
     }
 
-    preempt_disable();
+    //    preempt_disable();
 }
 
 static void v3_sched_out(struct preempt_notifier * pn, struct task_struct * next) {
@@ -44,7 +44,7 @@ static void v3_sched_out(struct preempt_notifier * pn, struct task_struct * next
 	put_cpu();
     }
 
-    preempt_enable();
+    //    preempt_enable();
 }
 
 

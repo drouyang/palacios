@@ -272,6 +272,8 @@ int v3_fpu_on_entry(struct guest_info * core) {
 		
 	}
 
+	v3_telemetry_inc_core_counter(core, "FPU_EXITS_DISABLE");
+
 	fpu->disable_fpu_exits = 0;	
 	
     } else if (fpu->enable_fpu_exits == 1) {
@@ -296,6 +298,7 @@ int v3_fpu_on_entry(struct guest_info * core) {
 	}
 
 	fpu->enable_fpu_exits = 0;
+	v3_telemetry_inc_core_counter(core, "FPU_EXITS_ENABLE");
     }
 
     fpu->last_ts_value = cr0->ts;

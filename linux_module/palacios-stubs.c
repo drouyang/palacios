@@ -1,4 +1,4 @@
-#include <linux/kernel.h>
+ #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/spinlock.h>
 #include <linux/gfp.h>
@@ -543,11 +543,11 @@ void palacios_wakeup_cpu(void *thread)
 }
 
 void palacios_save_fpu(void) {
-    kernel_fpu_begin();
+    __kernel_fpu_begin();
 }
 
 void palacios_restore_fpu(void) {
-    kernel_fpu_end();
+    __kernel_fpu_end();
 }
 
 
