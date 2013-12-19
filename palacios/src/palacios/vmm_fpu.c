@@ -97,14 +97,19 @@ static inline void xsetbv(uint64_t value) {
 
 static int vmx_disable_fpu_exits(struct guest_info * core) {
     struct vmx_data * vmx_state = (struct vmx_data *)core->vmm_data;
+    struct cr0_32 * cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
+    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
     addr_t cr0_mask = 0;
     int vmx_ret = 0;
 
     vmx_state->excp_bmap.nm = 0;
     vmx_ret |= check_vmcs_write(VMCS_EXCP_BITMAP, vmx_state->excp_bmap.value);
 
+    cr0->ts = guest_cr0->ts;
+    cr0->mp = guest_cr0->mp;
+
     vmx_ret |= check_vmcs_read(VMCS_CR0_MASK, &cr0_mask);
-    cr0_mask &= ~(CR0_TS | CR0_MP);
+    cr0_mask &= ~(CR0_TS);
     vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, cr0_mask);
 
     return vmx_ret;
@@ -123,7 +128,7 @@ static int vmx_enable_fpu_exits(struct guest_info * core) {
     cr0->mp = 1;
 
     vmx_ret |= check_vmcs_read(VMCS_CR0_MASK, &cr0_mask);
-    cr0_mask |= (CR0_TS | CR0_MP);
+    cr0_mask |= (CR0_TS);
     vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, cr0_mask);
 
     return vmx_ret;
@@ -238,16 +243,6 @@ int v3_fpu_init(struct guest_info * core) {
     }
 
     fpu->enable_fpu_exits = 1;
-
-    
-    /* to stop complaints over atomic allocs */
-    v3_telemetry_inc_core_counter(core, "FPU_EXITS_DISABLE");
-    v3_telemetry_inc_core_counter(core, "FPU_EXITS_ENABLE");
-    v3_telemetry_inc_core_counter(core, "FPU_DEACTIVATE");
-    v3_telemetry_inc_core_counter(core, "FPU_ACTIVATE");
-    v3_telemetry_inc_core_counter(core, "CORE_SCHED_OUT");
-    v3_telemetry_inc_core_counter(core, "CORE_SCHED_IN");
-
 
     return 0;
 }

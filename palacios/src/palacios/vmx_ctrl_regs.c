@@ -55,7 +55,7 @@ int v3_vmx_handle_cr0_access(struct guest_info * info, struct vmx_exit_cr_qual *
 	    return -1;
         } else if (cr_qual->access_type == 2) {
 	    // clts
-	    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(info->ctrl_regs.cr0);	    
+	    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(info->shdw_pg_state.guest_cr0);
 	    
 	    guest_cr0->ts = 0;
 	    
