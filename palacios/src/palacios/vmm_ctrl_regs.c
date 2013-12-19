@@ -25,6 +25,7 @@
 #include <palacios/vmm_ctrl_regs.h>
 #include <palacios/vmm_direct_paging.h>
 #include <palacios/svm.h>
+#include <palacios/vmm_fpu.h>
 
 #ifndef V3_CONFIG_DEBUG_CTRL_REGS
 #undef PrintDebug
@@ -98,7 +99,7 @@ static int handle_mov_to_cr0(struct guest_info * info, struct x86_instr * dec_in
     PrintDebug("Old CR0=%x\n", *(uint_t *)shadow_cr0);
     PrintDebug("Old Guest CR0=%x\n", *(uint_t *)guest_cr0);	
     
-    
+   
     // We detect if this is a paging transition
     if (guest_cr0->pg != new_cr0->pg) {
 	paging_transition = 1;
@@ -113,46 +114,51 @@ static int handle_mov_to_cr0(struct guest_info * info, struct x86_instr * dec_in
     // Set the shadow register to catch non-virtualized flags
     *shadow_cr0 = *guest_cr0;
     
-    // Paging is always enabled
-    shadow_cr0->pg = 1;
-
-    if (guest_cr0->pg == 0) {
-	// If paging is not enabled by the guest, then we always enable write-protect to catch memory hooks
-	shadow_cr0->wp = 1;
+    if (info->shdw_pg_mode == SHADOW_PAGING) {
+	// Paging is always enabled
+	shadow_cr0->pg = 1;
+	
+	if (guest_cr0->pg == 0) {
+	    // If paging is not enabled by the guest, then we always enable write-protect to catch memory hooks
+	    shadow_cr0->wp = 1;
+	}
     }
     
     // Was there a paging transition
     // Meaning we need to change the page tables
     if (paging_transition) {
-	if (v3_get_vm_mem_mode(info) == VIRTUAL_MEM) {
+	struct efer_64 * guest_efer  = (struct efer_64 *)&(info->shdw_pg_state.guest_efer);
+	struct efer_64 * shadow_efer = (struct efer_64 *)&(info->ctrl_regs.efer);
+	
+	// Check long mode LME to set LME
+	if (guest_efer->lme == 1) {
+	    PrintDebug("Enabing Long Mode\n");
+	    guest_efer->lma = 1;
 	    
-	    struct efer_64 * guest_efer  = (struct efer_64 *)&(info->shdw_pg_state.guest_efer);
-	    struct efer_64 * shadow_efer = (struct efer_64 *)&(info->ctrl_regs.efer);
+	    shadow_efer->lma = 1;
+	    shadow_efer->lme = 1;
 	    
-	    // Check long mode LME to set LME
-	    if (guest_efer->lme == 1) {
-		PrintDebug("Enabing Long Mode\n");
-		guest_efer->lma = 1;
+	    PrintDebug("New EFER %p\n", (void *)*(addr_t *)(shadow_efer));
+	}
+	
+	if (info->shdw_pg_mode == SHADOW_PAGING) {
+	    if (v3_get_vm_mem_mode(info) == VIRTUAL_MEM) {
 		
-		shadow_efer->lma = 1;
-		shadow_efer->lme = 1;
 		
-		PrintDebug("New EFER %p\n", (void *)*(addr_t *)(shadow_efer));
-	    }
-	    
-	    PrintDebug("Activating Shadow Page Tables\n");
-	    
-	    if (v3_activate_shadow_pt(info) == -1) {
-		PrintError("Failed to activate shadow page tables\n");
-		return -1;
-	    }
-	} else {
-
-	    shadow_cr0->wp = 1;
-	    
-	    if (v3_activate_passthrough_pt(info) == -1) {
-		PrintError("Failed to activate passthrough page tables\n");
-		return -1;
+		PrintDebug("Activating Shadow Page Tables\n");
+		
+		if (v3_activate_shadow_pt(info) == -1) {
+		    PrintError("Failed to activate shadow page tables\n");
+		    return -1;
+		}
+	    } else {
+		
+		shadow_cr0->wp = 1;
+		
+		if (v3_activate_passthrough_pt(info) == -1) {
+		    PrintError("Failed to activate passthrough page tables\n");
+		    return -1;
+		}
 	    }
 	}
     }
@@ -169,14 +175,21 @@ static int handle_mov_to_cr0(struct guest_info * info, struct x86_instr * dec_in
 
 static int handle_clts(struct guest_info * info, struct x86_instr * dec_instr) {
     // CLTS
-    struct cr0_32 * real_cr0 = (struct cr0_32*)&(info->ctrl_regs.cr0);
-    
-    real_cr0->ts = 0;
-    
-    if (info->shdw_pg_mode == SHADOW_PAGING) {
-	struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(info->shdw_pg_state.guest_cr0);
-	guest_cr0->ts = 0;
+
+    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(info->shdw_pg_state.guest_cr0);
+
+    guest_cr0->ts = 0;
+
+
+    /* This has been moved to the FPU handling code */
+    {
+	// We only do this if we are modifying the FPU...
+	// struct cr0_32 * real_cr0 = (struct cr0_32*)&(info->ctrl_regs.cr0);
+	//    real_cr0->ts = 0;
     }
+    v3_fpu_activate(info);
+
+
     return 0;
 }
 
@@ -201,10 +214,10 @@ static int handle_lmsw(struct guest_info * info, struct x86_instr * dec_instr) {
     PrintDebug("New CR0=%x\n", *(uint_t *)real_cr0);	
     
     
-    // If Shadow paging is enabled we push the changes to the virtualized copy of cr0
-    if (info->shdw_pg_mode == SHADOW_PAGING) {
+    // Regardless of Shadow paging mode being enabled, we push the changes to the virtualized copy of cr0
+    {
 	struct cr0_real * guest_cr0 = (struct cr0_real*)&(info->shdw_pg_state.guest_cr0);
-	
+    
 	PrintDebug("Old Guest CR0=%x\n", *(uint_t *)guest_cr0);	
 	*(uchar_t*)guest_cr0 &= 0xf0;
 	*(uchar_t*)guest_cr0 |= new_cr0_val;
@@ -242,26 +255,18 @@ int v3_handle_cr0_read(struct guest_info * info) {
 	if ((v3_get_vm_cpu_mode(info) == LONG) || 
 	    (v3_get_vm_cpu_mode(info) == LONG_32_COMPAT)) {
 	    struct cr0_64 * dst_reg = (struct cr0_64 *)(dec_instr.dst_operand.operand);
-	
-	    if (info->shdw_pg_mode == SHADOW_PAGING) {
-		struct cr0_64 * guest_cr0 = (struct cr0_64 *)&(info->shdw_pg_state.guest_cr0);
-		*dst_reg = *guest_cr0;
-	    } else {
-		struct cr0_64 * shadow_cr0 = (struct cr0_64 *)&(info->ctrl_regs.cr0);
-		*dst_reg = *shadow_cr0;
-	    }
+	    struct cr0_64 * guest_cr0 = (struct cr0_64 *)&(info->shdw_pg_state.guest_cr0);
+
+	    *dst_reg = *guest_cr0;
+
 
 	    PrintDebug("returned CR0: %p\n", (void *)*(addr_t *)dst_reg);
 	} else {
 	    struct cr0_32 * dst_reg = (struct cr0_32 *)(dec_instr.dst_operand.operand);
-	
-	    if (info->shdw_pg_mode == SHADOW_PAGING) {
-		struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(info->shdw_pg_state.guest_cr0);
-		*dst_reg = *guest_cr0;
-	    } else {
-		struct cr0_32 * shadow_cr0 = (struct cr0_32 *)&(info->ctrl_regs.cr0);
-		*dst_reg = *shadow_cr0;
-	    }
+	    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(info->shdw_pg_state.guest_cr0);
+
+	    *dst_reg = *guest_cr0;
+
 
 	    PrintDebug("returned CR0: %x\n", *(uint_t*)dst_reg);
 	}

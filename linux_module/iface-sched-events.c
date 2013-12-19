@@ -32,6 +32,8 @@ static void v3_sched_in(struct preempt_notifier * pn, int cpu) {
     if (notifier->sched_in) {
 	notifier->sched_in(notifier->arg, cpu);
     }
+
+    preempt_disable();
 }
 
 static void v3_sched_out(struct preempt_notifier * pn, struct task_struct * next) {
@@ -41,6 +43,8 @@ static void v3_sched_out(struct preempt_notifier * pn, struct task_struct * next
 	notifier->sched_out(notifier->arg, get_cpu());
 	put_cpu();
     }
+
+    preempt_enable();
 }
 
 
@@ -54,6 +58,7 @@ static struct v3_sched_notifier * find_notifier(int (*sched_in)(void * arg, int 
 						int (*sched_out)(void * arg, int cpu),
 						void * arg) {
     struct v3_sched_notifier * tmp = NULL;
+    int found = 0;
     unsigned long flags;
    
     spin_lock_irqsave(&notifier_lock, flags);
@@ -61,12 +66,17 @@ static struct v3_sched_notifier * find_notifier(int (*sched_in)(void * arg, int 
 	if ((tmp->sched_in == sched_in) && 
 	    (tmp->sched_out == sched_out)  &&
 	    (tmp->arg == arg)) {
+	    found = 1;
 	    break;
 	}
     }
     spin_unlock_irqrestore(&notifier_lock, flags);
 
-    return tmp;
+    if (found) {
+	return tmp;
+    } else {
+	return NULL;
+    }
 }
 
 

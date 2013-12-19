@@ -166,6 +166,13 @@ int v3_handle_svm_exit(struct guest_info * info, addr_t exit_code, addr_t exit_i
 		return -1;
 	    }
 	    break;
+	case SVM_EXIT_EXCP7: {
+	    /* FPU accessed. */
+
+	    v3_fpu_activate(info);
+
+	    break;
+	}
 	case SVM_EXIT_EXCP14: {
 	    addr_t fault_addr = exit_info2;
 	    pf_error_t * error_code = (pf_error_t *)&(exit_info1);
@@ -183,6 +190,7 @@ int v3_handle_svm_exit(struct guest_info * info, addr_t exit_code, addr_t exit_i
 	    }
 	    break;
 	} 
+
  	case SVM_EXIT_NPF: {
 	    addr_t fault_addr = exit_info2;
 	    pf_error_t * error_code = (pf_error_t *)&(exit_info1);

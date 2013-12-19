@@ -28,6 +28,7 @@
 #define XSETBV ".byte 0x0f,0x01,0xd1;"  
 #define XGETBV ".byte 0x0f,0x01,0xd0;"
 
+extern v3_cpu_arch_t v3_cpu_types[];
 
 static inline addr_t get_cr0() {
     addr_t cr0 = 0;
@@ -91,18 +92,19 @@ static inline void xsetbv(uint64_t value) {
 #include <palacios/vmx.h>
 #include <palacios/vmx_lowlevel.h>
 
+#define CR0_TS 0x00000008
+#define CR0_MP 0x00000002
+
 static int vmx_disable_fpu_exits(struct guest_info * core) {
     struct vmx_data * vmx_state = (struct vmx_data *)core->vmm_data;
     addr_t cr0_mask = 0;
     int vmx_ret = 0;
 
-#define CR0_TS 0x00000008
-
     vmx_state->excp_bmap.nm = 0;
     vmx_ret |= check_vmcs_write(VMCS_EXCP_BITMAP, vmx_state->excp_bmap.value);
 
     vmx_ret |= check_vmcs_read(VMCS_CR0_MASK, &cr0_mask);
-    cr0_mask &= ~CR0_TS;
+    cr0_mask &= ~(CR0_TS | CR0_MP);
     vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, cr0_mask);
 
     return vmx_ret;
@@ -118,9 +120,10 @@ static int vmx_enable_fpu_exits(struct guest_info * core) {
     vmx_ret |= check_vmcs_write(VMCS_EXCP_BITMAP, vmx_state->excp_bmap.value);
 
     cr0->ts = 1;
+    cr0->mp = 1;
 
     vmx_ret |= check_vmcs_read(VMCS_CR0_MASK, &cr0_mask);
-    cr0_mask |= CR0_TS;
+    cr0_mask |= (CR0_TS | CR0_MP);
     vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, cr0_mask);
 
     return vmx_ret;
@@ -130,13 +133,50 @@ static int vmx_enable_fpu_exits(struct guest_info * core) {
 #ifdef V3_CONFIG_SVM
 #include <palacios/svm.h>
 #include <palacios/vmcb.h>
+
 static int svm_disable_fpu_exits(struct guest_info * core) {
+    struct cr0_32 * cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
+    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
+    vmcb_ctrl_t * ctrl_area = GET_VMCB_CTRL_AREA((vmcb_t *)(core->vmm_data));
+
+    ctrl_area->exceptions.nm = 0;
+    *cr0 = *guest_cr0;
+
+    if (core->shdw_pg_mode == NESTED_PAGING) {
+	ctrl_area->cr_reads.cr0 = 0;
+	ctrl_area->cr_writes.cr0 = 0;
+    } else {
+	/* Fix up Shadow CR0 fields based on SHADOW PAGING requirements */
+	/* See handle_mov_to_cr0 in vmm_ctrl_regs.c */
+
+	cr0->pg = 1;
+
+	if (guest_cr0->pg == 0) {
+	    cr0->wp = 1;
+	}
+    }
 
     return 0;
 
 }
 
 static int svm_enable_fpu_exits(struct guest_info * core) {
+    struct cr0_32 * cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
+    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
+    vmcb_ctrl_t * ctrl_area = GET_VMCB_CTRL_AREA((vmcb_t *)(core->vmm_data));
+
+    /* Cache current Guest CR0 value, before we modify it */
+    *guest_cr0 = *cr0;
+
+    cr0->ts = 1;
+    cr0->mp = 1;
+
+    ctrl_area->exceptions.nm = 1;
+
+    if (core->shdw_pg_mode == NESTED_PAGING) {
+	ctrl_area->cr_reads.cr0 = 1;
+	ctrl_area->cr_writes.cr0 = 1;
+    }
 
     return 0;
 }
@@ -180,7 +220,7 @@ int v3_fpu_init(struct guest_info * core) {
 	//	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), 0);
     }
 
-    // We enable it in the guest, regardless of whether the host supports it
+    // We enable FXSAVE in the guest, regardless of whether the host supports it
     // If the host has it disabled, then presumably there will never be a conflict
     v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), 1);
     
@@ -197,6 +237,8 @@ int v3_fpu_init(struct guest_info * core) {
 	V3_Print("Host XCR0=%p\n", (void *)fpu->host_xcr0);
     }
 
+    fpu->enable_fpu_exits = 1;
+
     return 0;
 }
 
@@ -209,36 +251,48 @@ int v3_fpu_on_entry(struct guest_info * core) {
 
     if (fpu->disable_fpu_exits == 1) {
 
+	switch (v3_cpu_types[core->vcpu_id]) {
 #ifdef V3_CONFIG_VMX
-	if (v3_is_vmx_capable()) {
-	    vmx_disable_fpu_exits(core);
-	} else
+	    case V3_VMX_CPU:
+	    case V3_VMX_EPT_CPU:
+	    case V3_VMX_EPT_UG_CPU:
+		vmx_disable_fpu_exits(core);
+		break;
 #endif
 #ifdef V3_CONFIG_SVM
-	if (v3_is_svm_capable()) {
-	    svm_disable_fpu_exits(core);
-	} else 
+	    case V3_SVM_CPU:
+	    case V3_SVM_REV3_CPU:
+		svm_disable_fpu_exits(core);
+		break;
 #endif
-	{ 
-	    PrintError("Invalid CPU\n");
+	    case V3_INVALID_CPU:
+	    default:
+		PrintError("CPU has no virtualization Extensions\n");
+		break;
+		
 	}
 
 	fpu->disable_fpu_exits = 0;	
-
+	
     } else if (fpu->enable_fpu_exits == 1) {
-
+	switch (v3_cpu_types[core->vcpu_id]) {
 #ifdef V3_CONFIG_VMX
-	if (v3_is_vmx_capable()) {
-	    vmx_enable_fpu_exits(core);
-	} else
+	    case V3_VMX_CPU:
+	    case V3_VMX_EPT_CPU:
+	    case V3_VMX_EPT_UG_CPU:
+		vmx_enable_fpu_exits(core);
+		break;
 #endif
 #ifdef V3_CONFIG_SVM
-	if (v3_is_svm_capable()) {
-	    svm_enable_fpu_exits(core);
-	} else 
+	    case V3_SVM_CPU:
+	    case V3_SVM_REV3_CPU:
+		svm_enable_fpu_exits(core);
+		break;
 #endif
-	{ 
-	    PrintError("Invalid CPU\n");
+	    case V3_INVALID_CPU:
+	    default:
+		PrintError("CPU has no virtualization Extensions\n");
+		break;
 	}
 
 	fpu->enable_fpu_exits = 0;
@@ -258,8 +312,9 @@ int v3_fpu_deactivate(struct guest_info * core) {
 
     if (fpu->fpu_activated == 1) {
 
-	V3_Print("Saving FPU state for core %d\n", core->vcpu_id);
 
+	//	V3_Print("Saving FPU state for core %d\n", core->vcpu_id);
+	v3_telemetry_inc_core_counter(core, "FPU_DEACTIVATE");
 	
 	// if TS is clear, then save state and clear host_cr0.TS
 
@@ -289,6 +344,9 @@ int v3_fpu_deactivate(struct guest_info * core) {
 
 	fpu->fpu_activated = 0;
 	fpu->enable_fpu_exits = 1;
+
+	// restore host state
+	V3_RestoreFPU();
     }
 
     if (fpu->osxsave_enabled) {
@@ -296,7 +354,8 @@ int v3_fpu_deactivate(struct guest_info * core) {
 	xsetbv(fpu->host_xcr0);
     }
 
-    v3_telemetry_inc_core_counter(core, "FPU_DEACTIVATE");
+ 
+
 
 
     return 0;
@@ -307,32 +366,36 @@ int v3_fpu_deactivate(struct guest_info * core) {
 int v3_fpu_activate(struct guest_info * core) {
     struct v3_fpu_state * fpu = &(core->fpu_state);
 
+    // save host state
+    V3_SaveFPU();
+
+    
     fpu->fpu_activated = 1;
     fpu->disable_fpu_exits = 1;
-
-   if (fpu->osxsave_enabled) {
-       xsetbv(fpu->guest_xcr0);
-
-       // restore state
-       __asm__ __volatile__ ("xrstor %0 \r\n"
-			     : 
-			     : "m"(fpu->arch_state)
-			     : "memory"
-			     );
-   } else if (fpu->osfxsr_enabled) {
-       // restore state
-       __asm__ __volatile__ ("fxrstor %0 \r\n"
-			     : 
-			     : "m"(fpu->arch_state)
-			     : "memory"
-			     );
-   } else {
-       __asm__ __volatile__ ("frstor %0 \r\n"
-			     : 
-			     : "m"(fpu->arch_state)
-			     : "memory"
-			     );
-   }
+    
+    if (fpu->osxsave_enabled) {
+	xsetbv(fpu->guest_xcr0);
+	
+	// restore state
+	__asm__ __volatile__ ("xrstor %0 \r\n"
+			      : 
+			      : "m"(fpu->arch_state)
+			      : "memory"
+			      );
+    } else if (fpu->osfxsr_enabled) {
+	// restore state
+	__asm__ __volatile__ ("fxrstor %0 \r\n"
+			      : 
+			      : "m"(fpu->arch_state)
+			      : "memory"
+			      );
+    } else {
+	__asm__ __volatile__ ("frstor %0 \r\n"
+			      : 
+			      : "m"(fpu->arch_state)
+			      : "memory"
+			      );
+    }
 
 
     v3_telemetry_inc_core_counter(core, "FPU_ACTIVATE");

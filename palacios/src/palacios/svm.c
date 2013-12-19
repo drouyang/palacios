@@ -34,9 +34,11 @@
 #include <palacios/vmm_lowlevel.h>
 #include <palacios/svm_msr.h>
 
+
 #include <palacios/vmm_rbtree.h>
 #include <palacios/vmm_barrier.h>
 #include <palacios/vmm_debug.h>
+
 
 #ifdef V3_CONFIG_CHECKPOINT
 #include <palacios/vmm_checkpoint.h>
@@ -46,6 +48,7 @@
 
 #include <palacios/vmm_ctrl_regs.h>
 #include <palacios/svm_io.h>
+#include <palacios/vmm_fpu.h>
 
 #include <palacios/vmm_sprintf.h>
 
@@ -336,6 +339,9 @@ static void Init_VMCB_BIOS(vmcb_t * vmcb, struct guest_info * core) {
 	// Passthrough read operations are ok.
 	v3_hook_msr(core->vm_info, INT_PENDING_AMD_MSR, NULL, v3_msr_unhandled_write, NULL);
     }
+
+    v3_fpu_init(core);
+
 }
 
 
@@ -577,6 +583,9 @@ int v3_svm_enter(struct guest_info * info) {
 
     // disable global interrupts for vm state transition
     v3_clgi();
+
+    // Update FPU state, this must come before the guest state is serialized back to the VMCS
+    v3_fpu_on_entry(info);
 
     // Synchronize the guest state to the VMCB
     guest_state->cr0 = info->ctrl_regs.cr0;

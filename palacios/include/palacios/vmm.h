@@ -284,6 +284,23 @@ struct guest_info;
     } while (0)						\
 
 
+#define V3_SaveFPU()					\
+	do {						\
+	    extern struct v3_os_hooks * os_hooks;	\
+	    if ((os_hooks) && (os_hooks)->save_fpu) {	\
+		(os_hooks)->save_fpu();			\
+	    }						\
+	} while (0)
+
+#define V3_RestoreFPU()						\
+	do {							\
+	    extern struct v3_os_hooks * os_hooks;		\
+	    if ((os_hooks) && (os_hooks)->restore_fpu) {	\
+		(os_hooks)->restore_fpu();			\
+	    }							\
+	} while (0)
+
+
 typedef enum v3_vm_class {V3_INVALID_VM, V3_PC_VM, V3_CRAY_VM} v3_vm_class_t;
 
 
@@ -337,6 +354,9 @@ struct v3_os_hooks {
     void (*sleep_cpu)(unsigned int usec);
     void (*wakeup_cpu)(void *cpu);
 
+    void (*save_fpu)(void);
+    void (*restore_fpu)(void);
+
     void *(*mutex_alloc)(void);
     void (*mutex_free)(void * mutex);
     void (*mutex_lock)(void * mutex, int must_spin);
@@ -354,12 +374,8 @@ struct v3_os_hooks {
     void * (*start_thread_on_cpu)(int cpu_id, int (*fn)(void * arg), void * arg, char * thread_name);
     int (*move_thread_to_cpu)(int cpu_id,  void * thread);
 
-    int (*hook_sched_outs)(int (*fn)(void * arg), void * arg);
-    int (*unhook_sched_outs)(int (*fn)(void * arg), void * arg);
-    int (*hook_sched_ins)(int (*fn)(void * arg), void * arg);
-    int (*unhook_sched_ins)(int (*fn)(void * arg), void * arg);
-
 };
+  
 
 
 /*

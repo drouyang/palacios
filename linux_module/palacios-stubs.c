@@ -14,6 +14,7 @@
 #include <linux/kthread.h>
 #include <asm/uaccess.h>
 #include <linux/smp.h>
+#include <asm/i387.h>
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_host_events.h>
@@ -541,6 +542,15 @@ void palacios_wakeup_cpu(void *thread)
     return;
 }
 
+void palacios_save_fpu(void) {
+    kernel_fpu_begin();
+}
+
+void palacios_restore_fpu(void) {
+    kernel_fpu_end();
+}
+
+
 /**
  * Allocates a mutex.
  * Returns NULL on failure.
@@ -631,6 +641,8 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.yield_cpu		= palacios_yield_cpu,
 	.sleep_cpu		= palacios_sleep_cpu,
 	.wakeup_cpu		= palacios_wakeup_cpu,
+	.save_fpu               = palacios_save_fpu,
+	.restore_fpu            = palacios_restore_fpu,
 	.mutex_alloc		= palacios_mutex_alloc,
 	.mutex_free		= palacios_mutex_free,
 	.mutex_lock		= palacios_mutex_lock, 

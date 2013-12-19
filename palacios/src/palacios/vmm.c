@@ -245,6 +245,9 @@ static int core_sched_in(struct guest_info * core, int cpu) {
 
 static int core_sched_out(struct guest_info * core, int cpu) {
     v3_telemetry_inc_core_counter(core, "CORE_SCHED_OUT");
+
+    v3_fpu_deactivate(core);
+
     return 0;
 }
 #endif
@@ -253,6 +256,7 @@ static int core_sched_out(struct guest_info * core, int cpu) {
 static int start_core(void * p)
 {
     struct guest_info * core = (struct guest_info *)p;
+    int ret = 0;
 
 #ifdef V3_CONFIG_HOST_SCHED_EVENTS
     v3_hook_core_preemptions(core, core_sched_in, core_sched_out);
@@ -266,22 +270,26 @@ static int start_core(void * p)
 #ifdef V3_CONFIG_SVM
 	case V3_SVM_CPU:
 	case V3_SVM_REV3_CPU:
-	    return v3_start_svm_guest(core);
+	    ret = v3_start_svm_guest(core);
 	    break;
 #endif
 #if V3_CONFIG_VMX
 	case V3_VMX_CPU:
 	case V3_VMX_EPT_CPU:
 	case V3_VMX_EPT_UG_CPU:
-	    return v3_start_vmx_guest(core);
+	    ret = v3_start_vmx_guest(core);
 	    break;
 #endif
 	default:
 	    PrintError("Attempting to enter a guest on an invalid CPU\n");
 	    return -1;
     }
-    // should not happen
-    return 0;
+
+#ifdef V3_CONFIG_HOST_SCHED_EVENTS
+    v3_unhook_core_preemptions(core, core_sched_in, core_sched_out);
+#endif
+
+    return ret;
 }
 
 
@@ -762,7 +770,6 @@ void v3_yield_cond(struct guest_info * info, int usec) {
 	           (void *)cur_cycle, (void *)info->yield_start_cycle, 
 		   (void *)info->vm_info->yield_cycle_period);
 	*/
-	v3_fpu_deactivate(info);
 
 	if (usec < 0) { 
 	    V3_Yield();
@@ -788,9 +795,6 @@ void v3_yield_cond(struct guest_info * info, int usec) {
  */ 
 void v3_yield(struct guest_info * info, int usec) {
     
-    if (info) {
-	v3_fpu_deactivate(info);
-    }
 
     if (usec < 0) { 
 	V3_Yield();
