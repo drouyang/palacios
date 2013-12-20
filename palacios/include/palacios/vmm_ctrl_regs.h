@@ -28,159 +28,177 @@
 #define EFER_MSR                 0xc0000080
 
 struct cr0_real {
-    uint_t pe    : 1;
-    uint_t mp    : 1;
-    uint_t em    : 1;
-    uint_t ts    : 1;
+    uint32_t pe    : 1;
+    uint32_t mp    : 1;
+    uint32_t em    : 1;
+    uint32_t ts    : 1;
 } __attribute__((packed));
 
 
 struct cr0_32 {
-    uint_t pe    : 1;
-    uint_t mp    : 1;
-    uint_t em    : 1;
-    uint_t ts    : 1;
-    uint_t et    : 1;
-    uint_t ne    : 1;
-    uint_t rsvd1 : 10;
-    uint_t wp    : 1;
-    uint_t rsvd2 : 1;
-    uint_t am    : 1;
-    uint_t rsvd3 : 10;
-    uint_t nw    : 1;
-    uint_t cd    : 1;
-    uint_t pg    : 1;
+    uint32_t pe    : 1;
+    uint32_t mp    : 1;
+    uint32_t em    : 1;
+    uint32_t ts    : 1;
+    uint32_t et    : 1;
+    uint32_t ne    : 1;
+    uint32_t rsvd1 : 10;
+    uint32_t wp    : 1;
+    uint32_t rsvd2 : 1;
+    uint32_t am    : 1;
+    uint32_t rsvd3 : 10;
+    uint32_t nw    : 1;
+    uint32_t cd    : 1;
+    uint32_t pg    : 1;
 } __attribute__((packed));
 
 
 struct cr0_64 {
-    uint_t pe    : 1;
-    uint_t mp    : 1;
-    uint_t em    : 1;
-    uint_t ts    : 1;
-    uint_t et    : 1;
-    uint_t ne    : 1;
-    uint_t rsvd1 : 10;
-    uint_t wp    : 1;
-    uint_t rsvd2 : 1;
-    uint_t am    : 1;
-    uint_t rsvd3 : 10;
-    uint_t nw    : 1;
-    uint_t cd    : 1;
-    uint_t pg    : 1;
+    uint64_t pe    : 1;
+    uint64_t mp    : 1;
+    uint64_t em    : 1;
+    uint64_t ts    : 1;
+    uint64_t et    : 1;
+    uint64_t ne    : 1;
+    uint64_t rsvd1 : 10;
+    uint64_t wp    : 1;
+    uint64_t rsvd2 : 1;
+    uint64_t am    : 1;
+    uint64_t rsvd3 : 10;
+    uint64_t nw    : 1;
+    uint64_t cd    : 1;
+    uint64_t pg    : 1;
 
-    uint_t  rsvd4;  // MBZ
+    uint64_t rsvd4 : 32;  // MBZ
 } __attribute__((packed));
 
 
 struct cr2_32 {
-    uint_t pf_vaddr;
+    uint32_t pf_vaddr;
 } __attribute__((packed));
 
 struct cr2_64 {
-    ullong_t pf_vaddr;
+    uint64_t pf_vaddr;
 } __attribute__((packed));
 
 
 struct cr3_32 {
-    uint_t rsvd1             : 3;
-    uint_t pwt               : 1;
-    uint_t pcd               : 1;
-    uint_t rsvd2             : 7;
-    uint_t pdt_base_addr    : 20;
+    uint32_t rsvd1             : 3;
+    uint32_t pwt               : 1;
+    uint32_t pcd               : 1;
+    uint32_t rsvd2             : 7;
+    uint32_t pdt_base_addr    : 20;
 } __attribute__((packed));
 
 
 struct cr3_32_PAE {
-    uint_t rsvd1             : 3;
-    uint_t pwt               : 1;
-    uint_t pcd               : 1;
-    uint_t pdpt_base_addr    : 27;
+    uint32_t rsvd1             : 3;
+    uint32_t pwt               : 1;
+    uint32_t pcd               : 1;
+    uint32_t pdpt_base_addr    : 27;
 } __attribute__((packed));
 
 
 struct cr3_64 {
-    uint_t rsvd1             : 3;
-    uint_t pwt               : 1;
-    uint_t pcd               : 1;
-    uint_t rsvd2             : 7;
-    ullong_t pml4t_base_addr : 40;
-    uint_t rsvd3             : 12; 
+    uint64_t rsvd1             : 3;
+    uint64_t pwt               : 1;
+    uint64_t pcd               : 1;
+    uint64_t rsvd2             : 7;
+    uint64_t pml4t_base_addr   : 40;
+    uint64_t rsvd3             : 12; 
 } __attribute__((packed));
 
 
 struct cr4_32 {
-    uint_t vme               : 1;
-    uint_t pvi               : 1;
-    uint_t tsd               : 1;
-    uint_t de                : 1;
-    uint_t pse               : 1;
-    uint_t pae               : 1;
-    uint_t mce               : 1;
-    uint_t pge               : 1;
-    uint_t pce               : 1;
-    uint_t osf_xsr           : 1;
-    uint_t osx               : 1;
-    uint_t rsvd1             : 21;
+    uint32_t vme               : 1;
+    uint32_t pvi               : 1;
+    uint32_t tsd               : 1;
+    uint32_t de                : 1;
+    uint32_t pse               : 1;
+    uint32_t pae               : 1;
+    uint32_t mce               : 1;
+    uint32_t pge               : 1;
+    uint32_t pce               : 1;
+    uint32_t osf_xsr           : 1;
+    uint32_t osxmmexcpt        : 1;
+    uint32_t rsvd1             : 2;
+    uint32_t vmxe              : 1; /* Intel Only: VMX enabled */
+    uint32_t smxe              : 1; /* Intel Only: SMX enabled */
+    uint32_t rsvd2             : 1;
+    uint32_t fsgsbase          : 1; /* Intel Only: Enables RDFSBASE, RDGSBASE, WRFSBASE, WRGSBASE instructions*/
+    uint32_t pcide             : 1; /* Intel Only: Enables process context identifiers */
+    uint32_t osxsave           : 1; /* Intel Only(?): Enabels OSXSAVE functionality */
+    uint32_t rsvd3             : 1;
+    uint32_t smep              : 1; /* Intel Only: Enables supervisor mode execution prevention */
+    uint32_t rsvd4             : 11;
 } __attribute__((packed));
 
 struct cr4_64 {
-    uint_t vme               : 1;
-    uint_t pvi               : 1;
-    uint_t tsd               : 1;
-    uint_t de                : 1;
-    uint_t pse               : 1;
-    uint_t pae               : 1;
-    uint_t mce               : 1;
-    uint_t pge               : 1;
-    uint_t pce               : 1;
-    uint_t osf_xsr           : 1;
-    uint_t osx               : 1;
-    uint_t rsvd1             : 21;
-    uint_t rsvd2             : 32;
+    uint64_t vme               : 1;
+    uint64_t pvi               : 1;
+    uint64_t tsd               : 1;
+    uint64_t de                : 1;
+    uint64_t pse               : 1;
+    uint64_t pae               : 1;
+    uint64_t mce               : 1;
+    uint64_t pge               : 1;
+    uint64_t pce               : 1;
+    uint64_t osf_xsr           : 1;
+    uint64_t osxmmexcpt        : 1;
+    uint64_t rsvd1             : 2;
+    uint64_t vmxe              : 1; /* Intel Only: VMX enabled */
+    uint64_t smxe              : 1; /* Intel Only: SMX enabled */
+    uint64_t rsvd2             : 1;
+    uint64_t fsgsbase          : 1; /* Intel Only: Enables RDFSBASE, RDGSBASE, WRFSBASE, WRGSBASE instructions*/
+    uint64_t pcide             : 1; /* Intel Only: Enables process context identifiers */
+    uint64_t osxsave           : 1; /* Intel Only(?): Enabels OSXSAVE functionality */
+    uint64_t rsvd3             : 1;
+    uint64_t smep              : 1; /* Intel Only: Enables supervisor mode execution prevention */
+    uint64_t rsvd4             : 11;
+    uint64_t rsvd5             : 32;
 } __attribute__((packed));
 
 
 
 struct efer_64 {
-    uint_t sce              : 1;
-    uint_t rsvd1            : 7; // RAZ
-    uint_t lme              : 1;
-    uint_t rsvd2            : 1; // MBZ
-    uint_t lma              : 1;
-    uint_t nxe              : 1;
-    uint_t svme             : 1;
-    uint_t rsvd3            : 1; // MBZ
-    uint_t ffxsr            : 1;
-    uint_t rsvd4            : 12; // MBZ
-    uint_t rsvd5            : 32; // MBZ
+    uint64_t sce              : 1;
+    uint64_t rsvd1            : 7; // RAZ
+    uint64_t lme              : 1;
+    uint64_t rsvd2            : 1; // MBZ
+    uint64_t lma              : 1;
+    uint64_t nxe              : 1;
+    uint64_t svme             : 1;
+    uint64_t rsvd3            : 1; // MBZ
+    uint64_t ffxsr            : 1;
+    uint64_t rsvd4            : 12; // MBZ
+    uint64_t rsvd5            : 32; // MBZ
 } __attribute__((packed));
 
 
 struct rflags {
-    uint_t cf                : 1;  // carry flag
-    uint_t rsvd1             : 1;  // Must be 1
-    uint_t pf                : 1;  // parity flag
-    uint_t rsvd2             : 1;  // Read as 0
-    uint_t af                : 1;  // Auxillary flag
-    uint_t rsvd3             : 1;  // Read as 0
-    uint_t zf                : 1;  // zero flag
-    uint_t sf                : 1;  // sign flag
-    uint_t tf                : 1;  // trap flag
-    uint_t intr              : 1;  // interrupt flag
-    uint_t df                : 1;  // direction flag
-    uint_t of                : 1;  // overflow flag
-    uint_t iopl              : 2;  // IO privilege level
-    uint_t nt                : 1;  // nested task
-    uint_t rsvd4             : 1;  // read as 0
-    uint_t rf                : 1;  // resume flag
-    uint_t vm                : 1;  // Virtual-8086 mode
-    uint_t ac                : 1;  // alignment check
-    uint_t vif               : 1;  // virtual interrupt flag
-    uint_t vip               : 1;  // virtual interrupt pending
-    uint_t id                : 1;  // ID flag
-    uint_t rsvd5             : 10; // Read as 0
-    uint_t rsvd6             : 32; // Read as 0
+    uint64_t cf                : 1;  // carry flag
+    uint64_t rsvd1             : 1;  // Must be 1
+    uint64_t pf                : 1;  // parity flag
+    uint64_t rsvd2             : 1;  // Read as 0
+    uint64_t af                : 1;  // Auxillary flag
+    uint64_t rsvd3             : 1;  // Read as 0
+    uint64_t zf                : 1;  // zero flag
+    uint64_t sf                : 1;  // sign flag
+    uint64_t tf                : 1;  // trap flag
+    uint64_t intr              : 1;  // interrupt flag
+    uint64_t df                : 1;  // direction flag
+    uint64_t of                : 1;  // overflow flag
+    uint64_t iopl              : 2;  // IO privilege level
+    uint64_t nt                : 1;  // nested task
+    uint64_t rsvd4             : 1;  // read as 0
+    uint64_t rf                : 1;  // resume flag
+    uint64_t vm                : 1;  // Virtual-8086 mode
+    uint64_t ac                : 1;  // alignment check
+    uint64_t vif               : 1;  // virtual interrupt flag
+    uint64_t vip               : 1;  // virtual interrupt pending
+    uint64_t id                : 1;  // ID flag
+    uint64_t rsvd5             : 10; // Read as 0
+    uint64_t rsvd6             : 32; // Read as 0
 } __attribute__((packed));
 
 

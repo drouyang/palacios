@@ -199,7 +199,7 @@ int v3_fpu_init(struct guest_info * core) {
     struct v3_fpu_state * fpu = &(core->fpu_state);
     struct v3_fpu_arch * arch_state = &(fpu->arch_state);
     addr_t host_cr4_val = get_cr4();
-    struct cr4_32 * host_cr4 = (struct cr4_32 *)&host_cr4_val;;
+    struct cr4_32 * host_cr4 = (struct cr4_32 *)&host_cr4_val;
     //    struct cr4_32 * guest_cr4 = (struct cr4_32 *)&(core->ctrl_regs.cr4);
 
     V3_Print("Initializing FPU for core %d\n", core->vcpu_id);
@@ -209,7 +209,7 @@ int v3_fpu_init(struct guest_info * core) {
     memset(arch_state, 0, sizeof(struct v3_fpu_arch));
 
     // is OSXSAVE supported 
-    if (host_cr4->osx) {
+    if (host_cr4->osxsave) {
 	fpu->osxsave_enabled = 1;
 	V3_Print("ENabling OSXSAVE for Guest\n");
 
