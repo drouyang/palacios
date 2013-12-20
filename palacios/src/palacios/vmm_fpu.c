@@ -198,25 +198,30 @@ int v3_fpu_init(struct guest_info * core) {
     
     struct v3_fpu_state * fpu = &(core->fpu_state);
     struct v3_fpu_arch * arch_state = &(fpu->arch_state);
-    struct cr4_32 cr4 = {get_cr4()};
-
+    addr_t host_cr4_val = get_cr4();
+    struct cr4_32 * host_cr4 = (struct cr4_32 *)&host_cr4_val;;
+    //    struct cr4_32 * guest_cr4 = (struct cr4_32 *)&(core->ctrl_regs.cr4);
 
     V3_Print("Initializing FPU for core %d\n", core->vcpu_id);
+    V3_Print("Host CR4 VAL=%x\n", (uint32_t)host_cr4_val);
+
 
     memset(arch_state, 0, sizeof(struct v3_fpu_arch));
 
     // is OSXSAVE supported 
-    if (cr4.osx) {
+    if (host_cr4->osx) {
 	fpu->osxsave_enabled = 1;
+	V3_Print("ENabling OSXSAVE for Guest\n");
 
-	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, (1 << 26), 1, 0, 0);
+	//	guest_cr4->osx = 1;
+	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, (1 << 26), (1 << 26), 0, 0);
 
     } else {
 	// Disable XSAVE (cpuid 0x01, ECX bit 26)
 	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, (1 << 26), 0, 0, 0);
     }
 
-    if (cr4.osf_xsr) {
+    if (host_cr4->osf_xsr) {
 	fpu->osfxsr_enabled = 1;
 
 	//
@@ -227,7 +232,7 @@ int v3_fpu_init(struct guest_info * core) {
 
     // We enable FXSAVE in the guest, regardless of whether the host supports it
     // If the host has it disabled, then presumably there will never be a conflict
-    v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), 1);
+    v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), (1 << 24));
     
 
     arch_state->cwd = 0x37f;
@@ -243,6 +248,8 @@ int v3_fpu_init(struct guest_info * core) {
     }
 
     fpu->enable_fpu_exits = 1;
+
+    V3_Print("FPU Initialized\n");
 
     return 0;
 }
@@ -320,12 +327,9 @@ int v3_fpu_deactivate(struct guest_info * core) {
 
     if (fpu->fpu_activated == 1) {
 
-
 	//	V3_Print("Saving FPU state for core %d\n", core->vcpu_id);
 	v3_telemetry_inc_core_counter(core, "FPU_DEACTIVATE");
 	
-	// if TS is clear, then save state and clear host_cr0.TS
-
 	if (fpu->osxsave_enabled) {
 
 	    __asm__ __volatile__ ("xsave %0\r\n"

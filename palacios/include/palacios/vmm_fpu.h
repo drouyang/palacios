@@ -53,8 +53,7 @@ struct v3_fpu_arch {
 	    uint32_t rsvd1[12];
 	    uint32_t rsvd2[12];
 	} __attribute__((packed));
-
-    } __attribute__((packed));
+    } __attribute__((packed)) __attribute__((aligned(64)));
 } __attribute__((packed));
 
 
@@ -99,7 +98,7 @@ struct v3_fpu_state {
     } __attribute__((packed));
     
 
-    struct v3_fpu_arch arch_state;
+    struct v3_fpu_arch arch_state __attribute__((aligned(64)));
 
 };
 
