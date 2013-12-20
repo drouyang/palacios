@@ -13,6 +13,7 @@ config KITTEN
 	select BUILT_IN_STRCASECMP
 	select BUILT_IN_ATOI
 	select ALIGNED_PG_ALLOC
+	select HOST_SCHED_EVENTS
 	help
 	  This enables the necesary options to compile Palacios with Kitten
 
@@ -32,6 +33,7 @@ config LINUX
 	select CONSOLE
 	select HOST_PCI
 	select V3_DECODER
+	select HOST_SCHED_EVENTS
 	help
 	  This enables the necessary options to compile Palacios as a Linux module
  
