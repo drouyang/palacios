@@ -39,7 +39,7 @@
 #include <arch/unistd.h>
 #include <arch/vsyscall.h>
 #include <arch/io_apic.h>
-
+#include <arch/i387.h>
 
 
 /**
@@ -392,6 +392,22 @@ palacios_start_kernel_thread(
     return kthread_create(fn, arg, thread_name);
 }
 
+
+/**
+ * Save the host's FPU state
+ */
+void palacios_save_fpu(void) {
+    kernel_fpu_begin();
+}
+
+
+/**
+ * Restore the host's FPU state
+ */
+void palacios_restore_fpu(void) {
+    kernel_fpu_end();
+}
+
 /**
  * Allocates a mutex.
  * Returns NULL on failure.
@@ -484,6 +500,8 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.start_kernel_thread    = palacios_start_kernel_thread,
 	.yield_cpu		= palacios_yield_cpu,
 	.sleep_cpu		= palacios_sleep_cpu,
+	.save_fpu               = palacios_save_fpu,
+	.restore_fpu            = palacios_restore_fpu,
 	.mutex_alloc		= palacios_mutex_alloc,
 	.mutex_free		= palacios_mutex_free,
 	.mutex_lock		= palacios_mutex_lock, 
