@@ -157,7 +157,17 @@ palacios_ioctl(struct file * filp,
 
 	}
 	default:
-	    return -EINVAL;
+	    {
+		struct global_ctrl * ctrl = get_global_ctrl(ioctl);
+		
+		if (ctrl) {
+		    return ctrl->handler(ioctl, arg);
+		}
+		
+		printk(KERN_WARNING "\tUnhandled global ctrl cmd: %d\n", ioctl);
+
+		return -EINVAL;
+	    }
     }
 
 

@@ -105,7 +105,7 @@ static struct vm_ctrl * get_ctrl(struct v3_guest * guest, unsigned int cmd) {
 }
 
 int call_guest_ctrl(struct v3_guest * guest, unsigned int cmd, unsigned long arg) {
-    struct vm_ctrl * ctrl = get_ctrl(guest, cmd);;
+    struct vm_ctrl * ctrl = get_ctrl(guest, cmd);
 
     if (ctrl == NULL) {
 	printk("Error Could not find guest control for cmd %d\n", cmd);

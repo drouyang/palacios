@@ -10,6 +10,7 @@ v3vee-y := 	main.o \
 		vm.o \
 		palacios_stubs.o \
 		kitten-exts.o \
+		host_pci.o \
 		iface-pisces-console.o \
 		iface-sched-events.o
 
