@@ -89,10 +89,10 @@ struct pisces_pci_iommu_map_lcall {
         struct pisces_lcall_resp lcall_resp;
     } __attribute__((packed));
     char name[128];
+    u64 region_start;
+    u64 region_end;
     u64 gpa;
-    u64 hpa;
-    u64 page_size;
-    int completed;
+    int last;
 } __attribute__((packed));
 
 
@@ -199,6 +199,8 @@ host_pci_ack_irq(struct v3_host_pci_dev * v3_dev, unsigned int vector) {
 
     strncpy(ack_irq_lcall.name, host_dev->name, 128);
     ack_irq_lcall.vector = vector;
+    
+    return 0;
 
     status = pisces_lcall_exec((struct pisces_lcall *)&ack_irq_lcall, 
             (struct pisces_lcall_resp **)&ack_irq_lcall_resp);
@@ -226,6 +228,8 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
     cmd_lcall.cmd = cmd;
     cmd_lcall.arg = arg;
 
+    return 0;
+
     status = pisces_lcall_exec((struct pisces_lcall *)&cmd_lcall,
             (struct pisces_lcall_resp **)&cmd_lcall_resp);
 
@@ -238,8 +242,8 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
 }
 
 static int
-host_pci_iommu_map(struct host_pci_device * host_dev, u64 gpa, u64 hpa, u64 page_size, 
-        int completed) 
+host_pci_iommu_map(struct host_pci_device * host_dev, u64 region_start,
+        u64 region_end, u64 gpa, int last)
 {
     struct pisces_pci_iommu_map_lcall iommu_lcall;
     struct pisces_pci_iommu_map_lcall * iommu_lcall_resp = NULL;
@@ -250,12 +254,10 @@ host_pci_iommu_map(struct host_pci_device * host_dev, u64 gpa, u64 hpa, u64 page
             sizeof(struct pisces_lcall);
 
     strncpy(iommu_lcall.name, host_dev->name, 128);
+    iommu_lcall.region_start = region_start;
+    iommu_lcall.region_end = region_end;
     iommu_lcall.gpa = gpa;
-    iommu_lcall.hpa = hpa;
-    iommu_lcall.page_size = page_size;
-    iommu_lcall.completed = completed;
-
-    return 0;
+    iommu_lcall.last = last;
 
     status = pisces_lcall_exec((struct pisces_lcall *)&iommu_lcall,
             (struct pisces_lcall_resp **)&iommu_lcall_resp);
@@ -287,32 +289,19 @@ reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) {
         return ret;
 
     while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
-        u64 size = region.end - region.start;
-        u64 page_size = 512 * 4096; // assume large 64bit pages (2MB)
-        u64 hpa = region.start;
-
         printk("Memory region (GPA:%p), start=%p, end=%p\n",
             (void *)gpa,
             (void *)region.start,
             (void *)region.end
         );
-        
-        do {
-            if (size < page_size) {
-                page_size = 4096; // less than a 2MB granularity, so we switch to 4KB pages
-            }
 
-            size -= page_size;
-            if (host_pci_iommu_map(host_dev, gpa, hpa, page_size, (size <= 0)) != 0) {
-                printk(KERN_ERR "Could not map sub region (GPA=%p) (HPA=%p) (size=%llu)\n",
-                    (void *)gpa,
-                    (void *)hpa,
-                    page_size);
-            }
+        if (host_pci_iommu_map(host_dev, region.start, region.end, gpa, 0) != 0) {
+            return -1;
+        }
+    }
 
-            hpa += page_size;
-            gpa += page_size;
-        } while (size > 0);
+    if (host_pci_iommu_map(host_dev, 0, 0, 0, 1) != 0) {
+        return -1;
     }
 
     return ret;
