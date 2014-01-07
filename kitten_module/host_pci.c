@@ -14,6 +14,7 @@
 #include <lwk/resource.h>
 #include <lwk/waitq.h>
 #include <arch/uaccess.h>
+#include <arch/proto.h>
 #include <arch/pisces/pisces_lcall.h>
 
 #include "palacios.h"
@@ -29,6 +30,8 @@
 #define PCI_DEV_NUM(devfn) (((devfn) >> 3) & 0x1f)
 #define PCI_FUNC_NUM(devfn) ((devfn) & 0x07))
 
+#define PISCES_PCI_IPI_VECTOR 221
+
 
 struct host_pci_device {
     char name[128];
@@ -37,6 +40,7 @@ struct host_pci_device {
 
     enum {INTX_IRQ, MSI_IRQ, MSIX_IRQ} irq_type;
     uint32_t num_vecs;
+    uint32_t ipi_vector;
 
     union {
         struct {
@@ -95,7 +99,7 @@ struct pisces_pci_iommu_map_lcall {
     u32 last;
 } __attribute__((packed));
 
-
+u32 ipi_device_offset;
 static struct list_head device_list;
 static spinlock_t lock;
 
@@ -205,12 +209,13 @@ host_pci_ack_irq(struct v3_host_pci_dev * v3_dev, unsigned int vector) {
     status = pisces_lcall_exec((struct pisces_lcall *)&ack_irq_lcall, 
             (struct pisces_lcall_resp **)&ack_irq_lcall_resp);
 
-    if (status != 0 || ack_irq_lcall_resp->lcall_resp.status != 0) {
+    if (status != 0) {
         return -1;
     }
 
+    status = ack_irq_lcall_resp->lcall_resp.status;
     kmem_free(ack_irq_lcall_resp);
-    return 0;
+    return status;
 }
 
 static int 
@@ -233,12 +238,13 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
     status = pisces_lcall_exec((struct pisces_lcall *)&cmd_lcall,
             (struct pisces_lcall_resp **)&cmd_lcall_resp);
 
-    if (status != 0 || cmd_lcall_resp->lcall_resp.status != 0) {
+    if (status != 0) {
         return -1;
     }
 
+    status = cmd_lcall_resp->lcall_resp.status;
     kmem_free(cmd_lcall_resp);
-    return 0;
+    return status;
 }
 
 static int
@@ -262,12 +268,13 @@ host_pci_iommu_map(struct host_pci_device * host_dev, u64 region_start,
     status = pisces_lcall_exec((struct pisces_lcall *)&iommu_lcall,
             (struct pisces_lcall_resp **)&iommu_lcall_resp);
 
-    if (status != 0 || iommu_lcall_resp->lcall_resp.status != 0) {
+    if (status != 0) {
         return -1;
     }
 
+    status = iommu_lcall_resp->lcall_resp.status;
     kmem_free(iommu_lcall_resp);
-    return 0;
+    return status;
 }
 
 static int
@@ -346,6 +353,22 @@ static struct v3_host_pci_hooks host_pci_hooks = {
 };
 
 
+static void
+ipi_handler(struct pt_regs * regs, unsigned int vector)
+{
+    struct host_pci_device * host_dev = NULL;
+
+    printk("Received PCI IPI (vector=%u)\n", vector);
+
+    list_for_each_entry(host_dev, &device_list, dev_node) {
+        if (vector == host_dev->ipi_vector) {
+            V3_host_pci_raise_irq(&(host_dev->v3_dev), 0);
+            break;
+        }
+    }
+}
+
+
 static int host_pci_setup_dev(struct host_pci_device * host_dev) {
     pci_dev_t * dev = NULL;
     struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
@@ -394,10 +417,17 @@ static int host_pci_setup_dev(struct host_pci_device * host_dev) {
         }
     }
 
+    
     // reserve device IRQ vector for IPI
-    // TODO: this
-    //
-    printk("RESERVE IRQ HERE\n");
+    {
+        unsigned long flags;
+        spin_lock_irqsave(&(lock), flags);
+        host_dev->ipi_vector = PISCES_PCI_IPI_VECTOR + ipi_device_offset;
+        ipi_device_offset++;
+        spin_unlock_irqrestore(&(lock), flags);
+    }
+
+    set_idtvec_handler(host_dev->ipi_vector, ipi_handler); 
 
     return 0;
 }
@@ -442,21 +472,16 @@ static int register_pci_hw_dev(unsigned int cmd, unsigned long arg) {
         return -EFAULT;
     }
 
-    {
-        // host_dev->hw_dev.intx_disabled = 1;
-        // spin_lock_init(&(host_dev->hw_dev.intx_lock));
-
-        ret = host_pci_setup_dev(host_dev);
-    
-        if (ret == -1) {
-            printk(KERN_ERR "Could not setup pci device\n");
-            return -1;
-        }
+    ret = host_pci_setup_dev(host_dev);
+    if (ret == -1) {
+        printk(KERN_ERR "Could not setup pci device\n");
+        return -1;
     }
 
     printk("Device %s registered\n", pci_dev_arg.name);
 
-    return 0;
+    /* We use the ioctl return value to signal the ipi vector to user space */
+    return host_dev->ipi_vector;
 }
 
 
@@ -464,6 +489,7 @@ static int register_pci_hw_dev(unsigned int cmd, unsigned long arg) {
 static int host_pci_init( void ) {
     INIT_LIST_HEAD(&device_list);
     spin_lock_init(&lock);
+    ipi_device_offset = 0;
 
     V3_Init_Host_PCI(&host_pci_hooks);
 
