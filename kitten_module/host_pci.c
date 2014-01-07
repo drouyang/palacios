@@ -92,7 +92,7 @@ struct pisces_pci_iommu_map_lcall {
     u64 region_start;
     u64 region_end;
     u64 gpa;
-    int last;
+    u32 last;
 } __attribute__((packed));
 
 
@@ -298,6 +298,8 @@ reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) {
         if (host_pci_iommu_map(host_dev, region.start, region.end, gpa, 0) != 0) {
             return -1;
         }
+
+        gpa += (region.end - region.start);
     }
 
     if (host_pci_iommu_map(host_dev, 0, 0, 0, 1) != 0) {
