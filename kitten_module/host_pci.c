@@ -204,8 +204,6 @@ host_pci_ack_irq(struct v3_host_pci_dev * v3_dev, unsigned int vector) {
     strncpy(ack_irq_lcall.name, host_dev->name, 128);
     ack_irq_lcall.vector = vector;
     
-    return 0;
-
     status = pisces_lcall_exec((struct pisces_lcall *)&ack_irq_lcall, 
             (struct pisces_lcall_resp **)&ack_irq_lcall_resp);
 
@@ -232,8 +230,6 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
     strncpy(cmd_lcall.name, host_dev->name, 128);
     cmd_lcall.cmd = cmd;
     cmd_lcall.arg = arg;
-
-    return 0;
 
     status = pisces_lcall_exec((struct pisces_lcall *)&cmd_lcall,
             (struct pisces_lcall_resp **)&cmd_lcall_resp);
@@ -362,6 +358,7 @@ ipi_handler(struct pt_regs * regs, unsigned int vector)
 
     list_for_each_entry(host_dev, &device_list, dev_node) {
         if (vector == host_dev->ipi_vector) {
+            printk("IRQ raised\n");
             V3_host_pci_raise_irq(&(host_dev->v3_dev), 0);
             break;
         }
@@ -389,7 +386,7 @@ static int host_pci_setup_dev(struct host_pci_device * host_dev) {
     spin_lock_init(&(host_dev->hw_dev.intx_lock));
 
     // -- Device initialization already setup on the Linux side
-    
+     
     // decode and cache BAR registers
     // cache first 6 BAR regs */
     {
@@ -399,16 +396,54 @@ static int host_pci_setup_dev(struct host_pci_device * host_dev) {
             pci_bar_t pci_bar;
             pcicfg_bar_decode(&dev->cfg, i, &pci_bar);
 
-            bar->size = pci_bar.size;
-            bar->addr = pci_bar.address;
-            bar->type = pci_bar.type;
-            bar->prefetchable = (pci_bar.prefetch != 0);
+
+            if (pci_bar.address == 0) {
+                bar->type = PT_BAR_NONE;
+            } else if (pci_bar.mem == PCIM_BAR_MEM_SPACE) {
+                bar->size = pci_bar.size;
+                bar->addr = pci_bar.address;
+                bar->prefetchable = (pci_bar.prefetch != 0);
+
+                if (pci_bar.type == 2) {
+                    bar->type = PT_BAR_MEM64_LO;
+
+                    {
+                        struct v3_host_pci_bar * hi_bar = &(v3_dev->bars[++i]);
+                        hi_bar->type = PT_BAR_MEM64_HI;
+                    }
+                }  else if (pci_bar.type == 1) {
+                    bar->type = PT_BAR_MEM24;
+                } else {
+                    bar->type = PT_BAR_MEM32;
+                }
+            } else {
+                bar->type = PT_BAR_IO;
+                bar->size = pci_bar.size;
+                bar->addr = pci_bar.address;
+            }
+
+            printk("Caching pci bar region %d (%p --> %p)\n",
+                    i,
+                    (void *)bar->addr,
+                    (void *)(bar->addr + bar->size));
         } 
     }
 
-    // Cache Expansion ROM
-    // TODO: this
 
+
+#if 0
+    // Cache Expansion ROM
+    {
+        pci_bar_t rom_bar;
+        pcicfg_bar_decode(&dev->cfg, 0, &rom_bar);
+
+        v3_dev->exp_rom.size = rom_bar.size;
+        v3_dev->exp_rom.addr = rom_bar.address;
+        v3_dev->exp_rom.type = PT_EXP_ROM;
+        v3_dev->exp_rom.exp_rom_enabled = IORESOURCE_ROM_ENABLE;
+        
+    }
+#endif
     // cache configuration space
     { 
         int i = 0;
