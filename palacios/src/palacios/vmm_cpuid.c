@@ -75,6 +75,8 @@ void v3_init_cpuid_map(struct v3_vm_info * vm) {
     v3_cpuid_add_fields(vm, 0x00000001, 0, 0, 0, 0, 0, 0, (1 << 7), 0);
     v3_cpuid_add_fields(vm, 0x80000001, 0, 0, 0, 0, 0, 0, (1 << 7), 0);
 
+    // disable TSC deadline mode
+    v3_cpuid_add_fields(vm, 0x00000001, 0, 0, 0, 0, (1 << 24), 0, 0, 0);
 
 }
 
