@@ -403,6 +403,7 @@ static int host_pci_setup_dev(struct host_pci_device * host_dev) {
                 bar->size = pci_bar.size;
                 bar->addr = pci_bar.address;
                 bar->prefetchable = (pci_bar.prefetch != 0);
+                bar->cacheable = bar->prefetchable;
 
                 if (pci_bar.type == 2) {
                     bar->type = PT_BAR_MEM64_LO;
@@ -410,6 +411,10 @@ static int host_pci_setup_dev(struct host_pci_device * host_dev) {
                     {
                         struct v3_host_pci_bar * hi_bar = &(v3_dev->bars[++i]);
                         hi_bar->type = PT_BAR_MEM64_HI;
+                        hi_bar->size = pci_bar.size;
+                        hi_bar->addr = pci_bar.address;
+                        hi_bar->prefetchable = (pci_bar.prefetch != 0);
+                        hi_bar->cacheable = hi_bar->prefetchable;
                     }
                 }  else if (pci_bar.type == 1) {
                     bar->type = PT_BAR_MEM24;
