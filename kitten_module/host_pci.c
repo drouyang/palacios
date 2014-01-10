@@ -16,6 +16,7 @@
 #include <arch/uaccess.h>
 #include <arch/proto.h>
 #include <arch/pisces/pisces_lcall.h>
+#include <arch/pisces/pisces_pci.h>
 
 #include "palacios.h"
 #include "kitten-exts.h"
@@ -28,9 +29,10 @@
 #define PCI_HDR_SIZE 256
 #define PCI_DEVFN(slot, func) ((((slot) & 0x1f) << 3) | ((func) & 0x07))
 #define PCI_DEV_NUM(devfn) (((devfn) >> 3) & 0x1f)
-#define PCI_FUNC_NUM(devfn) ((devfn) & 0x07))
+#define PCI_FUNC_NUM(devfn) ((devfn) & 0x07)
 
 #define PISCES_PCI_IPI_VECTOR 221
+#define PISCES_MSI_IPI_VECTOR 240
 
 
 struct host_pci_device {
@@ -52,6 +54,8 @@ struct host_pci_device {
 
             spinlock_t intx_lock;
             u8 intx_disabled;
+
+            u8 msi_vector;
 
             u32 num_msix_vecs;
             struct msix_entry * msix_entries;
@@ -99,7 +103,8 @@ struct pisces_pci_iommu_map_lcall {
     u32 last;
 } __attribute__((packed));
 
-u32 ipi_device_offset;
+u32 ipi_device_offset = 0;
+u32 msi_vector_offset = 0;
 static struct list_head device_list;
 static spinlock_t lock;
 
@@ -231,8 +236,45 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
     cmd_lcall.cmd = cmd;
     cmd_lcall.arg = arg;
 
-    status = pisces_lcall_exec((struct pisces_lcall *)&cmd_lcall,
-            (struct pisces_lcall_resp **)&cmd_lcall_resp);
+    switch (cmd) {
+        case HOST_PCI_CMD_MSI_ENABLE:
+            /* allocate MSI vector*/
+            if (host_dev->hw_dev.msi_vector == 0) {
+                unsigned long flags;
+                spin_lock_irqsave(&(lock), flags);
+                host_dev->ipi_vector = 
+                    PISCES_MSI_IPI_VECTOR + msi_vector_offset;
+                msi_vector_offset++;
+                spin_unlock_irqrestore(&(lock), flags);
+            }
+
+            status = pisces_pci_msi_enable(host_dev->hw_dev.dev, 
+                    host_dev->hw_dev.msi_vector);
+            if (status) {
+                printk("Error enabling MSI\n");
+                break;
+            }
+
+            host_dev->irq_type = MSI_IRQ;
+            /* only support 1 vector for now */
+            host_dev->num_vecs = 1;
+            break;
+
+        case HOST_PCI_CMD_MSI_DISABLE:
+            status = pisces_pci_msi_disable(host_dev->hw_dev.dev);
+            if (status) {
+                break;
+            }
+
+            host_dev->irq_type = INTX_IRQ;
+
+            break;
+
+        default:
+            /* forward pci cmd to Linux */
+            status = pisces_lcall_exec((struct pisces_lcall *)&cmd_lcall,
+                    (struct pisces_lcall_resp **)&cmd_lcall_resp);
+    }
 
     if (status != 0) {
         return -1;
