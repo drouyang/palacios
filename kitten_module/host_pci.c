@@ -6,6 +6,7 @@
  * 
  * (c) 2013, Jack Lange <jacklange@cs.pitt.edu>
  * (c) 2013, Brian Kocoloski <briankoco@cs.pitt.edu>
+ * (c) 2013, Jiannan Ouyang <briankoco@cs.pitt.edu>
  */
 
 #include <lwk/spinlock.h>
@@ -31,8 +32,10 @@
 #define PCI_DEV_NUM(devfn) (((devfn) >> 3) & 0x1f)
 #define PCI_FUNC_NUM(devfn) ((devfn) & 0x07)
 
-#define PISCES_PCI_IPI_VECTOR 221
-#define PISCES_MSI_IPI_VECTOR 240
+
+/* TODO: add ipi redirection table */
+#define PISCES_INTX_IPI_VECTOR  221
+#define PISCES_MSI_IPI_VECTOR   240
 
 
 struct host_pci_device {
@@ -42,7 +45,8 @@ struct host_pci_device {
 
     enum {INTX_IRQ, MSI_IRQ, MSIX_IRQ} irq_type;
     uint32_t num_vecs;
-    uint32_t ipi_vector;
+    uint32_t intx_ipi_vector;
+    uint32_t msi_ipi_vector;
 
     union {
         struct {
@@ -54,8 +58,6 @@ struct host_pci_device {
 
             spinlock_t intx_lock;
             u8 intx_disabled;
-
-            u8 msi_vector;
 
             u32 num_msix_vecs;
             struct msix_entry * msix_entries;
@@ -103,7 +105,7 @@ struct pisces_pci_iommu_map_lcall {
     u32 last;
 } __attribute__((packed));
 
-u32 ipi_device_offset = 0;
+u32 intx_vector_offset = 0;
 u32 msi_vector_offset = 0;
 static struct list_head device_list;
 static spinlock_t lock;
@@ -221,6 +223,22 @@ host_pci_ack_irq(struct v3_host_pci_dev * v3_dev, unsigned int vector) {
     return status;
 }
 
+static void
+msi_ipi_handler(struct pt_regs * regs, unsigned int vector)
+{
+    struct host_pci_device * host_dev = NULL;
+
+    printk("Received PCI MSI IPI (vector=%u)\n", vector);
+
+    list_for_each_entry(host_dev, &device_list, dev_node) {
+        if (vector == host_dev->msi_ipi_vector) {
+            V3_host_pci_raise_irq(&(host_dev->v3_dev), 0);
+            break;
+        }
+    }
+}
+
+
 static int 
 host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
     struct host_pci_device * host_dev = v3_dev->host_data;
@@ -228,41 +246,39 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
     struct pisces_pci_cmd_lcall * cmd_lcall_resp = NULL;
     int status = 0;
 
-    cmd_lcall.lcall.lcall = PISCES_LCALL_PCI_CMD;
-    cmd_lcall.lcall.data_len = sizeof(struct pisces_pci_cmd_lcall) -
-            sizeof(struct pisces_lcall);
-
-    strncpy(cmd_lcall.name, host_dev->name, 128);
-    cmd_lcall.cmd = cmd;
-    cmd_lcall.arg = arg;
-
     switch (cmd) {
         case HOST_PCI_CMD_MSI_ENABLE:
             /* allocate MSI vector*/
-            if (host_dev->hw_dev.msi_vector == 0) {
+            if (host_dev->msi_ipi_vector == 0) {
                 unsigned long flags;
                 spin_lock_irqsave(&(lock), flags);
-                host_dev->ipi_vector = 
+                host_dev->msi_ipi_vector = 
                     PISCES_MSI_IPI_VECTOR + msi_vector_offset;
                 msi_vector_offset++;
                 spin_unlock_irqrestore(&(lock), flags);
             }
 
+            set_idtvec_handler(host_dev->msi_ipi_vector, msi_ipi_handler); 
+
             status = pisces_pci_msi_enable(host_dev->hw_dev.dev, 
-                    host_dev->hw_dev.msi_vector);
+                    host_dev->msi_ipi_vector);
             if (status) {
                 printk("Error enabling MSI\n");
                 break;
             }
 
+            printk("MSI enabled\n");
+
             host_dev->irq_type = MSI_IRQ;
             /* only support 1 vector for now */
             host_dev->num_vecs = 1;
+            printk("before break\n");
             break;
 
         case HOST_PCI_CMD_MSI_DISABLE:
             status = pisces_pci_msi_disable(host_dev->hw_dev.dev);
             if (status) {
+                printk("Error disabling MSI\n");
                 break;
             }
 
@@ -271,17 +287,25 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
             break;
 
         default:
+            cmd_lcall.lcall.lcall = PISCES_LCALL_PCI_CMD;
+            cmd_lcall.lcall.data_len = sizeof(struct pisces_pci_cmd_lcall) -
+                sizeof(struct pisces_lcall);
+
+            strncpy(cmd_lcall.name, host_dev->name, 128);
+            cmd_lcall.cmd = cmd;
+            cmd_lcall.arg = arg;
+
             /* forward pci cmd to Linux */
             status = pisces_lcall_exec((struct pisces_lcall *)&cmd_lcall,
                     (struct pisces_lcall_resp **)&cmd_lcall_resp);
+            if (status < 0) {
+                break;
+            }
+
+            status = cmd_lcall_resp->lcall_resp.status;
+            kmem_free(cmd_lcall_resp);
     }
 
-    if (status != 0) {
-        return -1;
-    }
-
-    status = cmd_lcall_resp->lcall_resp.status;
-    kmem_free(cmd_lcall_resp);
     return status;
 }
 
@@ -392,15 +416,14 @@ static struct v3_host_pci_hooks host_pci_hooks = {
 
 
 static void
-ipi_handler(struct pt_regs * regs, unsigned int vector)
+intx_ipi_handler(struct pt_regs * regs, unsigned int vector)
 {
     struct host_pci_device * host_dev = NULL;
 
-    printk("Received PCI IPI (vector=%u)\n", vector);
+    printk("Received PCI INTx IPI (vector=%u)\n", vector);
 
     list_for_each_entry(host_dev, &device_list, dev_node) {
-        if (vector == host_dev->ipi_vector) {
-            printk("IRQ raised\n");
+        if (vector == host_dev->intx_ipi_vector) {
             V3_host_pci_raise_irq(&(host_dev->v3_dev), 0);
             break;
         }
@@ -504,12 +527,12 @@ static int host_pci_setup_dev(struct host_pci_device * host_dev) {
     {
         unsigned long flags;
         spin_lock_irqsave(&(lock), flags);
-        host_dev->ipi_vector = PISCES_PCI_IPI_VECTOR + ipi_device_offset;
-        ipi_device_offset++;
+        host_dev->intx_ipi_vector = PISCES_INTX_IPI_VECTOR + intx_vector_offset;
+        intx_vector_offset++;
         spin_unlock_irqrestore(&(lock), flags);
     }
 
-    set_idtvec_handler(host_dev->ipi_vector, ipi_handler); 
+    set_idtvec_handler(host_dev->intx_ipi_vector, intx_ipi_handler); 
 
     return 0;
 }
@@ -563,7 +586,7 @@ static int register_pci_hw_dev(unsigned int cmd, unsigned long arg) {
     printk("Device %s registered\n", pci_dev_arg.name);
 
     /* We use the ioctl return value to signal the ipi vector to user space */
-    return host_dev->ipi_vector;
+    return host_dev->intx_ipi_vector;
 }
 
 
@@ -571,7 +594,8 @@ static int register_pci_hw_dev(unsigned int cmd, unsigned long arg) {
 static int host_pci_init( void ) {
     INIT_LIST_HEAD(&device_list);
     spin_lock_init(&lock);
-    ipi_device_offset = 0;
+    intx_vector_offset = 0;
+    msi_vector_offset = 0;
 
     V3_Init_Host_PCI(&host_pci_hooks);
 

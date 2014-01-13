@@ -449,10 +449,10 @@ int cap_write(struct pci_device * pci, uint32_t offset, void * src, uint_t lengt
 	if (cap_type == PCI_CAP_MSI) {
 	    struct msi_msg_ctrl * msg_ctrl = cap_ptr;
 
-	    V3_Print("MSI Cap Ctrl=%x\n", *(uint16_t *)pci->msi_cap);
-	    V3_Print("MSI ADDR=%x\n", *(uint32_t *)(cap_ptr + 2));
-	    V3_Print("MSI HI ADDR=%x\n", *(uint32_t *)(cap_ptr + 6));
-	    V3_Print("MSI Data=%x\n", *(uint16_t *)(cap_ptr + 10));
+	    //V3_Print("MSI Cap Ctrl=%x\n", *(uint16_t *)pci->msi_cap);
+	    //V3_Print("MSI ADDR=%x\n", *(uint32_t *)(cap_ptr + 2));
+	    //V3_Print("MSI HI ADDR=%x\n", *(uint32_t *)(cap_ptr + 6));
+	    //V3_Print("MSI Data=%x\n", *(uint16_t *)(cap_ptr + 10));
 
 	    if (msg_ctrl->cap_64bit) {
 		if (msg_ctrl->per_vect_mask) {
@@ -492,7 +492,7 @@ int cap_write(struct pci_device * pci, uint32_t offset, void * src, uint_t lengt
 	if (cap_type == PCI_CAP_MSI) {
 	    struct msi_msg_ctrl * msg_ctrl = cap_ptr;
 	    
-	    V3_Print("msi_was_enabled=%d, msi_is_enabled=%d\n", msi_was_enabled,  msg_ctrl->msi_enable);
+	    //V3_Print("msi_was_enabled=%d, msi_is_enabled=%d\n", msi_was_enabled,  msg_ctrl->msi_enable);
 
 	    if ((msg_ctrl->msi_enable == 1) && (msi_was_enabled == 0)) {
 		pci->irq_type = IRQ_MSI;
