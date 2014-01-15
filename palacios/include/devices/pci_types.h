@@ -206,13 +206,14 @@ struct msi_addr {
 
 struct msi_data {
     union {
-	uint16_t val;
+	uint32_t val;
 	struct {
 	    uint16_t vector       : 8;
 	    uint16_t del_mode     : 3;
 	    uint16_t rsvd1        : 3;
 	    uint16_t level        : 1;
 	    uint16_t trig_mode    : 1;
+        uint16_t rsvd2;
 	} __attribute__((packed));;
     } __attribute__((packed));
 } __attribute__((packed));
@@ -261,26 +262,45 @@ struct msi64_pervec_msg_addr {
 
 struct msix_msg_ctrl {
     uint16_t table_size   : 11;
-    uint16_t rsvd         : 4;
+    uint16_t rsvd         : 3;
+    uint16_t fn_mask      : 1;
     uint16_t msix_enable  : 1;
 } __attribute__((packed));
 
+/*
 struct msix_cap {
     struct msix_msg_ctrl msg_ctrl;
     uint32_t hi_addr;
     uint32_t bir      : 3;
     uint32_t table_offset : 29;
 } __attribute__((packed));
+*/
 
-
+/*
 struct msix_table {
     struct {
 	struct msi_data data;
 	struct msi_addr addr;
     } __attribute__((packed)) entries[0];
 } __attribute__((packed));
+*/
 
+struct msix_cap {
+    struct msix_msg_ctrl msg_ctrl;
+    uint32_t table_bir    : 3;
+    uint32_t table_offset : 29;
+    uint32_t pba_bir      : 3;
+    uint32_t pba_offset   : 29;
+} __attribute__((packed));
 
+struct msix_table {
+    struct {
+        struct msi_addr addr;
+        uint32_t hi_addr;
+        struct msi_data data;
+        uint32_t vector_control;
+    } __attribute__((packed)) entries[0];
+} __attribute__((packed));
 
 // See PCI power management specification (1.2)
 struct pmc_cap {
