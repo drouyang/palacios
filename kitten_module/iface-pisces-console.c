@@ -114,7 +114,7 @@ kbd_event(struct v3_guest * guest, unsigned int cmd,
 
     event.scan_code = (u8)arg;
 
-    printk("Sending scan_code (%x) to VM (%p)\n", event.scan_code, cons->guest->v3_ctx);
+    //printk("Sending scan_code (%x) to VM (%p)\n", event.scan_code, cons->guest->v3_ctx);
 
     v3_deliver_keyboard_event(cons->guest->v3_ctx, &event);
     

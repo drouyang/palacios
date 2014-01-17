@@ -17,7 +17,7 @@ vm_ioctl(struct file * filp,
     struct v3_guest * guest = filp->inode->priv;
     //  void __user * argp = (void __user *)arg;
 
-    printk("VM IOCTL: %d (guest=%p)\n", cmd, guest);
+    //printk("VM IOCTL: %d (guest=%p)\n", cmd, guest);
 
     switch (cmd) {
 	case V3_VM_LAUNCH: {

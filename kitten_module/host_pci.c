@@ -35,9 +35,6 @@
 
 /* TODO: vector management and ipi redirection table */
 
-#define PISCES_INTX_IPI_VECTOR  221
-#define PISCES_MSI_IPI_VECTOR   240
-
 /* [64,238] in Kitten is free for use by devices
  * we grab [200, 219] for Pisces
  */
@@ -53,7 +50,7 @@ struct host_pci_device {
     enum {INTX_IRQ, MSI_IRQ, MSIX_IRQ} irq_type;
     uint32_t num_vecs;
     uint32_t intx_ipi_vector;
-    uint32_t msi_ipi_vector;
+    uint32_t msi_irq_vector;
 
     union {
         struct {
@@ -112,8 +109,7 @@ struct pisces_pci_iommu_map_lcall {
     u32 last;
 } __attribute__((packed));
 
-u32 intx_vector_offset = 0;
-u32 msi_vector_offset = 0;
+u32 irq_vector_offset = 0;
 static struct list_head device_list;
 static spinlock_t lock;
 
@@ -231,12 +227,12 @@ host_pci_ack_irq(struct v3_host_pci_dev * v3_dev, unsigned int vector) {
 }
 
 static void
-msi_ipi_handler(struct pt_regs * regs, unsigned int vector)
+msi_irq_handler(struct pt_regs * regs, unsigned int vector)
 {
     struct host_pci_device * host_dev = NULL;
 
     list_for_each_entry(host_dev, &device_list, dev_node) {
-        if (vector == host_dev->msi_ipi_vector) {
+        if (vector == host_dev->msi_irq_vector) {
             V3_host_pci_raise_irq(&(host_dev->v3_dev), 0);
             break;
         }
@@ -244,18 +240,24 @@ msi_ipi_handler(struct pt_regs * regs, unsigned int vector)
 }
 
 static void
-msix_ipi_handler(struct pt_regs * regs, unsigned int vector)
+msix_irq_handler(struct pt_regs * regs, unsigned int vector)
 {
     struct host_pci_device * host_dev = NULL;
     int i;
+    int matched = 0;
+
+    //printk("MSI-X IRQ Handler (%d)\n", vector);
 
     list_for_each_entry(host_dev, &device_list, dev_node) {
         for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
             if (vector == host_dev->hw_dev.msix_entries[i].vector) {
-                V3_host_pci_raise_irq(&(host_dev->v3_dev), 
-                        host_dev->hw_dev.msix_entries[i].vector);
-                break;
+
+                V3_host_pci_raise_irq(&(host_dev->v3_dev), i);
+                matched = 1;
             }
+        }
+        if (!matched) {
+	    printk("Error: could not find matching MSI-X entry for vector %d\n", vector);
         }
     }
 }
@@ -279,21 +281,21 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
                  */
 
                 /* allocate MSI vector*/
-                if (host_dev->msi_ipi_vector == 0) {
+                if (host_dev->msi_irq_vector == 0) {
                     unsigned long flags;
 
                     spin_lock_irqsave(&(lock), flags);
-                    host_dev->msi_ipi_vector = 
-                        PISCES_MSI_IPI_VECTOR + msi_vector_offset;
-                    msi_vector_offset++;
+                    host_dev->msi_irq_vector = 
+                        PISCES_PCI_VECTOR_START + irq_vector_offset;
+                    irq_vector_offset++;
                     spin_unlock_irqrestore(&(lock), flags);
 
-                    set_idtvec_handler(host_dev->msi_ipi_vector, msi_ipi_handler); 
+                    set_idtvec_handler(host_dev->msi_irq_vector, msi_irq_handler); 
                 }
 
 
                 status = pisces_pci_msi_enable(host_dev->hw_dev.dev, 
-                        host_dev->msi_ipi_vector);
+                        host_dev->msi_irq_vector);
                 if (status) {
                     printk("Error enabling MSI\n");
                     break;
@@ -319,6 +321,8 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
             {
                 int i;
 
+                printk("Enabling MSI-X\n");
+
                 host_dev->hw_dev.num_msix_vecs = arg;
                 host_dev->hw_dev.msix_entries = kmem_alloc(
                         host_dev->hw_dev.num_msix_vecs * sizeof(struct msix_entry));
@@ -328,19 +332,19 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
                     break;
                 }
 
-                /* allocate IRQ vectors */
+                /* allocate MSI-X vectors */
                 for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
                     unsigned long flags;
 
                     host_dev->hw_dev.msix_entries[i].entry = i;
                     spin_lock_irqsave(&(lock), flags);
                     host_dev->hw_dev.msix_entries[i].vector 
-                        = PISCES_MSI_IPI_VECTOR + msi_vector_offset;
-                    msi_vector_offset++;
+                        = PISCES_PCI_VECTOR_START + irq_vector_offset;
+                    irq_vector_offset++;
                     spin_unlock_irqrestore(&(lock), flags);
 
                     set_idtvec_handler(host_dev->hw_dev.msix_entries[i].vector,
-                            msix_ipi_handler); 
+                            msix_irq_handler); 
                 }
 
                 status = pisces_pci_msix_enable(
@@ -358,6 +362,8 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
         case HOST_PCI_CMD_MSIX_DISABLE:
             {
                 /* free allocated vectors */
+
+                printk("Disabling MSI-X\n");
 
                 host_dev->hw_dev.num_msix_vecs = 0;
                 kmem_free(host_dev->hw_dev.msix_entries);
@@ -612,8 +618,8 @@ static int host_pci_setup_dev(struct host_pci_device * host_dev) {
     {
         unsigned long flags;
         spin_lock_irqsave(&(lock), flags);
-        host_dev->intx_ipi_vector = PISCES_INTX_IPI_VECTOR + intx_vector_offset;
-        intx_vector_offset++;
+        host_dev->intx_ipi_vector = PISCES_PCI_VECTOR_START + irq_vector_offset;
+        irq_vector_offset++;
         spin_unlock_irqrestore(&(lock), flags);
     }
 
@@ -679,8 +685,7 @@ static int register_pci_hw_dev(unsigned int cmd, unsigned long arg) {
 static int host_pci_init( void ) {
     INIT_LIST_HEAD(&device_list);
     spin_lock_init(&lock);
-    intx_vector_offset = 0;
-    msi_vector_offset = 0;
+    irq_vector_offset = 0;
 
     V3_Init_Host_PCI(&host_pci_hooks);
 
