@@ -675,6 +675,7 @@ static int pt_cmd_update(struct pci_device * pci, pci_cmd_t cmd, uint64_t arg, v
 
     v3_host_pci_cmd_update(state->host_dev, cmd, arg);
 
+#if 0
     {
         struct msix_table * table = (struct msix_table *)
 	    //    V3_VAddr((void *)(state->host_dev->bars[1].addr + 0x7c000));
@@ -698,7 +699,7 @@ static int pt_cmd_update(struct pci_device * pci, pci_cmd_t cmd, uint64_t arg, v
             //iowrite32(0x1, (void *)&table->entries[i].vector_control);
         }
     }
-    
+#endif
     return 0;
 }
 
