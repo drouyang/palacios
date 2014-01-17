@@ -53,13 +53,14 @@ struct v3_host_pci_bar {
     uint64_t addr; 
 
     union {
-	uint32_t flags;
-	struct {
-	    uint32_t prefetchable    : 1;
-	    uint32_t cacheable       : 1;
-	    uint32_t exp_rom_enabled : 1;
-	    uint32_t rsvd            : 29;
-	} __attribute__((packed));
+        uint32_t flags;
+        struct {
+            uint32_t prefetchable    : 1;
+            uint32_t cacheable       : 1;
+            uint32_t exp_rom_enabled : 1;
+            uint32_t is_mapped       : 1;
+            uint32_t rsvd            : 28;
+        } __attribute__((packed));
     } __attribute__((packed));
 
 

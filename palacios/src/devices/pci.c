@@ -506,10 +506,10 @@ int cap_write(struct pci_device * pci, uint32_t offset, void * src, uint_t lengt
 
             if ((msix_cap->msg_ctrl.msix_enable == 1) && (msix_was_enabled == 0)) {
                 pci->irq_type = IRQ_MSIX;
-                pci->cmd_update(pci, PCI_CMD_MSIX_ENABLE, msix_cap->msg_ctrl.table_size, pci->priv_data);
+                pci->cmd_update(pci, PCI_CMD_MSIX_ENABLE, msix_cap->msg_ctrl.table_size + 1, pci->priv_data);
             } else if ((msix_cap->msg_ctrl.msix_enable == 0) && (msix_was_enabled == 1)) {
                 pci->irq_type = IRQ_NONE;
-                pci->cmd_update(pci, PCI_CMD_MSIX_DISABLE, msix_cap->msg_ctrl.table_size, pci->priv_data);
+                pci->cmd_update(pci, PCI_CMD_MSIX_DISABLE, msix_cap->msg_ctrl.table_size + 1, pci->priv_data);
             }
         }
     }
@@ -634,6 +634,7 @@ static int scan_pci_caps(struct pci_device * pci) {
 
 int v3_pci_enable_capability(struct pci_device * pci, pci_cap_type_t cap_type) {
     uint32_t size = 0;
+    uint_t passthrough = 0;
     struct pci_cap * tmp_cap = NULL;
     struct pci_cap * cap = NULL;
     void * cap_ptr = NULL;
@@ -662,6 +663,7 @@ int v3_pci_enable_capability(struct pci_device * pci, pci_cap_type_t cap_type) {
 
     if (cap_type == PCI_CAP_MSI) {
         pci->msi_cap = cap_ptr;
+        passthrough = 0;
 
         if (pci->msi_cap->cap_64bit) {
             if (pci->msi_cap->per_vect_mask) {
@@ -677,10 +679,12 @@ int v3_pci_enable_capability(struct pci_device * pci, pci_cap_type_t cap_type) {
         }
     } else if (cap_type == PCI_CAP_MSIX) {
         pci->msix_cap = cap_ptr;
+        passthrough = 0;
 
         size = 10;
     } else if (cap_type == PCI_CAP_PCIE) {
         struct pcie_cap_reg * pcie_cap = (struct pcie_cap_reg *)&(pci->config_space[cap->offset + 2]);
+        passthrough = 0;
 
         if (pcie_cap->version == 1) {
             size = 20;
@@ -691,18 +695,32 @@ int v3_pci_enable_capability(struct pci_device * pci, pci_cap_type_t cap_type) {
         }
     } else if (cap_type == PCI_CAP_PM) {
         size = 8;
+        passthrough = 0;
+    } else if (cap_type == PCI_CAP_VPD) {
+        size = 6;
+        passthrough = 1;
     }
 
 
     V3_Print("Hooking capability range (offset=%d, size=%d)\n", cap->offset, size);
 
-    if (v3_pci_hook_config_range(pci, cap->offset, size + 2, 
-                cap_write, NULL, cap) == -1) {
-        PrintError("Could not hook config range (start=%d, size=%d)\n", 
-                cap->offset + 2, size);
-        return -1;
-    }
+    if (passthrough == 0) {
+        if (v3_pci_hook_config_range(pci, cap->offset, size + 2, 
+                    cap_write, NULL, cap) == -1) {
+            PrintError("Could not hook config range (start=%d, size=%d)\n", 
+                    cap->offset + 2, size);
+            return -1;
+        }
+    } else {
+        /* VPD capability structure */
+        if (v3_pci_hook_config_range(pci, cap->offset + 2, size, 
+                    pci->config_write, pci->config_read, pci->priv_data) == -1) {
+            PrintError("Could not hook config range (start=%d, size=%d)\n", 
+                    cap->offset + 2, size);
+            return -1;
+        }
 
+    }
 
 
     // link it to the active capabilities list
@@ -1003,6 +1021,11 @@ static int data_port_write(struct guest_info * core, uint16_t port, void * src, 
 static int exp_rom_write(struct pci_device * pci_dev, uint32_t offset, 
         void * src, uint_t length, void * private_data) {
     int bar_offset = offset & ~0x03;
+
+    uint_t off = 0;
+    for (off = 0; off < length; off++) {
+        pci_dev->config_space[bar_offset + off] = *((uint8_t *)(src + off));
+    }
 
     if (pci_dev->exp_rom_update) {
         pci_dev->exp_rom_update(pci_dev, (void *)(pci_dev->config_space + bar_offset), pci_dev->priv_data);
@@ -1455,7 +1478,7 @@ int v3_pci_raise_acked_irq(struct vm_device * pci_bus, struct pci_device * dev, 
         }*/
 
         msix_table_gpa = (dev->bar[bar_idx].val & ~0xf);
-        msix_table_gpa += dev->msix_cap->table_offset;
+        msix_table_gpa += (dev->msix_cap->table_offset << 3);
 
         V3_Print("BIR (BAR %d) val: %x\n",
             bar_idx, dev->bar[bar_idx].val);
@@ -1481,7 +1504,8 @@ int v3_pci_raise_acked_irq(struct vm_device * pci_bus, struct pci_device * dev, 
         addr = (struct msi_addr *)&(msix_table->entries[vec.irq].addr);;
 
         // decode MSIX fields into IPI
-        ipi.vector = data->vector + vec.irq;
+        //ipi.vector = data->vector + vec.irq;
+        ipi.vector = data->vector;
         ipi.mode = data->del_mode;
         ipi.logical = addr->dst_mode;
         ipi.trigger_mode = data->trig_mode;

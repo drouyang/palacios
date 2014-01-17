@@ -135,6 +135,7 @@ struct pci_device {
     } __attribute__((packed));
 
     struct v3_pci_bar bar[6];
+    struct v3_pci_bar exp_rom_bar;
 
     struct rb_node dev_tree_node;
 
@@ -221,6 +222,7 @@ int v3_pci_hook_config_range(struct pci_device * pci,
 
 typedef enum { PCI_CAP_INVALID = 0, 
 	       PCI_CAP_PM = 0x1,
+	       PCI_CAP_VPD = 0x3,
  	       PCI_CAP_MSI = 0x5,
 	       PCI_CAP_MSIX = 0x11,
                PCI_CAP_PCIE = 0x10 } pci_cap_type_t;

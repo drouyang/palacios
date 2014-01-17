@@ -123,19 +123,26 @@ static int pt_io_write(struct guest_info * core, uint16_t port, void * src, uint
 }
 
 static int remap_shadow_region(struct vm_device * dev,
-        struct v3_host_pci_bar * old_vbar, 
-        struct v3_host_pci_bar * new_vbar, 
-        struct v3_host_pci_bar * hbar, 
-        uint32_t bar_number) {
+			       struct v3_host_pci_bar * old_vbar, 
+			       struct v3_host_pci_bar * new_vbar, 
+			       struct v3_host_pci_bar * hbar, 
+			       uint32_t bar_number) {
 
     struct host_pci_state * state = (struct host_pci_state *)dev->private_data;
     //struct v3_host_pci_bar * hbar = &(state->host_dev->bars[bar_number]);
+    uint32_t mem_flags = V3_MEM_RD | V3_MEM_WR;
+    int status = 0;
+    new_vbar->is_mapped = 0;
+    
+    if (!hbar->cacheable) {
+        mem_flags |= V3_MEM_UC;
+    }
 
     V3_Print("Remapping bar number %d (msi-x bar number %d)\n", bar_number,
-            state->msix_table_bir);
+	     state->msix_table_bir);
 
     if (bar_number != state->msix_table_bir) {
-        if (old_vbar) {
+        if (old_vbar && old_vbar->is_mapped) {
             // remove old mapping
             struct v3_mem_region * old_reg = v3_get_mem_region(dev->vm, V3_MEM_CORE_ANY, old_vbar->addr);
 
@@ -148,160 +155,246 @@ static int remap_shadow_region(struct vm_device * dev,
             v3_delete_mem_region(dev->vm, old_reg);
         }
 
-        v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
-                V3_MEM_RD | V3_MEM_WR | V3_MEM_UC, 
-                new_vbar->addr, 
-                new_vbar->addr + new_vbar->size - 1,
-                hbar->addr);
+        status = v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+				   mem_flags, 
+				   new_vbar->addr, 
+				   new_vbar->addr + new_vbar->size - 1,
+				   hbar->addr);
+
+        if (status == 0) {
+            new_vbar->is_mapped = 1;
+        }
     } else {
         /* MSI-X bar */
 
-        V3_Print("Remapping MSI-X bar (old_vbar: %p -> %p, new_vbar: %p -> %p, hbar: %p\n",
-                (old_vbar) ? (void *)old_vbar->addr : 0,
-                (old_vbar) ? (void *)(old_vbar->addr + old_vbar->size) : 0,
-                (void *)new_vbar->addr,
-                (void *)(new_vbar->addr + new_vbar->size),
-                (void *)hbar->addr
-        );
+        addr_t first_region_start = 0;
+        addr_t msix_table_start = 0;
+        addr_t last_region_start = 0;
+        addr_t bar_start = 0;
+        addr_t bar_end = 0;
 
-        if (state->msix_table_offset > 0) {
+        uint_t first_region_present = 0;
+        uint_t last_region_present = 0;
+
+        if (old_vbar && old_vbar->is_mapped) {
+            // Delete 
+            first_region_start = old_vbar->addr;
+            msix_table_start = old_vbar->addr + state->msix_table_offset;
+            last_region_start = msix_table_start + (state->msix_table_num_pages * 4096);
+            bar_start = old_vbar->addr;
+            bar_end = old_vbar->addr + old_vbar->size;
+
+            if (msix_table_start > first_region_start) {
+                first_region_present = 1;
+            }
+
+            if (last_region_start < bar_end) {
+                last_region_present = 1;
+            }
+
+            V3_Print("Removing MSI-X bar:\n"
+		     "\tFirst region: %p - %p (present: %d)\n"
+		     "\tMSI-X tablen: %p - %p\n"
+		     "\tLast region:  %p - %p (present: %d)\n"
+		     "\tOld bar mapped: %d\n",
+		     (void *)first_region_start, (void *)msix_table_start, first_region_present,
+		     (void *)msix_table_start, (void *)last_region_start,
+		     (void *)last_region_start, (void *)bar_end, last_region_present,
+		     (old_vbar) ? old_vbar->is_mapped : 0
+		     );
             
-            V3_Print("Remapping MSI-X BAR with table offset %d\n", state->msix_table_offset);
-
-            if (old_vbar) {
+            if (first_region_present) {
                 // remove old mapping
-                struct v3_mem_region * old_reg = v3_get_mem_region(dev->vm, V3_MEM_CORE_ANY, old_vbar->addr);
+                struct v3_mem_region * old_reg = v3_get_mem_region(dev->vm, V3_MEM_CORE_ANY, first_region_start);
 
                 if (old_reg == NULL) {
                     // uh oh...
-                    PrintError("Could not find PCI Passthrough memory redirection region (addr=0x%x)\n", (uint32_t)old_vbar->addr);
+                    PrintError("Could not find PCI Passthrough memory redirection region (addr=0x%x)\n", (uint32_t)first_region_start);
                     return -1;
                 }
 
                 v3_delete_mem_region(dev->vm, old_reg);
             }
 
-            V3_Print("Adding shadow mem region: %p -> %p, (host: %p)\n",
-                    (void *)new_vbar->addr,
-                    (void *)(new_vbar->addr + state->msix_table_offset),
-                    (void *)hbar->addr);
+            // remove old msi-x mapping
+            {
+                struct v3_mem_region * old_reg = v3_get_mem_region(dev->vm, V3_MEM_CORE_ANY, msix_table_start);
 
-            v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
-                    V3_MEM_RD | V3_MEM_WR | V3_MEM_UC, 
-                    new_vbar->addr, 
-                    new_vbar->addr + state->msix_table_offset,
-                    hbar->addr);
+                if (old_reg == NULL) {
+                    // uh oh...
+                    PrintError("Could not find PCI Passthrough memory redirection region (addr=0x%x)\n", (uint32_t)msix_table_start);
+                    return -1;
+                }
+
+                v3_delete_mem_region(dev->vm, old_reg);
+            }
+
+            if (last_region_present) {
+                // remove old mapping
+                struct v3_mem_region * old_reg = v3_get_mem_region(dev->vm, V3_MEM_CORE_ANY, last_region_start);
+
+                if (old_reg == NULL) {
+                    // uh oh...
+                    PrintError("Could not find PCI Passthrough memory redirection region (addr=0x%x)\n", (uint32_t)last_region_start);
+                    return -1;
+                }
+
+                v3_delete_mem_region(dev->vm, old_reg);
+            }
+
+            old_vbar->is_mapped = 0;
         }
 
-        addr_t msix_table_start = new_vbar->addr + state->msix_table_offset;
-        addr_t msix_table_end = msix_table_start + (state->msix_table_num_pages * 4096);
+        // Re-map bar
+        first_region_start = new_vbar->addr;
+        msix_table_start = new_vbar->addr + state->msix_table_offset;
+        last_region_start = msix_table_start + (state->msix_table_num_pages * 4096);
+        bar_start = new_vbar->addr;
+        bar_end = new_vbar->addr + new_vbar->size;
 
-        /* handle msi-x table */
+        if (msix_table_start > first_region_start) {
+            first_region_present = 1;
+        }
+
+        if (last_region_start < bar_end) {
+            last_region_present = 1;
+        }
+
+        // Check overlap
         {
-            if (old_vbar) {
-                // remove old mapping
-                struct v3_mem_region * old_reg = v3_get_mem_region(dev->vm, V3_MEM_CORE_ANY, old_vbar->addr + state->msix_table_offset);
+            status = v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY,
+				       mem_flags,
+				       bar_start,
+				       bar_end,
+				       hbar->addr);
 
-                if (old_reg == NULL) {
-                    // uh oh...
-                    PrintError("Could not find PCI Passthrough memory redirection region (addr=0x%x)\n", (uint32_t)old_vbar->addr);
-                    return -1;
-                }
-
-                v3_delete_mem_region(dev->vm, old_reg);
+            if (status != 0) {
+                V3_Print("Cannot map MSI-X bar - overlapping memory region present\n");
+                return -1;
             }
 
-            V3_Print("Adding shadow mem region (MSI-X table): %p -> %p, (host: %p)\n",
-                    (void *)msix_table_start,
-                    (void *)msix_table_end,
-                    (void *)state->msix_table_pa);
-
-            v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
-                    V3_MEM_RD | V3_MEM_WR | V3_MEM_UC, 
-                    msix_table_start,
-                    msix_table_end,
-                    state->msix_table_pa);
-        }
-
-        addr_t new_vbar_end = new_vbar->addr + new_vbar->size;
-
-        //if (new_vbar->size > state->msix_table_offset + (state->msix_table_num_pages * 4096)) {
-        if (new_vbar_end > msix_table_end) {
-            if (old_vbar) {
-                // remove old mapping
-                struct v3_mem_region * old_reg = v3_get_mem_region(dev->vm, V3_MEM_CORE_ANY, old_vbar->addr + state->msix_table_offset + (state->msix_table_num_pages * 4096));
-
-                if (old_reg == NULL) {
-                    // uh oh...
-                    PrintError("Could not find PCI Passthrough memory redirection region (addr=0x%x)\n", (uint32_t)old_vbar->addr);
-                    return -1;
-                }
-
-                v3_delete_mem_region(dev->vm, old_reg);
+            { 
+                struct v3_mem_region * reg = v3_get_mem_region(dev->vm, V3_MEM_CORE_ANY, bar_start);
+                v3_delete_mem_region(dev->vm, reg);
             }
-
-            /*
-            v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
-                    V3_MEM_RD | V3_MEM_WR | V3_MEM_UC, 
-                    new_vbar->addr + state->msix_table_offset + 
-                    (state->msix_table_num_pages * 4096),
-                    new_vbar->addr + new_vbar->size,
-                    hbar->addr + state->msix_table_offset + 
-                    (state->msix_table_num_pages * 4096));
-            */
-
-            V3_Print("Adding trailing shadow mem region: %p -> %p, (host: %p)\n",
-                    (void *)msix_table_end,
-                    (void *)new_vbar_end,
-                    (void *)(hbar->addr + (msix_table_end - new_vbar->addr)));
-
-            v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY,
-                    V3_MEM_RD | V3_MEM_WR | V3_MEM_UC,
-                    msix_table_end,
-                    new_vbar_end,
-                    hbar->addr + (msix_table_end - new_vbar->addr));
-
         }
+
+        V3_Print("Mapping MSI-X bar:\n"
+		 "\tFirst region: %p - %p (present: %d)\n"
+		 "\tMSI-X tablen: %p - %p\n"
+		 "\tLast region:  %p - %p (present: %d)\n"
+		 "\tOld bar mapped: %d\n",
+		 (void *)first_region_start, (void *)msix_table_start, first_region_present,
+		 (void *)msix_table_start, (void *)last_region_start,
+		 (void *)last_region_start, (void *)bar_end, last_region_present,
+		 (old_vbar) ? old_vbar->is_mapped : 0
+		 );
+
+        if (first_region_present) {
+            V3_Print("Adding first shadow mem region: %p -> %p, (host: %p)\n",
+		     (void *)first_region_start,
+		     (void *)msix_table_start,
+		     (void *)hbar->addr);
+
+            status = v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+				       mem_flags, 
+				       first_region_start, 
+				       msix_table_start,
+				       hbar->addr);
+            
+            if (status != 0) {
+                PrintError("Failed to add shadow mem region: %p -> %p, (host: %p)\n",
+			   (void *)first_region_start,
+			   (void *)msix_table_start,
+			   (void *)hbar->addr);
+                return -1;
+            }
+        }
+
+        {
+            V3_Print("Adding MSI-X shadow mem region: %p -> %p, (host: %p)\n",
+		     (void *)msix_table_start,
+		     (void *)last_region_start,
+		     (void *)state->msix_table_pa);
+
+            status = v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+				       mem_flags, 
+				       msix_table_start,
+				       last_region_start, 
+				       state->msix_table_pa);
+            
+            if (status != 0) {
+                PrintError("Failed to add shadow mem region: %p -> %p, (host: %p)\n",
+			   (void *)msix_table_start,
+			   (void *)last_region_start,
+			   (void *)state->msix_table_pa);
+                return -1;
+            }
+        }
+
+        if (last_region_present) {
+            V3_Print("Adding last shadow mem region: %p -> %p, (host: %p)\n",
+		     (void *)last_region_start,
+		     (void *)bar_end,
+		     (void *)(hbar->addr + (last_region_start - bar_start)));
+
+            status = v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+				       mem_flags, 
+				       last_region_start, 
+				       bar_end,
+				       hbar->addr + (last_region_start - bar_start));
+            
+            if (status != 0) {
+                PrintError("Failed to add shadow mem region: %p -> %p, (host: %p)\n",
+			   (void *)last_region_start,
+			   (void *)bar_end,
+			   (void *)(hbar->addr + (last_region_start - bar_start)));
+                return -1;
+            }
+        }
+
+        new_vbar->is_mapped = 1;
     }
 
     return 0;
 }
 
-#if 0
 static int pci_exp_rom_init(struct vm_device * dev, struct host_pci_state * state) {
     struct pci_device * pci_dev = state->pci_dev;
     struct v3_host_pci_bar * hrom = &(state->host_dev->exp_rom);
-
-    return 0;
-
+    int status = 0;
+    //struct v3_host_pci_dev * v3_dev = state->host_dev;
 
     //PrintDebug("Adding 32 bit PCI mem region: start=%p, end=%p\n",
     //    (void *)(addr_t)hrom->addr, 
     //    (void *)(addr_t)(hrom->addr + hrom->size));
-
+    
     // only map shadow memory if the ROM is enabled 
-    if (hrom->exp_rom_enabled) {
+    //if (hrom->exp_rom_enabled) {
 
-        v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
-            V3_MEM_RD | V3_MEM_WR | V3_MEM_UC, 
-            hrom->addr, 
-            hrom->addr + hrom->size - 1,
-            hrom->addr);
-    }
+    status = v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+			       V3_MEM_RD | V3_MEM_WR | V3_MEM_UC, 
+			       hrom->addr, 
+			       hrom->addr + hrom->size - 1,
+			       hrom->addr);
+
 
     // Initially the virtual location matches the physical ones
     memcpy(&(state->virt_exp_rom), hrom, sizeof(struct v3_host_pci_bar));
 
+    if (status == 0) {
+        state->virt_exp_rom.is_mapped = 1;
+    }
+
     V3_Print("phys exp_rom: addr=%p, size=%u\n", 
-        (void *)(addr_t)hrom->addr, 
-        hrom->size);
+	     (void *)(addr_t)hrom->addr, 
+	     hrom->size);
 
     // Update the pci subsystem versions
     pci_dev->config_header.expansion_rom_address = PCI_EXP_ROM_VAL(hrom->addr, hrom->exp_rom_enabled);
 
     return 0;
 }
-#endif
 
 static int pci_bar_init(int bar_num, uint32_t * dst, void * private_data) {
     struct vm_device * dev = (struct vm_device *)private_data;
@@ -310,7 +403,7 @@ static int pci_bar_init(int bar_num, uint32_t * dst, void * private_data) {
     uint32_t bar_val = 0;
 
     V3_Print("%s: pci_bar_init: bar %d type: %d\n",
-        state->name, bar_num, hbar->type);
+	     state->name, bar_num, hbar->type);
 
     if (hbar->type == PT_BAR_IO) {
         int i = 0;
@@ -331,7 +424,7 @@ static int pci_bar_init(int bar_num, uint32_t * dst, void * private_data) {
         struct v3_host_pci_bar * hi_hbar = &(state->host_dev->bars[bar_num + 1]);
         bar_val = PCI_MEM64_LO_BAR_VAL(hi_hbar->addr, hbar->prefetchable);
     } else if (hbar->type == PT_BAR_MEM64_HI) {
-        bar_val = PCI_MEM64_HI_BAR_VAL(hbar->addr, hbar->prefetchable);
+        bar_val = PCI_MEM64_HI_BAR_VAL(hbar->addr >> 32, hbar->prefetchable);
         remap_shadow_region(dev, NULL, hbar, hbar, bar_num - 1);
     } 
     
@@ -352,10 +445,10 @@ static int pci_bar_write(int bar_num, uint32_t * src, void * private_data) {
 
 
     V3_Print("%s: pci_bar_write: bar %d type: %d\n",
-        state->name, bar_num, vbar->type);
+	     state->name, bar_num, vbar->type);
 
     V3_Print("vbar->size: %dold addr: %p, new val: %x\n",
-            vbar->size, (void *)vbar->addr, *(src));
+	     vbar->size, (void *)vbar->addr, *(src));
 
     if (vbar->type == PT_BAR_NONE) {
         *src = 0;
@@ -367,7 +460,7 @@ static int pci_bar_write(int bar_num, uint32_t * src, void * private_data) {
         for (i = 0; i < vbar->size; i++) {
             if (v3_unhook_io_port(dev->vm, vbar->addr + i) == -1) {
                 PrintError("Could not unhook previously hooked port.... %d (0x%x)\n", 
-                        (uint32_t)vbar->addr + i, (uint32_t)vbar->addr + i);
+			   (uint32_t)vbar->addr + i, (uint32_t)vbar->addr + i);
                 return -1;
             }
         }
@@ -379,7 +472,7 @@ static int pci_bar_write(int bar_num, uint32_t * src, void * private_data) {
         *src = PCI_IO_BAR_VAL(vbar->addr);
 
         PrintDebug("Rehooking passthrough IO ports starting at %d (0x%x)\n", 
-                (uint32_t)vbar->addr, (uint32_t)vbar->addr);
+		   (uint32_t)vbar->addr, (uint32_t)vbar->addr);
 
         if (vbar->addr == hbar->addr) {
             // Map the io ports as passthrough
@@ -403,16 +496,23 @@ static int pci_bar_write(int bar_num, uint32_t * src, void * private_data) {
         *src = PCI_MEM32_BAR_VAL(vbar->addr, hbar->prefetchable);
 
         PrintDebug("Adding pci Passthrough remapping: start=0x%x, size=%d, end=0x%x (hpa=%p)\n", 
-                (uint32_t)vbar->addr, vbar->size, (uint32_t)vbar->addr + vbar->size, (void *)hbar->addr);
+		   (uint32_t)vbar->addr, vbar->size, (uint32_t)vbar->addr + vbar->size, (void *)hbar->addr);
         remap_shadow_region(dev, &old_vbar, vbar, hbar, bar_num);
 
     } else if (vbar->type == PT_BAR_MEM64_LO) {
         // We only store the written values here, the actual reconfig comes when the high BAR is updated
+        struct v3_host_pci_bar * hi_bar = &(state->virt_bars[bar_num + 1]);
+
+        struct v3_host_pci_bar old_hi_bar;
+        old_hi_bar = *hi_bar;
 
         vbar->addr = *src & ~(hbar->size - 1);
+        hi_bar->addr &= 0xFFFFFFFF00000000LL;
+        hi_bar->addr |= vbar->addr;
 
         *src = PCI_MEM64_LO_BAR_VAL(vbar->addr, hbar->prefetchable);
 
+        remap_shadow_region(dev, &old_hi_bar, hi_bar, hbar, bar_num);
 
     } else if (vbar->type == PT_BAR_MEM64_HI) {
         struct v3_host_pci_bar * lo_vbar = &(state->virt_bars[bar_num - 1]);
@@ -424,10 +524,12 @@ static int pci_bar_write(int bar_num, uint32_t * src, void * private_data) {
 
         // We don't set size, because we assume region is less than 4GB
         // src does not change, because there are no reserved bits
+        *src = PCI_MEM64_HI_BAR_VAL(vbar->addr >> 32, hbar->prefetchable);
 
-        PrintDebug("Adding pci Passthrough remapping: start=%p, size=%p, end=%p\n", 
-                (void *)(addr_t)vbar->addr, (void *)(addr_t)vbar->size, 
-                (void *)(addr_t)(vbar->addr + vbar->size));
+        PrintDebug("hi_bar Adding pci Passthrough remapping: start=%p, size=%p, end=%p, src=%x\n", 
+		   (void *)(addr_t)vbar->addr, (void *)(addr_t)vbar->size, 
+		   (void *)(addr_t)(vbar->addr + vbar->size),
+		   *src);
 
         remap_shadow_region(dev, &old_vbar, vbar, hbar, bar_num - 1);
     } else {
@@ -482,44 +584,55 @@ static int pt_exp_rom_write(struct pci_device * pci_dev, uint32_t * src, void * 
     struct v3_host_pci_bar * hrom = &(state->host_dev->exp_rom);
     struct v3_host_pci_bar * vrom = &(state->virt_exp_rom);
 
+    int status = 0;
+
     PrintDebug("exp_rom update: src=0x%x\n", *src);
     PrintDebug("vrom is size=%u, addr=0x%x\n", vrom->size, (uint32_t)vrom->addr);
     PrintDebug("hrom is size=%u, addr=0x%x\n", hrom->size, (uint32_t)hrom->addr);
 
-    if (hrom->exp_rom_enabled) {
-        // only remove old mapping if present, I.E. if the rom was enabled previously 
-        if (vrom->exp_rom_enabled) {
-            struct v3_mem_region * old_reg = v3_get_mem_region(dev->vm, V3_MEM_CORE_ANY, vrom->addr);
 
-            if (old_reg == NULL) {
-                // uh oh...
-                PrintError("Could not find PCI Passthrough exp_rom_base redirection region (addr=0x%x)\n", (uint32_t)vrom->addr);
-                return -1;
-            }
+    
 
-            v3_delete_mem_region(dev->vm, old_reg);
-        }
+    //    if (hrom->exp_rom_enabled) {
+    // only remove old mapping if present, I.E. if the rom was enabled previously 
+    if (vrom->is_mapped) {
+	struct v3_mem_region * old_reg = v3_get_mem_region(dev->vm, V3_MEM_CORE_ANY, vrom->addr);
 
+	if (old_reg == NULL) {
+	    // uh oh...
+	    PrintError("Could not find PCI Passthrough exp_rom_base redirection region (addr=0x%x)\n", (uint32_t)vrom->addr);
+	    return -1;
+	}
 
-        vrom->addr = *src & ~(hrom->size - 1);
-
-        // Set flags in actual register value
-        *src = PCI_EXP_ROM_VAL(vrom->addr, (*src & 0x00000001));
-
-        PrintDebug("Cooked src=0x%x\n", *src);
-
-
-        PrintDebug("Adding pci Passthrough exp_rom_base remapping: start=0x%x, size=%u, end=0x%x\n", 
-                (uint32_t)vrom->addr, vrom->size, (uint32_t)vrom->addr + vrom->size);
-
-        if (v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
-                    V3_MEM_RD | V3_MEM_WR | V3_MEM_UC | V3_MEM_EXEC, 
-                    vrom->addr, vrom->addr + vrom->size - 1, hrom->addr) == -1) {
-            PrintError("Failed to remap pci exp_rom: start=0x%x, size=%u, end=0x%x\n", 
-                    (uint32_t)vrom->addr, vrom->size, (uint32_t)vrom->addr + vrom->size);
-            return -1;
-        }
+	v3_delete_mem_region(dev->vm, old_reg);
+	vrom->is_mapped = 0;
     }
+
+
+    vrom->addr = *src & ~(hrom->size - 1);
+
+    // Set flags in actual register value
+    *src = PCI_EXP_ROM_VAL(vrom->addr, (*src & 0x00000001));
+
+    //PrintDebug("Cooked src=0x%x\n", *src);
+    V3_Print("Cooked src=0x%x\n", *src);
+
+
+    //PrintDebug("Adding pci Passthrough exp_rom_base remapping: start=0x%x, size=%u, end=0x%x\n", 
+    V3_Print("Adding pci Passthrough exp_rom_base remapping: start=0x%x, size=%u, end=0x%x\n", 
+	     (uint32_t)vrom->addr, vrom->size, (uint32_t)vrom->addr + vrom->size);
+
+    status = v3_add_shadow_mem(dev->vm, V3_MEM_CORE_ANY, 
+			       V3_MEM_RD | V3_MEM_WR | V3_MEM_UC | V3_MEM_EXEC, 
+			       vrom->addr, vrom->addr + vrom->size - 1, hrom->addr);
+
+    if (status == -1) {
+	PrintError("Failed to remap pci exp_rom: start=0x%x, size=%u, end=0x%x\n", 
+		   (uint32_t)vrom->addr, vrom->size, (uint32_t)vrom->addr + vrom->size);
+	return -1;
+    }
+
+    vrom->is_mapped = 1;
 
     return 0;
 }
@@ -528,11 +641,64 @@ static int pt_exp_rom_write(struct pci_device * pci_dev, uint32_t * src, void * 
 static int pt_cmd_update(struct pci_device * pci, pci_cmd_t cmd, uint64_t arg, void * priv_data) {
     struct vm_device * dev = (struct vm_device *)(priv_data);
     struct host_pci_state * state = (struct host_pci_state *)dev->private_data;
+    int max_entries = arg;
 
     V3_Print("Host PCI Device: CMD update (%d)(arg=%llu)\n", cmd, arg);
 
+    if (cmd == PCI_CMD_MSIX_ENABLE) {
+        // Figure out how many MSIX entries to enable
+        struct msix_table * table = (struct msix_table *)
+            V3_VAddr((void *)state->msix_table_pa);
+
+        int i = 0;
+        arg = 0;
+
+        V3_Print("MSIX_TABLE:\n");
+        for (i = 0; i < max_entries; i++) {
+            if (table->entries[i].data.val != 0x0) {
+                arg++;
+            }
+
+            V3_Print("%x %x %x %x\n",
+		     table->entries[i].vector_control,
+		     table->entries[i].data.val,
+		     table->entries[i].hi_addr,
+		     table->entries[i].addr.val
+		     );
+
+        }
+
+
+        V3_Print("Host PCI Device: CMD PCI_MSIX_ENABLE: requesting %llu entries\n", arg);
+
+    }
+
     v3_host_pci_cmd_update(state->host_dev, cmd, arg);
 
+    {
+        struct msix_table * table = (struct msix_table *)
+	    //    V3_VAddr((void *)(state->host_dev->bars[1].addr + 0x7c000));
+            ioremap_nocache(state->host_dev->bars[1].addr + 0x7c000, 4096);
+
+        V3_Print("Host MSI-X table address: %p (pa: %p)\n",
+		 table, (void *)(state->host_dev->bars[1].addr + 0x7c000));
+
+        int i = 0;
+
+        V3_Print("max entries: %d\n", max_entries);
+        for (i = 0; i < max_entries; i++) {
+            V3_Print("entry[%d]: %x %x %x %x\n",
+		     i,
+		     ioread32((void *)&table->entries[i].vector_control),
+		     ioread32((void *)&table->entries[i].data.val),
+		     ioread32((void *)&table->entries[i].hi_addr),
+		     ioread32((void *)&table->entries[i].addr.val)
+		     );
+
+            //iowrite32(0x1, (void *)&table->entries[i].vector_control);
+        }
+    }
+    
     return 0;
 }
 
@@ -545,34 +711,30 @@ static int init_msix_table(struct vm_device * dev, uint32_t cap_offset) {
 
     state->msix_table_bir = cap->table_bir;
     state->msix_table_offset = (cap->table_offset) << 3;
-    state->msix_table_num_pages = (cap->msg_ctrl.table_size / 4096);
-    if (cap->msg_ctrl.table_size % 4096 != 0)
+    state->msix_table_num_pages = (((cap->msg_ctrl.table_size + 1) * 16) / 4096);
+    if (((cap->msg_ctrl.table_size + 1) * 16) % 4096 != 0)
         state->msix_table_num_pages++;
     state->msix_table_pa = (addr_t)V3_AllocPages(state->msix_table_num_pages);
 
-    state->msix_pba_bir = cap->pba_bir;
-    state->msix_pba_offset = (cap->pba_offset) << 3;
-    state->msix_pba_num_pages = state->msix_table_num_pages;
-    state->msix_pba_pa = (addr_t)V3_AllocPages(state->msix_pba_num_pages);
+    memset(V3_VAddr((void *)state->msix_table_pa), 0, state->msix_table_num_pages * 4096);
+
+    /*
+      state->msix_pba_bir = cap->pba_bir;
+      state->msix_pba_offset = (cap->pba_offset) << 3;
+      state->msix_pba_num_pages = state->msix_table_num_pages;
+      state->msix_pba_pa = (addr_t)V3_AllocPages(state->msix_pba_num_pages);
+    */
 
     V3_Print("Init'ed msi-x table:\n"
-            "  table bir       : %d\n"
-            "  table offset    : %d\n"
-            "  table pa        : %p\n"
-            "  table num pages : %d\n"
-            "  pba bir         : %d\n"
-            "  pba offset      : %d\n"
-            "  pba pa          : %p\n"
-            "  pba num pages   : %d\n",
-            state->msix_table_bir,
-            state->msix_table_offset,
-            (void *)state->msix_table_pa,
-            state->msix_table_num_pages,
-            state->msix_pba_bir,
-            state->msix_pba_offset,
-            (void *)state->msix_pba_pa,
-            state->msix_pba_num_pages
-    );
+	     "  table bir       : %d\n"
+	     "  table offset    : %d\n"
+	     "  table pa        : %p\n"
+	     "  table num pages : %d\n",
+	     state->msix_table_bir,
+	     state->msix_table_offset,
+	     (void *)state->msix_table_pa,
+	     state->msix_table_num_pages
+	     );
 
 
     return 0;
@@ -639,25 +801,26 @@ static int setup_virt_pci_dev(struct v3_vm_info * vm_info, struct vm_device * de
     }
 
     pci_dev = v3_pci_register_device(state->pci_bus,
-            PCI_STD_DEVICE,
-            bus_num, -1, 0, 
-            state->name, bars,
-            pt_config_write,
-            pt_config_read,
-            pt_cmd_update,
-            pt_exp_rom_write,               
-            dev);
+				     PCI_STD_DEVICE,
+				     bus_num, -1, 0, 
+				     state->name, bars,
+				     pt_config_write,
+				     pt_config_read,
+				     pt_cmd_update,
+				     pt_exp_rom_write,               
+				     dev);
 
 
     state->pci_dev = pci_dev;
 
-    //pci_exp_rom_init(dev, state);
-    pci_dev->config_header.expansion_rom_address = 0;
+    pci_exp_rom_init(dev, state);
+    //pci_dev->config_header.expansion_rom_address = 0;
 
     v3_pci_enable_capability(pci_dev, PCI_CAP_MSI);
     v3_pci_enable_capability(pci_dev, PCI_CAP_MSIX);
     v3_pci_enable_capability(pci_dev, PCI_CAP_PCIE);
     v3_pci_enable_capability(pci_dev, PCI_CAP_PM);
+    v3_pci_enable_capability(pci_dev, PCI_CAP_VPD);
 
     if (state->host_dev->iface == SYMBIOTIC) {
 #ifdef V3_CONFIG_SYMBIOTIC

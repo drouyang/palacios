@@ -118,8 +118,14 @@ static int setup_hw_pci_dev(struct host_pci_device * host_dev) {
 
 	    v3_dev->exp_rom.type = PT_EXP_ROM;
 
+	    // Enable exp rom
+
 	    v3_dev->exp_rom.exp_rom_enabled = rom_res->flags & IORESOURCE_ROM_ENABLE;
+	    printk("%s: exp_rom enabled: %d\n",
+		   host_dev->name,
+		   v3_dev->exp_rom.exp_rom_enabled);
 	}
+
     }
 
     /* Cache entire configuration space */
@@ -207,6 +213,21 @@ static irqreturn_t host_pci_msix_irq_handler(int irq, void * priv_data) {
     return IRQ_HANDLED;
 }
 
+static irqreturn_t host_pci_msix_irq_handler_thread(int irq, void * priv_data) {
+    struct host_pci_device * host_dev = priv_data;
+    int i = 0;
+
+    printk("Host PCI MSIX IRQ threaded handler (%d)\n", irq);
+
+    for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
+        if (irq == host_dev->hw_dev.msix_entries[i].vector) {
+            V3_host_pci_raise_irq(&(host_dev->v3_dev), i);
+        }
+    }
+
+    return IRQ_HANDLED;
+}
+
 
 static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64 arg) {
     //struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
@@ -278,23 +299,35 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 	    break;
 	case HOST_PCI_CMD_MSIX_ENABLE: {
 	    int i = 0;
-	    
-	    printk("Passthrough PCI device Enabling MSIX\n");
-	    host_dev->hw_dev.num_msix_vecs = arg;;
-	    host_dev->hw_dev.msix_entries = kcalloc(host_dev->hw_dev.num_msix_vecs, 
-						    sizeof(struct msix_entry), GFP_KERNEL);
-	    
+	    int ret = 0;
+        
+	    printk("Passthrough PCI device Enabling MSIX (%llu entries requested)\n", arg);
+
+
+	    host_dev->hw_dev.num_msix_vecs = arg;
+	    host_dev->hw_dev.msix_entries = kzalloc((sizeof(struct msix_entry) * host_dev->hw_dev.num_msix_vecs), 
+						    GFP_KERNEL);
+        
 	    for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
 		host_dev->hw_dev.msix_entries[i].entry = i;
 	    }
-	    
-	    pci_enable_msix(dev, host_dev->hw_dev.msix_entries, 
-			    host_dev->hw_dev.num_msix_vecs);
-	    
+
+	    ret = pci_enable_msix(dev, host_dev->hw_dev.msix_entries, 
+				  host_dev->hw_dev.num_msix_vecs);
+
+	    if (ret != 0) {
+		printk("Error: failed to enable pci msix. ret = %d\n", ret);
+		kfree(host_dev->hw_dev.msix_entries);
+		host_dev->hw_dev.num_msix_vecs = 0;
+		return -1;
+	    }
+
+
 	    for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
-		if (request_irq(host_dev->hw_dev.msix_entries[i].vector, 
-				host_pci_msix_irq_handler, 
-				0, "V3VEE_host_PCI_MSIX", (void *)host_dev)) {
+		if (request_threaded_irq(host_dev->hw_dev.msix_entries[i].vector, 
+					 host_pci_msix_irq_handler, 
+					 host_pci_msix_irq_handler_thread, 
+					 0, "V3VEE_host_PCI_MSIX", (void *)host_dev)) {
 		    printk("Error requesting IRQ %d for Passthrough MSIX IRQ\n", 
 			   host_dev->hw_dev.msix_entries[i].vector);
 		}
@@ -387,10 +420,10 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 	flags = IOMMU_READ | IOMMU_WRITE; // Need to see what IOMMU_CACHE means
 	
 	/* Disable this for now, because it causes Intel DMAR faults for invalid bits set in PTE
-	if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_CACHE_COHERENCY)) {
-	    printk("IOMMU SUPPORTS CACHE COHERENCY FOR DMA REMAPPING\n");
-	    flags |= IOMMU_CACHE;
-	}
+	   if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_CACHE_COHERENCY)) {
+	   printk("IOMMU SUPPORTS CACHE COHERENCY FOR DMA REMAPPING\n");
+	   flags |= IOMMU_CACHE;
+	   }
 	*/
 
 
