@@ -427,7 +427,7 @@ int cap_write(struct pci_device * pci, uint32_t offset, void * src, uint_t lengt
     int msix_was_enabled = 0;
 
 
-    V3_Print("CAP write trapped (val=%x, cfg_offset=%d, write_offset=%d)\n", *(uint32_t *)src, offset, write_offset);
+    PrintDebug("CAP write trapped (val=%x, cfg_offset=%d, write_offset=%d)\n", *(uint32_t *)src, offset, write_offset);
 
     if (cap_type == PCI_CAP_MSI) {
         struct msi_msg_ctrl * msg_ctrl = cap_ptr;
@@ -449,10 +449,10 @@ int cap_write(struct pci_device * pci, uint32_t offset, void * src, uint_t lengt
         if (cap_type == PCI_CAP_MSI) {
             struct msi_msg_ctrl * msg_ctrl = cap_ptr;
 
-            V3_Print("MSI Cap Ctrl=%x\n", *(uint16_t *)pci->msi_cap);
-            V3_Print("MSI ADDR=%x\n", *(uint32_t *)(cap_ptr + 2));
-            V3_Print("MSI HI ADDR=%x\n", *(uint32_t *)(cap_ptr + 6));
-            V3_Print("MSI Data=%x\n", *(uint16_t *)(cap_ptr + 10));
+            PrintDebug("MSI Cap Ctrl=%x\n", *(uint16_t *)pci->msi_cap);
+            PrintDebug("MSI ADDR=%x\n", *(uint32_t *)(cap_ptr + 2));
+            PrintDebug("MSI HI ADDR=%x\n", *(uint32_t *)(cap_ptr + 6));
+            PrintDebug("MSI Data=%x\n", *(uint16_t *)(cap_ptr + 10));
 
             if (msg_ctrl->cap_64bit) {
                 if (msg_ctrl->per_vect_mask) {
@@ -492,7 +492,7 @@ int cap_write(struct pci_device * pci, uint32_t offset, void * src, uint_t lengt
         if (cap_type == PCI_CAP_MSI) {
             struct msi_msg_ctrl * msg_ctrl = cap_ptr;
 
-            V3_Print("msi_was_enabled=%d, msi_is_enabled=%d\n", msi_was_enabled,  msg_ctrl->msi_enable);
+            PrintDebug("msi_was_enabled=%d, msi_is_enabled=%d\n", msi_was_enabled,  msg_ctrl->msi_enable);
 
             if ((msg_ctrl->msi_enable == 1) && (msi_was_enabled == 0)) {
                 pci->irq_type = IRQ_MSI;
@@ -1480,23 +1480,10 @@ int v3_pci_raise_acked_irq(struct vm_device * pci_bus, struct pci_device * dev, 
         msix_table_gpa = (dev->bar[bar_idx].val & ~0xf);
         msix_table_gpa += (dev->msix_cap->table_offset << 3);
 
-        V3_Print("BIR (BAR %d) val: %x\n",
-            bar_idx, dev->bar[bar_idx].val);
-
-        V3_Print("table_offset: %x (shifted: %x)\n",
-            dev->msix_cap->table_offset,
-            (dev->msix_cap->table_offset) << 3);
-
-        V3_Print("Translating MSIX_TABLE from GPA %p\n",
-            (void *)msix_table_gpa);
-
         if (v3_gpa_to_hva(&(dev->vm->cores[0]), msix_table_gpa, (void *)&(msix_table)) != 0) {
             PrintError("Could not translate MSIX Table GPA (%p)\n", (void *)msix_table_gpa);
             return -1;
         }
-
-        V3_Print("msix_table HVA: %p\n",
-            (void *)msix_table);
 
         memset(&ipi, 0, sizeof(struct v3_gen_ipi));
 
@@ -1513,8 +1500,7 @@ int v3_pci_raise_acked_irq(struct vm_device * pci_bus, struct pci_device * dev, 
         ipi.dst = addr->dst_id;
 
         
-        V3_Print("Decode MSIX\n");
-        V3_Print("MSIX IPI DUMP:\n"
+        PrintDebug("MSIX IPI DUMP:\n"
                 "  vector: %d\n"
                 "  mode: %d\n"
                 "  logical: %d\n"

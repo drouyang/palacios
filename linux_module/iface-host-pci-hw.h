@@ -204,14 +204,13 @@ static irqreturn_t host_pci_msix_irq_handler(int irq, void * priv_data) {
     
     // find vector index
     for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
-	if (irq == host_dev->hw_dev.msix_entries[i].vector) {
-	    V3_host_pci_raise_irq(&(host_dev->v3_dev), i);
-	} else {
-	    printk("Error Could not find matching MSIX vector for IRQ %d\n", irq);
-	}
-    }    
+        if (irq == host_dev->hw_dev.msix_entries[i].vector) {
+            V3_host_pci_raise_irq(&(host_dev->v3_dev), i);
+        }    
+    }
     return IRQ_HANDLED;
 }
+
 
 static irqreturn_t host_pci_msix_irq_handler_thread(int irq, void * priv_data) {
     struct host_pci_device * host_dev = priv_data;
@@ -416,15 +415,20 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 	}
 
 
+	if (iommu_attach_device(host_dev->hw_dev.iommu_domain, &(dev->dev))) {
+	    printk("ERROR attaching host PCI device to IOMMU domain\n");
+	    return -1;
+	}
+
 
 	flags = IOMMU_READ | IOMMU_WRITE; // Need to see what IOMMU_CACHE means
 	
-	/* Disable this for now, because it causes Intel DMAR faults for invalid bits set in PTE
+	// Disable this for now, because it causes Intel DMAR faults for invalid bits set in PTE
 	   if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_CACHE_COHERENCY)) {
 	   printk("IOMMU SUPPORTS CACHE COHERENCY FOR DMA REMAPPING\n");
 	   flags |= IOMMU_CACHE;
 	   }
-	*/
+	
 
 
 	while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
@@ -489,12 +493,6 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
 	if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_INTR_REMAP)) {
 	    printk("IOMMU SUPPORTS INTERRUPT REMAPPING\n");
-	}
-
-
-	if (iommu_attach_device(host_dev->hw_dev.iommu_domain, &(dev->dev))) {
-	    printk("ERROR attaching host PCI device to IOMMU domain\n");
-	    return -1;
 	}
 
 	dev->dev_flags |= PCI_DEV_FLAGS_ASSIGNED;
