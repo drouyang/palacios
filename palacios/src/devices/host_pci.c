@@ -740,6 +740,9 @@ static int setup_virt_pci_dev(struct v3_vm_info * vm_info, struct vm_device * de
     }
 
 
+    // Initially disable MSIX by setting an invalid BAR index
+    state->msix_table_bir = -1;
+
     {
         struct v3_host_pci_dev * v3_dev = state->host_dev;
         uint_t cap_offset = v3_dev->cfg_space[52];
@@ -866,6 +869,7 @@ static int host_pci_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     char * url = v3_cfg_val(cfg, "url");
 
     memset(state, 0, sizeof(struct host_pci_state));
+
 
     if (!pci) {
         PrintError("PCI bus not specified in config file\n");
