@@ -592,19 +592,18 @@ static int host_pci_setup_dev(struct host_pci_device * host_dev) {
 
 
 
-#if 0
     // Cache Expansion ROM
     {
-        pci_bar_t rom_bar;
-        pcicfg_bar_decode(&dev->cfg, 0, &rom_bar);
+        pci_exp_rom_bar_t rom_bar;
+        pcicfg_exp_rom_decode(&dev->cfg, &rom_bar);
 
         v3_dev->exp_rom.size = rom_bar.size;
         v3_dev->exp_rom.addr = rom_bar.address;
         v3_dev->exp_rom.type = PT_EXP_ROM;
-        v3_dev->exp_rom.exp_rom_enabled = IORESOURCE_ROM_ENABLE;
-        
+        v3_dev->exp_rom.exp_rom_enabled = rom_bar.enable;
+
     }
-#endif
+
     // cache configuration space
     { 
         int i = 0;
