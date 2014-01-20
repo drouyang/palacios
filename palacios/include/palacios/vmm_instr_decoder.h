@@ -559,33 +559,33 @@ static  int decode_rm_operand16(struct guest_info * core,
 
 	switch (modrm->rm) {
 	    case 0:
-		base_addr = gprs->rbx + ADDR_MASK(gprs->rsi, 2);
+		base_addr = gprs->rbx + ADDR_MASK(gprs->rsi, get_addr_width(core, instr));
 		break;
 	    case 1:
-		base_addr = gprs->rbx + ADDR_MASK(gprs->rdi, 2);
+		base_addr = gprs->rbx + ADDR_MASK(gprs->rdi, get_addr_width(core, instr));
 		break;
 	    case 2:
-		base_addr = gprs->rbp + ADDR_MASK(gprs->rsi, 2);
+		base_addr = gprs->rbp + ADDR_MASK(gprs->rsi, get_addr_width(core, instr));
 		break;
 	    case 3:
-		base_addr = gprs->rbp + ADDR_MASK(gprs->rdi, 2);
+		base_addr = gprs->rbp + ADDR_MASK(gprs->rdi, get_addr_width(core, instr));
 		break;
 	    case 4:
-		base_addr = ADDR_MASK(gprs->rsi, 2);
+		base_addr = ADDR_MASK(gprs->rsi, get_addr_width(core, instr));
 		break;
 	    case 5:
-		base_addr = ADDR_MASK(gprs->rdi, 2);
+		base_addr = ADDR_MASK(gprs->rdi, get_addr_width(core, instr));
 		break;
 	    case 6:
 		if (modrm->mod == 0) {
 		    base_addr = 0;
 		    mod_mode = DISP16;
 		} else {
-		    base_addr = ADDR_MASK(gprs->rbp, 2);
+		    base_addr = ADDR_MASK(gprs->rbp, get_addr_width(core, instr));
 		}
 		break;
 	    case 7:
-		base_addr = ADDR_MASK(gprs->rbx, 2);
+		base_addr = ADDR_MASK(gprs->rbx, get_addr_width(core, instr));
 		break;
 	}
 
@@ -724,33 +724,33 @@ static int decode_rm_operand32(struct guest_info * core,
 
 	    switch (sib->base) {
 		case 0:
-		    base_addr += ADDR_MASK(gprs->rax, 4);
+		    base_addr += ADDR_MASK(gprs->rax, get_addr_width(core, instr));
 		    break;
 		case 1:
-		    base_addr += ADDR_MASK(gprs->rcx, 4);
+		    base_addr += ADDR_MASK(gprs->rcx, get_addr_width(core, instr));
 		    break;
 		case 2:
-		    base_addr += ADDR_MASK(gprs->rdx, 4);
+		    base_addr += ADDR_MASK(gprs->rdx, get_addr_width(core, instr));
 		    break;
 		case 3:
-		    base_addr += ADDR_MASK(gprs->rbx, 4);
+		    base_addr += ADDR_MASK(gprs->rbx, get_addr_width(core, instr));
 		    break;
 		case 4:
-		    base_addr += ADDR_MASK(gprs->rsp, 4);
+		    base_addr += ADDR_MASK(gprs->rsp, get_addr_width(core, instr));
 		    break;
 		case 5:
 		    if (modrm->mod != 0) {
-			base_addr += ADDR_MASK(gprs->rbp, 4);
+			base_addr += ADDR_MASK(gprs->rbp, get_addr_width(core, instr));
 		    } else {
 			mod_mode = DISP32;
 			base_addr = 0;
 		    }
 		    break;
 		case 6:
-		    base_addr += ADDR_MASK(gprs->rsi, 4);
+		    base_addr += ADDR_MASK(gprs->rsi, get_addr_width(core, instr));
 		    break;
 		case 7:
-		    base_addr += ADDR_MASK(gprs->rdi, 4);
+		    base_addr += ADDR_MASK(gprs->rdi, get_addr_width(core, instr));
 		    break;
 	    }
 
