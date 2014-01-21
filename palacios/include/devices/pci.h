@@ -36,12 +36,13 @@ struct vm_device;
 
 typedef enum { PCI_CMD_DMA_DISABLE  = 1,
 	       PCI_CMD_DMA_ENABLE   = 2,
-	       PCI_CMD_INTX_DISABLE = 3, 
-	       PCI_CMD_INTX_ENABLE  = 4,
-	       PCI_CMD_MSI_DISABLE  = 5,
-	       PCI_CMD_MSI_ENABLE   = 6,
-	       PCI_CMD_MSIX_DISABLE = 7,
-	       PCI_CMD_MSIX_ENABLE  = 8 } pci_cmd_t;
+           PCI_CMD_MEM_ENABLE   = 3,
+	       PCI_CMD_INTX_DISABLE = 4, 
+	       PCI_CMD_INTX_ENABLE  = 5,
+	       PCI_CMD_MSI_DISABLE  = 6,
+	       PCI_CMD_MSI_ENABLE   = 7,
+	       PCI_CMD_MSIX_DISABLE = 8,
+	       PCI_CMD_MSIX_ENABLE  = 9 } pci_cmd_t;
 
 typedef enum { PCI_BAR_IO, 
 	       PCI_BAR_MEM24, 

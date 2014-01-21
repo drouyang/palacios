@@ -1076,6 +1076,10 @@ static int cmd_write(struct pci_device * pci_dev, uint32_t offset,
         } else if ((new_cmd.dma_enable == 0) && (old_cmd.dma_enable == 1)) {
             pci_dev->cmd_update(pci_dev, PCI_CMD_DMA_DISABLE, 0, pci_dev->priv_data);
         }
+
+        if ((new_cmd.mem_enable == 1) && (old_cmd.mem_enable == 0)) {
+            pci_dev->cmd_update(pci_dev, PCI_CMD_MEM_ENABLE, 0, pci_dev->priv_data);
+        }
     }
 
     return 0;

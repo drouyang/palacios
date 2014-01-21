@@ -35,12 +35,13 @@ typedef enum { PT_BAR_NONE,
 
 typedef enum { HOST_PCI_CMD_DMA_DISABLE = 1,
 	       HOST_PCI_CMD_DMA_ENABLE = 2,
-	       HOST_PCI_CMD_INTX_DISABLE = 3,
-	       HOST_PCI_CMD_INTX_ENABLE = 4,
-	       HOST_PCI_CMD_MSI_DISABLE = 5,
-	       HOST_PCI_CMD_MSI_ENABLE = 6,
-	       HOST_PCI_CMD_MSIX_DISABLE = 7,
-	       HOST_PCI_CMD_MSIX_ENABLE = 8 } host_pci_cmd_t;
+	       HOST_PCI_CMD_MEM_ENABLE = 3,
+	       HOST_PCI_CMD_INTX_DISABLE = 4,
+	       HOST_PCI_CMD_INTX_ENABLE = 5,
+	       HOST_PCI_CMD_MSI_DISABLE = 6,
+	       HOST_PCI_CMD_MSI_ENABLE = 7,
+	       HOST_PCI_CMD_MSIX_DISABLE = 8,
+	       HOST_PCI_CMD_MSIX_ENABLE = 9 } host_pci_cmd_t;
 
 struct v3_host_pci_bar {
     uint32_t size;

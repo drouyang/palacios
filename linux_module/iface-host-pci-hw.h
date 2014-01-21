@@ -231,6 +231,7 @@ static irqreturn_t host_pci_msix_irq_handler_thread(int irq, void * priv_data) {
 static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64 arg) {
     //struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
     struct pci_dev * dev = host_dev->hw_dev.dev;
+    int status;
 
     switch (cmd) {
 	case HOST_PCI_CMD_DMA_DISABLE:
@@ -240,6 +241,13 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 	case HOST_PCI_CMD_DMA_ENABLE:
 	    printk("Passthrough PCI device Enabling BMDMA\n");
 	    pci_set_master(host_dev->hw_dev.dev);
+	    break;
+	case HOST_PCI_CMD_MEM_ENABLE:
+	    printk("Passthrough PCI device enabling MEM resources\n");
+	    
+        status = pci_enable_device_mem(host_dev->hw_dev.dev);
+        if (status)
+            return -1;
 	    break;
 
 	case HOST_PCI_CMD_INTX_DISABLE:
