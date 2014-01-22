@@ -231,7 +231,6 @@ static irqreturn_t host_pci_msix_irq_handler_thread(int irq, void * priv_data) {
 static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64 arg) {
     //struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
     struct pci_dev * dev = host_dev->hw_dev.dev;
-    int status;
 
     switch (cmd) {
 	case HOST_PCI_CMD_DMA_DISABLE:
@@ -242,14 +241,18 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 	    printk("Passthrough PCI device Enabling BMDMA\n");
 	    pci_set_master(host_dev->hw_dev.dev);
 	    break;
-	case HOST_PCI_CMD_MEM_ENABLE:
+	case HOST_PCI_CMD_MEM_ENABLE:{
+	    uint16_t hw_cmd = 0;
+
 	    printk("Passthrough PCI device enabling MEM resources\n");
 	    
-        status = pci_enable_device_mem(host_dev->hw_dev.dev);
-        if (status)
-            return -1;
-	    break;
+	    pci_read_config_word(host_dev->hw_dev.dev, PCI_COMMAND, &hw_cmd);
+	    hw_cmd |= 0x2;
+	    pci_write_config_word(host_dev->hw_dev.dev, PCI_COMMAND, hw_cmd);
 
+
+	    break;
+				 }
 	case HOST_PCI_CMD_INTX_DISABLE:
 	    printk("Passthrough PCI device disabling INTx IRQ\n");
 
@@ -510,7 +513,7 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
 
 
-    /* Currently broken because PIIX4 support is not yet working
+    /* Currently broken because PIIX4 support is not yet working     */
 
     printk("Requesting Threaded IRQ handler for IRQ %d\n", dev->irq);
 
@@ -519,8 +522,8 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 			     IRQF_ONESHOT, "V3Vee_Host_PCI_INTx", (void *)host_dev)) {
 	printk("ERROR Could not assign IRQ to host PCI device (%s)\n", host_dev->name);
     }
-    */
 
+    host_dev->hw_dev.intx_disabled = 0;
 
 
     

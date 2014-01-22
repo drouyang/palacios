@@ -1046,7 +1046,14 @@ static int cmd_write(struct pci_device * pci_dev, uint32_t offset,
 
     struct pci_cmd_reg old_cmd;
     struct pci_cmd_reg new_cmd;
-    old_cmd.val = pci_dev->config_header.command;
+
+    if (pci_dev->config_read) {
+	pci_dev->config_read(pci_dev, 0x04, &(old_cmd.val), sizeof(uint16_t), pci_dev->priv_data);
+	pci_dev->config_header.command = old_cmd.val;
+    } else {
+	old_cmd.val = pci_dev->config_header.command;
+    }
+
 
     for (i = 0; i < length; i++) {
         uint8_t mask = pci_hdr_write_mask_00[offset + i];
