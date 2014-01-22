@@ -256,9 +256,9 @@ msix_irq_handler(struct pt_regs * regs, unsigned int vector)
                 matched = 1;
             }
         }
-        if (!matched) {
-	    printk("Error: could not find matching MSI-X entry for vector %d\n", vector);
-        }
+    }
+    if (!matched) {
+        printk("Error: could not find matching MSI-X entry for vector %d\n", vector);
     }
 }
 
