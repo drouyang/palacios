@@ -27,15 +27,16 @@ static uintptr_t * seed_addrs = NULL;
 // alignment is in bytes
 uintptr_t alloc_palacios_pgs(u64 num_pages, u32 alignment, int node_id) {
     uintptr_t addr = 0;
+    int mem_node_id = node_id;
 
-    if (node_id == -1) {
+    if (numa_num_nodes() == 1) {
+        mem_node_id = 0;
+    }
+    else if (node_id == -1) {
 	int cpu_id = get_cpu();
 	put_cpu();
 
-	node_id = numa_cpu_to_node(cpu_id);
-    } else if (numa_num_nodes() == 1) {
-	// Ignore the NUMA zone here
-	node_id = 0;
+	mem_node_id = numa_cpu_to_node(cpu_id);
     } else if (node_id >= numa_num_nodes()) {
 	// We are a NUMA aware, and requested an invalid node
 	ERROR("Requesting memory from an invalid NUMA node. (Node: %d) (%d nodes on system)\n",
@@ -46,10 +47,20 @@ uintptr_t alloc_palacios_pgs(u64 num_pages, u32 alignment, int node_id) {
     printk("Allocating %llu pages (%llu bytes) order=%d\n", 
 	   num_pages, num_pages * PAGE_SIZE, get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT);
 
-    addr = buddy_alloc(memzones[node_id], get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT);
+    addr = buddy_alloc(memzones[mem_node_id], get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT);
     
+    if ((node_id == -1) && (!addr)) {
+
+        for (mem_node_id = 0; mem_node_id < numa_num_nodes(); mem_node_id++) {
+            addr = buddy_alloc(memzones[mem_node_id], get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT);
+   
+            if (addr) break;
+         }
+        
+    }
+
     if (!addr) {
-	ERROR("Returning from alloc addr=%p, vaddr=%p\n", (void *)addr, __va(addr));
+        ERROR("Returning from alloc addr=%p, vaddr=%p\n", (void *)addr, __va(addr));
     }
 
 
