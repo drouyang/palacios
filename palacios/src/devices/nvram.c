@@ -507,6 +507,7 @@ static void set_memory_size(struct nvram_internal * nvram, addr_t bytes) {
 
     // set extended memory - first 1 MB is lost to 640K chunk
     // extended memory is min(0MB, bytes - 1MB)
+    // memory up to 16MB
     {
 	uint16_t memk = 0;
 
@@ -524,9 +525,15 @@ static void set_memory_size(struct nvram_internal * nvram, addr_t bytes) {
     // this is min(0, bytes - 16MB)
     {
 	uint16_t mem_chunks = 0;
+	uint64_t ext_bytes = bytes;
 
-	if (bytes >= (1024 * 1024 * 16)) {
-	    mem_chunks = (bytes - (1024 * 1024 * 16)) / (1024 * 64);
+    // 3.5 GB
+    if (ext_bytes > 0xE0000000ULL) {
+        ext_bytes = 0xE0000000ULL;
+    }
+
+	if (ext_bytes >= (1024 * 1024 * 16)) {
+	    mem_chunks = (ext_bytes - (1024 * 1024 * 16)) / (1024 * 64);
 	}
 	
 	set_memory(nvram, NVRAM_REG_AMI_BIG_MEMORY_HIGH, (mem_chunks >> 8) & 0x00ff);
