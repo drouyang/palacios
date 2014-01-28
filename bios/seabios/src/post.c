@@ -122,7 +122,8 @@ ram_probe(void)
                     | ((u32)inb_cmos(CMOS_MEM_HIGHMEM_MID) << 24)
                     | ((u64)inb_cmos(CMOS_MEM_HIGHMEM_HIGH) << 32));
         RamSizeOver4G = high;
-        add_e820(0x100000000ull, high, E820_RAM);
+        //add_e820(0x100000000ull, high, E820_RAM);
+        add_e820(0x100000000ull, (0x00000000FFFFFFFFULL & high), E820_RAM);
 
         /* reserve 256KB BIOS area at the end of 4 GB */
         add_e820(0xfffc0000, 256*1024, E820_RESERVED);

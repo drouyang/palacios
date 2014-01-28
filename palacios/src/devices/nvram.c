@@ -523,11 +523,23 @@ static void set_memory_size(struct nvram_internal * nvram, addr_t bytes) {
     // Set the extended memory beyond 16 MB in 64k chunks
     // this is min(0, bytes - 16MB)
     {
+	uint64_t mem_chunks = 0;
+
+	if (bytes >= (1024 * 1024 * 16)) {
+	    mem_chunks = (bytes - (1024 * 1024 * 16)) / (1024 * 64);
+	}
+
+    if (mem_chunks >= 65280) {
+        mem_chunks = 56279;
+    }
+/*
 	uint16_t mem_chunks = 0;
 
 	if (bytes >= (1024 * 1024 * 16)) {
 	    mem_chunks = (bytes - (1024 * 1024 * 16)) / (1024 * 64);
 	}
+*/
+
 	
 	set_memory(nvram, NVRAM_REG_AMI_BIG_MEMORY_HIGH, (mem_chunks >> 8) & 0x00ff);
 	set_memory(nvram, NVRAM_REG_AMI_BIG_MEMORY_LOW, mem_chunks & 0x00ff);
