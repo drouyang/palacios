@@ -32,6 +32,7 @@ struct guest_info;
 
 //#include <palacios/vmm_types.h>
 #include <palacios/vmm_string.h>
+#include <palacios/vmm_telemetry.h>
 
 
 
