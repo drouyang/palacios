@@ -28,14 +28,15 @@
 #include <palacios/vmm_shadow_paging.h>
 #include <palacios/vmm_direct_paging.h>
 
+#define MEM_BLOCK_SIZE_BYTES ((uint64_t)(V3_CONFIG_MEM_BLOCK_SIZE_MB * (1024 * 1024)))
 
 
 
 struct v3_mem_region * v3_get_base_region(struct v3_vm_info * vm, addr_t gpa) {
     struct v3_mem_map * map = &(vm->mem_map);
-    uint32_t block_index = gpa / V3_CONFIG_MEM_BLOCK_SIZE;
+    uint32_t block_index = gpa / MEM_BLOCK_SIZE_BYTES;
 
-    if (gpa > (map->num_base_blocks * V3_CONFIG_MEM_BLOCK_SIZE) ||
+    if (gpa > (map->num_base_blocks * MEM_BLOCK_SIZE_BYTES) ||
 	(block_index >= map->num_base_blocks)) {
 	PrintError("Guest Address Exceeds Base Memory Size (ga=0x%p), (limit=0x%p)\n", 
 		   (void *)gpa, (void *)vm->mem_size);
@@ -126,10 +127,10 @@ int v3_mem_read_gpa(struct guest_info * core, addr_t gpa, uint8_t * dst, uint64_
 
 int v3_init_mem_map(struct v3_vm_info * vm) {
     struct v3_mem_map * map = &(vm->mem_map);
-    map->num_base_blocks = (vm->mem_size / V3_CONFIG_MEM_BLOCK_SIZE) + \
-	((vm->mem_size % V3_CONFIG_MEM_BLOCK_SIZE) > 0);
+    map->num_base_blocks = (vm->mem_size / MEM_BLOCK_SIZE_BYTES) + \
+	((vm->mem_size % MEM_BLOCK_SIZE_BYTES) > 0);
 
-    addr_t block_pages = V3_CONFIG_MEM_BLOCK_SIZE >> 12;
+    addr_t block_pages = MEM_BLOCK_SIZE_BYTES >> 12;
 
     int i = 0;
 
@@ -149,8 +150,8 @@ int v3_init_mem_map(struct v3_vm_info * vm) {
 	// PrintDebug("Mapping %d pages of memory (%u bytes)\n", (int)mem_pages, (uint_t)info->mem_size);
 	
 	// 2MB page alignment needed for 2MB hardware nested paging
-	region->guest_start = V3_CONFIG_MEM_BLOCK_SIZE * i;
-	region->guest_end = region->guest_start + V3_CONFIG_MEM_BLOCK_SIZE;
+	region->guest_start = MEM_BLOCK_SIZE_BYTES * i;
+	region->guest_end = region->guest_start + MEM_BLOCK_SIZE_BYTES;
 
 	// We assume that the xml config was smart enough to align the layout to the block size
 	// If they didn't we're going to ignore their settings 
@@ -171,7 +172,7 @@ int v3_init_mem_map(struct v3_vm_info * vm) {
 	}
 	
 	// Clear the memory...
-	memset(V3_VAddr((void *)region->host_addr), 0, V3_CONFIG_MEM_BLOCK_SIZE);
+	memset(V3_VAddr((void *)region->host_addr), 0, MEM_BLOCK_SIZE_BYTES);
 	
 	region->flags.read = 1;
 	region->flags.write = 1;
@@ -194,7 +195,7 @@ void v3_delete_mem_map(struct v3_vm_info * vm) {
     struct rb_node * node = v3_rb_first(&(map->mem_regions));
     struct v3_mem_region * reg = NULL;
     struct rb_node * tmp_node = NULL;
-    addr_t block_pages = V3_CONFIG_MEM_BLOCK_SIZE >> 12;
+    addr_t block_pages = MEM_BLOCK_SIZE_BYTES >> 12;
     int i = 0;
     
 
