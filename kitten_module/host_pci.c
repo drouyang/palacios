@@ -18,6 +18,7 @@
 #include <arch/proto.h>
 #include <arch/pisces/pisces_lcall.h>
 #include <arch/pisces/pisces_pci.h>
+#include <arch/pisces/pisces_ipi.h>
 
 #include "palacios.h"
 #include "kitten-exts.h"
@@ -31,16 +32,6 @@
 #define PCI_DEVFN(slot, func) ((((slot) & 0x1f) << 3) | ((func) & 0x07))
 #define PCI_DEV_NUM(devfn) (((devfn) >> 3) & 0x1f)
 #define PCI_FUNC_NUM(devfn) ((devfn) & 0x07)
-
-
-/* TODO: vector management and ipi redirection table */
-
-/* [64,238] in Kitten is free for use by devices
- * we grab [200, 219] for Pisces
- */
-#define PISCES_PCI_VECTOR_START  200
-#define PISCES_PCI_VECTOR_NUM    20
-
 
 struct host_pci_device {
     char name[128];
@@ -263,6 +254,24 @@ msix_irq_handler(struct pt_regs * regs, unsigned int vector)
 }
 
 
+static int
+pisces_try_request_ipi_vectors(int num_vecs) {
+    unsigned long flags;
+    int ret = 0;
+
+    spin_lock_irqsave(&(lock), flags);
+
+    if (irq_vector_offset + num_vecs > PISCES_PCI_NUM_IPIS) {
+	/* No more IPI vectors available - Kitten can't allocate
+	 * these dynamically right now so we're kind of screwed */
+	ret = -1;
+    }
+
+    spin_unlock_irqrestore(&(lock), flags);
+    return ret;
+}
+
+
 static int 
 host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
     struct host_pci_device * host_dev = v3_dev->host_data;
@@ -275,18 +284,19 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
             {
                 //u64 num_vecs = arg; /* number of vectors requested */
 
-                /* TODO: support multiple vectors
-                 * warning if number of vectors requested is greater
-                 * than the number supported by hardware
-                 */
-
                 /* allocate MSI vector*/
+		if (pisces_try_request_ipi_vectors(1) != 0) {
+		    printk("No IPI vectors available - cannot enable MSI\n");
+		    status = -1;
+		    break;
+		}
+
                 if (host_dev->msi_irq_vector == 0) {
                     unsigned long flags;
 
                     spin_lock_irqsave(&(lock), flags);
                     host_dev->msi_irq_vector = 
-                        PISCES_PCI_VECTOR_START + irq_vector_offset;
+                        PISCES_PCI_IPI_VECTOR + irq_vector_offset;
                     irq_vector_offset++;
                     spin_unlock_irqrestore(&(lock), flags);
 
@@ -333,13 +343,19 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64 arg) {
                 }
 
                 /* allocate MSI-X vectors */
+		if (pisces_try_request_ipi_vectors(host_dev->hw_dev.num_msix_vecs) != 0) {
+		    printk("No IPI vectors available - cannot enable MSI-X\n");
+		    status = -1;
+		    break;
+		}
+
                 for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
                     unsigned long flags;
 
                     host_dev->hw_dev.msix_entries[i].entry = i;
                     spin_lock_irqsave(&(lock), flags);
                     host_dev->hw_dev.msix_entries[i].vector 
-                        = PISCES_PCI_VECTOR_START + irq_vector_offset;
+                        = PISCES_PCI_IPI_VECTOR + irq_vector_offset;
                     irq_vector_offset++;
                     spin_unlock_irqrestore(&(lock), flags);
 
@@ -620,8 +636,14 @@ static int host_pci_setup_dev(struct host_pci_device * host_dev) {
     // reserve device IRQ vector for IPI
     {
         unsigned long flags;
+
+	if (pisces_try_request_ipi_vectors(1) != 0) {
+	    printk("No IPI vectors available - cannot enable device\n");
+	    return -1;
+	}
+
         spin_lock_irqsave(&(lock), flags);
-        host_dev->intx_ipi_vector = PISCES_PCI_VECTOR_START + irq_vector_offset;
+        host_dev->intx_ipi_vector = PISCES_PCI_IPI_VECTOR + irq_vector_offset;
         irq_vector_offset++;
         spin_unlock_irqrestore(&(lock), flags);
     }
