@@ -510,7 +510,6 @@ static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num,
 
     v3_unlock_irqrestore(apic->irq_queue.lock, flags);
   
-
     return 0;
 }
 
@@ -809,7 +808,11 @@ static int deliver_ipi(struct apic_state * src_apic,
 
 	    PrintDebug("delivering IRQ %d to core %u\n", ipi->vector, dst_core->vcpu_id); 
 
-	    add_apic_irq_entry(dst_apic, ipi->vector, ipi->ack, ipi->private_data);
+	    if (add_apic_irq_entry(dst_apic, ipi->vector, ipi->ack, ipi->private_data) == -1) {
+		PrintError("Failed to deliver IPI for vector %d on VCPU %d.\n", 
+			   ipi->vector, dst_core->vcpu_id);
+		return -1;
+	    }
 	    
 	    if (dst_apic != src_apic) { 
 		PrintDebug(" non-local core with new interrupt, forcing it to exit now\n"); 
@@ -1377,9 +1380,9 @@ static int apic_write(struct guest_info * core, addr_t guest_addr, void * src, u
 
 
     if (length != 4) {
-	PrintError("apic %u: core %u: Invalid apic write length (%d)\n", 
+	PrintError("apic %u: core %u: Invalid apic write length (val = %d) IGNORING\n", 
 		   apic->lapic_id.val, length, core->vcpu_id);
-	return -1;
+	return length;
     }
 
     switch (reg_addr) {
