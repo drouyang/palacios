@@ -133,40 +133,40 @@ int create_numa_topology_from_user(void __user * argp) {
 	int i = 0;
 	int j = 0;
 
-	printk("Created NUMA topology from user space\n");
-	printk("Number of Nodes: %d, CPUs: %d, MEM regions: %d\n", 
+	v3_lnx_printk("Created NUMA topology from user space\n");
+	v3_lnx_printk("Number of Nodes: %d, CPUs: %d, MEM regions: %d\n", 
 	       topology.num_nodes, topology.num_cpus, topology.num_mem_regions);
 
-	printk("CPU mapping\n");
+	v3_lnx_printk("CPU mapping\n");
 	for (i = 0; i < topology.num_cpus; i++) {
 	    printk("\tCPU %d -> Node %d\n", i, topology.cpu_to_node_map[i]);
 	}
 
-	printk("Memory mapping\n");
+	v3_lnx_printk("Memory mapping\n");
 
 	for (i = 0; i < topology.num_mem_regions; i++) {
 	    struct mem_region * region = &(topology.mem_to_node_map[i]);
-	    printk("\tMEM %p - %p -> Node %d\n", 
-		   region->start_addr, 
-		   region->end_addr, 
-		   region->node_id);
+	    v3_lnx_printk("\tMEM %p - %p -> Node %d\n", 
+			  region->start_addr, 
+			  region->end_addr, 
+			  region->node_id);
 	}
 
 
-	printk("Distance Table\n");
+	v3_lnx_printk("Distance Table\n");
 	for (i = 0; i < topology.num_nodes; i++) {
-	    printk("\t%d", i);
+	    v3_lnx_printk("\t%d", i);
 	}
-	printk("\n");
+	v3_lnx_printk("\n");
 	
 	for (i = 0; i < topology.num_nodes; i++) {
-	    printk("%d", i);
+	    v3_lnx_printk("%d", i);
 
 	    for (j = 0; j < topology.num_nodes; j++) {
-		printk("\t%d", topology.distance_table[j + (i * topology.num_nodes)]);
+		v3_lnx_printk("\t%d", topology.distance_table[j + (i * topology.num_nodes)]);
 	    }
 
-	    printk("\n");
+	    v3_lnx_printk("\n");
 
 	}	    
 

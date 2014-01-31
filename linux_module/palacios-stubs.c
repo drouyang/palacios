@@ -1,4 +1,4 @@
- #include <linux/kernel.h>
+#include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/spinlock.h>
 #include <linux/gfp.h>
@@ -42,54 +42,13 @@ extern int cpu_list[NR_CPUS];
 extern int cpu_list_len;
 
 
-static char * print_buffer[NR_CPUS];
-
-static void deinit_print_buffers(void)
-{
-    int i;
-
-    for (i = 0; i < NR_CPUS; i++) {
-	if (print_buffer[i]) { 
-	    palacios_kfree(print_buffer[i]);
-	    print_buffer[i] = 0;
-	}
-    }
-}
 
 
 
-static int init_print_buffers(void)
-{
-    int i;
-    
-    memset(print_buffer, 0, sizeof(char *) * NR_CPUS);
-
-#if !V3_PRINTK_OLD_STYLE_OUTPUT
-
-    for (i = 0; i < NR_CPUS; i++) { 
-	print_buffer[i] = palacios_kmalloc(V3_PRINTK_BUF_SIZE, GFP_KERNEL);
-
-	if (!print_buffer[i]) { 
-	    ERROR("Cannot allocate print buffer for cpu %d\n",i);
-	    deinit_print_buffers();
-	    return -1;
-	}
-
-	memset(print_buffer[i], 0, V3_PRINTK_BUF_SIZE);
-    }
-
-#endif
-    
-    return 0;
-
-}
- 
 /**
  * Prints a message to the console.
  */
 void palacios_print(const char * fmt, ...) {
-
-#if V3_PRINTK_OLD_STYLE_OUTPUT
 
   va_list ap;
 
@@ -99,33 +58,7 @@ void palacios_print(const char * fmt, ...) {
 
   return;
 
-#else 
-
-  va_list ap;
-  char * buf = NULL;
-  unsigned int cpu = palacios_get_cpu();
-
-  buf = print_buffer[cpu];
-
-  if (!buf) { 
-      printk(KERN_INFO "palacios (pcore %u): output skipped - no allocated buffer\n",cpu);
-      return;
-  } 
-
-  va_start(ap, fmt);
-  vsnprintf(buf, V3_PRINTK_BUF_SIZE, fmt, ap);
-  va_end(ap);
-
-
-
-  printk(KERN_INFO "palacios (pcore %u): %s",cpu,buf);
-
-  return;
-
-#endif
-
 }
-
 
 
 /*
@@ -237,7 +170,7 @@ static int lnx_thread_target(void * arg) {
     struct lnx_thread_arg * thread_info = (struct lnx_thread_arg *)arg;
     int ret = 0;
     /*
-      INFO("Daemonizing new Palacios thread (name=%s)\n", thread_info->name);
+      v3_lnx_printk("Daemonizing new Palacios thread (name=%s)\n", thread_info->name);
 
       daemonize(thread_info->name);
       allow_signal(SIGKILL);
@@ -247,7 +180,7 @@ static int lnx_thread_target(void * arg) {
     ret = thread_info->fn(thread_info->arg);
 
 
-    INFO("Palacios Thread (%s) EXITING\n", thread_info->name);
+    v3_lnx_printk("Palacios Thread (%s) EXITING\n", thread_info->name);
 
     palacios_kfree(thread_info);
     // handle cleanup 
@@ -333,7 +266,7 @@ palacios_move_thread_to_cpu(int new_cpu_id,
 			    void * thread_ptr) {
     struct task_struct * thread = (struct task_struct *)thread_ptr;
 
-    INFO("Moving thread (%p) to cpu %d\n", thread, new_cpu_id);
+    v3_lnx_printk("Moving thread (%p) to cpu %d\n", thread, new_cpu_id);
 
     if (thread == NULL) {
 	thread = current;
@@ -353,7 +286,6 @@ palacios_move_thread_to_cpu(int new_cpu_id,
 unsigned int 
 palacios_get_cpu(void) 
 {
-
     /* We want to call smp_processor_id()
      * But this is not safe if kernel preemption is possible 
      * We need to ensure that the palacios threads are bound to a give cpu
@@ -416,7 +348,7 @@ palacios_dispatch_interrupt( int vector, void * dev, struct pt_regs * regs ) {
 static int
 palacios_hook_interrupt(struct v3_vm_info *	vm,
 			unsigned int		vector ) {
-    INFO("hooking vector %d\n", vector);  	
+    v3_lnx_printk("hooking vector %d\n", vector);  	
 
     if (irq_to_guest_map[vector]) {
 	WARNING(
@@ -494,10 +426,10 @@ palacios_ack_interrupt(
 unsigned int
 palacios_get_cpu_khz(void) 
 {
-    INFO("cpu_khz is %u\n", cpu_khz);
+    v3_lnx_printk("cpu_khz is %u\n", cpu_khz);
 
     if (cpu_khz == 0) { 
-	INFO("faking cpu_khz to 1000000\n");
+	v3_lnx_printk("faking cpu_khz to 1000000\n");
 	return 1000000;
     } else {
 	return cpu_khz;
@@ -693,13 +625,8 @@ int palacios_vmm_init( void )
 
     memset(irq_to_guest_map, 0, sizeof(struct v3_vm_info *) * 256);
 
-    if (init_print_buffers()) {
-	ERROR("Cannot initialize print buffers\n");
-	palacios_kfree(cpu_mask);
-	return -1;
-    }
 
-    INFO("palacios_init starting - calling init_v3\n");
+    v3_lnx_printk("palacios_init starting - calling init_v3\n");
 
     Init_V3(&palacios_os_hooks, cpu_mask, num_cpus, NULL);
 
@@ -712,9 +639,7 @@ int palacios_vmm_exit( void ) {
 
     Shutdown_V3();
 
-    INFO("palacios shutdown complete\n");
-
-    deinit_print_buffers();
+    v3_lnx_printk("palacios shutdown complete\n");
 
     return 0;
 }

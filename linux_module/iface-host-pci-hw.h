@@ -21,7 +21,7 @@ static int setup_hw_pci_dev(struct host_pci_device * host_dev) {
 
 
     if (dev == NULL) {
-	printk("Could not find HW pci device (bus=%d, devfn=%d)\n", 
+	ERROR("Could not find HW pci device (bus=%d, devfn=%d)\n", 
 	       host_dev->hw_dev.bus, host_dev->hw_dev.devfn); 
 	return -1;
     }
@@ -33,13 +33,13 @@ static int setup_hw_pci_dev(struct host_pci_device * host_dev) {
     spin_lock_init(&(host_dev->hw_dev.intx_lock));
 
     if (pci_enable_device(dev)) {
-	printk("Could not enable Device\n");
+	ERROR("Could not enable Device\n");
 	return -1;
     }
     
     ret = pci_request_regions(dev, "v3vee");
     if (ret != 0) {
-	printk("Could not reservce PCI regions\n");
+	ERROR("Could not reservce PCI regions\n");
 	return -1;
     }
 
@@ -51,15 +51,15 @@ static int setup_hw_pci_dev(struct host_pci_device * host_dev) {
     {
 	int i = 0;
 	for (i = 0; i < DEVICE_COUNT_RESOURCE; i++) {
-	    printk("Resource %d\n", i);
-	    printk("\tflags = 0x%lx\n", pci_resource_flags(dev, i));
-	    printk("\t name=%s, start=%lx, size=%d\n", 
+	    v3_lnx_printk("Resource %d\n", i);
+	    v3_lnx_printk("\tflags = 0x%lx\n", pci_resource_flags(dev, i));
+	    v3_lnx_printk("\t name=%s, start=%lx, size=%d\n", 
 		   host_dev->hw_dev.dev->resource[i].name, (uintptr_t)pci_resource_start(dev, i),
 		   (u32)pci_resource_len(dev, i));
 
 	}
 
-	printk("Rom BAR=%d\n", dev->rom_base_reg);
+	v3_lnx_printk("Rom BAR=%d\n", dev->rom_base_reg);
     }
 
     /* Cache first 6 BAR regs */
@@ -121,7 +121,7 @@ static int setup_hw_pci_dev(struct host_pci_device * host_dev) {
 	    // Enable exp rom
 
 	    v3_dev->exp_rom.exp_rom_enabled = rom_res->flags & IORESOURCE_ROM_ENABLE;
-	    printk("%s: exp_rom enabled: %d\n",
+	    v3_lnx_printk("%s: exp_rom enabled: %d\n",
 		   host_dev->name,
 		   v3_dev->exp_rom.exp_rom_enabled);
 	}
@@ -147,18 +147,18 @@ static int setup_hw_pci_dev(struct host_pci_device * host_dev) {
 	//JRL: This version might not be correct...
 	iommu_avail = iommu_found();
 #else 
-	printk("checking for IOMMU\n");
+	v3_lnx_printk("checking for IOMMU\n");
 	iommu_avail = iommu_present(&pci_bus_type);
 
 #endif
 
-	printk("IOMMU status =%d\n", iommu_avail);
+	v3_lnx_printk("IOMMU status =%d\n", iommu_avail);
 
 	if (iommu_avail == true) {
-	    printk("Setting host PCI device (%s) as IOMMU\n", host_dev->name);
+	    v3_lnx_printk("Setting host PCI device (%s) as IOMMU\n", host_dev->name);
 	    v3_dev->iface = IOMMU;
 	} else {
-	    printk("Setting host PCI device (%s) as SYMBIOTIC\n", host_dev->name);
+	    v3_lnx_printk("Setting host PCI device (%s) as SYMBIOTIC\n", host_dev->name);
 	    v3_dev->iface = SYMBIOTIC;
 	}
 
@@ -216,7 +216,7 @@ static irqreturn_t host_pci_msix_irq_handler_thread(int irq, void * priv_data) {
     struct host_pci_device * host_dev = priv_data;
     int i = 0;
 
-    printk("Host PCI MSIX IRQ threaded handler (%d)\n", irq);
+    v3_lnx_printk("Host PCI MSIX IRQ threaded handler (%d)\n", irq);
 
     for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
         if (irq == host_dev->hw_dev.msix_entries[i].vector) {
@@ -234,17 +234,17 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 
     switch (cmd) {
 	case HOST_PCI_CMD_DMA_DISABLE:
-	    printk("Passthrough PCI device disabling BMDMA\n");
+	    v3_lnx_printk("Passthrough PCI device disabling BMDMA\n");
 	    pci_clear_master(host_dev->hw_dev.dev);
 	    break;
 	case HOST_PCI_CMD_DMA_ENABLE:
-	    printk("Passthrough PCI device Enabling BMDMA\n");
+	    v3_lnx_printk("Passthrough PCI device Enabling BMDMA\n");
 	    pci_set_master(host_dev->hw_dev.dev);
 	    break;
 	case HOST_PCI_CMD_MEM_ENABLE:{
 	    uint16_t hw_cmd = 0;
 
-	    printk("Passthrough PCI device enabling MEM resources\n");
+	    v3_lnx_printk("Passthrough PCI device enabling MEM resources\n");
 	    
 	    pci_read_config_word(host_dev->hw_dev.dev, PCI_COMMAND, &hw_cmd);
 	    hw_cmd |= 0x2;
@@ -254,24 +254,24 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 	    break;
 				 }
 	case HOST_PCI_CMD_INTX_DISABLE:
-	    printk("Passthrough PCI device disabling INTx IRQ\n");
+	    v3_lnx_printk("Passthrough PCI device disabling INTx IRQ\n");
 
 	    disable_irq(dev->irq);
 	    free_irq(dev->irq, (void *)host_dev);
 
 	    break;
 	case HOST_PCI_CMD_INTX_ENABLE:
-	    printk("Passthrough PCI device Enabling INTx IRQ\n");
+	    v3_lnx_printk("Passthrough PCI device Enabling INTx IRQ\n");
 	
 	    if (request_threaded_irq(dev->irq, NULL, host_pci_intx_irq_handler, 
 				     IRQF_ONESHOT, "V3Vee_Host_PCI_INTx", (void *)host_dev)) {
-		printk("ERROR Could not assign IRQ to host PCI device (%s)\n", host_dev->name);
+		ERROR("Could not assign IRQ to host PCI device (%s)\n", host_dev->name);
 	    }
 
 	    break;
 
 	case HOST_PCI_CMD_MSI_DISABLE:
-	    printk("Passthrough PCI device Disabling MSIs\n");
+	    v3_lnx_printk("Passthrough PCI device Disabling MSIs\n");
 
 	    disable_irq(dev->irq);
 	    free_irq(dev->irq, (void *)host_dev);
@@ -281,37 +281,38 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 	    break;
 	case HOST_PCI_CMD_MSI_ENABLE:
 
-	    printk(KERN_ERR "Passthrough PCI device Enabling MSI\n");
+	    v3_lnx_printk(KERN_ERR "Passthrough PCI device Enabling MSI\n");
 
 
 	    
 	    if (!dev->msi_enabled) {
 
-		printk("Enabling MSI\n");
+		v3_lnx_printk("Enabling MSI\n");
 
 		if (pci_enable_msi(dev) != 0) {
-		    printk(KERN_ERR "Error enabling MSI for host device %s\n", host_dev->name);
+		    ERROR("Error enabling MSI for host device %s\n", host_dev->name);
 		    return -1;
 		}
 	    }
 
-	    printk(KERN_ERR "MSI Has been Enabled\n");
+	    
+	    v3_lnx_printk("MSI Has been Enabled\n");
 
 	    if (request_irq(dev->irq, host_pci_msi_irq_handler, 
 			    0, "V3Vee_host_PCI_MSI", (void *)host_dev)) {
-		printk("Error Requesting IRQ %d for Passthrough MSI IRQ\n", dev->irq);
+		ERROR("Error Requesting IRQ %d for Passthrough MSI IRQ\n", dev->irq);
 		pci_disable_msi(dev);
 		return -1;
 	    }
 
-	    printk(KERN_ERR "IRQ requested\n");
+	    v3_lnx_printk("IRQ requested\n");
 
 	    break;
 	case HOST_PCI_CMD_MSIX_ENABLE: {
 	    int i = 0;
 	    int ret = 0;
         
-	    printk("Passthrough PCI device Enabling MSIX (%llu entries requested)\n", arg);
+	    v3_lnx_printk("Passthrough PCI device Enabling MSIX (%llu entries requested)\n", arg);
 
 
 	    host_dev->hw_dev.num_msix_vecs = arg;
@@ -326,7 +327,7 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 				  host_dev->hw_dev.num_msix_vecs);
 
 	    if (ret != 0) {
-		printk("Error: failed to enable pci msix. ret = %d\n", ret);
+		ERROR("Error: failed to enable pci msix. ret = %d\n", ret);
 		kfree(host_dev->hw_dev.msix_entries);
 		host_dev->hw_dev.num_msix_vecs = 0;
 		return -1;
@@ -338,7 +339,7 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 					 host_pci_msix_irq_handler, 
 					 host_pci_msix_irq_handler_thread, 
 					 0, "V3VEE_host_PCI_MSIX", (void *)host_dev)) {
-		    printk("Error requesting IRQ %d for Passthrough MSIX IRQ\n", 
+		   ERROR("Error requesting IRQ %d for Passthrough MSIX IRQ\n", 
 			   host_dev->hw_dev.msix_entries[i].vector);
 		}
 	    }
@@ -349,7 +350,7 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 	case HOST_PCI_CMD_MSIX_DISABLE: {
 	    int i = 0;
 
-	    printk("Passthrough PCI device Disabling MSIX\n");
+	    v3_lnx_printk("Passthrough PCI device Disabling MSIX\n");
 	    
 	    for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
 		disable_irq(host_dev->hw_dev.msix_entries[i].vector);
@@ -367,7 +368,7 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 	    break;
 	}
 	default:
-	    printk("Error: unhandled passthrough PCI command: %d\n", cmd);
+	    ERROR("Error: unhandled passthrough PCI command: %d\n", cmd);
 	    return -1;
 	   
     }
@@ -421,13 +422,13 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 #endif
 
 	if (host_dev->hw_dev.iommu_domain == NULL) {
-	    printk("IOMMU ERROR: Could not allocate domain\n");
+	    ERROR("IOMMU ERROR: Could not allocate domain\n");
 	    return -1;
 	}
 
 
 	if (iommu_attach_device(host_dev->hw_dev.iommu_domain, &(dev->dev))) {
-	    printk("ERROR attaching host PCI device to IOMMU domain\n");
+	    ERROR("ERROR attaching host PCI device to IOMMU domain\n");
 	    return -1;
 	}
 
@@ -435,16 +436,16 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 	flags = IOMMU_READ | IOMMU_WRITE; // Need to see what IOMMU_CACHE means
 	
 	// Disable this for now, because it causes Intel DMAR faults for invalid bits set in PTE
-	   if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_CACHE_COHERENCY)) {
-	   printk("IOMMU SUPPORTS CACHE COHERENCY FOR DMA REMAPPING\n");
-	   flags |= IOMMU_CACHE;
-	   }
+	if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_CACHE_COHERENCY)) {
+	    v3_lnx_printk("IOMMU SUPPORTS CACHE COHERENCY FOR DMA REMAPPING\n");
+	    flags |= IOMMU_CACHE;
+	}
 	
 
 
 	while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
 	
-	    printk("Memory region: (GPA=%p), start=%p, end=%p\n", (void *)gpa, (void *)region.start, (void *)region.end);
+	    v3_lnx_printk("Memory region: (GPA=%p), start=%p, end=%p\n", (void *)gpa, (void *)region.start, (void *)region.end);
 
 
 	    
@@ -461,7 +462,7 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 		u64 hpa = region.start;
 		
 
-		printk("Memory region: GPA=%p, HPA=%p, size=%p\n", (void *)gpa, (void *)hpa, (void *)size);
+		v3_lnx_printk("Memory region: GPA=%p, HPA=%p, size=%p\n", (void *)gpa, (void *)hpa, (void *)size);
 
 
 		do {
@@ -475,7 +476,7 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
 		    if (iommu_map(host_dev->hw_dev.iommu_domain, gpa, hpa, 
 				  get_order(page_size), flags)) {
-			printk("ERROR: Could not map sub region (GPA=%p) (HPA=%p) (order=%d)\n", 
+			ERROR("Could not map sub region (GPA=%p) (HPA=%p) (order=%d)\n", 
 			       (void *)gpa, (void *)hpa, get_order(page_size));
 			return -1;
 		    }
@@ -484,7 +485,7 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
 		    if (iommu_map(host_dev->hw_dev.iommu_domain, gpa, hpa, 
 				  page_size, flags)) {
-			printk("ERROR: Could not map sub region (GPA=%p) (HPA=%p) (size=%d)\n", 
+			ERROR("Could not map sub region (GPA=%p) (HPA=%p) (size=%d)\n", 
 			       (void *)gpa, (void *)hpa, get_order(page_size));
 			return -1;
 		    }
@@ -503,7 +504,7 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
 
 	if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_INTR_REMAP)) {
-	    printk("IOMMU SUPPORTS INTERRUPT REMAPPING\n");
+	    v3_lnx_printk("IOMMU SUPPORTS INTERRUPT REMAPPING\n");
 	}
 
 	dev->dev_flags |= PCI_DEV_FLAGS_ASSIGNED;
@@ -515,12 +516,12 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
     /* Currently broken because PIIX4 support is not yet working     */
 
-    printk("Requesting Threaded IRQ handler for IRQ %d\n", dev->irq);
+    v3_lnx_printk("Requesting Threaded IRQ handler for IRQ %d\n", dev->irq);
 
     //    setup regular IRQs until advanced IRQ mechanisms are enabled
     if (request_threaded_irq(dev->irq, NULL, host_pci_intx_irq_handler, 
 			     IRQF_ONESHOT, "V3Vee_Host_PCI_INTx", (void *)host_dev)) {
-	printk("ERROR Could not assign IRQ to host PCI device (%s)\n", host_dev->name);
+	ERROR("Could not assign IRQ to host PCI device (%s)\n", host_dev->name);
     }
 
     host_dev->hw_dev.intx_disabled = 0;
@@ -546,7 +547,7 @@ static int write_hw_pci_config(struct host_pci_device * host_dev, u32 reg, void 
     } else if (length == 4) {
 	pci_write_config_dword(dev, reg, *(u32 *)data);
     } else {
-	printk("Invalid length of host PCI config update\n");
+	ERROR("Invalid length of host PCI config update\n");
 	return -1;
     }
     
@@ -566,7 +567,7 @@ static int read_hw_pci_config(struct host_pci_device * host_dev, u32 reg, void *
     } else if (length == 4) {
 	pci_read_config_dword(dev, reg, data);
     } else {
-	printk("Invalid length of host PCI config read\n");
+	ERROR("Invalid length of host PCI config read\n");
 	return -1;
     }
 

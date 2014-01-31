@@ -239,7 +239,7 @@ static int console_connect(struct v3_guest * guest, unsigned int cmd,
     v3_deliver_console_event(guest->v3_ctx, NULL);
 
 
-    INFO("Console connected\n");
+    v3_lnx_printk("Console connected\n");
 
     return cons_fd;
 }
@@ -255,7 +255,7 @@ static void * palacios_tty_open(void * private_data, unsigned int width, unsigne
 	return NULL;
     }
 
-    INFO("Guest initialized virtual console (Guest=%s)\n", guest->name);
+    v3_lnx_printk("Guest initialized virtual console (Guest=%s)\n", guest->name);
 
     if (guest == NULL) {
 	ERROR("ERROR: Cannot open a console on a NULL guest\n");

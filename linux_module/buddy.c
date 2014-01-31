@@ -190,7 +190,7 @@ int buddy_add_pool(struct buddy_memzone * zone,
 
     buddy_free(zone, base_addr, pool_order);
 
-    printk("Added memory pool (addr=%p), order=%lu\n", (void *)base_addr, pool_order);
+    v3_lnx_printk("Added memory pool (addr=%p), order=%lu\n", (void *)base_addr, pool_order);
 
     return 0;
 }
@@ -277,13 +277,13 @@ buddy_alloc(struct buddy_memzone *zone, unsigned long order)
 	order = zone->min_order;
     }
 
-    printk("zone=%p, order=%lu\n", zone, order);
+    v3_lnx_printk("zone=%p, order=%lu\n", zone, order);
 
     spin_lock_irqsave(&(zone->lock), flags);
 
     for (j = order; j <= zone->max_order; j++) {
 
-	printk("Order iter=%lu\n", j);
+	v3_lnx_printk("Order iter=%lu\n", j);
 
 	/* Try to allocate the first block in the order j list */
 	list = &zone->avail[j];
@@ -298,7 +298,7 @@ buddy_alloc(struct buddy_memzone *zone, unsigned long order)
 
 	mark_allocated(mp, block);
 
-	printk("pool=%p, block=%p, order=%lu, j=%lu\n", mp, block, order, j);
+	v3_lnx_printk("pool=%p, block=%p, order=%lu, j=%lu\n", mp, block, order, j);
 
 	/*
 	spin_unlock_irqrestore(&(zone->lock), flags);
@@ -376,7 +376,7 @@ buddy_free(
     block = (struct block *) __va(addr);
     
     if (is_available(pool, block)) {
-	printk(KERN_ERR "Error: Freeing an available block\n");
+	ERROR("Error: Freeing an available block\n");
 	spin_unlock_irqrestore(&(zone->lock), flags);
 	return;
     }
@@ -480,7 +480,7 @@ static int zone_proc_open(struct inode * inode, struct file * filp) {
     void * data = inode->i_private;
 #endif
 
-    printk("proc_entry data at %p\n", data);
+    v3_lnx_printk("proc_entry data at %p\n", data);
     return single_open(filp, zone_mem_show, data);
 }
 
@@ -563,7 +563,7 @@ buddy_init(
 
     zone = kmalloc_node(sizeof(struct buddy_memzone), GFP_KERNEL, node_id);
 	
-    printk("Allocated zone at %p\n", zone);
+    v3_lnx_printk("Allocated zone at %p\n", zone);
 
     if (IS_ERR(zone)) {
 	ERROR("Could not allocate memzone\n");
@@ -579,7 +579,7 @@ buddy_init(
     /* Allocate a list for every order up to the maximum allowed order */
     zone->avail = kmalloc_node((max_order + 1) * sizeof(struct list_head), GFP_KERNEL, zone->node_id);
 
-    printk("Allocated free lists at %p\n", zone->avail);
+    v3_lnx_printk("Allocated free lists at %p\n", zone->avail);
 
     /* Initially all lists are empty */
     for (i = 0; i <= max_order; i++) {
@@ -591,7 +591,7 @@ buddy_init(
 
     zone->mempools.rb_node = NULL;
 
-    printk("Allocated zone at %p\n", zone);
+    v3_lnx_printk("Allocated zone at %p\n", zone);
 
     {
 	struct proc_dir_entry * zone_entry = NULL;
@@ -607,14 +607,14 @@ buddy_init(
 	    zone_entry->proc_fops = &zone_proc_ops;
 	    zone_entry->data = zone;
 	} else {
-	    printk(KERN_ERR "Error creating memory zone proc file\n");
+	    ERROR("Error creating memory zone proc file\n");
 	}
 
 #else 
 	zone_entry = proc_create_data(proc_file_name, 0444, palacios_proc_dir, &zone_proc_ops, zone);
 
 	if (!zone_entry) {
-	    printk(KERN_ERR "Error creating memory zone proc file\n");
+	    ERROR("Error creating memory zone proc file\n");
 	}
 #endif
 

@@ -47,7 +47,7 @@ int add_global_ctrl(unsigned int cmd,
     struct global_ctrl * ctrl = palacios_kmalloc(sizeof(struct global_ctrl), GFP_KERNEL);
 
     if (ctrl == NULL) {
-        printk("Error: Could not allocate global ctrl %d\n", cmd);
+	ERROR("Could not allocate global ctrl %d\n", cmd);
         return -1;
     }
 
@@ -55,7 +55,7 @@ int add_global_ctrl(unsigned int cmd,
     ctrl->handler = handler;
 
     if (__insert_global_ctrl(ctrl) != NULL) {
-        printk("Could not insert guest ctrl %d\n", cmd);
+        ERROR("Could not insert guest ctrl %d\n", cmd);
         palacios_kfree(ctrl);
         return -1;
     }
@@ -128,12 +128,12 @@ int init_vm_extensions(struct v3_guest * guest) {
 	    continue;
 	}
 	
-	INFO("Registering Linux Extension (%s)\n", ext_impl->name);
+	v3_lnx_printk("Registering Linux Extension (%s)\n", ext_impl->name);
 
 	ext = palacios_kmalloc(sizeof(struct vm_ext), GFP_KERNEL);
 	
 	if (!ext) {
-	    WARNING("Error allocating VM extension (%s)\n", ext_impl->name);
+	    ERROR("Error allocating VM extension (%s)\n", ext_impl->name);
 	    return -1;
 	}
 
@@ -181,7 +181,7 @@ int init_lnx_extensions( void ) {
 	DEBUG("tmp_ext=%p\n", tmp_ext);
 
 	if (tmp_ext->init != NULL) {
-	    INFO("Registering Linux Extension (%s)\n", tmp_ext->name);
+	    v3_lnx_printk("Registering Linux Extension (%s)\n", tmp_ext->name);
 	    tmp_ext->init();
 	}
 
@@ -199,7 +199,7 @@ int deinit_lnx_extensions( void ) {
     int i = 0;
 
     while (tmp_ext != __stop__lnx_exts[0]) {
-	INFO("Cleaning up Linux Extension (%s)\n", tmp_ext->name);
+	v3_lnx_printk("Cleaning up Linux Extension (%s)\n", tmp_ext->name);
 
 	if (tmp_ext->deinit != NULL) {
 	    tmp_ext->deinit();

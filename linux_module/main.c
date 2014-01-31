@@ -86,7 +86,7 @@ static long v3_dev_ioctl(struct file * filp,
 
 	    memset(guest, 0, sizeof(struct v3_guest));
 
-	    INFO("Palacios: Creating V3 Guest...\n");
+	    v3_lnx_printk("Palacios: Creating V3 Guest...\n");
 
 	    vm_minor = register_vm(guest);
 
@@ -149,7 +149,7 @@ out_err:
 		return -1;
 	    }
 
-	    INFO("Freeing VM (%s) (%p)\n", guest->name, guest);
+	    v3_lnx_printk("Freeing VM (%s) (%p)\n", guest->name, guest);
 
 	    if (free_palacios_vm(guest) < 0) { 
 		ERROR("Cannot free guest at index %ld\n", vm_idx);
@@ -283,7 +283,7 @@ static int __init v3_init(void) {
 	return PTR_ERR(v3_class);
     }
 
-    INFO("intializing V3 Control device\n");
+    v3_lnx_printk("intializing V3 Control device\n");
 
     ret = alloc_chrdev_region(&dev, 0, MAX_VMS + 1, "v3vee");
 
@@ -318,7 +318,7 @@ static int __init v3_init(void) {
 	entry = create_proc_entry("v3-guests", 0444, palacios_proc_dir);
         if (entry) {
 	    entry->proc_fops = &vm_proc_ops;
-	    INFO("/proc/v3vee/v3-guests successfully created\n");
+	    v3_lnx_printk("/proc/v3vee/v3-guests successfully created\n");
 	} else {
 	    ERROR("Could not create proc entry\n");
 	    goto failure1;
@@ -373,7 +373,7 @@ static void __exit v3_exit(void) {
 
     dev = MKDEV(v3_major_num, MAX_VMS + 1);
 
-    INFO("Removing V3 Control device\n");
+    v3_lnx_printk("Removing V3 Control device\n");
 
 
     palacios_vmm_exit();

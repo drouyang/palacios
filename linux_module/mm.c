@@ -44,7 +44,7 @@ uintptr_t alloc_palacios_pgs(u64 num_pages, u32 alignment, int node_id) {
 	return 0;
     }
 
-    printk("Allocating %llu pages (%llu bytes) order=%d\n", 
+    v3_lnx_printk("Allocating %llu pages (%llu bytes) order=%d\n", 
 	   num_pages, num_pages * PAGE_SIZE, get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT);
 
     addr = buddy_alloc(memzones[mem_node_id], get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT);
@@ -104,7 +104,7 @@ int add_palacios_memory(uintptr_t base_addr, u64 num_pages) {
    buddy_add_pool(memzones[node_id], base_addr, pool_order);
 
 
-   printk("%p on node %d\n", (void *)base_addr, numa_addr_to_node(base_addr));
+   v3_lnx_printk("%p on node %d\n", (void *)base_addr, numa_addr_to_node(base_addr));
    
    return 0;
 }
@@ -151,8 +151,8 @@ int palacios_init_mm( void ) {
 	    seed_addrs[node_id] = page_to_pfn(pgs) << PAGE_SHIFT;
 	}
 
-	printk("Allocated seed region on node %d (addr=%p)\n", node_id, (void *)seed_addrs[node_id]);
-	printk("Initializing Zone %d\n", node_id);
+	v3_lnx_printk("Allocated seed region on node %d (addr=%p)\n", node_id, (void *)seed_addrs[node_id]);
+	v3_lnx_printk("Initializing Zone %d\n", node_id);
 
 	zone = buddy_init(get_order(MEM_BLOCK_SIZE_BYTES) + PAGE_SHIFT, PAGE_SHIFT, node_id);
 
@@ -161,7 +161,7 @@ int palacios_init_mm( void ) {
 	    return -1;
 	}
 
-	printk("Zone initialized, Adding seed region (order=%d)\n", 
+	v3_lnx_printk("Zone initialized, Adding seed region (order=%d)\n", 
 	       (MAX_ORDER - 1) + PAGE_SHIFT);
 
 	if (buddy_add_pool(zone, seed_addrs[node_id], (MAX_ORDER - 1) + PAGE_SHIFT) == -1) {

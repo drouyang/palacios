@@ -87,14 +87,14 @@ static int palacios_hook_sched_evts(int (*sched_in)(void * arg, int cpu),
     unsigned long flags;
 
     if (find_notifier(sched_in, sched_out, arg) != NULL) {
-	printk(KERN_ERR "Scheduler event hook already registered\n");
+	ERROR("Scheduler event hook already registered\n");
 	return -1;
     }
 
     notifier = palacios_kmalloc(sizeof(struct v3_sched_notifier), GFP_KERNEL);
 
     if (IS_ERR(notifier)) {
-	printk(KERN_ERR "Error allocating v3_sched_notifier\n");
+	ERROR("Error allocating v3_sched_notifier\n");
 	return -1;
     }
     
@@ -124,7 +124,7 @@ static int palacios_unhook_sched_evts(int (*sched_in)(void * arg, int cpu),
     notifier = find_notifier(sched_in, sched_out, arg);
 
     if (notifier != NULL) {
-	printk(KERN_ERR "Could not find scheduler event state\n");
+	ERROR("Could not find scheduler event state\n");
 	return -1;
     }
 

@@ -128,30 +128,39 @@ extern struct proc_dir_entry * palacios_proc_dir;
 void *palacios_start_kernel_thread(int (*fn)(void * arg), void *arg, char *thread_name);
 void *palacios_start_thread_on_cpu(int cpu_id, int (*fn)(void * arg), void *arg, char *thread_name);
 int   palacios_move_thread_to_cpu(int new_cpu_id, void *thread_ptr);
-unsigned int palacios_get_cpu(void);
 void palacios_yield_cpu_timed(unsigned int us);
+unsigned int palacios_get_cpu(void);
 
 
 
-// Palacios Printing Support
+// The following macros are for printing in the linux module
+#define v3_lnx_printk(fmt, args...)					\
+    do {								\
+	task_lock(current);						\
+	printk("V3-lnx> [%s] (%u): " fmt, current->comm, palacios_get_cpu(), ##args); \
+	task_unlock(current);						\
+    } while (0)
 
-// These macros affect how palacios_print will generate output
-// Turn this on for unprefaced output from palacios_print
-#define V3_PRINTK_OLD_STYLE_OUTPUT 0
-// Maximum length output from palacios_print
-#define V3_PRINTK_BUF_SIZE 1024
-// Turn this on to check if new-style output for palacios_print  contains only 7-bit chars
-#define V3_PRINTK_CHECK_7BIT 1
+#define ERROR(fmt, args...)						\
+    do {								\
+	task_lock(current);						\
+	printk(KERN_ERR "V3-lnx> [%s] (%u) %s(%d): " fmt, current->comm, palacios_get_cpu(),  __FILE__, __LINE__, ##args); \
+	task_unlock(current);						\
+    } while (0)
 
-//
-// The following macros are for printing in the linux module itself, even before
-// Palacios is initialized and after it it deinitialized
-// All printk's in linux_module use these macros, for easier control
-#define ERROR(fmt, args...) printk((KERN_ERR "palacios (pcore %u) %s(%d): " fmt), palacios_get_cpu(), __FILE__, __LINE__, ##args)
-#define WARNING(fmt, args...) printk((KERN_WARNING "palacios (pcore %u): " fmt), palacios_get_cpu(), ##args)
-#define NOTICE(fmt, args...) printk((KERN_NOTICE "palacios (pcore %u): " fmt), palacios_get_cpu(), ##args)
-#define INFO(fmt, args...) printk((KERN_INFO "palacios (pcore %u): " fmt), palacios_get_cpu(), ##args)
-#define DEBUG(fmt, args...) printk((KERN_DEBUG "palacios (pcore %u): " fmt), palacios_get_cpu(), ##args)
+#define WARNING(fmt, args...)						\
+    do {								\
+	task_lock(current);						\
+	printk(KERN_WARNING "V3-lnx> [%s] (%u): " fmt, current->comm, palacios_get_cpu(), ##args); \
+	task_unlock(current);						\
+    } while (0)
+
+#define DEBUG(fmt, args...)						\
+    do {								\
+	task_lock(current);						\
+	printk(KERN_DEBUG "V3-lnx> [%s] (%u): " fmt, current->comm, palacios_get_cpu(), ##args); \
+	task_unlock(current);						\
+    } while (0)
 
 
 #endif

@@ -86,17 +86,17 @@ static struct v3_host_pci_dev * request_pci_dev(char * url, void * v3_ctx) {
     spin_unlock_irqrestore(&lock, flags);
     
     if (host_dev == NULL) {
-	printk("Could not find host device (%s)\n", url);
+	ERROR("Could not find host device (%s)\n", url);
 	return NULL;
     }
 
     if (host_dev->type == PASSTHROUGH) {
 	if (reserve_hw_pci_dev(host_dev, v3_ctx) == -1) {
-	    printk("Could not reserve host device (%s)\n", url);
+	    ERROR("Could not reserve host device (%s)\n", url);
 	    return NULL;
 	}
     } else {
-	printk("Unsupported Host device type\n");
+	ERROR("Unsupported Host device type\n");
 	return NULL;
     }
 
@@ -115,7 +115,7 @@ static int host_pci_config_write(struct v3_host_pci_dev * v3_dev, unsigned int r
 	return write_hw_pci_config(host_dev, reg_num, src, length);
     }
  
-    printk("Error in config write handler\n");
+    ERROR("Error in config write handler\n");
     return -1;
 }
 
@@ -127,7 +127,7 @@ static int host_pci_config_read(struct v3_host_pci_dev * v3_dev, unsigned int re
 	return read_hw_pci_config(host_dev, reg_num, dst, length);
     }
  
-    printk("Error in config read handler\n");
+    ERROR("Error in config read handler\n");
     return -1;
 }
 
@@ -139,7 +139,7 @@ static int host_pci_ack_irq(struct v3_host_pci_dev * v3_dev, unsigned int vector
 	return hw_ack_irq(host_dev, vector);
     }
  
-    printk("Error in config irq ack handler\n");
+    ERROR("Error in config irq ack handler\n");
     return -1;
 }
 
@@ -152,7 +152,7 @@ static int host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64
 	return hw_pci_cmd(host_dev, cmd, arg);
     }
  
-    printk("Error in config pci cmd handler\n");
+    ERROR("Error in config pci cmd handler\n");
     return -1;
     
 }
@@ -176,7 +176,7 @@ static int register_pci_hw_dev(unsigned int cmd, unsigned long arg) {
     int ret = 0;
 
     if (copy_from_user(&hw_dev_arg, argp, sizeof(struct v3_hw_pci_dev))) {
-	printk("%s(%d): copy from user error...\n", __FILE__, __LINE__);
+	ERROR("copy from user error...\n");
 	return -EFAULT;
     }
 
@@ -201,6 +201,7 @@ static int register_pci_hw_dev(unsigned int cmd, unsigned long arg) {
 
     if (ret == 0) {
 	// Error device already exists
+	ERROR("Registering a duplicate device (%s)\n", host_dev->name);
 	palacios_kfree(host_dev);
 	return -EFAULT;
     }

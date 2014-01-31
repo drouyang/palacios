@@ -74,7 +74,7 @@ int add_guest_ctrl(struct v3_guest * guest, unsigned int cmd,
     struct vm_ctrl * ctrl = palacios_kmalloc(sizeof(struct vm_ctrl), GFP_KERNEL);
 
     if (ctrl == NULL) {
-	WARNING("Error: Could not allocate vm ctrl %d\n", cmd);
+	ERROR("Error: Could not allocate vm ctrl %d\n", cmd);
 	return -1;
     }
 
@@ -83,7 +83,7 @@ int add_guest_ctrl(struct v3_guest * guest, unsigned int cmd,
     ctrl->priv_data = priv_data;
 
     if (__insert_ctrl(guest, ctrl) != NULL) {
-	WARNING("Could not insert guest ctrl %d\n", cmd);
+	ERROR("Could not insert guest ctrl %d\n", cmd);
 	palacios_kfree(ctrl);
 	return -1;
     }
@@ -119,7 +119,7 @@ int remove_guest_ctrl(struct v3_guest * guest, unsigned int cmd) {
     struct vm_ctrl * ctrl = get_ctrl(guest, cmd);
 
     if (ctrl == NULL) {
-	INFO("Could not find control (%d) to remove\n", cmd);
+	ERROR("Could not find control (%d) to remove\n", cmd);
 	return -1;
     }
 
@@ -159,21 +159,21 @@ static long v3_vm_ioctl(struct file * filp,
 
     struct v3_guest * guest = filp->private_data;
 
-    INFO("V3 IOCTL %d\n", ioctl);
+    DEBUG("V3 IOCTL %d\n", ioctl);
 
     switch (ioctl) {
 	case V3_VM_LAUNCH: {
-	    NOTICE("palacios: launching vm\n");
+	    v3_lnx_printk("launching vm\n");
 
 	    if (v3_start_vm(guest->v3_ctx, (0x1 << num_online_cpus()) - 1) < 0) { 
-		WARNING("palacios: launch of vm failed\n");
+		WARNING("launch of vm failed\n");
 		return -1;
 	    }
     	    
 	    break;
 	}
 	case V3_VM_STOP: {
-	    NOTICE("Stopping VM (%s) (%p)\n", guest->name, guest);
+	    v3_lnx_printk("Stopping VM (%s) (%p)\n", guest->name, guest);
 
 	    if (irqs_disabled()) {
 		ERROR("WHAT!!?? IRQs are disabled??\n");
@@ -184,17 +184,17 @@ static long v3_vm_ioctl(struct file * filp,
 	    break;
 	}
 	case V3_VM_PAUSE: {
-	    NOTICE("Pausing VM (%s)\n", guest->name);
+	    v3_lnx_printk("Pausing VM (%s)\n", guest->name);
 	    v3_pause_vm(guest->v3_ctx);
 	    break;
 	}
 	case V3_VM_CONTINUE: {
-	    NOTICE("Continuing VM (%s)\n", guest->name);
+	    v3_lnx_printk("Continuing VM (%s)\n", guest->name);
 	    v3_continue_vm(guest->v3_ctx);
 	    break;
 	}
 	case V3_VM_SIMULATE: {
-	    NOTICE("Simulating VM (%s) for %lu msecs\n", guest->name, arg);
+	    v3_lnx_printk("Simulating VM (%s) for %lu msecs\n", guest->name, arg);
 	    v3_simulate_vm(guest->v3_ctx, arg);
 	    break;
 	}
@@ -208,14 +208,14 @@ static long v3_vm_ioctl(struct file * filp,
 	    memset(&chkpt, 0, sizeof(struct v3_chkpt_info));
 
 	    if (copy_from_user(&chkpt, argp, sizeof(struct v3_chkpt_info))) {
-		WARNING("Copy from user error getting checkpoint info\n");
+		ERROR("Copy from user error getting checkpoint info\n");
 		return -EFAULT;
 	    }
 	    
-	    NOTICE("Saving Guest to %s:%s\n", chkpt.store, chkpt.url);
+	    v3_lnx_printk("Saving Guest to %s:%s\n", chkpt.store, chkpt.url);
 
 	    if (v3_save_vm(guest->v3_ctx, chkpt.store, chkpt.url) == -1) {
-		WARNING("Error checkpointing VM state\n");
+		ERROR("Error checkpointing VM state\n");
 		return -EFAULT;
 	    }
 	    
@@ -228,14 +228,14 @@ static long v3_vm_ioctl(struct file * filp,
 	    memset(&chkpt, 0, sizeof(struct v3_chkpt_info));
 
 	    if (copy_from_user(&chkpt, argp, sizeof(struct v3_chkpt_info))) {
-		WARNING("Copy from user error getting checkpoint info\n");
+		ERROR("Copy from user error getting checkpoint info\n");
 		return -EFAULT;
 	    }
 	    
-	    NOTICE("Loading Guest to %s:%s\n", chkpt.store, chkpt.url);
+	    v3_lnx_printk("Loading Guest to %s:%s\n", chkpt.store, chkpt.url);
 
 	    if (v3_load_vm(guest->v3_ctx, chkpt.store, chkpt.url) == -1) {
-		WARNING("Error Loading VM state\n");
+		ERROR("Error Loading VM state\n");
 		return -EFAULT;
 	    }
 	    
@@ -251,15 +251,15 @@ static long v3_vm_ioctl(struct file * filp,
 	    memset(&chkpt_info,0, sizeof(struct v3_chkpt_info));
 	    
 	    if(copy_from_user(&chkpt_info, argp, sizeof(struct v3_chkpt_info))){
-		WARNING("Copy from user error getting checkpoint info\n");
+		ERROR("Copy from user error getting checkpoint info\n");
 		return -EFAULT;
 	    }
 	    
 	    
-	    NOTICE("Sending (live-migrating) Guest to %s:%s\n",chkpt_info.store, chkpt_info.url); 
+	    v3_lnx_printk("Sending (live-migrating) Guest to %s:%s\n",chkpt_info.store, chkpt_info.url); 
 	    
 	    if (v3_send_vm(guest->v3_ctx, chkpt_info.store, chkpt_info.url) == -1) {
-		WARNING("Error sending VM\n");
+		ERROR("Error sending VM\n");
 		return -EFAULT;
 	    }
 	    
@@ -273,15 +273,15 @@ static long v3_vm_ioctl(struct file * filp,
 	    memset(&chkpt_info,0, sizeof(struct v3_chkpt_info));
 
 	    if(copy_from_user(&chkpt_info, argp, sizeof(struct v3_chkpt_info))){
-		WARNING("Copy from user error getting checkpoint info\n");
+		ERROR("Copy from user error getting checkpoint info\n");
 		return -EFAULT;
 	    }
 	    
 	    
-	    NOTICE("Receiving (live-migrating) Guest to %s:%s\n",chkpt_info.store, chkpt_info.url);
+	    v3_lnx_printk("Receiving (live-migrating) Guest to %s:%s\n",chkpt_info.store, chkpt_info.url);
 	    
 	    if (v3_receive_vm(guest->v3_ctx, chkpt_info.store, chkpt_info.url) == -1) {
-		WARNING("Error receiving VM\n");
+		ERROR("Error receiving VM\n");
 		return -EFAULT;
 	    }
 	    
@@ -304,7 +304,7 @@ static long v3_vm_ioctl(struct file * filp,
 	    evt.core_id = cmd.core;
 	    evt.cmd = cmd.cmd;
 
-	    INFO("Debugging VM (core %d)\n");
+	    v3_lnx_printk("Debugging VM (core %d)\n", cmd.core);
 
 	    if (v3_deliver_debug_event(guest->v3_ctx, &evt) == -1) {
 		ERROR("Error could not deliver debug cmd\n");
@@ -320,11 +320,11 @@ static long v3_vm_ioctl(struct file * filp,
 	    memset(&cmd, 0, sizeof(struct v3_core_move_cmd));
 	    
 	    if (copy_from_user(&cmd, argp, sizeof(struct v3_core_move_cmd))) {
-		WARNING("copy from user error getting migrate command...\n");
+		ERROR("copy from user error getting migrate command...\n");
 		return -EFAULT;
 	    }
 	
-	    INFO("moving guest %s vcore %d to CPU %d\n", guest->name, cmd.vcore_id, cmd.pcore_id);
+	    v3_lnx_printk("moving guest %s vcore %d to CPU %d\n", guest->name, cmd.vcore_id, cmd.pcore_id);
 
 	    v3_move_vm_core(guest->v3_ctx, cmd.vcore_id, cmd.pcore_id);
 
@@ -338,7 +338,7 @@ static long v3_vm_ioctl(struct file * filp,
 	    }
 	    
 	    
-	    WARNING("\tUnhandled ctrl cmd: %d\n", ioctl);
+	    ERROR("\tUnhandled ctrl cmd: %d\n", ioctl);
 	    return -EINVAL;
 	}
     }
@@ -384,18 +384,18 @@ int create_palacios_vm(struct v3_guest * guest)  {
     int err;
 
     if (init_vm_extensions(guest) < 0) {
-        WARNING("palacios: failed to initialize extensions\n");
+        ERROR("Failed to initialize extensions\n");
         return -1;
     }
 
     guest->v3_ctx = v3_create_vm(guest->img, (void *)guest, guest->name);
 
     if (guest->v3_ctx == NULL) { 
-	WARNING("palacios: failed to create vm\n");
+	ERROR("Failed to create vm\n");
         goto out_err;
     }
 
-    NOTICE("Creating VM device: Major %d, Minor %d\n", MAJOR(guest->vm_dev), MINOR(guest->vm_dev));
+    v3_lnx_printk("Creating VM device: Major %d, Minor %d\n", MAJOR(guest->vm_dev), MINOR(guest->vm_dev));
 
     cdev_init(&(guest->cdev), &v3_vm_fops);
 
@@ -403,20 +403,20 @@ int create_palacios_vm(struct v3_guest * guest)  {
     guest->cdev.ops = &v3_vm_fops;
 
 
-    INFO("Adding VM device\n");
+    v3_lnx_printk("Adding VM device\n");
     err = cdev_add(&(guest->cdev), guest->vm_dev, 1);
 
     if (err) {
-	WARNING("Fails to add cdev\n");
+	ERROR("Fails to add cdev\n");
         goto out_err1;
     }
 
     if (device_create(v3_class, NULL, guest->vm_dev, guest, "v3-vm%d", MINOR(guest->vm_dev)) == NULL){
-	WARNING("Fails to create device\n");
+	ERROR("Fails to create device\n");
         goto out_err2;
     }
 
-    NOTICE("palacios: vm created at /dev/v3-vm%d\n", MINOR(guest->vm_dev));
+    v3_lnx_printk("VM created at /dev/v3-vm%d\n", MINOR(guest->vm_dev));
 
     return 0;
 
