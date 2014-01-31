@@ -34,6 +34,7 @@
 
 struct guest_info;
 
+
 struct v3_shdw_pg_impl {
     char * name;
     int (*init)(struct v3_vm_info * vm, v3_cfg_tree_t * cfg);

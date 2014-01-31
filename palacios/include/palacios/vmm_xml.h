@@ -29,7 +29,7 @@
 #ifndef __VMM_XML_H
 #define __VMM_XML_H
 
-#include <palacios/vmm.h>
+
 #include <palacios/vmm_types.h>
 
 

@@ -24,13 +24,16 @@
 
 #ifdef __V3VEE__
 
+
+
 //#include <palacios/vm_guest.h>
-#include <palacios/vmm.h>
+
 #include <palacios/vmm_xml.h>
 #include <palacios/vmm_list.h>
 #include <palacios/vmm_hashtable.h>
 //#include <palacios/svm.h>
 
+typedef struct v3_xml v3_cfg_tree_t;
 
 #define V3_MAX_TAG_LEN 256
 
@@ -50,7 +53,6 @@ struct v3_cfg_file {
 
 
 
-typedef struct v3_xml v3_cfg_tree_t;
 
 struct v3_config {
     v3_cfg_tree_t * cfg;

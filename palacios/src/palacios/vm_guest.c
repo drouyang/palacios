@@ -19,10 +19,9 @@
 
 
 
-
+#include <palacios/vmm.h>
 #include <palacios/vm_guest.h>
 #include <palacios/vmm_ctrl_regs.h>
-#include <palacios/vmm.h>
 #include <palacios/vmm_decoder.h>
 #include <palacios/vmcb.h>
 #include <palacios/vm_guest_mem.h>

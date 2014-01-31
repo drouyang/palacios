@@ -44,6 +44,8 @@
 v3_cpu_arch_t v3_cpu_types[V3_CONFIG_MAX_CPUS];
 v3_cpu_arch_t v3_mach_type = V3_INVALID_CPU;
 
+struct guest_info * v3_cores_current[V3_CONFIG_MAX_CPUS];
+
 struct v3_os_hooks * os_hooks = NULL;
 int v3_dbg_enable = 0;
 
@@ -132,6 +134,7 @@ void Init_V3(struct v3_os_hooks * hooks, char * cpu_mask, int num_cpus, char * o
 
     for (i = 0; i < V3_CONFIG_MAX_CPUS; i++) {
 	v3_cpu_types[i] = V3_INVALID_CPU;
+	v3_cores_current[i] = NULL;
     }
 
 
@@ -239,6 +242,7 @@ struct v3_vm_info * v3_create_vm(void * cfg, void * priv_data, char * name) {
 #ifdef V3_CONFIG_HOST_SCHED_EVENTS
 #include <interfaces/sched_events.h>
 static int core_sched_in(struct guest_info * core, int cpu) {
+    v3_cores_current[cpu] = core;
     v3_telemetry_inc_core_counter(core, "CORE_SCHED_IN");
     return 0;
 }
@@ -247,6 +251,8 @@ static int core_sched_out(struct guest_info * core, int cpu) {
     v3_telemetry_inc_core_counter(core, "CORE_SCHED_OUT");
 
     v3_fpu_deactivate(core);
+
+    v3_cores_current[cpu] = NULL;
 
     return 0;
 }
@@ -262,9 +268,10 @@ static int start_core(void * p)
     v3_hook_core_preemptions(core, core_sched_in, core_sched_out);
 #endif
 
-
     PrintDebug("virtual core %u (on logical core %u): in start_core (RIP=%p)\n", 
 	       core->vcpu_id, core->pcpu_id, (void *)(addr_t)core->rip);
+
+    v3_cores_current[V3_Get_CPU()] = core;
 
     switch (v3_mach_type) {
 #ifdef V3_CONFIG_SVM
@@ -284,6 +291,8 @@ static int start_core(void * p)
 	    PrintError("Attempting to enter a guest on an invalid CPU\n");
 	    return -1;
     }
+
+    v3_cores_current[V3_Get_CPU()] = NULL;
 
 #ifdef V3_CONFIG_HOST_SCHED_EVENTS
     v3_unhook_core_preemptions(core, core_sched_in, core_sched_out);
@@ -466,7 +475,6 @@ int v3_move_vm_core(struct v3_vm_info * vm, int vcore_id, int target_cpu) {
 
 	V3_Print("Moving Core\n");
 
-
 #ifdef V3_CONFIG_VMX
 	switch (v3_cpu_types[core->pcpu_id]) {
 	    case V3_VMX_CPU:
@@ -480,18 +488,23 @@ int v3_move_vm_core(struct v3_vm_info * vm, int vcore_id, int target_cpu) {
 	}
 #endif
 
+	v3_cores_current[V3_Get_CPU()] = NULL;
+
 	if (V3_MOVE_THREAD_TO_CPU(target_cpu, core->core_thread) != 0) {
 	    PrintError("Failed to move Vcore %d to CPU %d\n", 
 		       core->vcpu_id, target_cpu);
 	    v3_lower_barrier(vm);
 	    return -1;
 	} 
+
 	
 	/* There will be a benign race window here:
 	   core->pcpu_id will be set to the target core before its fully "migrated"
 	   However the core will NEVER run on the old core again, its just in flight to the new core
 	*/
 	core->pcpu_id = target_cpu;
+
+	v3_cores_current[V3_Get_CPU()] = core;
 
 	V3_Print("core now at %d\n", core->pcpu_id);	
     }

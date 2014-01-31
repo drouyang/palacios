@@ -22,6 +22,10 @@
 
 #ifdef __V3VEE__
 
+typedef enum v3_vm_class {V3_INVALID_VM, V3_PC_VM, V3_CRAY_VM} v3_vm_class_t;
+struct v3_cfg_tree;
+
+
 #include <palacios/vmm_types.h>
 #include <palacios/vmm_mem.h>
 #include <palacios/vmm_mem_hook.h>
@@ -56,6 +60,8 @@ struct v3_sym_core_state;
 
 
 #include <palacios/vmm_config.h>
+
+
 
 
 

@@ -27,42 +27,66 @@ struct guest_info;
 
 
 #ifdef __V3VEE__
-#include <palacios/vmm_mem.h>
-#include <palacios/vmm_types.h>
-
-//#include <palacios/vmm_types.h>
-#include <palacios/vmm_string.h>
-#include <palacios/vmm_telemetry.h>
+#include <palacios/vm_guest.h>
 
 
 
 
 /* utility definitions */
+#define V3_Get_CPU() ({  				                \
+            int ret = 0;                                                \
+            extern struct v3_os_hooks * os_hooks;                       \
+            if ((os_hooks) && (os_hooks)->get_cpu) {                    \
+                ret = (os_hooks)->get_cpu();                            \
+            }                                                           \
+            ret;                                                        \
+        })
 
 
-#define V3_Print(fmt, args...)					\
-    do {							\
-	extern struct v3_os_hooks * os_hooks;			\
-	if ((os_hooks) && (os_hooks)->print) {			\
-	    (os_hooks)->print((fmt), ##args);			\
-	}							\
-    } while (0)	
 
 
-#define PrintDebug(fmt, args...)			\
-    do {						\
-	extern struct v3_os_hooks * os_hooks;		\
-	if ((os_hooks) && (os_hooks)->print) {	\
-	    (os_hooks)->print((fmt), ##args);	\
-	}						\
-    } while (0)						
+
+#define V3_Print(fmt, args...)						\
+    do {								\
+	extern struct guest_info * v3_cores_current[];			\
+	extern struct v3_os_hooks * os_hooks;				\
+									\
+	if ((os_hooks) && (os_hooks)->print) {				\
+	    if (v3_cores_current[V3_Get_CPU()] != NULL) {		\
+		(os_hooks)->print("V3> [%s-%d.%d] " fmt, v3_cores_current[V3_Get_CPU()]->vm_info->name, v3_cores_current[V3_Get_CPU()]->vcpu_id, v3_cores_current[V3_Get_CPU()]->pcpu_id, ##args); \
+	    } else {							\
+		(os_hooks)->print("V3> (%d) " fmt, V3_Get_CPU(), ##args); \
+	    }								\
+	}								\
+    } while (0)
+
+#define PrintDebug(fmt, args...)						\
+    do {								\
+	extern struct guest_info * v3_cores_current[];			\
+	extern struct v3_os_hooks * os_hooks;				\
+									\
+	if ((os_hooks) && (os_hooks)->print) {				\
+	    if (v3_cores_current[V3_Get_CPU()] != NULL) {						\
+		(os_hooks)->print("V3> [%s-%d.%d] "fmt, v3_cores_current[V3_Get_CPU()]->vm_info->name, v3_cores_current[V3_Get_CPU()]->vcpu_id, v3_cores_current[V3_Get_CPU()]->pcpu_id, ##args); \
+	    } else {							\
+		(os_hooks)->print("V3> (%d) " fmt, V3_Get_CPU(), ##args); \
+	    }								\
+	}								\
+    } while (0)
+
 
 
 #define PrintError(fmt, args...)					\
     do {								\
+	extern struct guest_info * v3_cores_current[];			\
 	extern struct v3_os_hooks * os_hooks;				\
-	if ((os_hooks) && (os_hooks)->print) {			\
-	    (os_hooks)->print("%s(%d): " fmt, __FILE__, __LINE__, ##args); \
+									\
+	if ((os_hooks) && (os_hooks)->print) {				\
+	    if (v3_cores_current[V3_Get_CPU()] != NULL) {						\
+		(os_hooks)->print("V3> [%s-%d.%d] %s(%d): "fmt, v3_cores_current[V3_Get_CPU()]->vm_info->name, v3_cores_current[V3_Get_CPU()]->vcpu_id, v3_cores_current[V3_Get_CPU()]->pcpu_id, __FILE__, __LINE__, ##args); \
+	    } else {							\
+		(os_hooks)->print("V3> (%d) -- %s(%d): "fmt, V3_Get_CPU(), __FILE__, __LINE__, ##args); \
+	    }								\
 	}								\
     } while (0)						
 
@@ -184,16 +208,6 @@ struct guest_info;
 
 
 
-#define V3_Get_CPU() ({  				                \
-            int ret = 0;                                                \
-            extern struct v3_os_hooks * os_hooks;                       \
-            if ((os_hooks) && (os_hooks)->get_cpu) {                    \
-                ret = (os_hooks)->get_cpu();                            \
-            }                                                           \
-            ret;                                                        \
-        })
-
-
 
 
 #define V3_CREATE_THREAD(fn, arg, name)	({				\
@@ -301,8 +315,14 @@ struct guest_info;
 	    }							\
 	} while (0)
 
+#include <palacios/vmm_mem.h>
+#include <palacios/vmm_types.h>
 
-typedef enum v3_vm_class {V3_INVALID_VM, V3_PC_VM, V3_CRAY_VM} v3_vm_class_t;
+//#include <palacios/vmm_types.h>
+#include <palacios/vmm_string.h>
+#include <palacios/vmm_telemetry.h>
+
+
 
 
 // Maybe make this a define....
