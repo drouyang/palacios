@@ -7,6 +7,8 @@
 #include <linux/list.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
+
+#include <linux/hardirq.h> // provides in_atomic advisory check
 //static struct list_head pools;
 
 #include "palacios.h"
@@ -206,7 +208,7 @@ int palacios_deinit_mm( void ) {
 
 void * palacios_kmalloc(size_t size, gfp_t flags) {
 
-    if (irqs_disabled() && ((flags & GFP_ATOMIC) == 0)) {
+    if ((irqs_disabled() || in_atomic()) && ((flags & GFP_ATOMIC) == 0)) {
 	WARNING("Allocating memory with Interrupts disabled!!!\n");
 	WARNING("This is probably NOT want you want to do 99%% of the time\n");
 	WARNING("If still want to do this, you may dismiss this warning by setting the GFP_ATOMIC flag directly\n");
