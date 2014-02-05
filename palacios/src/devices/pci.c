@@ -1437,6 +1437,14 @@ int v3_pci_raise_acked_irq(struct vm_device * pci_bus, struct pci_device * dev, 
 
 
     if (dev->irq_type == IRQ_INTX) {
+
+	dev->config_header.status |= 0x4;
+
+	if (dev->config_header.command & 0x400) {
+	    // INTx is disabled on the device....
+	    return 0;
+	} 
+
         return bus->raise_pci_irq(dev, bus->irq_dev_data, &vec);
     } else if (dev->irq_type == IRQ_MSI) {
         struct v3_gen_ipi ipi;
@@ -1546,7 +1554,9 @@ int v3_pci_lower_acked_irq(struct vm_device * pci_bus, struct pci_device * dev, 
     if (dev->irq_type == IRQ_INTX) {
         struct pci_internal * pci_state = (struct pci_internal *)pci_bus->private_data;
         struct pci_bus * bus = &(pci_state->bus_list[dev->bus_num]);
-
+	
+	dev->config_header.status &= ~(0x0004);
+	
         return bus->lower_pci_irq(dev, bus->irq_dev_data, &vec);
     } else {
         return -1;

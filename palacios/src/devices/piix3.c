@@ -389,12 +389,21 @@ static int raise_pci_irq(struct pci_device * pci_dev, void * dev_data, struct v3
 	       piix3_cfg->pirq_rc[irq_index], piix3->vm);
     */
 
+    //V3_Print("PIIX IRQ_index=%d, intr_pin=%d\n", irq_index, intr_pin);
+   /* V3_Print("PIRQ[0]=%d, PIRQ[1]=%d, PIRQ[2]=%d, PIRQ[3]=%d\n", 
+	     piix3_cfg->pirq_rc[0],
+	     piix3_cfg->pirq_rc[1],
+	     piix3_cfg->pirq_rc[2],
+	     piix3_cfg->pirq_rc[3]);
+    */
+
+
     // deliver first by PIRQ, if it exists
     //
     if (piix3_cfg->pirq_rc[irq_index] < 16) {
 	irq.irq = piix3_cfg->pirq_rc[irq_index] & 0xf;
 
-	//	V3_Print("Raising PIIX IRQ %d\n", irq.irq);
+//	V3_Print("Raising PIIX IRQ %d from %s\n", irq.irq, pci_dev->name);
 	v3_raise_acked_irq(piix3->vm, irq);
     } else {
       // not an error
@@ -404,7 +413,7 @@ static int raise_pci_irq(struct pci_device * pci_dev, void * dev_data, struct v3
     // mptable (ioapic, pins 16->19 are used for PCI0)
     // ideally this would check to verify that an ioapic is actually available
     irq.irq = (irq_index + 1) + 16;
-    //    V3_Print("Raising PIIX IRQ (#2) %d\n", irq.irq);
+  //  V3_Print("Raising PIIX IRQ (#2) %d from %s\n", irq.irq, pci_dev->name);
     v3_raise_acked_irq(piix3->vm, irq);
     
 
