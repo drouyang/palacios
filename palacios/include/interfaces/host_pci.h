@@ -97,7 +97,7 @@ struct v3_guest_mem_region {
 
 
 struct v3_host_pci_dev * v3_host_pci_get_dev(struct v3_vm_info * vm, char * url, void * priv_data);
-
+int v3_host_pci_release_dev(struct v3_host_pci_dev * v3_dev);
 
 int v3_host_pci_config_write(struct v3_host_pci_dev * v3_dev, uint32_t reg_num, void * src, uint32_t length);
 int v3_host_pci_config_read(struct v3_host_pci_dev * v3_dev, uint32_t reg_num, void * dst, uint32_t length);
@@ -112,6 +112,7 @@ int v3_host_pci_ack_irq(struct v3_host_pci_dev * v3_dev, uint32_t vector);
 
 struct v3_host_pci_hooks {
     struct v3_host_pci_dev * (*request_device)(char * url, void * v3_ctx);
+    int (*release_device)(struct v3_host_pci_dev * v3_dev);
 
     // emulated interface
 

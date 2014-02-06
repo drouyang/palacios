@@ -252,7 +252,7 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 
 
 	    break;
-				 }
+	}
 	case HOST_PCI_CMD_INTX_DISABLE:
 	    v3_lnx_printk("Passthrough PCI device disabling INTx IRQ\n");
 
@@ -529,6 +529,82 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
     
     return ret;
+}
+
+
+/* NOTE NOTE NOTE: This function has been written for the 3.11 kernel
+ * the IOMMU APIs have changed, and we DO NOT HAVE the legacy APIs implemented here.... 
+ */
+static int release_hw_pci_dev(struct host_pci_device * host_dev) {
+    struct pci_dev * dev = host_dev->hw_dev.dev;
+    struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
+
+
+    if (dev->msix_enabled) {
+	int i = 0;
+	
+	for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
+	    disable_irq(host_dev->hw_dev.msix_entries[i].vector);
+	}
+
+	for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
+	    free_irq(host_dev->hw_dev.msix_entries[i].vector, (void *)host_dev);
+	}
+
+	host_dev->hw_dev.num_msix_vecs = 0;
+	palacios_kfree(host_dev->hw_dev.msix_entries);
+
+	pci_disable_msix(dev);
+    }
+    
+    if (dev->msi_enabled) {
+	disable_irq(dev->irq);
+	free_irq(dev->irq, (void *)host_dev);
+	pci_disable_msi(dev);
+    }
+    
+    if (!host_dev->hw_dev.intx_disabled) {
+	disable_irq(dev->irq);
+	free_irq(dev->irq, (void *)host_dev);
+
+	host_dev->hw_dev.intx_disabled = 1;
+    }
+
+
+    // possibly need to reset config header state....
+    
+    if (v3_dev->iface == IOMMU) {
+	//    UNMAP IOMMU pages
+	struct v3_guest_mem_region region;
+	uintptr_t gpa = 0;
+
+	
+	while (V3_get_guest_mem_region(host_dev->v3_ctx, &region, gpa)) {
+	    u64 size = region.end - region.start;
+	    u32 page_size = 512 * 4096;
+
+
+	    do {
+		if (size < page_size) {
+		    page_size = 4096;
+		}
+		    
+		iommu_unmap(host_dev->hw_dev.iommu_domain, gpa, page_size);
+		    
+		gpa += page_size;
+		size -= page_size;
+		    
+	    } while (size > 0);
+	}
+
+    
+	//    free IOMMU domain
+	iommu_detach_device(host_dev->hw_dev.iommu_domain, &(dev->dev));
+	iommu_domain_free(host_dev->hw_dev.iommu_domain);
+    }
+
+    host_dev->hw_dev.in_use = 0;
+    return 0;
 }
 
 

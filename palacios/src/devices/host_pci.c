@@ -822,8 +822,15 @@ static int setup_virt_pci_dev(struct v3_vm_info * vm_info, struct vm_device * de
 }
 
 
+static int host_dev_free(struct host_pci_state * state) {
+    v3_host_pci_release_dev(state->host_dev);
+    V3_Free(state);
+
+    return 0;
+}
+
 static struct v3_device_ops dev_ops = {
-    .free = NULL,
+    .free = (int (*)(void *))host_dev_free,
 };
 
 

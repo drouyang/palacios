@@ -28,7 +28,7 @@ struct host_pci_device {
     
     enum {PASSTHROUGH, USER} type; 
   
-    enum {INTX_IRQ, MSI_IRQ, MSIX_IRQ} irq_type;
+
     uint32_t num_vecs;
 
     union {
@@ -53,6 +53,7 @@ struct host_pci_device {
     };
 
     struct v3_host_pci_dev v3_dev;
+    void * v3_ctx;
 
     struct list_head dev_node;
 };
@@ -100,10 +101,22 @@ static struct v3_host_pci_dev * request_pci_dev(char * url, void * v3_ctx) {
 	return NULL;
     }
 
-
+    host_dev->v3_ctx = v3_ctx;
 
     return &(host_dev->v3_dev);
+}
 
+
+static int release_pci_dev(struct v3_host_pci_dev * v3_dev) {
+    struct host_pci_device * host_dev = v3_dev->host_data;
+
+    if (host_dev->type == PASSTHROUGH) {
+	release_hw_pci_dev(host_dev);
+    }
+
+    host_dev->v3_ctx = NULL;
+
+    return 0;
 }
 
 
@@ -159,6 +172,7 @@ static int host_pci_cmd(struct v3_host_pci_dev * v3_dev, host_pci_cmd_t cmd, u64
 
 static struct v3_host_pci_hooks pci_hooks = {
     .request_device = request_pci_dev,
+    .release_device = release_pci_dev,
     .config_write = host_pci_config_write,
     .config_read = host_pci_config_read,
     .ack_irq = host_pci_ack_irq,

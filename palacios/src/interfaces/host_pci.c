@@ -80,7 +80,18 @@ struct v3_host_pci_dev * v3_host_pci_get_dev(struct v3_vm_info * vm,
     host_dev->guest_data = priv_data;
     
     return host_dev;
-    
+}
+
+
+int v3_host_pci_release_dev(struct v3_host_pci_dev * host_dev) {
+    if ((!pci_hooks) || (!pci_hooks->release_device)) {
+	PrintError("Host PCI Hooks not initialized\n");
+	return -1;
+    }
+
+    pci_hooks->release_device(host_dev);
+
+    return 0;
 }
 
 
