@@ -291,9 +291,11 @@ static int handle_kick(struct guest_info * core, struct virtio_blk_state * blk_s
     }
 
     if (!(q->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
-	PrintDebug("Raising IRQ %d\n",  blk_state->pci_dev->config_header.intr_line);
-	v3_pci_raise_irq(blk_state->virtio_dev->pci_bus, blk_state->pci_dev, 0);
-	blk_state->virtio_cfg.pci_isr = 1;
+	if (blk_state->virtio_cfg.pci_isr == 0) {
+	    PrintDebug("Raising IRQ %d\n",  blk_state->pci_dev->config_header.intr_line);
+	    v3_pci_raise_irq(blk_state->virtio_dev->pci_bus, blk_state->pci_dev, 0);
+	    blk_state->virtio_cfg.pci_isr = 1;
+	}
     }
 
     return 0;
@@ -460,8 +462,13 @@ static int virtio_io_read(struct guest_info * core, uint16_t port, void * dst, u
 
 	case VIRTIO_ISR_PORT:
 	    *(uint8_t *)dst = blk_state->virtio_cfg.pci_isr;
-	    blk_state->virtio_cfg.pci_isr = 0;
-	    v3_pci_lower_irq(blk_state->virtio_dev->pci_bus, blk_state->pci_dev, 0);
+
+	    if (blk_state->virtio_cfg.pci_isr == 1) {
+		blk_state->virtio_cfg.pci_isr = 0;
+		//	PrintDebug("Lowering IRQ from Virtio BLOCK\n");
+		v3_pci_lower_irq(blk_state->virtio_dev->pci_bus, blk_state->pci_dev, 0);
+	    }
+
 	    break;
 
 	default:

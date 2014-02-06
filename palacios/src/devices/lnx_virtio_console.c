@@ -146,9 +146,11 @@ static int handle_kick(struct guest_info * core, struct virtio_console_state * v
     }
 
     if (!(q->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
-	PrintDebug("Raising IRQ %d\n",  virtio->pci_dev->config_header.intr_line);
-	v3_pci_raise_irq(virtio->pci_bus, virtio->pci_dev, 0);
-	virtio->virtio_cfg.pci_isr = VIRTIO_ISR_ACTIVE;
+	if (virtio->virtio_cfg.pci_isr == 0) {
+	    PrintDebug("Raising IRQ %d\n",  virtio->pci_dev->config_header.intr_line);
+	    v3_pci_raise_irq(virtio->pci_bus, virtio->pci_dev, 0);
+	    virtio->virtio_cfg.pci_isr = VIRTIO_ISR_ACTIVE;
+	}
     }
 
     return 0;
@@ -194,8 +196,10 @@ static uint64_t virtio_input(struct v3_vm_info * vm, uint8_t * buf, uint64_t len
 
     // say hello
     if (!(q->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
-	v3_pci_raise_irq(cons_state->pci_bus, cons_state->pci_dev, 0);
+	if (cons_state->virtio_cfg.pci_isr == 0) {
+	    v3_pci_raise_irq(cons_state->pci_bus, cons_state->pci_dev, 0);
 	    cons_state->virtio_cfg.pci_isr = 0x1;
+	}
     }
 
     return xfer_len;
@@ -358,8 +362,12 @@ static int virtio_io_read(struct guest_info * core, uint16_t port, void * dst, u
 
 	case VIRTIO_ISR_PORT:
 	    *(uint8_t *)dst = virtio->virtio_cfg.pci_isr;
-	    virtio->virtio_cfg.pci_isr = 0;
-	    v3_pci_lower_irq(virtio->pci_bus, virtio->pci_dev, 0);
+
+	    if (virtio->virtio_cfg.pci_isr == 1) {
+		virtio->virtio_cfg.pci_isr = 0;
+		v3_pci_lower_irq(virtio->pci_bus, virtio->pci_dev, 0);
+	    }
+
 	    break;
 
 	default:

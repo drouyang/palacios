@@ -830,6 +830,7 @@ static struct v3_device_ops dev_ops = {
 static int irq_ack(struct guest_info * core, uint32_t irq, void * private_data) {
     struct host_pci_state * state = (struct host_pci_state *)private_data;
 
+    v3_pci_lower_irq(state->pci_bus, state->pci_dev, 0);
 
     //    V3_Print("Acking IRQ %d\n", irq);
     v3_host_pci_ack_irq(state->host_dev, irq);

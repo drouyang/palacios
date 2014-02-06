@@ -320,8 +320,10 @@ static int do_tx_pkts(struct guest_info * core,
     }
 
     if (!(q->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
-	v3_pci_raise_irq(vnet_state->pci_bus,  vnet_state->pci_dev, 0);
-	vnet_state->virtio_cfg.pci_isr = 0x1;
+	if (vnet_state->virtio_cfg.pci_isr == 0) {
+	    v3_pci_raise_irq(vnet_state->pci_bus,  vnet_state->pci_dev, 0);
+	    vnet_state->virtio_cfg.pci_isr = 0x1;
+	}
     }
 	
     return 0;
@@ -522,10 +524,12 @@ static int vnet_virtio_io_read(struct guest_info * core,
 	    *(uint8_t *)dst = vnet_state->virtio_cfg.status;
 	    break;
 
-	case VIRTIO_ISR_PORT:
+	case VIRTIO_ISR_PORT:	    
 	    *(uint8_t *)dst = vnet_state->virtio_cfg.pci_isr;
-	    vnet_state->virtio_cfg.pci_isr = 0;
-	    v3_pci_lower_irq(vnet_state->pci_bus, vnet_state->pci_dev, 0);
+	    if (vnet_state->virtio_cfg.pci_isr == 1) {
+		vnet_state->virtio_cfg.pci_isr = 0;
+		v3_pci_lower_irq(vnet_state->pci_bus, vnet_state->pci_dev, 0);
+	    }
 	    break;
 
 	default:

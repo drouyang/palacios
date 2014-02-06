@@ -22,6 +22,7 @@
 #include <palacios/vmm_dev_mgr.h>
 #include <devices/apic.h>
 #include <palacios/vm_guest.h>
+#include <palacios/vmm_lock.h>
 
 #ifndef V3_CONFIG_DEBUG_IO_APIC
 #undef PrintDebug
@@ -29,6 +30,8 @@
 #endif
 
 
+
+#define FREE_LIST_SIZE 128
 
 #define IO_APIC_BASE_ADDR 0xfec00000
 
@@ -123,11 +126,20 @@ struct redir_tbl_entry {
 } __attribute__((packed));
 
 
+struct ack_entry {
+    uint32_t irq;
+    int (*ack)(struct guest_info * core, uint32_t irq, void * private_data);
+    void * private_data;    
+
+    struct list_head node;
+};
+
 
 struct io_apic_state {
     addr_t base_addr;
 
     uint32_t index_reg;
+
 
     struct ioapic_id_reg ioapic_id;
     struct ioapic_ver_reg ioapic_ver;
@@ -135,14 +147,26 @@ struct io_apic_state {
   
     struct redir_tbl_entry redir_tbl[24];
 
+    /* Active number of level triggered INTR lines
+     * incremented on raise_irq, decremented on lower_irq
+     */
+    uint8_t level_cnt[24]; 
+
+    struct list_head ack_tbl[24];
+    struct list_head ack_free_list;
+    
     void * apic_dev_data;
 
     void * router_handle;
 
+    v3_lock_t ack_tbl_lock;
+    v3_lock_t lvl_cnt_lock;
+
     struct v3_vm_info * vm;
-  
 };
 
+
+static int ioapic_eoi(struct guest_info * core, uint32_t irq, void * private_data);
 
 static void init_ioapic_state(struct io_apic_state * ioapic, uint32_t id) {
     int i = 0;
@@ -157,6 +181,18 @@ static void init_ioapic_state(struct io_apic_state * ioapic, uint32_t id) {
 	ioapic->redir_tbl[i].val = 0x0001000000000000LL;
 	// Mask all interrupts until they are enabled....
 	ioapic->redir_tbl[i].mask = 1;
+	ioapic->level_cnt[i] = 0;
+	INIT_LIST_HEAD(&(ioapic->ack_tbl[i]));
+    }
+
+    INIT_LIST_HEAD(&(ioapic->ack_free_list));
+    v3_lock_init(&(ioapic->ack_tbl_lock));
+    v3_lock_init(&(ioapic->lvl_cnt_lock));
+
+    for (i = 0; i < FREE_LIST_SIZE; i++) {
+	struct ack_entry * tmp_entry = V3_Malloc(sizeof(struct ack_entry));
+	memset(tmp_entry, 0, sizeof(struct ack_entry));
+	list_add(&(tmp_entry->node), &(ioapic->ack_free_list));
     }
     
     // special case redir_tbl[0] for pin 0 as ExtInt for Virtual Wire Mode
@@ -209,6 +245,44 @@ static int ioapic_read(struct guest_info * core, addr_t guest_addr, void * dst, 
     return length;
 }
 
+static int ioapic_send_ipi(struct v3_vm_info * vm, struct io_apic_state * ioapic, 
+			   struct redir_tbl_entry * irq_entry) {
+    struct v3_gen_ipi ipi;
+
+    if (irq_entry->mask == 1) {
+	return 0;
+    }
+
+    PrintDebug("ioapic %u: IOAPIC Signaling APIC to raise INTR %d\n", 
+	       ioapic->ioapic_id.id, irq_entry->vec);
+
+
+    ipi.vector = irq_entry->vec;
+    ipi.mode = irq_entry->del_mode;
+    ipi.logical = irq_entry->dst_mode;
+    ipi.trigger_mode = irq_entry->trig_mode;
+    ipi.dst = irq_entry->dst_field;
+    ipi.dst_shorthand = 0;
+
+
+    ipi.ack = ioapic_eoi;
+    ipi.private_data = ioapic;
+
+    if (irq_entry->trig_mode) {
+	irq_entry->rem_irr = 1;
+    }
+
+    PrintDebug("ioapic %u: IPI: vector 0x%x, mode 0x%x, logical 0x%x, trigger 0x%x, dst 0x%x, shorthand 0x%x\n",
+	       ioapic->ioapic_id.id, ipi.vector, ipi.mode, ipi.logical, ipi.trigger_mode, ipi.dst, ipi.dst_shorthand);
+    // Need to add destination argument here...
+    if (v3_apic_send_ipi(vm, &ipi, ioapic->apic_dev_data) == -1) {
+	PrintError("Error sending IPI to apic %d\n", ipi.dst);
+	return -1;
+    }
+
+    return 0;
+}
+
 
 static int ioapic_write(struct guest_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data) {
     struct io_apic_state * ioapic = (struct io_apic_state *)(priv_data);
@@ -249,6 +323,8 @@ static int ioapic_write(struct guest_info * core, addr_t guest_addr, void * src,
 		    if (hi_val) {
 			PrintDebug("ioapic %u: Writing to hi of pin %d\n", ioapic->ioapic_id.id, redir_index);
 			ioapic->redir_tbl[redir_index].hi = op_val;
+
+			// TODO: send pending irqs
 		    } else {
 			PrintDebug("ioapic %u: Writing to lo of pin %d\n", ioapic->ioapic_id.id, redir_index);
 			op_val &= REDIR_LO_MASK;
@@ -263,10 +339,153 @@ static int ioapic_write(struct guest_info * core, addr_t guest_addr, void * src,
 }
 
 
+
+
+static int ioapic_eoi(struct guest_info * core, uint32_t irq, void * private_data) {
+    struct io_apic_state * ioapic = (struct io_apic_state *)(private_data);  
+    struct redir_tbl_entry * irq_entry = NULL;
+    unsigned int flags = 0;
+    int i = 0;
+
+    
+    for (i = 0; i < 24; i++) {
+	struct ack_entry * ack = NULL;
+	struct ack_entry * tmp = NULL;
+
+	irq_entry = &(ioapic->redir_tbl[i]);
+
+	if (irq_entry->vec != irq)  continue;
+
+	flags = v3_lock_irqsave(ioapic->ack_tbl_lock);
+
+	list_for_each_entry_safe(ack, tmp, &(ioapic->ack_tbl[i]), node) {
+	    PrintDebug("ioapic %u: ACKING IOAPIC IRQ (fn=%p) apic_irq=%d, ioapic_irq=%d\n", 
+		       ioapic->ioapic_id.id, ack->ack, irq, ack->irq);
+
+	    ack->ack(core, ack->irq, ack->private_data);
+
+	    ack->ack = NULL;
+	    ack->private_data = NULL;
+	    ack->irq = 0;
+
+	    list_move_tail(&(ack->node), &(ioapic->ack_free_list));
+	}
+	v3_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+
+
+	if (irq_entry->trig_mode) {
+	    irq_entry->rem_irr = 0;
+	    
+	    if (ioapic->level_cnt[i] > 0) {
+		if (ioapic_send_ipi(core->vm_info, ioapic, irq_entry) == -1) {
+		    PrintError("Error: ioapi %u - resending IPI after EOI (IRQ=%d) (APIC vector=%d)\n", 
+			       ioapic->ioapic_id.id, irq, irq_entry->vec);
+		}
+	    }
+	}
+    }
+
+
+    return 0;
+}
+
+
+
+
 static int ioapic_raise_irq(struct v3_vm_info * vm, void * private_data, struct v3_irq * irq) {
     struct io_apic_state * ioapic = (struct io_apic_state *)(private_data);  
     struct redir_tbl_entry * irq_entry = NULL;
     uint8_t irq_num = irq->irq;
+  
+    if (irq_num == 0) { 
+      // IRQ 0 being raised, in the Palacios context, means the PIT
+      // However, the convention is that it is the PIC that is connected
+      // to PIN 0 of the IOAPIC and the PIT is connected to pin 2
+      // Hence we convert this to the relvant pin.  In the future,
+      // the PIC may signal to the IOAPIC in a different path.
+      // Yes, this is kind of hideous, but it is needed to have the
+      // PIT correctly show up via the IOAPIC
+      irq_num = 2;
+    }
+
+    if (irq_num > 24) {
+	PrintDebug("ioapic %u: IRQ out of range of IO APIC\n", ioapic->ioapic_id.id);
+	return -1;
+    }
+
+    irq_entry = &(ioapic->redir_tbl[irq_num]);
+
+
+    if (irq_entry->trig_mode) {
+	unsigned int flags = 0;
+
+	/* We might be sharing a vector here, so we coallesce in the IO-APIC
+	 * The IO-APIC is then responsible for acking each device
+	 * Each device is responsible for lowering the IRQ line to decrement the level count
+	 */	
+
+	PrintDebug("ioapic %u: Incrementing level_cnt for ioapic.irq=%d (prev_val=%d)\n", 
+		   ioapic->ioapic_id.id, irq_num, ioapic->level_cnt[irq_num]);
+
+	flags = v3_lock_irqsave(ioapic->lvl_cnt_lock);
+	ioapic->level_cnt[irq_num]++;
+	v3_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
+    }
+
+
+    if (irq->ack) {
+	struct ack_entry * tmp_ack_entry = NULL;
+	unsigned int flags = 0;
+
+	flags = v3_lock_irqsave(ioapic->ack_tbl_lock);	
+
+	// scan for identical call sites, if one exists then this interrupt is ignored. 
+	list_for_each_entry(tmp_ack_entry, &(ioapic->ack_tbl[irq_num]), node) {
+	    if ((tmp_ack_entry->ack == irq->ack) && 
+		(tmp_ack_entry->private_data == irq->private_data)) {
+		    
+		// Refire of a level triggered IRQ, safe to ignore
+		v3_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+		return 0;
+	    }
+	}
+	    
+	if (list_empty(&(ioapic->ack_free_list))) {
+	    PrintError("Error: ioapic %u - Callback free list is exhausted...\n", ioapic->ioapic_id.id);
+	    v3_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+	    return -1;
+	}
+
+	// Add callback to ack_tbl
+	tmp_ack_entry = list_first_entry(&(ioapic->ack_free_list), struct ack_entry, node);
+	    
+	tmp_ack_entry->irq = irq->irq;
+	tmp_ack_entry->ack = irq->ack;
+	tmp_ack_entry->private_data = irq->private_data;
+	    
+	list_move_tail(&(tmp_ack_entry->node), &(ioapic->ack_tbl[irq_num]));
+
+	v3_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+    }
+
+
+
+
+    if (ioapic_send_ipi(vm, ioapic, irq_entry) == -1) {
+	PrintError("Error: ioapic %u - sending IPI (vector=%d) in IOAPIC raise IRQ\n",
+		   ioapic->ioapic_id.id, irq_entry->vec);
+	return -1;
+    }
+
+    return 0;
+}
+
+/* I don't know if we can do anything here.... */
+static int ioapic_lower_irq(struct v3_vm_info * vm, void * private_data, struct v3_irq * irq) {
+    struct io_apic_state * ioapic = (struct io_apic_state *)(private_data);  
+    struct redir_tbl_entry * irq_entry = NULL;
+    uint8_t irq_num = irq->irq;
+    unsigned int flags = 0;
 
     if (irq_num == 0) { 
       // IRQ 0 being raised, in the Palacios context, means the PIT
@@ -286,37 +505,28 @@ static int ioapic_raise_irq(struct v3_vm_info * vm, void * private_data, struct 
 
     irq_entry = &(ioapic->redir_tbl[irq_num]);
 
-    if (irq_entry->mask == 0) {
-	struct v3_gen_ipi ipi;
-
-	PrintDebug("ioapic %u: IOAPIC Signaling APIC to raise INTR %d\n", 
-		   ioapic->ioapic_id.id, irq_entry->vec);
-
-
-	ipi.vector = irq_entry->vec;
-	ipi.mode = irq_entry->del_mode;
-	ipi.logical = irq_entry->dst_mode;
-	ipi.trigger_mode = irq_entry->trig_mode;
-	ipi.dst = irq_entry->dst_field;
-	ipi.dst_shorthand = 0;
-
-	ipi.ack = irq->ack;
-	ipi.private_data = irq->private_data;
-
-	PrintDebug("ioapic %u: IPI: vector 0x%x, mode 0x%x, logical 0x%x, trigger 0x%x, dst 0x%x, shorthand 0x%x\n",
-		   ioapic->ioapic_id.id, ipi.vector, ipi.mode, ipi.logical, ipi.trigger_mode, ipi.dst, ipi.dst_shorthand);
-	// Need to add destination argument here...
-	if (v3_apic_send_ipi(vm, &ipi, ioapic->apic_dev_data) == -1) {
-	    PrintError("Error sending IPI to apic %d\n", ipi.dst);
+    if (irq_entry->trig_mode) {
+	
+	flags = v3_lock_irqsave(ioapic->lvl_cnt_lock);
+	
+	if (ioapic->level_cnt[irq_num] <= 0) {
+	    PrintError("Error: ioapic %u - No active IRQ line to lower (irq_num=%d) (lvl_cnt=%d)\n", 
+		       ioapic->ioapic_id.id,
+		       irq_num, ioapic->level_cnt[irq_num] );
+	    v3_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
+	    
 	    return -1;
 	}
+	
+	PrintDebug("ioapic %u: Decrementing lvl cnt for ioapic.irq=%d (prev_val=%d)\n", 
+		   ioapic->ioapic_id.id, irq_num, ioapic->level_cnt[irq_num]);
+
+	ioapic->level_cnt[irq_num]--;
+
+	v3_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
+
     }
 
-    return 0;
-}
-
-/* I don't know if we can do anything here.... */
-static int ioapic_lower_irq(struct v3_vm_info * vm, void * private_data, struct v3_irq * irq) {
     return 0;
 }
 
@@ -329,10 +539,29 @@ static struct intr_router_ops router_ops = {
 
 
 static int io_apic_free(struct io_apic_state * ioapic) {
+    //    struct redir_tbl_entry * irq_entry = NULL;
+    struct ack_entry * ack = NULL;
+    struct ack_entry * tmp = NULL;    
+    int i = 0;
 
     v3_remove_intr_router(ioapic->vm, ioapic->router_handle);
 
-    // unhook memory
+    //TODO:  unhook memory
+
+    //loop through ack table
+    for (i = 0; i < 24; i++) {
+	list_for_each_entry_safe(ack, tmp, &(ioapic->ack_tbl[i]), node) {
+	    list_del(&(ack->node));
+	    V3_Free(ack);
+	}
+    }
+    
+    //loop through ack_free_list
+    list_for_each_entry_safe(ack, tmp, &(ioapic->ack_free_list), node) {
+	list_del(&(ack->node));
+	V3_Free(ack);
+    }
+    
 
     V3_Free(ioapic);
 

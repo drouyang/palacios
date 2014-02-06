@@ -330,10 +330,12 @@ static int handle_pkt_tx(struct guest_info * core,
     }
         
     if (txed && !(q->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
-	v3_pci_raise_irq(virtio_state->virtio_dev->pci_bus, 
-			 virtio_state->pci_dev, 0);
-	virtio_state->virtio_cfg.pci_isr = 0x1;
-	virtio_state->stats.rx_interrupts ++;
+	if (virtio_state->virtio_cfg.pci_isr == 0) {
+	    v3_pci_raise_irq(virtio_state->virtio_dev->pci_bus, 
+			     virtio_state->pci_dev, 0);
+	    virtio_state->virtio_cfg.pci_isr = 0x1;
+	    virtio_state->stats.rx_interrupts ++;
+	}
     }
 
     return left;
@@ -551,9 +553,12 @@ static int virtio_io_read(struct guest_info *core,
 		
 	case VIRTIO_ISR_PORT:
 	    *(uint8_t *)dst = virtio->virtio_cfg.pci_isr;
-	    virtio->virtio_cfg.pci_isr = 0;
-	    v3_pci_lower_irq(virtio->virtio_dev->pci_bus, 
-			     virtio->pci_dev, 0);
+
+	    if (virtio->virtio_cfg.pci_isr == 1) {
+		virtio->virtio_cfg.pci_isr = 0;
+		v3_pci_lower_irq(virtio->virtio_dev->pci_bus, virtio->pci_dev, 0);
+	    }
+
 	    break;
 
 	case VIRTIO_NET_CONFIG ... VIRTIO_NET_CONFIG + ETH_ALEN:
@@ -704,12 +709,14 @@ static int virtio_rx(uint8_t * buf, uint32_t size, void * private_data) {
     v3_unlock_irqrestore(virtio->rx_lock, flags);
 
     if (!(q->avail->flags & VIRTIO_NO_IRQ_FLAG) || kick_guest) {
-	V3_Net_Print(2, "Virtio NIC: RX Raising IRQ %d\n",  
-		     virtio->pci_dev->config_header.intr_line);
-
-	virtio->virtio_cfg.pci_isr = 0x1;	
-	v3_pci_raise_irq(virtio->virtio_dev->pci_bus, virtio->pci_dev, 0);
-	virtio->stats.rx_interrupts ++;
+	if (virtio->virtio_cfg.pci_isr == 0) {
+	    V3_Net_Print(2, "Virtio NIC: RX Raising IRQ %d\n",  
+			 virtio->pci_dev->config_header.intr_line);
+	    
+	    virtio->virtio_cfg.pci_isr = 0x1;	
+	    v3_pci_raise_irq(virtio->virtio_dev->pci_bus, virtio->pci_dev, 0);
+	    virtio->stats.rx_interrupts ++;
+	}
     }
 
     /* notify guest if it is in guest mode */

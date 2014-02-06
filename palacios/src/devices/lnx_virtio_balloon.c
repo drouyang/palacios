@@ -171,9 +171,11 @@ static int handle_kick(struct guest_info * core, struct virtio_balloon_state * v
     }
 
     if (!(q->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
-	PrintDebug("Raising IRQ %d\n",  virtio->pci_dev->config_header.intr_line);
-	v3_pci_raise_irq(virtio->pci_bus, virtio->pci_dev, 0);
-	virtio->virtio_cfg.pci_isr = VIRTIO_ISR_ACTIVE;
+	if (!(virtio->virtio_cfg.pci_isr & VIRTIO_ISR_ACTIVE)) {
+	    PrintDebug("Raising IRQ %d\n",  virtio->pci_dev->config_header.intr_line);
+	    v3_pci_raise_irq(virtio->pci_bus, virtio->pci_dev, 0);
+	    virtio->virtio_cfg.pci_isr = VIRTIO_ISR_ACTIVE;
+	}
     }
 
     return 0;
@@ -335,8 +337,12 @@ static int virtio_io_read(struct guest_info * core, uint16_t port, void * dst, u
 
 	case VIRTIO_ISR_PORT:
 	    *(uint8_t *)dst = virtio->virtio_cfg.pci_isr;
-	    virtio->virtio_cfg.pci_isr = 0;
-	    v3_pci_lower_irq(virtio->pci_bus, virtio->pci_dev, 0);
+
+	    if (virtio->virtio_cfg.pci_isr &  VIRTIO_ISR_ACTIVE) {
+		virtio->virtio_cfg.pci_isr = 0;
+		v3_pci_lower_irq(virtio->pci_bus, virtio->pci_dev, 0);
+	    }
+
 	    break;
 
 	default:
@@ -378,10 +384,13 @@ static int set_size(struct virtio_balloon_state * virtio, addr_t size) {
     virtio->balloon_cfg.requested_pages = size / PAGE_SIZE; // number of pages
 
     PrintDebug("Requesting %d pages\n", virtio->balloon_cfg.requested_pages);
-
-    v3_pci_raise_irq(virtio->pci_bus, virtio->pci_dev, 0);
-    virtio->virtio_cfg.pci_isr = VIRTIO_ISR_ACTIVE | VIRTIO_ISR_CFG_CHANGED;
     
+    if (!(virtio->virtio_cfg.pci_isr & VIRTIO_ISR_ACTIVE)) {
+	v3_pci_raise_irq(virtio->pci_bus, virtio->pci_dev, 0);
+    }    
+    
+    virtio->virtio_cfg.pci_isr = VIRTIO_ISR_ACTIVE | VIRTIO_ISR_CFG_CHANGED;
+
     return 0;
 }
 

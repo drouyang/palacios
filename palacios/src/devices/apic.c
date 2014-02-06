@@ -177,6 +177,8 @@ struct apic_msr {
 
 struct irq_queue_entry {
     uint32_t vector;
+    uint8_t trigger_mode; 
+
     int (*ack)(struct guest_info * core, uint32_t irq, void * private_data);
     void * private_data;
 
@@ -263,8 +265,6 @@ struct apic_state {
     } irq_queue ;
 
     uint32_t eoi;
-
-
 };
 
 
@@ -446,13 +446,13 @@ static int write_apic_msr(struct guest_info * core, uint_t msr, v3_msr_t src, vo
 
 
 // irq_num is the bit offset into a 256 bit buffer...
-static int activate_apic_irq(struct apic_state * apic, uint32_t irq_num, 
-			     int (*ack)(struct guest_info * core, uint32_t irq, void * private_data), 
-			     void * private_data) {
+static int activate_apic_irq(struct apic_state * apic, struct  irq_queue_entry * entry) {
+    uint32_t irq_num = entry->vector;
     int major_offset = (irq_num & ~0x00000007) >> 3;
     int minor_offset = irq_num & 0x00000007;
     uint8_t * req_location = apic->int_req_reg + major_offset;
     uint8_t * en_location = apic->int_en_reg + major_offset;
+    uint8_t * trig_location = apic->trig_mode_reg + major_offset;
     uint8_t flag = 0x1 << minor_offset;
 
 
@@ -465,8 +465,15 @@ static int activate_apic_irq(struct apic_state * apic, uint32_t irq_num,
 
     if (*en_location & flag) {
 	*req_location |= flag;
-	apic->irq_ack_cbs[irq_num].ack = ack;
-	apic->irq_ack_cbs[irq_num].private_data = private_data;
+	
+	if (entry->trigger_mode) {
+	    *trig_location |= flag;
+	} else {
+	    *trig_location &= ~flag;
+	}
+
+	apic->irq_ack_cbs[irq_num].ack = entry->ack;
+	apic->irq_ack_cbs[irq_num].private_data = entry->private_data;
 
 	return 1;
     } else {
@@ -478,8 +485,8 @@ static int activate_apic_irq(struct apic_state * apic, uint32_t irq_num,
 }
 
 
-
-static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num, 
+/* trigger: level=1, edge=0 */
+static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num, uint8_t trigger, 
 			      int (*ack)(struct guest_info * core, uint32_t irq, void * private_data),
 			      void * private_data) {
     unsigned int flags = 0;
@@ -502,6 +509,7 @@ static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num,
     entry = list_first_entry(&(apic->irq_queue.free_list), struct irq_queue_entry, list_node);
 
     entry->vector = irq_num;
+    entry->trigger_mode = trigger;
     entry->ack = ack;
     entry->private_data = private_data;
 
@@ -528,10 +536,11 @@ static void drain_irq_entries(struct apic_state * apic) {
 	
 	entry = list_first_entry(&(apic->irq_queue.entries), struct irq_queue_entry, list_node);
 
-	activate_apic_irq(apic, entry->vector, entry->ack, entry->private_data);
+	activate_apic_irq(apic, entry);
 
 	// paranoia: Clear IRQ for next use
 	entry->vector = 0;
+	entry->trigger_mode = 0;
 	entry->ack = NULL;
 	entry->private_data = NULL;
 	
@@ -631,6 +640,7 @@ static int apic_do_eoi(struct guest_info * core, struct apic_state * apic) {
 static int activate_internal_irq(struct apic_state * apic, apic_irq_type_t int_type) {
     uint32_t vec_num = 0;
     uint32_t del_mode = 0;
+    uint8_t trigger = 0;
     int masked = 0;
 
 
@@ -639,31 +649,37 @@ static int activate_internal_irq(struct apic_state * apic, apic_irq_type_t int_t
 	    vec_num = apic->tmr_vec_tbl.vec;
 	    del_mode = IPI_FIXED;
 	    masked = apic->tmr_vec_tbl.mask;
+	    trigger = 0;
 	    break;
 	case APIC_THERM_INT:
 	    vec_num = apic->therm_loc_vec_tbl.vec;
 	    del_mode = apic->therm_loc_vec_tbl.msg_type;
 	    masked = apic->therm_loc_vec_tbl.mask;
+	    trigger = 0;
 	    break;
 	case APIC_PERF_INT:
 	    vec_num = apic->perf_ctr_loc_vec_tbl.vec;
 	    del_mode = apic->perf_ctr_loc_vec_tbl.msg_type;
 	    masked = apic->perf_ctr_loc_vec_tbl.mask;
+	    trigger = 0;
 	    break;
 	case APIC_LINT0_INT:
 	    vec_num = apic->lint0_vec_tbl.vec;
 	    del_mode = apic->lint0_vec_tbl.msg_type;
 	    masked = apic->lint0_vec_tbl.mask;
+	    trigger = apic->lint0_vec_tbl.trig_mode;
 	    break;
 	case APIC_LINT1_INT:
 	    vec_num = apic->lint1_vec_tbl.vec;
 	    del_mode = apic->lint1_vec_tbl.msg_type;
 	    masked = apic->lint1_vec_tbl.mask;
+	    trigger = apic->lint1_vec_tbl.trig_mode;
 	    break;
 	case APIC_ERR_INT:
 	    vec_num = apic->err_vec_tbl.vec;
 	    del_mode = IPI_FIXED;
 	    masked = apic->err_vec_tbl.mask;
+	    trigger = 0;
 	    break;
 	default:
 	    PrintError("apic %u: core ?: Invalid APIC interrupt type\n", apic->lapic_id.val);
@@ -678,7 +694,7 @@ static int activate_internal_irq(struct apic_state * apic, apic_irq_type_t int_t
 
     if (del_mode == IPI_FIXED) {
 	//PrintDebug("Activating internal APIC IRQ %d\n", vec_num);
-	return add_apic_irq_entry(apic, vec_num, NULL, NULL);
+	return add_apic_irq_entry(apic, vec_num, trigger, NULL, NULL);
     } else {
 	PrintError("apic %u: core ?: Unhandled Delivery Mode\n", apic->lapic_id.val);
 	return -1;
@@ -808,7 +824,7 @@ static int deliver_ipi(struct apic_state * src_apic,
 
 	    PrintDebug("delivering IRQ %d to core %u\n", ipi->vector, dst_core->vcpu_id); 
 
-	    if (add_apic_irq_entry(dst_apic, ipi->vector, ipi->ack, ipi->private_data) == -1) {
+	    if (add_apic_irq_entry(dst_apic, ipi->vector, ipi->trigger_mode, ipi->ack, ipi->private_data) == -1) {
 		PrintError("Failed to deliver IPI for vector %d on VCPU %d.\n", 
 			   ipi->vector, dst_core->vcpu_id);
 		return -1;
