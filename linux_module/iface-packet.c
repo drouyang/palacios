@@ -99,13 +99,13 @@ init_socket(struct raw_interface * iface, const char * eth_dev){
 
     err = sock_create(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL), &(iface->raw_sock)); 
     if (err < 0) {
-	WARNING("Could not create a PF_PACKET Socket, err %d\n", err);
+	ERROR("Could not create a PF_PACKET Socket, err %d\n", err);
 	return -1;
     }
 
     net_dev = dev_get_by_name(&init_net, eth_dev);
     if(net_dev == NULL) {
-	WARNING("Palacios Packet: Unable to get index for device %s\n", eth_dev);
+	ERROR("Palacios Packet: Unable to get index for device %s\n", eth_dev);
 	sock_release(iface->raw_sock);
 	return -1;
     }
@@ -120,15 +120,15 @@ init_socket(struct raw_interface * iface, const char * eth_dev){
 				     sizeof(sock_addr));
 
     if (err < 0){
-	WARNING("Error binding raw packet to device %s, %d\n", eth_dev, err);
+	ERROR("Error binding raw packet to device %s, %d\n", eth_dev, err);
 	sock_release(iface->raw_sock);
 	
 	return -1;
     }
 
-    INFO("Bind a palacios raw packet interface to device %s, device index %d\n",
-	   eth_dev, net_dev->ifindex);
-
+    v3_lnx_printk("Bind a palacios raw packet interface to device %s, device index %d\n",
+		  eth_dev, net_dev->ifindex);
+    
     return 0;
 }
 
@@ -165,18 +165,18 @@ static int packet_recv_thread( void * arg ) {
 	return -1;
     }
 
-    INFO("Palacios Raw Packet Bridge: Staring receiving on ethernet device %s\n", 
+    v3_lnx_printk("Palacios Raw Packet Bridge: Staring receiving on ethernet device %s\n", 
 	   iface->eth_dev);
 
     while (!kthread_should_stop()) {
 	size = recv_pkt(iface->raw_sock, pkt, ETHERNET_PACKET_LEN);
 	
 	if (size < 0) {
-	    WARNING("Palacios raw packet receive error, Server terminated\n");
+	    ERROR("Palacios raw packet receive error, Server terminated\n");
 	    break;
 	}
 
-	if(is_broadcast_ethaddr(pkt)) {
+	if (is_broadcast_ethaddr(pkt)) {
 	    /* Broadcast */
 
 	    list_for_each_entry(recver_state, &(iface->brdcast_recvers), node) {
@@ -189,7 +189,7 @@ static int packet_recv_thread( void * arg ) {
 	} else {
 	    recver_state = (struct v3_packet *)palacios_htable_search(iface->mac_to_recver,
 								      (addr_t)pkt);
-	    if(recver_state != NULL) {
+	    if (recver_state != NULL) {
 		recver_state->input(recver_state, pkt, size);
 	    }
 	}
@@ -203,8 +203,9 @@ static int
 init_raw_interface(struct raw_interface * iface, const char * eth_dev){
 
     memcpy(iface->eth_dev, eth_dev, V3_ETHINT_NAMELEN);	
-    if(init_socket(iface, eth_dev) !=0) {
-	WARNING("packet: fails to initiate raw socket\n");
+   
+    if (init_socket(iface, eth_dev) !=0) {
+	ERROR("packet: fails to initiate raw socket\n");
 	return -1;
     }
     
@@ -257,17 +258,21 @@ palacios_packet_connect(struct v3_packet * packet,
     iface = find_interface(host_nic);
     spin_unlock_irqrestore(&(packet_state.lock),flags);
 
-    if(iface == NULL){
+    if (iface == NULL){
+
 	iface = (struct raw_interface *)palacios_kmalloc(sizeof(struct raw_interface), GFP_KERNEL);
+
 	if (!iface) { 
 	    ERROR("Palacios Packet Interface: Fails to allocate interface\n");
 	    return -1;
 	}
-	if(init_raw_interface(iface, host_nic) != 0) {
+
+	if (init_raw_interface(iface, host_nic) != 0) {
 	    ERROR("Palacios Packet Interface: Fails to initiate an raw interface on device %s\n", host_nic);
 	    palacios_kfree(iface);
 	    return -1;
 	}
+
 	spin_lock_irqsave(&(packet_state.lock), flags);	
 	list_add(&(iface->node), &(packet_state.open_interfaces));
 	spin_unlock_irqrestore(&(packet_state.lock),flags);
@@ -280,11 +285,11 @@ palacios_packet_connect(struct v3_packet * packet,
 			   (addr_t)packet->dev_mac, 
 			   (addr_t)packet);
 
-    INFO("Packet: Add Receiver MAC to ethernet device %s: %2x:%2x:%2x:%2x:%2x:%2x\n", 
-	   iface->eth_dev, 
-	   packet->dev_mac[0], packet->dev_mac[1], 
-	   packet->dev_mac[2], packet->dev_mac[3], 
-	   packet->dev_mac[4], packet->dev_mac[5]);
+    v3_lnx_printk("Packet: Add Receiver MAC to ethernet device %s: %2x:%2x:%2x:%2x:%2x:%2x\n", 
+		  iface->eth_dev, 
+		  packet->dev_mac[0], packet->dev_mac[1], 
+		  packet->dev_mac[2], packet->dev_mac[3], 
+		  packet->dev_mac[4], packet->dev_mac[5]);
     
     return 0;
 }
@@ -299,8 +304,7 @@ palacios_packet_send(struct v3_packet * packet,
     mm_segment_t oldfs;
     int size = 0;
 	
-    if(iface->inited == 0 || 
-       iface->raw_sock == NULL){
+    if ((iface->inited == 0) || (iface->raw_sock == NULL)) {
 	ERROR("Palacios Packet Interface: Send fails due to inapproriate interface\n");
 	return -1;
     }
