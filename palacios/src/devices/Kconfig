@@ -298,6 +298,21 @@ config PIIX3
 	help
 	  Includes the Virtual Piix3 Southbridge
 
+config PIIX4
+	bool "PIIX4 Southbridge"
+	default y
+	help
+	  Includes the Virtual Piix4 Southbridge
+
+
+config DEBUG_PIIX4
+        bool "PIIX4 Debugging"
+        default n
+        depends on PIIX4 && DEBUG_ON
+        help
+          Enable debugging for the PIIX4 southbridge
+
+
 
 config PCI
 	bool "PCI"
