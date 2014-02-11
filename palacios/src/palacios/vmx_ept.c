@@ -112,6 +112,7 @@ int v3_handle_ept_fault(struct guest_info * core, addr_t fault_addr, struct ept_
 
     //Fix up the PML entry
     if (pml[pml_index].read == 0) { 
+	v3_telemetry_inc_core_counter(core, "ALLOC_EPT_PAGE");
 	pdpe = (ept_pdp_t *)create_ept_page();
 	
 	// Set default PML Flags...
@@ -127,6 +128,7 @@ int v3_handle_ept_fault(struct guest_info * core, addr_t fault_addr, struct ept_
 
     // Fix up the PDPE entry
     if (pdpe[pdpe_index].read == 0) {
+	v3_telemetry_inc_core_counter(core, "ALLOC_EPT_PAGE");
 	pde = (ept_pde_t *)create_ept_page();
 
 	// Set default PDPE Flags...
@@ -197,6 +199,7 @@ int v3_handle_ept_fault(struct guest_info * core, addr_t fault_addr, struct ept_
 
     // Fix up the PDE entry
     if (pde[pde_index].read == 0) {
+	v3_telemetry_inc_core_counter(core, "ALLOC_EPT_PAGE");
 	pte = (ept_pte_t *)create_ept_page();
 	
 	pde[pde_index].read = 1;
