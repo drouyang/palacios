@@ -38,7 +38,6 @@ struct host_pci_device {
 
     enum {PASSTHROUGH, USER} type; 
 
-    enum {INTX_IRQ, MSI_IRQ, MSIX_IRQ} irq_type;
     uint32_t num_vecs;
     uint32_t intx_ipi_vector;
     uint32_t msi_irq_vector;
@@ -527,7 +526,7 @@ intx_ipi_handler(struct pt_regs * regs, unsigned int vector)
 {
     struct host_pci_device * host_dev = NULL;
 
-    printk("Received PCI INTx IPI (vector=%u)\n", vector);
+ //   printk("Received PCI INTx IPI (vector=%u)\n", vector);
 
     list_for_each_entry(host_dev, &device_list, dev_node) {
         if (vector == host_dev->intx_ipi_vector) {
