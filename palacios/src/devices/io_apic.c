@@ -206,7 +206,7 @@ static int ioapic_read(struct guest_info * core, addr_t guest_addr, void * dst, 
     uint32_t reg_tgt = guest_addr - ioapic->base_addr;
     uint32_t * op_val = (uint32_t *)dst;
 
-    PrintDebug("ioapic %u: IOAPIC Read at %p\n", ioapic->ioapic_id.id, (void *)guest_addr);
+    //    PrintDebug("ioapic %u: IOAPIC Read at %p\n", ioapic->ioapic_id.id, (void *)guest_addr);
 
     if (reg_tgt == 0x00) {
 	*op_val = ioapic->index_reg;
@@ -226,8 +226,10 @@ static int ioapic_read(struct guest_info * core, addr_t guest_addr, void * dst, 
 		uint_t redir_index = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) >> 1;
 		uint_t hi_val = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) & 1;
 		
+		PrintDebug("ioapic %u: Reading Redir TBL Entry %d (hi bits: %d)\n", ioapic->ioapic_id.id,redir_index, hi_val);
+		
 		if (redir_index > 0x3f) {
-		    PrintError("ioapic %u: Invalid redirection table entry %x\n", ioapic->ioapic_id.id, (uint32_t)redir_index);
+		    PrintError("ioapic %u: Invalid redirection table entry 0x%x\n", ioapic->ioapic_id.id, (uint32_t)redir_index);
 		    return -1;
 		}
 		
@@ -236,11 +238,15 @@ static int ioapic_read(struct guest_info * core, addr_t guest_addr, void * dst, 
 		} else {
 		    *op_val = ioapic->redir_tbl[redir_index].lo;
 		}
+		PrintDebug("ioapic %u: \t Read Value = 0x%x\n", ioapic->ioapic_id.id, *op_val);
+
 	    }
 	}
     }
 
-    PrintDebug("ioapic %u: IOAPIC Read at %p gave value 0x%x\n", ioapic->ioapic_id.id, (void *)guest_addr, *op_val);
+    PrintDebug("ioapic %u: Read from reg_tgt=%x, ioapic->index_reg=%x, op_val=%x\n", 
+	       ioapic->ioapic_id.id, reg_tgt, ioapic->index_reg, *op_val);
+
 
     return length;
 }
@@ -250,6 +256,7 @@ static int ioapic_send_ipi(struct v3_vm_info * vm, struct io_apic_state * ioapic
     struct v3_gen_ipi ipi;
 
     if (irq_entry->mask == 1) {
+	PrintDebug("ioapic %u: Trying to raise masked irq (%d)\n", ioapic->ioapic_id.id, irq_entry->vec);
 	return 0;
     }
 
@@ -272,8 +279,8 @@ static int ioapic_send_ipi(struct v3_vm_info * vm, struct io_apic_state * ioapic
 	irq_entry->rem_irr = 1;
     }
 
-    PrintDebug("ioapic %u: IPI: vector 0x%x, mode 0x%x, logical 0x%x, trigger 0x%x, dst 0x%x, shorthand 0x%x\n",
-	       ioapic->ioapic_id.id, ipi.vector, ipi.mode, ipi.logical, ipi.trigger_mode, ipi.dst, ipi.dst_shorthand);
+    //    PrintDebug("ioapic %u: IPI: vector 0x%x, mode 0x%x, logical 0x%x, trigger 0x%x, dst 0x%x, shorthand 0x%x\n",
+    //	       ioapic->ioapic_id.id, ipi.vector, ipi.mode, ipi.logical, ipi.trigger_mode, ipi.dst, ipi.dst_shorthand);
     // Need to add destination argument here...
     if (v3_apic_send_ipi(vm, &ipi, ioapic->apic_dev_data) == -1) {
 	PrintError("Error sending IPI to apic %d\n", ipi.dst);
@@ -289,10 +296,10 @@ static int ioapic_write(struct guest_info * core, addr_t guest_addr, void * src,
     uint32_t reg_tgt = guest_addr - ioapic->base_addr;
     uint32_t op_val = *(uint32_t *)src;
 
-    PrintDebug("ioapic %u: IOAPIC Write at %p (val = %d)\n",  ioapic->ioapic_id.id, (void *)guest_addr, *(uint32_t *)src);
+    //  PrintDebug("ioapic %u: IOAPIC Write at %p (val = %d)\n",  ioapic->ioapic_id.id, (void *)guest_addr, *(uint32_t *)src);
 
     if (reg_tgt == 0x00) {
-	PrintDebug("ioapic %u: Setting ioapic index register to 0x%x.\n", ioapic->ioapic_id.id, op_val);
+	//	PrintDebug("ioapic %u: Setting ioapic index register to 0x%x.\n", ioapic->ioapic_id.id, op_val);
 	ioapic->index_reg = op_val;
     } else if (reg_tgt == 0x10) {
 	// IOWIN register
@@ -313,20 +320,21 @@ static int ioapic_write(struct guest_info * core, addr_t guest_addr, void * src,
 		    uint_t redir_index = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) >> 1;
 		    uint_t hi_val = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) & 1;
 
-		    PrintDebug("ioapic %u: Writing value 0x%x to redirection entry %u (%s)\n",
-			       ioapic->ioapic_id.id, op_val, redir_index, hi_val ? "hi" : "low");
+		    /*	    PrintDebug("ioapic %u: Writing value 0x%x to redirection entry %u (%s)\n",
+		           ioapic->ioapic_id.id, op_val, redir_index, hi_val ? "hi" : "low");
+		    */
 
 		    if (redir_index > 0x3f) {
 			PrintError("ioapic %u: Invalid redirection table entry %x\n", ioapic->ioapic_id.id, (uint32_t)redir_index);
 			return -1;
 		    }
 		    if (hi_val) {
-			PrintDebug("ioapic %u: Writing to hi of pin %d\n", ioapic->ioapic_id.id, redir_index);
-			ioapic->redir_tbl[redir_index].hi = op_val;
+			PrintDebug("ioapic %u: Writing to hi of pin %d (val=0x%x)\n", ioapic->ioapic_id.id, redir_index, op_val);
 
+			ioapic->redir_tbl[redir_index].hi = op_val;
 			// TODO: send pending irqs
 		    } else {
-			PrintDebug("ioapic %u: Writing to lo of pin %d\n", ioapic->ioapic_id.id, redir_index);
+			PrintDebug("ioapic %u: Writing to lo of pin %d (val=0x%x)\n", ioapic->ioapic_id.id, redir_index, op_val);
 			op_val &= REDIR_LO_MASK;
 			ioapic->redir_tbl[redir_index].lo &= ~REDIR_LO_MASK;
 			ioapic->redir_tbl[redir_index].lo |= op_val;
