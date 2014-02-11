@@ -139,6 +139,7 @@ palacios_ioctl(struct file * filp,
 
 	    guest->img = img_ptr;
 	    guest->img_size = img_size;
+	    strncpy(guest->name, guest_path.vm_name, 128);
 
 	    palacios_create_vm(guest);
 
