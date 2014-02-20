@@ -13,11 +13,13 @@ ifdef V3_CONFIG_LINUX_USER_STATIC
 
 endif
 
-CFLAGS += -I../linux_module 
 
 CC = gcc
 AR = ar
 
+PETLIB := ./petlib
+
+CFLAGS += -I../linux_module -I$(PETLIB) -L$(PETLIB)
 
 #
 # Executables that implement core functionality
@@ -67,7 +69,8 @@ execs-$(V3_CONFIG_CHECKPOINT) += 	v3_save \
 					v3_load
 
 
-libs-y := 	ezxml.a
+libs-y := 	ezxml.a 
+
 
 
 libs-$(V3_CONFIG_HOST_DEVICE) += v3_user_host_dev.a
@@ -95,8 +98,12 @@ quiet-build = \
 
 
 
-all: depend $(libs-y) $(execs-y) 
+all: depend petlib $(libs-y) $(execs-y) 
 
+petlib: $(PETLIB)/petlib.a
+
+$(PETLIB)/petlib.a:
+	make -C $(PETLIB)
 
 #
 # Most tools compile in a straightforward way
@@ -105,8 +112,8 @@ all: depend $(libs-y) $(execs-y)
 include .dependencies
 
 
-% : %.c v3_ctrl.h 
-	$(call build,CC,$(CC) $(CFLAGS) $<  -o $@)
+% : %.c v3_ctrl.h
+	$(call build,CC,$(CC) $(CFLAGS) $< $(PETLIB)/petlib.a -o $@)
 
 
 %.o : %.c
@@ -117,6 +124,7 @@ include .dependencies
 
 #
 # Tools requiring specialized build processes
+#
 #
 
 v3_cons: v3_cons.c v3_ctrl.h
@@ -155,6 +163,7 @@ clean-cmd = rm -f $(wildcard $(execs-y) $(execs-) $(libs-y) $(libs-) *.o)
 
 clean:
 	$(call quiet-build,$(clean-cmd))
+	make -C $(PETLIB) clean
 
 depend:
 	$(call quiet-build,$(CC) -MM $(CFILES) -I../linux_module > .dependencies)
