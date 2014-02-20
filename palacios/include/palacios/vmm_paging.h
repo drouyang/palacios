@@ -52,18 +52,18 @@ typedef enum {PAGE_4KB, PAGE_2MB, PAGE_4MB, PAGE_1GB,
 
 
 /* Converts an address into a page table index */
-#define PDE32_INDEX(x)  ((((uint_t)x) >> 22) & 0x3ff)
-#define PTE32_INDEX(x)  ((((uint_t)x) >> 12) & 0x3ff)
+#define PDE32_INDEX(x)  ((((uint32_t)x) >> 22) & 0x3ff)
+#define PTE32_INDEX(x)  ((((uint32_t)x) >> 12) & 0x3ff)
 
 
-#define PDPE32PAE_INDEX(x) ((((uint_t)x) >> 30) & 0x3)
-#define PDE32PAE_INDEX(x)  ((((uint_t)x) >> 21) & 0x1ff)
-#define PTE32PAE_INDEX(x)  ((((uint_t)x) >> 12) & 0x1ff)
+#define PDPE32PAE_INDEX(x) ((((uint32_t)x) >> 30) & 0x3)
+#define PDE32PAE_INDEX(x)  ((((uint32_t)x) >> 21) & 0x1ff)
+#define PTE32PAE_INDEX(x)  ((((uint32_t)x) >> 12) & 0x1ff)
 
-#define PML4E64_INDEX(x) ((((ullong_t)x) >> 39) & 0x1ff)
-#define PDPE64_INDEX(x) ((((ullong_t)x) >> 30) & 0x1ff)
-#define PDE64_INDEX(x) ((((ullong_t)x) >> 21) & 0x1ff)
-#define PTE64_INDEX(x) ((((ullong_t)x) >> 12) & 0x1ff)
+#define PML4E64_INDEX(x) ((((uint64_t)x) >> 39) & 0x1ff)
+#define PDPE64_INDEX(x) ((((uint64_t)x) >> 30) & 0x1ff)
+#define PDE64_INDEX(x) ((((uint64_t)x) >> 21) & 0x1ff)
+#define PTE64_INDEX(x) ((((uint64_t)x) >> 12) & 0x1ff)
 
 
 /* Gets the base address needed for a Page Table entry */
@@ -81,11 +81,11 @@ typedef enum {PAGE_4KB, PAGE_2MB, PAGE_4MB, PAGE_1GB,
 /* *** */
 
 
-#define PAGE_OFFSET(x) ((x) & 0xfff)
-#define PAGE_OFFSET_4KB(x) ((x) & 0xfff)
-#define PAGE_OFFSET_2MB(x) ((x) & 0x1fffff)
-#define PAGE_OFFSET_4MB(x) ((x) & 0x3fffff)
-#define PAGE_OFFSET_1GB(x) ((x) & 0x3fffffff)
+#define PAGE_OFFSET(x) ((x) & 0xfffULL)
+#define PAGE_OFFSET_4KB(x) ((x) & 0xfffULL)
+#define PAGE_OFFSET_2MB(x) ((x) & 0x1fffffULL)
+#define PAGE_OFFSET_4MB(x) ((x) & 0x3fffffULL)
+#define PAGE_OFFSET_1GB(x) ((x) & 0x3fffffffULL)
 
 #define PAGE_POWER 12
 #define PAGE_POWER_4KB 12
@@ -100,11 +100,11 @@ typedef enum {PAGE_4KB, PAGE_2MB, PAGE_4MB, PAGE_1GB,
 #define PAGE_ADDR_4MB(x) (((x) >> PAGE_POWER_4MB) << PAGE_POWER_4MB)
 #define PAGE_ADDR_1GB(x) (((x) >> PAGE_POWER_1GB) << PAGE_POWER_1GB)
 
-#define PAGE_SIZE 4096
-#define PAGE_SIZE_4KB 4096
-#define PAGE_SIZE_2MB (4096 * 512)
-#define PAGE_SIZE_4MB (4096 * 1024)
-#define PAGE_SIZE_1GB 0x40000000
+#define PAGE_SIZE     0x00001000ULL
+#define PAGE_SIZE_4KB PAGE_SIZE
+#define PAGE_SIZE_2MB 0x00200000ULL
+#define PAGE_SIZE_4MB 0x00400000ULL
+#define PAGE_SIZE_1GB 0x40000000ULL
 
 /* *** */
 

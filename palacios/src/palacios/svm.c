@@ -797,14 +797,12 @@ int v3_start_svm_guest(struct guest_info * info) {
 	
 	if (v3_svm_enter(info) == -1) {
 	    vmcb_ctrl_t * guest_ctrl = GET_VMCB_CTRL_AREA((vmcb_t*)(info->vmm_data));
-	    addr_t host_addr;
-	    addr_t linear_addr = 0;
 	    
 	    info->vm_info->run_state = VM_ERROR;
 	    
 	    V3_Print("SVM core %u: SVM ERROR!!\n", info->vcpu_id); 
 	    
-	    v3_print_guest_state(info);
+
 	    
 	    V3_Print("SVM core %u: SVM Exit Code: %p\n", info->vcpu_id, (void *)(addr_t)guest_ctrl->exit_code); 
 	    
@@ -814,20 +812,8 @@ int v3_start_svm_guest(struct guest_info * info) {
 	    V3_Print("SVM core %u: exit_info2 low = 0x%.8x\n", info->vcpu_id, *(uint_t*)&(guest_ctrl->exit_info2));
 	    V3_Print("SVM core %u: exit_info2 high = 0x%.8x\n", info->vcpu_id, *(uint_t *)(((uchar_t *)&(guest_ctrl->exit_info2)) + 4));
 	    
-	    linear_addr = get_addr_linear(info, info->rip, V3_SEG_CS);
-	    
-	    if (info->mem_mode == PHYSICAL_MEM) {
-		v3_gpa_to_hva(info, linear_addr, &host_addr);
-	    } else if (info->mem_mode == VIRTUAL_MEM) {
-		v3_gva_to_hva(info, linear_addr, &host_addr);
-	    }
-	    
-	    V3_Print("SVM core %u: Host Address of rip = 0x%p\n", info->vcpu_id, (void *)host_addr);
-	    
-	    V3_Print("SVM core %u: Instr (15 bytes) at %p:\n", info->vcpu_id, (void *)host_addr);
-	    v3_dump_mem((uint8_t *)host_addr, 15);
-	    
-	    v3_print_stack(info);
+	    v3_print_guest_state(info);
+
 
 	    break;
 	}

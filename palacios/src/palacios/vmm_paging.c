@@ -1469,6 +1469,13 @@ int v3_walk_guest_pt_64(struct guest_info * info,  v3_reg_t guest_cr3,
     }
 
     for (i = 0; i < MAX_PML4E64_ENTRIES; i++) {
+
+	if (vaddr & 0x0000800000000000ULL) {
+	    vaddr |= 0xffff000000000000ULL;
+	} else {
+	    vaddr &= 0x0000ffffffffffffULL;
+	}
+
 	if (guest_pml[i].present) {
 	    addr_t pdpe_pa = BASE_TO_PAGE_ADDR(guest_pml[i].pdp_base_addr);
 	    pdpe64_t * tmp_pdpe = NULL;

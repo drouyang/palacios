@@ -25,6 +25,7 @@
 #include <palacios/vmm_decoder.h>
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vmm_config.h>
+#include <palacios/vmm_hypercall.h>
 
 #define PRINT_TELEMETRY  0x00000001
 #define PRINT_CORE_STATE 0x00000002
@@ -218,6 +219,7 @@ static int v3_print_disassembly(struct guest_info * core) {
 void v3_print_guest_state(struct guest_info * core) {
     addr_t linear_addr = 0; 
     addr_t host_addr = 0;
+    int ret = 0;
 
 
     V3_Print("=========================================\n");
@@ -255,21 +257,27 @@ void v3_print_guest_state(struct guest_info * core) {
     v3_print_mem_map(core->vm_info);
 
     if (core->mem_mode == PHYSICAL_MEM) {
-	v3_gpa_to_hva(core, linear_addr, &host_addr);
+	ret = v3_gpa_to_hva(core, linear_addr, &host_addr);
     } else if (core->mem_mode == VIRTUAL_MEM) {
-	v3_gva_to_hva(core, linear_addr, &host_addr);
+	ret = v3_gva_to_hva(core, linear_addr, &host_addr);
     }
+
     
 
-    V3_Print("Core %u: Instr (15 bytes) at %p:\n", core->vcpu_id, (void *)host_addr);
-    
-    v3_dump_mem((uint8_t *)host_addr - 15, 15);
-    V3_Print("Instruction Ptr here:\n");
-    v3_dump_mem((uint8_t *)host_addr, 15);
-
+    if (ret == 0) {
+	V3_Print("Core %u: Instr (15 bytes) at %p:\n", core->vcpu_id, (void *)host_addr);
+	
+	v3_dump_mem((uint8_t *)host_addr - 15, 15);
+	V3_Print("Instruction Ptr here:\n");
+	v3_dump_mem((uint8_t *)host_addr, 15);
+    } else {
+	PrintError("Error could not get host address of RIP (linear_addr=%p)\n", (void *)linear_addr);
+    }
 
     v3_print_stack(core);
 
+    V3_Print("Guest Kernel Backtrace\n");
+    v3_print_backtrace(core);
 
        //  v3_print_disassembly(core);
 

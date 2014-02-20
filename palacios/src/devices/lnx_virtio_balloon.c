@@ -21,15 +21,13 @@
 #include <palacios/vmm_dev_mgr.h>
 #include <devices/lnx_virtio_pci.h>
 #include <palacios/vm_guest_mem.h>
+#include <palacios/vmm_paging.h>
 
 #include <devices/pci.h>
 
 
 #define BLN_REQUESTED_PORT     20
 #define BLN_ALLOCATED_PORT     28
-
-
-#define PAGE_SIZE 4096
 
 
 struct balloon_config {
