@@ -502,20 +502,32 @@ static int video_write_mem(struct guest_info * core, addr_t guest_addr, void * d
     length_adjusted = length;
     if (state->activefb_addr > guest_addr) {
     	uint_t diff = state->activefb_addr - guest_addr;
-    	if (diff >= length_adjusted) return length;
+
+    	if (diff >= length_adjusted) {
+	    PrintVerbose("Video: Update Aborted due to (diff >= length_adjusted)\n");
+	    PrintVerbose("diff=%u, length_adjusted=%u\n", diff, length_adjusted);
+	    return length;
+	}
+
     	guest_addr += diff;
     	length_adjusted -= diff;
     }
 
     framebuf_offset = guest_addr - state->activefb_addr;
-    if (state->activefb_len <= framebuf_offset) return length;
+
+    if (state->activefb_len <= framebuf_offset) {
+	PrintVerbose("Video: Update Aborted due to (state->activefb_len <= framebuf_offset)\n");
+	return length;
+    }
+    
     if (length_adjusted > state->activefb_len - framebuf_offset) {
     	length_adjusted = state->activefb_len - framebuf_offset;
     }
 
     /* determine position on screen, considering wrapping */
     framebuf_offset_screen = state->screen_offset * BYTES_PER_COL;
-    if (framebuf_offset > framebuf_offset_screen) {
+
+    if (framebuf_offset >= framebuf_offset_screen) {
     	screen_offset = framebuf_offset - framebuf_offset_screen;
     } else {
     	screen_offset = framebuf_offset + state->activefb_len - framebuf_offset_screen;
@@ -525,7 +537,13 @@ static int video_write_mem(struct guest_info * core, addr_t guest_addr, void * d
     screen_pos = screen_offset / BYTES_PER_COL;
     x = screen_pos % state->hchars;
     y = screen_pos / state->hchars;
-    if (y >= state->vchars) return length;
+
+    
+    if (y >= state->vchars) {
+	PrintVerbose("Video: update aborted due to (y >= state->vchars) y=%u, state->vchars=%u\n", y, state->vchars);
+	return length;
+    }
+
     PrintVerbose("Video: update_screen(%d, %d, %d)\n", x, y, length_adjusted);
     state->ops->update_screen(x, y, length_adjusted, state->private_data);
 
