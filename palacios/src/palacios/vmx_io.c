@@ -60,12 +60,6 @@ int v3_init_vmx_io_map(struct v3_vm_info * vm) {
     vm->io_map.arch_data = V3_VAddr(temp);
     memset(vm->io_map.arch_data, 0xff, PAGE_SIZE_4KB * 2);
 
-    /*
-     * Allow direct access to the PC debug port (it is often used for I/O
-     * delays, but the vmexits simply slow things down).
-     */
-    update_map(vm, 0x80, 0, 0);
-
     v3_refresh_io_map(vm);
 
     return 0;
