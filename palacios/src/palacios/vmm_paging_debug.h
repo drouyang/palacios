@@ -446,12 +446,12 @@ static int print_page_tree_cb(struct guest_info * info, page_type_t type, addr_t
 
 
 
-void PrintPTEntry(struct guest_info * info, page_type_t type, addr_t vaddr, void * entry) {
+void v3_print_pt_entry(struct guest_info * info, page_type_t type, addr_t vaddr, void * entry) {
     print_page_tree_cb(info, type, vaddr, PAGE_ADDR_4KB((addr_t)entry), 0, NULL);
 }
 
 
-void PrintHostPageTables(struct guest_info * info, v3_cpu_mode_t cpu_mode, addr_t cr3) {
+void v3_print_host_pgtables(struct guest_info * info, v3_cpu_mode_t cpu_mode, addr_t cr3) {
     PrintDebug("CR3: %p\n", (void *)cr3);
     switch (cpu_mode) {
 	case PROTECTED:
@@ -472,7 +472,7 @@ void PrintHostPageTables(struct guest_info * info, v3_cpu_mode_t cpu_mode, addr_
 }
 
 
-void PrintGuestPageTables(struct guest_info * info, addr_t cr3) {
+void v3_print_guest_pgtables(struct guest_info * info, addr_t cr3) {
     PrintDebug("Guest Page Tables -- CR3: %p\n", (void *)cr3);
     switch (info->cpu_mode) {
 	case REAL:
@@ -493,7 +493,7 @@ void PrintGuestPageTables(struct guest_info * info, addr_t cr3) {
     }
 }
 
-void PrintHostPageTree(struct guest_info * info,  addr_t virtual_addr, addr_t cr3) {
+void v3_print_host_pg_walk(struct guest_info * info,  addr_t virtual_addr, addr_t cr3) {
     PrintDebug("CR3: %p\n", (void *)cr3);
     switch (info->cpu_mode) {
 	case PROTECTED:
@@ -513,7 +513,7 @@ void PrintHostPageTree(struct guest_info * info,  addr_t virtual_addr, addr_t cr
     }
 }
 
-void PrintGuestPageTree(struct guest_info * info, addr_t virtual_addr, addr_t cr3) {
+void v3_print_guest_pg_walk(struct guest_info * info, addr_t virtual_addr, addr_t cr3) {
     PrintDebug("CR3: %p\n", (void *)cr3);
     switch (info->cpu_mode) {
 	case PROTECTED:

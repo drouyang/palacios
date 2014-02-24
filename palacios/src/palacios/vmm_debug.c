@@ -32,6 +32,7 @@
 #define PRINT_ARCH_STATE 0x00000004
 #define PRINT_STACK      0x00000008
 #define PRINT_BACKTRACE  0x00000010
+#define PRINT_PGTABLES   0x00000020
 
 #define CLEAR_COUNTERS   0x40000000
 #define SINGLE_EXIT_MODE 0x80000000 // enable single exit when this flag is set, until flag is cleared
@@ -63,12 +64,20 @@ static int core_handler(struct guest_info * core, uint32_t cmd) {
 	v3_print_backtrace(core);
     }
 
+    if (cmd & PRINT_PGTABLES) {
+	//	v3_print_guest_pgtables(core, core->ctrl_regs.cr3);
+	v3_print_guest_pg_walk(core, 0xffffffff80400000ULL, core->ctrl_regs.cr3);
+    }
+
     return 0;
 }
 
 static int clear_counters(struct guest_info * core) {
     core->time_state.time_in_guest = 0;
     core->time_state.time_in_host = 0;
+
+    // clear telemetry
+    v3_telemetry_reset(core);
 
     return 0;
 }
@@ -108,11 +117,27 @@ static int evt_handler(struct v3_vm_info * vm, struct v3_debug_event * evt, void
 }
 
 
+
+static int debug_hcall(struct guest_info * core, hcall_id_t hcall_id, void * priv_data) {
+    uint32_t cmd = core->vm_regs.rbx;
+
+    if (cmd & CLEAR_COUNTERS) {
+	clear_counters(core);
+    }
+
+    core_handler(core, cmd);
+    
+    return 0;
+}
+
+
 int v3_init_vm_debugging(struct v3_vm_info * vm) {
     v3_hook_host_event(vm, HOST_DEBUG_EVT, 
 		       V3_HOST_EVENT_HANDLER(evt_handler), 
 		       NULL);
 
+
+    v3_register_hypercall(vm, DEBUG_CMD_HCALL, debug_hcall, NULL);
 
     return 0;
 }

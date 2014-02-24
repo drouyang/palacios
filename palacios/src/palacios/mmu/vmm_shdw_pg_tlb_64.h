@@ -184,9 +184,9 @@ static int handle_pdpe_shadow_pagefault_64(struct guest_info * info, addr_t faul
 
     if (fault_addr==0) { 
 	PrintDebug("Guest Page Tree for guest virtual address zero fault\n");
-	PrintGuestPageTree(info,fault_addr,(addr_t)(info->shdw_pg_state.guest_cr3));
+	v3_print_guest_pg_walk(info,fault_addr,(addr_t)(info->shdw_pg_state.guest_cr3));
 	PrintDebug("Host Page Tree for guest virtual address zero fault\n");
-	PrintHostPageTree(info,fault_addr,(addr_t)(info->ctrl_regs.cr3));
+	v3_print_host_pg_walk(info,fault_addr,(addr_t)(info->ctrl_regs.cr3));
     }
 
     // Check the guest page permissions
@@ -316,7 +316,7 @@ static int handle_pde_shadow_pagefault_64(struct guest_info * info, addr_t fault
 	shadow_pde->writable = guest_pde->writable;
 
 	//PrintDebug("Returning due to large page Write Error\n");
-	//PrintHostPageTree(info, fault_addr, info->ctrl_regs.cr3);
+	//v3_print_host_pg_walk(info, fault_addr, info->ctrl_regs.cr3);
 
 	return 0;
     } else if ((shadow_pde_access != PT_ACCESS_NOT_PRESENT) &&
@@ -571,7 +571,7 @@ static int handle_2MB_shadow_pagefault_pde_64(struct guest_info * info,
 	// Inconsistent state...
 	// Guest Re-Entry will flush tables and everything should now workd
 	PrintDebug("Inconsistent state... Guest re-entry should flush tlb\n");
-	//PrintHostPageTree(info, fault_addr, info->ctrl_regs.cr3);
+	//v3_print_host_pg_walk(info, fault_addr, info->ctrl_regs.cr3);
 	return 0;
     }
 
@@ -623,7 +623,7 @@ static int handle_2MB_shadow_pagefault_pde_64(struct guest_info * info,
 	return -1;
     }
 
-    //  PrintHostPageTree(info, fault_addr, info->ctrl_regs.cr3);
+    //  v3_print_host_pg_walk(info, fault_addr, info->ctrl_regs.cr3);
     PrintDebug("Returning from large page->large page fault handler\n");
     return 0;
 }
@@ -654,7 +654,7 @@ static int handle_2MB_shadow_pagefault_pte_64(struct guest_info * info,
 	// Inconsistent state...
 	// Guest Re-Entry will flush tables and everything should now workd
 	PrintDebug("Inconsistent state... Guest re-entry should flush tlb\n");
-	//PrintHostPageTree(info, fault_addr, info->ctrl_regs.cr3);
+	//v3_print_host_pg_walk(info, fault_addr, info->ctrl_regs.cr3);
 	return 0;
     }
 
@@ -711,7 +711,7 @@ static int handle_2MB_shadow_pagefault_pte_64(struct guest_info * info,
 	return -1;
     }
 
-    //  PrintHostPageTree(info, fault_addr, info->ctrl_regs.cr3);
+    //  v3_print_host_pg_walk(info, fault_addr, info->ctrl_regs.cr3);
     PrintDebug("Returning from large page->small page fault handler\n");
     return 0;
 }
@@ -794,7 +794,7 @@ static inline int handle_shadow_invlpg_64(struct guest_info * info, addr_t vaddr
     int ret =  v3_drill_host_pt_64(info, info->ctrl_regs.cr3, vaddr, invalidation_cb_64, NULL);
     if (ret == -1) {
 	PrintError("Page table drill returned error.... \n");
-	PrintHostPageTree(info, vaddr, info->ctrl_regs.cr3);
+	v3_print_host_pg_walk(info, vaddr, info->ctrl_regs.cr3);
     }
 
     return (ret == -1) ? -1 : 0; 

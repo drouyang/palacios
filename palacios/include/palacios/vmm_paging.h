@@ -509,9 +509,9 @@ pdpe32pae_t * create_passthrough_pts_32PAE(struct guest_info * guest_info);
 pml4e64_t * create_passthrough_pts_64(struct guest_info * info);
 
 
-void delete_page_tables_32(pde32_t * pde);
-void delete_page_tables_32pae(pdpe32pae_t * pdpe);
-void delete_page_tables_64(pml4e64_t *  pml4);
+void v3_delete_pgtables_32(pde32_t * pde);
+void v3_delete_pgtables_32pae(pdpe32pae_t * pdpe);
+void v3_delete_pgtables_64(pml4e64_t *  pml4);
 
 
 
@@ -519,11 +519,11 @@ const uchar_t * v3_page_type_to_str(page_type_t type);
 
 
 
-void PrintPTEntry(struct guest_info * info, page_type_t type, addr_t vaddr, void * entry);
-void PrintHostPageTables(struct guest_info * info,  v3_cpu_mode_t cpu_mode, addr_t cr3);
-void PrintGuestPageTables(struct guest_info * info, addr_t cr3);
-void PrintHostPageTree(struct guest_info * info, addr_t virtual_addr, addr_t cr3);
-void PrintGuestPageTree(struct guest_info * info, addr_t virtual_addr, addr_t cr3);
+void v3_print_pt_entry(struct guest_info * info, page_type_t type, addr_t vaddr, void * entry);
+void v3_print_host_pgtables(struct guest_info * info,  v3_cpu_mode_t cpu_mode, addr_t cr3);
+void v3_print_guest_pgtables(struct guest_info * info, addr_t cr3);
+void v3_print_guest_pg_walk(struct guest_info * info, addr_t virtual_addr, addr_t cr3);
+void v3_print_host_pg_walk(struct guest_info * info, addr_t virtual_addr, addr_t cr3);
 
 
 #endif // !__V3VEE__

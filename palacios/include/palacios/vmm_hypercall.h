@@ -48,6 +48,7 @@ typedef enum {
     MEM_OFFSET_HCALL =     0x1000,         // RBX: base addr(out)
     GUEST_INFO_HCALL =     0x3000,         // no args
     TELEMETRY_HCALL =      0x3001,         // no args
+    DEBUG_CMD_HCALL     =  0x3002,         // RBX: cmd
     BALLOON_START_HCALL =  0xba00,         // RAX: size
     BALLOON_QUERY_HCALL =  0xba01,         // RCX: req_pgs(out), RDX: alloc_pgs(out)
     OS_DEBUG_HCALL =       0xc0c0,          // RBX: msg_gpa, RCX: msg_len, RDX: buf_is_va (flag)

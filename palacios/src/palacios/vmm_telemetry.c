@@ -291,6 +291,40 @@ void v3_telemetry_end_exit(struct guest_info * info, uint_t exit_code) {
 
 
 
+void v3_telemetry_reset(struct guest_info * core) {
+    struct v3_core_telemetry * telemetry = &(core->core_telem);
+
+
+    /* Clear exit stats */
+    {
+	struct exit_event * evt = NULL;
+	struct rb_node * node = v3_rb_first(&(telemetry->exit_root));
+
+	do {
+	    evt = rb_entry(node, struct exit_event, tree_node);
+	    
+	    evt->cnt = 0;
+	    evt->handler_time = 0;
+	    
+	} while ((node = v3_rb_next(node)));
+    }
+
+    /* Clear Counter values */
+    {
+	struct hashtable_iter * iter = v3_create_htable_iter(telemetry->counter_table);
+
+	do {
+	    struct telem_counter * counter = (struct telem_counter *)v3_htable_get_iter_value(iter);
+	    counter->cnt = 0;
+	} while (v3_htable_iter_advance(iter));
+
+	v3_free_htable_iter(iter);
+    }
+
+    return;
+}
+
+
 
 void v3_add_telemetry_cb(struct v3_vm_info * vm, 
 			 void (*telemetry_fn)(struct v3_vm_info * vm, void * private_data, char * hdr),

@@ -53,7 +53,7 @@ static pt_entry_type_t pte64_lookup(pte64_t * pt, addr_t addr, addr_t * entry);
 
 
 
-void delete_page_tables_32(pde32_t * pde) {
+void v3_delete_pgtables_32(pde32_t * pde) {
     int i;
 
     if (pde == NULL) { 
@@ -74,7 +74,7 @@ void delete_page_tables_32(pde32_t * pde) {
     V3_FreePages(V3_PAddr(pde), 1);
 }
 
-void delete_page_tables_32pae(pdpe32pae_t * pdpe) {
+void v3_delete_pgtables_32pae(pdpe32pae_t * pdpe) {
     int i, j;
 
     if (pdpe == NULL) {
@@ -105,7 +105,7 @@ void delete_page_tables_32pae(pdpe32pae_t * pdpe) {
     V3_FreePages(V3_PAddr(pdpe), 1);
 }
 
-void delete_page_tables_64(pml4e64_t * pml4) {
+void v3_delete_pgtables_64(pml4e64_t * pml4) {
     int i, j, k;
 
     if (pml4 == NULL) {
