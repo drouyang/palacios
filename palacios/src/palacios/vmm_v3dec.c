@@ -226,7 +226,7 @@ static int parse_operands(struct guest_info * core, uint8_t * instr_ptr,
 	    instr->dst_operand.write = 1;
 
 
-	    decode_gpr(core, reg_code, &(instr->src_operand));
+	    decode_gpr(core, instr, reg_code, &(instr->src_operand));
 
 	    instr->num_operands = 2;
 	    break;
@@ -258,7 +258,7 @@ static int parse_operands(struct guest_info * core, uint8_t * instr_ptr,
 
 	    instr->dst_operand.size = operand_width;
 	    instr->dst_operand.type = REG_OPERAND;
-	    decode_gpr(core, reg_code, &(instr->dst_operand));
+	    decode_gpr(core, instr, reg_code, &(instr->dst_operand));
 
 	    instr->src_operand.read = 1;
 	    instr->dst_operand.write = 1;
@@ -361,7 +361,7 @@ static int parse_operands(struct guest_info * core, uint8_t * instr_ptr,
 
 	    instr->dst_operand.size = operand_width;
 	    instr->dst_operand.type = REG_OPERAND;
-	    decode_gpr(core, reg_code, &(instr->dst_operand));
+	    decode_gpr(core, instr, reg_code, &(instr->dst_operand));
 
 	    instr->src_operand.read = 1;
 	    instr->dst_operand.write = 1;
@@ -386,7 +386,7 @@ static int parse_operands(struct guest_info * core, uint8_t * instr_ptr,
 
 	    instr->dst_operand.size = operand_width;
 	    instr->dst_operand.type = REG_OPERAND;
-	    decode_gpr(core, reg_code, &(instr->dst_operand));
+	    decode_gpr(core, instr, reg_code, &(instr->dst_operand));
 
 	    instr->src_operand.read = 1;
 	    instr->dst_operand.write = 1;

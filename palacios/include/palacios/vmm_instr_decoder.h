@@ -366,6 +366,7 @@ struct sib_byte {
 struct v3_gprs;
 
 static inline int decode_gpr(struct guest_info * core,
+			     struct x86_instr * instr, 
 			     uint8_t reg_code,
 			     struct x86_operand * reg) {
 
@@ -385,28 +386,28 @@ static inline int decode_gpr(struct guest_info * core,
 	    reg->operand = (addr_t)&(gprs->rbx);
 	    break;
 	case 4:
-	    if (reg->size == 1) {
+	    if ((reg->size == 1) && (instr->prefixes.rex == 0)) {
 		reg->operand = (addr_t)&(gprs->rax) + 1;
 	    } else {
 		reg->operand = (addr_t)&(gprs->rsp);
 	    }
 	    break;
 	case 5:
-	    if (reg->size == 1) {
+	    if ((reg->size == 1) && (instr->prefixes.rex == 0)) {
 		reg->operand = (addr_t)&(gprs->rcx) + 1;
 	    } else {
 		reg->operand = (addr_t)&(gprs->rbp);
 	    }
 	    break;
 	case 6:
-	    if (reg->size == 1) {
+	    if ((reg->size == 1) && (instr->prefixes.rex == 0)) {
 		reg->operand = (addr_t)&(gprs->rdx) + 1;
 	    } else {
 		reg->operand = (addr_t)&(gprs->rsi);
 	    }
 	    break;
 	case 7:
-	    if (reg->size == 1) {
+	    if ((reg->size == 1) && (instr->prefixes.rex == 0)) {
 		reg->operand = (addr_t)&(gprs->rbx) + 1;
 	    } else {
 		reg->operand = (addr_t)&(gprs->rdi);
@@ -538,7 +539,7 @@ static  int decode_rm_operand16(struct guest_info * core,
 	//PrintDebug("first operand = Register (RM=%d)\n",modrm->rm);
 	operand->type = REG_OPERAND;
 
-	decode_gpr(core, modrm->rm, operand);
+	decode_gpr(core, instr, modrm->rm, operand);
 
     } else {
 	v3_seg_type_t seg = V3_SEG_DS;
@@ -635,7 +636,7 @@ static int decode_rm_operand32(struct guest_info * core,
     	operand->type = REG_OPERAND;
 	//    PrintDebug("first operand = Register (RM=%d)\n",modrm->rm);
 
-	decode_gpr(core, modrm->rm, operand);
+	decode_gpr(core, instr, modrm->rm, operand);
 
     } else {
 	v3_seg_type_t seg = V3_SEG_DS;
@@ -805,7 +806,7 @@ int decode_rm_operand64(struct guest_info * core, uint8_t * modrm_instr,
 	operand->type = REG_OPERAND;
 	//    PrintDebug("first operand = Register (RM=%d)\n",modrm->rm);
 	
-	decode_gpr(core, rm_val, operand);
+	decode_gpr(core, instr, rm_val, operand);
     } else {
 	v3_seg_type_t seg = V3_SEG_DS;
 	uint8_t rm_val = modrm->rm;
