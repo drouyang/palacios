@@ -238,11 +238,12 @@ int v3_init_vm(struct v3_vm_info * vm) {
 
 
 
+    v3_init_hypercall_map(vm);
+
 #ifdef V3_CONFIG_TELEMETRY
     v3_init_telemetry(vm);
 #endif
 
-    v3_init_hypercall_map(vm);
     v3_init_io_map(vm);
     v3_init_msr_map(vm);
     v3_init_cpuid_map(vm);

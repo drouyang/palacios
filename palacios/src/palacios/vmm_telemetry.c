@@ -79,6 +79,11 @@ static int telem_eq_fn(addr_t key1, addr_t key2) {
 static int free_callback(struct v3_vm_info * vm, struct telemetry_cb * cb);
 static int free_exit(struct guest_info * core, struct exit_event * event);
 
+static int telemetry_hcall(struct guest_info * core,
+        hcall_id_t hcall_id, void * priv_data) {
+    v3_print_core_telemetry(core);
+    return 0;
+}
 
 void v3_init_telemetry(struct v3_vm_info * vm) {
     struct v3_telemetry_state * telemetry = &(vm->telemetry);
@@ -89,6 +94,8 @@ void v3_init_telemetry(struct v3_vm_info * vm) {
     telemetry->prev_tsc = 0;
 
     INIT_LIST_HEAD(&(telemetry->cb_list));
+
+    v3_register_hypercall(vm, TELEMETRY_HCALL, telemetry_hcall, NULL);
 }
 
 void v3_deinit_telemetry(struct v3_vm_info * vm) {

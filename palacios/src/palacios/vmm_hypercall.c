@@ -147,8 +147,11 @@ int v3_register_hypercall(struct v3_vm_info * vm, hcall_id_t hypercall_id,
 
     if (insert_hypercall(vm, hcall)) {
 	V3_Free(hcall);
+        PrintError("Failed to insert hypercall %u\n", (unsigned int) hypercall_id);
 	return -1;
     }
+
+    V3_Print("Hypercall %u registered\n", (unsigned int) hypercall_id);
 
     return 0;
 }
