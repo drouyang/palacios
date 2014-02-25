@@ -2,7 +2,7 @@ menu "Host Interfaces"
 
 config FILE
         bool "Host Support for file operations"
-        default n
+        default y
         help
           Select this if your host OS supports file operatoins and you want Palacios to be able to use them.
 	
@@ -30,7 +30,7 @@ config STREAM
           
 config CONSOLE
 	bool "Host Support for VM text-mode console"
-        default n
+        default y
         help
           Select this if you want to forward a guest console interface to some host OS service
           This is for a TEXT MODE console.   Select the framebuffer console for graphics and text

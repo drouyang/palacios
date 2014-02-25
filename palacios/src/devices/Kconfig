@@ -396,7 +396,7 @@ config DEBUG_FILEDISK
 
 config NETDISK
 	bool "NETDISK storage backend"
-	default y
+	default n
 	depends on SOCKET && (IDE || LINUX_VIRTIO_BLOCK)
 	help 
 	  Includes the Network based disk backend
@@ -423,21 +423,21 @@ config TMPDISK
 
 config SWAPBYPASS_DISK_CACHE
 	bool "SwapBypass disk cache"
-	default y
+	default n
 	depends on SWAPBYPASS && (LINUX_VIRTIO_BLOCK || IDE)
 	help 
 	  Includes the SwapBypass ram based swap disk cache
 
 config SWAPBYPASS_DISK_CACHE2
 	bool "SwapBypass disk cache v2"
-	default y
+	default n
 	depends on SWAPBYPASS && (LINUX_VIRTIO_BLOCK || IDE)
 	help 
 	  Includes the SwapBypass ram based swap disk cache
 
 config DISK_MODEL
 	bool "Disk Performance Model"
-	default y
+	default n
 	depends on LINUX_VIRTIO_BLOCK || IDE
 	help 
 	  Includes Performance model filter for disk operations
