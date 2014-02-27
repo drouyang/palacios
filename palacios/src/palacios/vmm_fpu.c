@@ -209,7 +209,7 @@ int v3_fpu_init(struct guest_info * core) {
     memset(arch_state, 0, sizeof(struct v3_fpu_arch));
 
     // is OSXSAVE supported 
-    if (host_cr4->osxsave) {
+    if (host_cr4->osxsave == 1) {
 	fpu->osxsave_enabled = 1;
 	V3_Print("ENabling OSXSAVE for Guest\n");
 
@@ -330,7 +330,7 @@ int v3_fpu_deactivate(struct guest_info * core) {
 	//	V3_Print("Saving FPU state for core %d\n", core->vcpu_id);
 	v3_telemetry_inc_core_counter(core, "FPU_DEACTIVATE");
 	
-	if (fpu->osxsave_enabled) {
+	if ((fpu->osxsave_enabled) && (core->ctrl_regs.cr4 & 0x40000)) {
 
 	    __asm__ __volatile__ ("xsave %0\r\n"
 				  : 
@@ -338,7 +338,8 @@ int v3_fpu_deactivate(struct guest_info * core) {
 				  : "memory"
 				  );
 
-	} else if (fpu->osfxsr_enabled) {
+	} else if ((fpu->osfxsr_enabled) && (core->ctrl_regs.cr4 & (0x1 << 9))) {
+
 
 	    __asm__ __volatile__ ("fxsave %0\r\n"
 				  : 
@@ -386,15 +387,20 @@ int v3_fpu_activate(struct guest_info * core) {
     fpu->disable_fpu_exits = 1;
     
     if (fpu->osxsave_enabled) {
+	fpu->host_xcr0 = xgetbv();
 	xsetbv(fpu->guest_xcr0);
-	
-	// restore state
-	__asm__ __volatile__ ("xrstor %0 \r\n"
-			      : 
-			      : "m"(fpu->arch_state)
-			      : "memory"
-			      );
-    } else if (fpu->osfxsr_enabled) {
+    }
+    
+    
+    if ((fpu->osxsave_enabled) && (core->ctrl_regs.cr4 & 0x40000)) {
+	    // restore state
+	    __asm__ __volatile__ ("xrstor %0 \r\n"
+				  : 
+				  : "m"(fpu->arch_state)
+				  : "memory"
+				  );
+
+    } else if ((fpu->osfxsr_enabled) && (core->ctrl_regs.cr4 & (0x1 << 9))) {
 	// restore state
 	__asm__ __volatile__ ("fxrstor %0 \r\n"
 			      : 
@@ -429,12 +435,23 @@ int v3_fpu_handle_xsetbv(struct guest_info * core) {
 	return -1;
     }
 
-   if (fpu->osxsave_enabled) {
-       fpu->guest_xcr0 = (uint32_t)(core->vm_regs.rax);
-       fpu->guest_xcr0 += (core->vm_regs.rdx << 32);
-       
-       xsetbv(fpu->guest_xcr0);
-   }
+    if (core->ctrl_regs.cr4 & 0x40000) {
+	fpu->guest_xcr0 = (uint32_t)(core->vm_regs.rax);
+	fpu->guest_xcr0 += (core->vm_regs.rdx << 32);
+
+	if (fpu->osxsave_enabled) { // This should always evaluate to true
+	    PrintDebug("Calling xsetbv\n");
+	    
+	    xsetbv(fpu->guest_xcr0);
+	} else {
+	    PrintError("Tried to handle xsetbv, but it is not supported by the host\n");
+	    return -1;
+	}
+
+    } else {
+	v3_raise_exception(core, UD_EXCEPTION);
+    }
+
 
     core->rip += 3;
 

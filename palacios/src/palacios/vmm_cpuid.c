@@ -78,8 +78,42 @@ void v3_init_cpuid_map(struct v3_vm_info * vm) {
     // disable TSC deadline mode
     v3_cpuid_add_fields(vm, 0x00000001, 0, 0, 0, 0, (1 << 24), 0, 0, 0);
 
+
+
+    /* Fixup fields */
+    /* We set them in the mask to avoid conflicts */
+
+    // OSXSAVE enabled
+    v3_cpuid_add_fields(vm, 0x00000001, 0, 0, 0, 0, (1 << 27), 0, 0, 0);
+
 }
 
+
+void fixup_cpuid(struct guest_info * core, 
+		 uint32_t cpuid, 
+		 uint32_t * eax, uint32_t * ebx, 
+		 uint32_t * ecx, uint32_t * edx) {
+
+
+    switch (cpuid) {
+	case 0x00000001: {
+
+	    // Update OSXSAVE enabled flag based on CR4 OSXSAVE value
+	    if (core->ctrl_regs.cr4 & 0x40000) {
+		*ecx |= (1 << 27);
+	    } else {
+		*ecx &= ~(1 << 27);
+	    }
+	
+
+	    break;
+	}
+	default:
+	    return;
+    }
+
+    return;
+}
 
 
 
@@ -180,6 +214,8 @@ static int mask_hook(struct guest_info * core, uint32_t cpuid,
 
     *edx &= ~(mask->rdx_mask);
     *edx |= (mask->rdx & mask->rdx_mask);
+
+    fixup_cpuid(core, cpuid, eax, ebx, ecx, edx);
 
     return 0;
 }
