@@ -93,6 +93,8 @@ struct piix4_internal {
     uint16_t pmen;      // pm enable reg (offset = 0x02, len = 2)
     struct pm_control_reg pmcntrl;   // pm cntrl reg  (offset = 0x04, len = 2)
     uint32_t pmtmr;     // pm timer reg  (offset = 0x08, len = 3)
+
+    uint64_t init_tsc; 
 };
 
 
@@ -144,7 +146,7 @@ struct top_of_mem_reg {
 	uint8_t value;
 	struct {
 	    uint8_t rsvd1                    : 1;
-    uint8_t isadma_reg_fwd_en        : 1;
+	    uint8_t isadma_reg_fwd_en        : 1;
 	    uint8_t piix_rsvd                : 1;
 	    uint8_t isadma_lo_bios_fwd_en    : 1;
 	    uint8_t top_of_mem               : 4;
@@ -511,6 +513,9 @@ static int reset_piix4_pm(struct piix4_internal * piix4) {
     pm_cfg->smb_shdw_2 = 0;
     pm_cfg->smb_rev = 0;
 
+
+    rdtscll(piix4->init_tsc);
+
     return 0;
 }
 
@@ -699,17 +704,32 @@ static int pm_read_port(struct guest_info * core, uint16_t port,
 	    *(uint16_t *)dst = piix4->pmcntrl.value;
 
 	    break;
-	case PIIX4_PM_PMTMR_PORT:
+	case PIIX4_PM_PMTMR_PORT: {
 	    // There is a disagreement between the spec and seabios about this port....
+	    // timer frequency = 3579545 HZ
+	    uint64_t cur_tsc = 0;
+	    //uint64_t cpu_cycles_per_sec = core->time_state.guest_cpu_freq * 1000;
+	    // uint64_t tmr_ticks_per_sec = 3579545;
+	    uint64_t cycle_window = 0;
+	    // Multiply by 1000 to increase accuracy by capturing the remainder
+	    // We will divide by the same later
+	    //  uint64_t shifted_ratio = (cpu_cycles_per_sec * 1000) / tmr_ticks_per_sec;
 
 	    if (length != 4) {
 		PrintError("Invalid read length (%d) for PIIX4 PTMR port\n", length);
 		return -1;
 	    }
 	    
+	    rdtscll(cur_tsc);
+	    cycle_window = cur_tsc - piix4->init_tsc; 
+	    cycle_window *= 1000;
+	    
+	    
+
 	    *(uint32_t *)dst = piix4->pmtmr;
 
 	    break;
+	}
 	default:
 	    PrintError("PIIX4 PM port read unsupported on port 0x%x (length = %d)\n", port, length);
 	    return -1;
@@ -756,16 +776,6 @@ static int pm_write_port(struct guest_info * core, uint16_t port,
 
 	    break;
 	case PIIX4_PM_PMTMR_PORT:
-	    // There is a disagreement between the spec and seabios about this port....
-
-	    if (length != 4) {
-		PrintError("Invalid write length (%d) for PIIX4 PTMR port\n", length);
-		return -1;
-	    }
-	    
-	    piix4->pmtmr = *(uint32_t *)src;
-
-	    break;
 	default:
 	    PrintError("PIIX4 PM port write unsupported on port 0x%x (length = %d)\n", port, length);
 	    return -1;
