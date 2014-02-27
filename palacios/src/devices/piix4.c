@@ -62,6 +62,24 @@
 #define PIIX4_PM_GPOREG3_PORT      0x0036
 #define PIIX4_PM_GPOREG4_PORT      0x0037
 
+#define PIIX4_SMI_CMD_PORT	   0x00b2
+
+
+
+struct pm_control_reg {
+    union {
+	uint16_t value;
+	struct {
+            uint16_t sci_en		   : 1; // sci enable
+	    uint16_t brld_en_bm            : 1; // bus master reload enable
+	    uint16_t glb_rls               : 1; // global release
+	    uint16_t rsvd1		   : 7;
+            uint16_t sus_typ               : 3; // suspend type
+	    uint16_t sus_en		   : 1; // suspend enable
+	    uint16_t rsvd2		   : 2; 
+	} __attribute__((packed));
+    } __attribute__((packed));
+} __attribute__((packed));
 
 
 struct piix4_internal {
@@ -73,7 +91,7 @@ struct piix4_internal {
     // PM IO PORT registers
     uint16_t pmsts;     // pm status reg (offset = 0x00, len = 2)
     uint16_t pmen;      // pm enable reg (offset = 0x02, len = 2)
-    uint16_t pmcntrl;   // pm cntrl reg  (offset = 0x04, len = 2)
+    struct pm_control_reg pmcntrl;   // pm cntrl reg  (offset = 0x04, len = 2)
     uint32_t pmtmr;     // pm timer reg  (offset = 0x08, len = 3)
 };
 
@@ -604,6 +622,44 @@ static struct v3_device_ops dev_ops = {
 };
 
 
+
+static int smi_read_port(struct guest_info * core, uint16_t port, 
+			void * dst, uint32_t length, void * priv_data) {
+    PrintError("PIIX4 SMI port read unsupported\n");
+    return -1;
+}
+
+
+static int smi_write_port(struct guest_info * core, uint16_t port, 
+			 void * src, uint32_t length, void * priv_data) {
+    struct v3_southbridge * southbridge = priv_data;
+    struct piix4_internal * piix4 = container_of(southbridge, struct piix4_internal, southbridge);
+
+    uint8_t val = *((uint8_t *)src);
+
+    if (length != 1) {
+	PrintError("PIIX4 SMI port write: invalid length (%d)\n", length);
+	return -1;
+    }
+
+    switch (port) {
+        case 0xb2:
+            if (val == 0xf1) {
+                piix4->pmcntrl.sci_en = 1;
+            } else if (val == 0xf0) {
+                piix4->pmcntrl.sci_en = 0;
+	    }
+
+	    break;
+        default: 
+            PrintError("PIIX4 PM port read unsupported on port 0x%x (length = %d)\n", port, length);
+            return -1;
+    }
+
+    return length;
+}
+
+
 static int pm_read_port(struct guest_info * core, uint16_t port, 
 			void * dst, uint32_t length, void * priv_data) {
     struct v3_southbridge * southbridge = priv_data;
@@ -640,7 +696,7 @@ static int pm_read_port(struct guest_info * core, uint16_t port,
 		return -1;
 	    }
 	    
-	    *(uint16_t *)dst = piix4->pmsts;
+	    *(uint16_t *)dst = piix4->pmcntrl.value;
 
 	    break;
 	case PIIX4_PM_PMTMR_PORT:
@@ -696,7 +752,7 @@ static int pm_write_port(struct guest_info * core, uint16_t port,
 		return -1;
 	    }
 	    
-	    piix4->pmsts = *(uint16_t *)src;
+	    piix4->pmcntrl.value = *(uint16_t *)src;
 
 	    break;
 	case PIIX4_PM_PMTMR_PORT:
@@ -785,11 +841,15 @@ static int setup_pci(struct vm_device * dev) {
     for (i = 0; i < 64; i++) {
 	ret |= v3_dev_hook_io(dev, PIIX4_PM_BASE_PORT + i, &pm_read_port, &pm_write_port);
     }
+
+    ret |= v3_dev_hook_io(dev, PIIX4_SMI_CMD_PORT, &smi_read_port, &smi_write_port);
     
     if (ret != 0) {
 	PrintError("Error allocating IO hooks for PIIX PM subfunction\n");
 	return -1;
     }
+
+
     
 
     return 0;
@@ -835,9 +895,6 @@ static int piix4_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	return -1;
     }
 
-
-
-    
 
     return 0;
 }
