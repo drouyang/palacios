@@ -239,6 +239,11 @@ static int pic_raise_intr(struct v3_vm_info * vm, void * private_data, struct v3
     }
 
 
+/*    if (irq_num == 0) {
+	V3_Print("Raising PIT Timer\n");
+    }
+*/
+
     if (irq_num <= 7) {
 	state->master_irr |= 0x01 << irq_num;
     } else if ((irq_num > 7) && (irq_num < 16)) {
@@ -294,9 +299,26 @@ static int pic_lower_intr(struct v3_vm_info * vm, void * private_data, struct v3
 static int pic_intr_pending(struct guest_info * info, void * private_data) {
     struct pic_internal * state = (struct pic_internal*)private_data;
 
-    if ((state->master_irr & ~(state->master_imr)) || 
-	( (state->slave_irr & ~(state->slave_imr)) && 
-	  (state->master_imr & 0x04))) {
+    
+
+    if (state->master_irr & ~(state->master_imr)) {
+
+	if ((v3_get_vm_cpu_mode(info) != REAL) && 
+	    (state->master_icw2 <= 24)) {
+	    /* JRL: HACK to avoid injecting invalid IRQs after transition to Protected Mode
+	     * This is to fix an issue with the SEABIOS using the PIT, and then leaving it running
+	     * This causes Kitten to receive a stale IRQ on an invalid vector
+	     */
+
+	    return 0;
+	}
+
+	return 1;
+    }
+
+
+    if ( (state->slave_irr & ~(state->slave_imr)) && 
+	 (state->master_imr & 0x04)) {
 	return 1;
     }
 
@@ -324,6 +346,12 @@ static int pic_get_intr_number(struct guest_info * info, void * private_data) {
 		    if (((state->slave_irr & ~(state->slave_imr)) >> j) & 0x01) {
 			//state->slave_isr |= (0x1 << (i - 8));
 			irq = j + state->slave_icw2;
+			
+			if ((v3_get_vm_cpu_mode(info) != REAL) && (irq < 32)) {
+			    // invalid IRQ... lets squash it for now
+			    irq = -1;
+			}
+
 			break;
 		    }
 		}
@@ -337,6 +365,11 @@ static int pic_get_intr_number(struct guest_info * info, void * private_data) {
 		PrintDebug("8259 PIC: IRQ: %d, master_icw2: %x\n", i, state->master_icw2);
 		irq = i + state->master_icw2;
 
+		if ((v3_get_vm_cpu_mode(info) != REAL) && (irq < 32)) {
+		    // invalid IRQ... lets squash it for now
+		    irq = -1;
+		}
+		
 		break;
 	    }
 	}
@@ -608,6 +641,11 @@ static int write_master_port2(struct guest_info * core, ushort_t port, void * sr
     } else if (state->master_state == ICW4) {
         PrintDebug("8259 PIC: Setting ICW4 = %x (wr_Master2)\n", cw);
         state->master_icw4 = cw;
+	
+	if (state->master_icw4 & 0x2) {
+	    PrintError("Guest Set AEOI MODE!! Guest Set AEOI MODE!!\n");
+	}
+
         state->master_state = READY;
     } else if ((state->master_state == ICW1) || (state->master_state == READY)) {
         PrintDebug("8259 PIC: Setting IMR = %x (wr_Master2)\n", cw);

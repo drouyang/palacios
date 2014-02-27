@@ -822,6 +822,11 @@ static int deliver_ipi(struct apic_state * src_apic,
 	    // lowest priority - 
 	    // caller needs to have decided which apic to deliver to!
 
+	    if (ipi->vector < 32) {
+		PrintError("Delivering reserved IRQ (%d) through the APIC!!! This is bad\n", ipi->vector);
+		return -1;
+	    }
+
 	    PrintDebug("delivering IRQ %d to core %u\n", ipi->vector, dst_core->vcpu_id); 
 
 	    if (add_apic_irq_entry(dst_apic, ipi->vector, ipi->trigger_mode, ipi->ack, ipi->private_data) == -1) {
@@ -940,6 +945,7 @@ static struct apic_state * find_physical_apic(struct apic_dev_state * apic_dev, 
     return dst_apic;
 
 }
+
 
 
 static int route_ipi(struct apic_dev_state * apic_dev,

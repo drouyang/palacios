@@ -404,6 +404,11 @@ uint32_t v3_get_intr(struct guest_info * info) {
 	    for (j = 0; j < 8; j++) {
 		if (intr_state->virq_map[i] & (1 << j)) {
 		    ret = (i * 8) + j;
+		    
+		    if (ret < 32) {
+			PrintError("Received Exception as VIRQ\n");
+		    }
+
 		    break;
 		}
 	    }
@@ -416,6 +421,11 @@ uint32_t v3_get_intr(struct guest_info * info) {
 	    if (ctrl->ctrl_ops->intr_pending(info, ctrl->priv_data)) {
 		uint_t intr_num = ctrl->ctrl_ops->get_intr_number(info, ctrl->priv_data);
 		
+		
+		if (intr_num < 32) {
+		    PrintError("Received Exception from Interrupt controller\n");
+		}
+
 		//	PrintDebug("[get_intr_number] intr_number = %d\n", intr_num);
 		ret = intr_num;
 		break;

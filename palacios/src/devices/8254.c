@@ -732,7 +732,7 @@ static int pit_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     struct guest_info * info = &(vm->cores[0]);
 
     uint_t cpu_khz = info->time_state.guest_cpu_freq;
-    ullong_t reload_val = (ullong_t)cpu_khz * 1000;
+    uint64_t reload_val = (uint64_t)cpu_khz * 1000;
 
     pit_state = (struct pit *)V3_Malloc(sizeof(struct pit));
 
