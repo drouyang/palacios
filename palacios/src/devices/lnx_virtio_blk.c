@@ -19,6 +19,7 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_dev_mgr.h>
+#include <palacios/vmm_sem.h>
 #include <devices/lnx_virtio_pci.h>
 #include <palacios/vm_guest_mem.h>
 
@@ -26,7 +27,7 @@
 
 
 
-#ifndef V3_CONFIG_DEBUG_VIRTIO_BLK
+#ifndef V3_CONFIG_DEBUG_VIRTIO_BLOCK
 #undef PrintDebug
 #define PrintDebug(fmt, args...)
 #endif
@@ -90,13 +91,39 @@ struct virtio_dev_state {
     struct list_head dev_list;
 };
 
+
+#define IO_THREAD_QUEUE_SIZE 512
+#define VIRTIO_READ     0
+#define VIRTIO_WRITE    1
+#define VIRTIO_OTHER    2
+
+/* a virtio_req represents an entry in avail_queue
+ * it may contain multiple block requests as indicated
+ * in pending
+ */
+struct virtio_req {
+    uint64_t    index;
+    uint64_t    pending;
+    uint64_t    req_len;
+    uint8_t     *status_ptr;
+};
+
+struct virtio_blk_req {
+    struct virtio_req * parent;
+
+    unsigned int opcode;
+    uint8_t * buf;
+    uint64_t sector;
+    uint64_t len;
+    void * private_data;
+};
+
 struct virtio_blk_state {
 
     struct pci_device * pci_dev;
     struct blk_config block_cfg;
     struct virtio_config virtio_cfg;
 
-    
     struct virtio_queue queue;
 
     struct v3_dev_blk_ops * ops;
@@ -108,9 +135,17 @@ struct virtio_blk_state {
     struct virtio_dev_state * virtio_dev;
 
     struct list_head dev_link;
+
+    v3_sem_t sem_avail;
+    v3_lock_t req_queue_lock;
+    void * io_thread;
+    struct virtio_blk_req req_queue[IO_THREAD_QUEUE_SIZE];
+    uint64_t head;
+    uint64_t tail;
 };
 
-
+static v3_lock_t vq_lock;
+static v3_sem_t sem_isr_low;
 
 
 static int blk_reset(struct virtio_blk_state * virtio) {
@@ -123,40 +158,163 @@ static int blk_reset(struct virtio_blk_state * virtio) {
 
     virtio->virtio_cfg.status = 0;
     virtio->virtio_cfg.pci_isr = 0;
+    v3_sem_init(&sem_isr_low, 1);
+    return 0;
+}
+
+/* block if isr is set */
+static void virtio_notify(struct virtio_blk_state * blk_state) 
+{
+    struct virtio_queue * vq = &(blk_state->queue);
+
+    PrintDebug("virtio_blk isr value: %d\n", blk_state->virtio_cfg.pci_isr);
+
+    if (!(vq->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
+
+        while (blk_state->virtio_cfg.pci_isr == 1) {
+            PrintDebug("virtio_blk notify: wait isr clear\n");
+            v3_sem_down(sem_isr_low);
+        }
+
+        PrintDebug("Raising IRQ %d\n",  
+                blk_state->pci_dev->config_header.intr_line);
+
+        blk_state->virtio_cfg.pci_isr = 1;
+        v3_pci_raise_irq(blk_state->virtio_dev->pci_bus, 
+                blk_state->pci_dev, 0);
+
+    } else {
+        PrintDebug("io_dispatcher: VIRTIO_NO_IRQ_FLAG is set\n");
+    }
+    PrintDebug("virtio_blk isr value: %d\n", blk_state->virtio_cfg.pci_isr);
+
+}
+
+static void virtio_req_complete(struct virtio_blk_state * blk_state, struct virtio_req * req, uint8_t status) 
+{
+    struct virtio_queue * vq = &(blk_state->queue);
+
+    PrintDebug("complete avail_index %llu into used_index %d\n", 
+            (unsigned long long)req->index % QUEUE_SIZE, 
+            vq->used->index % QUEUE_SIZE);
+
+    v3_lock(vq_lock);
+    vq->used->ring[vq->used->index % QUEUE_SIZE].id 
+        = vq->avail->ring[req->index % QUEUE_SIZE];
+    vq->used->ring[vq->used->index % QUEUE_SIZE].length 
+        = req->req_len;
+    vq->used->index++;
+    v3_unlock(vq_lock);
+
+    *req->status_ptr = status;
+
+    V3_Free(req);
+
+    virtio_notify(blk_state);
+}
+
+static int io_dispatcher(void * arg) {
+    struct virtio_blk_state * blk_state = (struct virtio_blk_state *) arg;
+    struct virtio_blk_req * bq = blk_state->req_queue;
+    int ret = -1;
+    uint8_t status = BLK_STATUS_OK;
+
+    PrintDebug("Virtio io_dispatcher started\n");
+    while(1) {
+        v3_sem_down(blk_state->sem_avail);
+        PrintDebug("io_dispatcher waked up\n");
+
+        if (blk_state->head == blk_state->tail) {
+            PrintDebug("io_dispatcher: queue empty\n");
+            continue;
+        }
+
+        status = BLK_STATUS_OK;
+
+        /* we have one io_dispatcher per queue operating on tail,
+         * acquiring a lock should not be necessary
+         */
+        {
+            struct virtio_blk_req * req = &bq[blk_state->tail];
+
+            PrintDebug("io_dispatcher: opcode: %u, buf %p, sector %llu, len %llu\n",
+                        req->opcode, req->buf, 
+                        (unsigned long long) req->sector, 
+                        (unsigned long long) req->len);
+
+            if (bq[blk_state->tail].opcode == VIRTIO_WRITE) {
+                PrintDebug("Issue write\n");
+                ret = blk_state->ops->write(
+                        req->buf,
+                        req->sector * SECTOR_SIZE,
+                        req->len, 
+                        req->private_data);
+                if (ret < 0) {
+                    status = BLK_STATUS_ERR;
+                }
+            } else if (bq[blk_state->tail].opcode == VIRTIO_READ) {
+                PrintDebug("Issue read\n");
+                ret = blk_state->ops->read(
+                        req->buf,
+                        req->sector * SECTOR_SIZE,
+                        req->len, 
+                        req->private_data);
+                if (ret < 0) {
+                    status = BLK_STATUS_ERR;
+                }
+            } else {
+                PrintDebug("Unsupported\n");
+                status = BLK_STATUS_NOT_SUPPORTED;
+            }
+
+            blk_state->tail = (blk_state->tail + 1) % IO_THREAD_QUEUE_SIZE;
+
+            if (req->parent != NULL) {
+                req->parent->req_len += req->len;
+                req->parent->pending--;
+                PrintDebug("io_dispatcher: req %p, pending %llu\n", req->parent, (unsigned long long)req->parent->pending);
+            } else {
+                PrintDebug("io_dispatcher: NULL parent\n");
+                continue; /* request already aborted */
+            }
+
+            if (ret < 0) {
+                PrintError("io_dispatcher: io error: opcode: %u, buf %p, sector %llu, len %llu\n",
+                        req->opcode, req->buf, 
+                        (unsigned long long) req->sector, 
+                        (unsigned long long) req->len);
+                status = BLK_STATUS_ERR;
+                req->parent->pending = 0; /* abort */
+            }
+
+            if (status == BLK_STATUS_NOT_SUPPORTED) {
+                PrintDebug("io_dispatcher: unsupported operation\n");
+                req->parent->pending = 0; /* abort */
+            }
+
+            /* request completed and notification*/
+            if (req->parent->pending == 0) {
+                PrintDebug("io_dispatcher: virtio req %p completed\n", req->parent);
+                virtio_req_complete(blk_state, req->parent, status);
+            }
+
+        }
+    }
     return 0;
 }
 
 
 
-
-static int handle_read_op(struct virtio_blk_state * blk_state, uint8_t * buf, uint64_t * sector, uint64_t len) {
-    int ret = -1;
-
-    PrintDebug("Reading Disk\n");
-    ret = blk_state->ops->read(buf, (*sector) * SECTOR_SIZE, len, (void *)(blk_state->backend_data));
-    *sector += (len / SECTOR_SIZE);
-
-    return ret;
-}
-
-
-static int handle_write_op(struct virtio_blk_state * blk_state, uint8_t * buf, uint64_t * sector, uint64_t len) {
-    int ret = -1;
-
-    PrintDebug("Writing Disk\n");
-    ret = blk_state->ops->write(buf, (*sector) * SECTOR_SIZE, len, (void *)(blk_state->backend_data));
-    *sector += (len / SECTOR_SIZE);
-
-    return ret;
-}
-
-
-
-// multiple block operations need to increment the sector 
-
-static int handle_block_op(struct guest_info * core, struct virtio_blk_state * blk_state, struct blk_op_hdr * hdr, 
-			   struct vring_desc * buf_desc, uint8_t * status) {
+// multiple block operations need to increment the sector
+static int handle_block_op(
+        struct guest_info * core, 
+        struct virtio_blk_state * blk_state, 
+        struct virtio_req * req,
+        struct blk_op_hdr * hdr, 
+        struct vring_desc * buf_desc) {
+    struct virtio_blk_req * q = blk_state->req_queue;
     uint8_t * buf = NULL;
+    int ret = 0;
 
     PrintDebug("Handling Block op\n");
     if (v3_gpa_to_hva(core, buf_desc->addr_gpa, (addr_t *)&(buf)) == -1) {
@@ -164,31 +322,32 @@ static int handle_block_op(struct guest_info * core, struct virtio_blk_state * b
 	return -1;
     }
 
-    PrintDebug("Sector=%p Length=%d\n", (void *)(addr_t)(hdr->sector), buf_desc->length);
+    PrintDebug("block_op: type %d, sector %p, length %d\n", hdr->type, (void *)(addr_t)(hdr->sector), buf_desc->length);
 
-    if (hdr->type == BLK_IN_REQ) {
-	if (handle_read_op(blk_state, buf, &(hdr->sector), buf_desc->length) == -1) {
-	    *status = BLK_STATUS_ERR;
-	    return -1;
-	} else {
-	    *status = BLK_STATUS_OK;
-	}
-    } else if (hdr->type == BLK_OUT_REQ) {
-	if (handle_write_op(blk_state, buf, &(hdr->sector), buf_desc->length) == -1) {
-	    *status = BLK_STATUS_ERR;
-	    return -1;
-	} else {
-	    *status = BLK_STATUS_OK;
-	}
-    } else if (hdr->type == BLK_SCSI_CMD) {
-	PrintError("VIRTIO: SCSI Command Not supported!!!\n");
-	*status = BLK_STATUS_NOT_SUPPORTED;
-	return -1;
+    if(blk_state->head+1 == blk_state->tail) {
+        PrintError("handle_read_op: IO thread queue is full\n");
+    } else {
+        v3_lock(blk_state->req_queue_lock);
+        if (hdr->type == BLK_IN_REQ) {
+            q[blk_state->head].opcode = VIRTIO_READ;
+        } else if (hdr->type == BLK_OUT_REQ) {
+            q[blk_state->head].opcode = VIRTIO_WRITE;
+        } else {
+            q[blk_state->head].opcode = VIRTIO_OTHER;
+        }
+        q[blk_state->head].buf = buf;
+        q[blk_state->head].sector = hdr->sector;
+        q[blk_state->head].len = buf_desc->length;
+        q[blk_state->head].private_data = (void *)blk_state->backend_data;
+        q[blk_state->head].parent = req;
+
+        blk_state->head = (blk_state->head + 1) % IO_THREAD_QUEUE_SIZE;
+        v3_unlock(blk_state->req_queue_lock);
     }
+    hdr->sector += (buf_desc->length / SECTOR_SIZE);
+    v3_sem_up(blk_state->sem_avail);
 
-    PrintDebug("Returning Status: %d\n", *status);
-
-    return 0;
+    return ret;
 }
 
 static int get_desc_count(struct virtio_queue * q, int index) {
@@ -203,8 +362,6 @@ static int get_desc_count(struct virtio_queue * q, int index) {
     return cnt;
 }
 
-
-
 static int handle_kick(struct guest_info * core, struct virtio_blk_state * blk_state) {  
     struct virtio_queue * q = &(blk_state->queue);
 
@@ -212,6 +369,7 @@ static int handle_kick(struct guest_info * core, struct virtio_blk_state * blk_s
 	       q->cur_avail_idx, q->cur_avail_idx % QUEUE_SIZE, q->avail->index);
 
     while (q->cur_avail_idx != q->avail->index) {
+        struct virtio_req * req = NULL;
 	struct vring_desc * hdr_desc = NULL;
 	struct vring_desc * buf_desc = NULL;
 	struct vring_desc * status_desc = NULL;
@@ -221,8 +379,6 @@ static int handle_kick(struct guest_info * core, struct virtio_blk_state * blk_s
 	int desc_cnt = get_desc_count(q, desc_idx);
 	int i = 0;
 	uint8_t * status_ptr = NULL;
-	uint8_t status = BLK_STATUS_OK;
-	uint32_t req_len = 0;
 
 	PrintDebug("Descriptor Count=%d, index=%d\n", desc_cnt, q->cur_avail_idx % QUEUE_SIZE);
 
@@ -249,53 +405,56 @@ static int handle_kick(struct guest_info * core, struct virtio_blk_state * blk_s
 
 	desc_idx = hdr_desc->next;
 
-	for (i = 0; i < desc_cnt - 2; i++) {
-	    uint8_t tmp_status = BLK_STATUS_OK;
+        {
+            uint16_t status_desc_idx = desc_idx;
 
+            for (i = 0; i < desc_cnt - 2; i++) {
+                buf_desc = &(q->desc[status_desc_idx]);
+                status_desc_idx = buf_desc->next;
+            }
+
+            status_desc = &(q->desc[status_desc_idx]);
+
+            PrintDebug("Status Descriptor (ptr=%p) gpa=%p, len=%d, flags=%x, next=%d\n", status_desc, 
+                    (void *)(status_desc->addr_gpa), 
+                    status_desc->length, 
+                    status_desc->flags, 
+                    status_desc->next);
+
+            if (v3_gpa_to_hva(core, status_desc->addr_gpa, (addr_t *)&(status_ptr)) == -1) {
+                PrintError("Could not translate status address\n");
+                return -1;
+            }
+        }
+
+
+        req = (struct virtio_req *) V3_Malloc(sizeof(struct virtio_req));
+        if (req == NULL) {
+            PrintError("handle_kick: cannot allocate struct virtio_req");
+            return -1;
+        }
+        req->index = q->cur_avail_idx;
+        req->pending = desc_cnt - 2;
+        req->status_ptr = status_ptr;
+        req->req_len += status_desc->length;
+
+	PrintDebug("submitting avali idx %d\n", q->cur_avail_idx);
+
+	for (i = 0; i < desc_cnt - 2; i++) {
 	    buf_desc = &(q->desc[desc_idx]);
 
 	    PrintDebug("Buffer Descriptor (ptr=%p) gpa=%p, len=%d, flags=%x, next=%d\n", buf_desc, 
 		       (void *)(buf_desc->addr_gpa), buf_desc->length, buf_desc->flags, buf_desc->next);
 
-	    if (handle_block_op(core, blk_state, &hdr, buf_desc, &tmp_status) == -1) {
+	    if (handle_block_op(core, blk_state, req, &hdr, buf_desc) == -1) {
 		PrintError("Error handling block operation\n");
 		return -1;
 	    }
 
-	    if (tmp_status != BLK_STATUS_OK) {
-		status = tmp_status;
-	    }
-
-	    req_len += buf_desc->length;
 	    desc_idx = buf_desc->next;
 	}
 
-	status_desc = &(q->desc[desc_idx]);
-
-	PrintDebug("Status Descriptor (ptr=%p) gpa=%p, len=%d, flags=%x, next=%d\n", status_desc, 
-		   (void *)(status_desc->addr_gpa), status_desc->length, status_desc->flags, status_desc->next);
-
-	if (v3_gpa_to_hva(core, status_desc->addr_gpa, (addr_t *)&(status_ptr)) == -1) {
-	    PrintError("Could not translate status address\n");
-	    return -1;
-	}
-
-	req_len += status_desc->length;
-	*status_ptr = status;
-
-	q->used->ring[q->used->index % QUEUE_SIZE].id = q->avail->ring[q->cur_avail_idx % QUEUE_SIZE];
-	q->used->ring[q->used->index % QUEUE_SIZE].length = req_len; // What do we set this to????
-
-	q->used->index++;
 	q->cur_avail_idx++;
-    }
-
-    if (!(q->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
-	if (blk_state->virtio_cfg.pci_isr == 0) {
-	    PrintDebug("Raising IRQ %d\n",  blk_state->pci_dev->config_header.intr_line);
-	    v3_pci_raise_irq(blk_state->virtio_dev->pci_bus, blk_state->pci_dev, 0);
-	    blk_state->virtio_cfg.pci_isr = 1;
-	}
     }
 
     return 0;
@@ -308,7 +467,6 @@ static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, 
 
     PrintDebug("VIRTIO BLOCK Write for port %d (index=%d) len=%d, value=%x\n", 
 	       port, port_idx,  length, *(uint32_t *)src);
-
 
 
     switch (port_idx) {
@@ -381,10 +539,9 @@ static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, 
 	    break;
 	case VRING_Q_NOTIFY_PORT:
 	    PrintDebug("Handling Kick\n");
-	    if (handle_kick(core, blk_state) == -1) {
-		PrintError("Could not handle Block Notification\n");
-		return -1;
-	    }
+            if (handle_kick(core, blk_state) == -1) {
+                PrintError("Could not handle Block Notification\n");
+            }
 	    break;
 	case VIRTIO_STATUS_PORT:
 	    blk_state->virtio_cfg.status = *(uint8_t *)src;
@@ -465,9 +622,12 @@ static int virtio_io_read(struct guest_info * core, uint16_t port, void * dst, u
 
 	    if (blk_state->virtio_cfg.pci_isr == 1) {
 		blk_state->virtio_cfg.pci_isr = 0;
-		//	PrintDebug("Lowering IRQ from Virtio BLOCK\n");
+		PrintDebug("Lowering IRQ from Virtio BLOCK\n");
 		v3_pci_lower_irq(blk_state->virtio_dev->pci_bus, blk_state->pci_dev, 0);
-	    }
+                v3_sem_up(sem_isr_low);
+	    } else {
+                PrintDebug("VIRTIO_ISR_PORT: isr not set\n");
+            }
 
 	    break;
 
@@ -643,6 +803,21 @@ static int connect_fn(struct v3_vm_info * vm,
     PrintDebug("Virtio Capacity = %d -- 0x%p\n", (int)(blk_state->block_cfg.capacity), 
 	       (void *)(addr_t)(blk_state->block_cfg.capacity));
 
+    v3_lock_init(&vq_lock);
+
+    v3_sem_init(&sem_isr_low, 1);
+    v3_sem_init(&blk_state->sem_avail, 0);
+    v3_lock_init(&blk_state->req_queue_lock);
+    memset(blk_state->req_queue, 0, 
+            sizeof(struct virtio_blk_req)*IO_THREAD_QUEUE_SIZE);
+    blk_state->head = 0;
+    blk_state->tail = 0;
+
+    blk_state->io_thread = V3_CREATE_THREAD(
+            io_dispatcher,
+            blk_state,
+            "Virtio-blk Device I/O Thread");
+
     return 0;
 }
 
@@ -686,6 +861,7 @@ static int virtio_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	v3_remove_device(dev);
 	return -1;
     }
+
 
     return 0;
 }
