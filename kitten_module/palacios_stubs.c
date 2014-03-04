@@ -455,6 +455,29 @@ palacios_mutex_unlock(
 	spin_unlock((spinlock_t *)mutex);
 }
 
+static void * palacios_sem_alloc(int val) {
+    struct semaphore * sem = kmem_alloc(sizeof(struct semaphore));
+    if (sem) {
+        sema_init(sem, val);
+    } else {
+        printk(KERN_ERR "unable to allocate semaphore\n");
+        return NULL;
+    }
+
+    return sem;
+}
+
+static void palacios_sem_free(void *sem) {
+    kmem_free(sem);
+}
+
+static void palacios_sem_up(void *sem) {
+    up(sem);
+}
+
+static void palacios_sem_down(void *sem) {
+    down(sem);
+}
 /**
  * Locks a mutex and disables interrupts.
  * Return value should be passed to the corresponding
@@ -508,6 +531,10 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.mutex_unlock		= palacios_mutex_unlock,
 	.mutex_lock_irqsave	= palacios_mutex_lock_irqsave,
 	.mutex_unlock_irqrestore = palacios_mutex_unlock_irqrestore,
+	.sem_alloc		= palacios_sem_alloc,
+	.sem_free		= palacios_sem_free,
+	.sem_up                 = palacios_sem_up, 
+	.sem_down               = palacios_sem_down,
 	.get_cpu		= palacios_get_cpu,
 	.interrupt_cpu		= palacios_interrupt_cpu,
 	.call_on_cpu		= palacios_xcall,

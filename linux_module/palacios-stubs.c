@@ -1,6 +1,7 @@
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/spinlock.h>
+#include <linux/semaphore.h>
 #include <linux/gfp.h>
 #include <linux/interrupt.h>
 #include <linux/linkage.h>
@@ -555,6 +556,31 @@ palacios_mutex_unlock_irqrestore(void *mutex, void *flags)
     spin_unlock_irqrestore((spinlock_t *)mutex,(unsigned long)flags);
 }
 
+void * palacios_sem_alloc(int val) {
+    struct semaphore * sem = palacios_alloc(sizeof(struct semaphore));
+
+    if (sem) {
+        sema_init(sem, val);
+    } else {
+        ERROR("ALERT unable to allocate semaphore\n");
+        return NULL;
+    }
+
+    return sem;
+}
+
+void palacios_sem_free(void * sem) {
+    palacios_free(sem);
+}
+
+void palacios_sem_up(void *sem) {
+    up(sem);
+}
+
+void palacios_sem_down(void *sem) {
+    down(sem);
+}
+
 /**
  * Structure used by the Palacios hypervisor to interface with the host kernel.
  */
@@ -581,6 +607,10 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.mutex_unlock		= palacios_mutex_unlock,
 	.mutex_lock_irqsave     = palacios_mutex_lock_irqsave, 
 	.mutex_unlock_irqrestore= palacios_mutex_unlock_irqrestore,
+	.sem_alloc		= palacios_sem_alloc,
+	.sem_free		= palacios_sem_free,
+	.sem_up                 = palacios_sem_up,
+	.sem_down		= palacios_sem_down,
 	.get_cpu		= palacios_get_cpu,
 	.interrupt_cpu		= palacios_interrupt_cpu,
 	.call_on_cpu		= palacios_xcall,
