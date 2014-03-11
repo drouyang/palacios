@@ -385,11 +385,6 @@ struct v3_os_hooks {
     void *(*mutex_lock_irqsave)(void * mutex, int must_spin);
     void (*mutex_unlock_irqrestore)(void * mutex, void *flags);
 
-    void *(*sem_alloc)(int val);
-    void (*sem_free)(void * sem);
-    void (*sem_up)(void * sem);
-    void (*sem_down)(void * sem);
-
     unsigned int (*get_cpu)(void);
 
 

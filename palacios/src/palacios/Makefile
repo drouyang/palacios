@@ -19,7 +19,6 @@ obj-y := \
 	vmm_intr.o \
 	vmm_io.o \
 	vmm_lock.o \
-	vmm_sem.o \
 	vmm_mem.o \
 	vmm_msr.o \
 	vmm_paging.o \
