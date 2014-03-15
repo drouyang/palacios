@@ -46,6 +46,6 @@ obj-$(V3_CONFIG_SYMMOD) += lnx_virtio_symmod.o
 obj-$(V3_CONFIG_CHAR_STREAM) += char_stream.o
 
 obj-$(V3_CONFIG_VGA) += vga.o
-
+obj-$(V3_CONFIG_XPMEM) += xpmem.o
 
 obj-$(V3_CONFIG_VNET_GUEST_IFACE) += vnet_guest_iface.o

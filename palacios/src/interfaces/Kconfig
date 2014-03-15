@@ -82,4 +82,11 @@ config HOST_SCHED_EVENTS
 	help
 	   This provides notifications for host scheduler events
 
+config HOST_XPMEM
+	bool "Host XPMEM support"
+	depends on EXPERIMENTAL
+	default y
+	help 
+	  This enables host support for XPMEM communication
+
 endmenu

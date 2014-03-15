@@ -41,6 +41,7 @@ v3vee-$(V3_CONFIG_VNET) += 	palacios-vnet.o \
 
 
 v3vee-$(V3_CONFIG_HOST_PCI) += iface-host-pci.o
+v3vee-$(V3_CONFIG_HOST_XPMEM)    += iface-xpmem.o
 
 v3vee-objs := $(v3vee-y) ../libv3vee.a
 obj-m := v3vee.o

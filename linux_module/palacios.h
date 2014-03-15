@@ -46,6 +46,8 @@
 
 #define V3_VM_KSTREAM_USER_CONNECT 11245
 
+#define V3_VM_XPMEM_CONNECT 12000
+
 
 struct v3_guest_img {
     unsigned long long size;

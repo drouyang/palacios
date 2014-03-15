@@ -43,6 +43,8 @@
 #define V3_VM_HOST_DEV_CONNECT 10245
 #define V3_VM_KSTREAM_USER_CONNECT 11245
 
+#define V3_XPMEM_CONNECT 12000
+
 
 static const char * v3_dev = "/dev/v3vee";
 
