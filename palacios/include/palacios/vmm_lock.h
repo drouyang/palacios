@@ -23,19 +23,27 @@
 #ifdef __V3VEE__
 #include <palacios/vmm_types.h>
 
-typedef addr_t v3_lock_t;
+typedef addr_t v3_spinlock_t;
 
-int v3_lock_init(v3_lock_t * lock);
-void v3_lock_deinit(v3_lock_t * lock);
-
-
-void v3_lock(v3_lock_t lock);
-void v3_unlock(v3_lock_t lock);
+int v3_spinlock_init(v3_spinlock_t * lock);
+void v3_spinlock_deinit(v3_spinlock_t * lock);
 
 
-addr_t v3_lock_irqsave(v3_lock_t lock);
-void v3_unlock_irqrestore(v3_lock_t lock, addr_t irq_state);
+void v3_spin_lock(v3_spinlock_t lock);
+void v3_spin_unlock(v3_spinlock_t lock);
 
+
+addr_t v3_spin_lock_irqsave(v3_spinlock_t lock);
+void v3_spin_unlock_irqrestore(v3_spinlock_t lock, addr_t irq_state);
+
+
+typedef addr_t v3_mutex_t;
+
+int v3_mutex_init(v3_mutex_t * mutex);
+void v3_mutex_deinit(v3_mutex_t * mutex);
+
+void v3_mutex_lock(v3_mutex_t mutex);
+void v3_mutex_unlock(v3_mutex_t mutex);
 
 #endif
 

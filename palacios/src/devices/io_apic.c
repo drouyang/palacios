@@ -159,8 +159,8 @@ struct io_apic_state {
 
     void * router_handle;
 
-    v3_lock_t ack_tbl_lock;
-    v3_lock_t lvl_cnt_lock;
+    v3_spinlock_t ack_tbl_lock;
+    v3_spinlock_t lvl_cnt_lock;
 
     struct v3_vm_info * vm;
 };
@@ -186,8 +186,8 @@ static void init_ioapic_state(struct io_apic_state * ioapic, uint32_t id) {
     }
 
     INIT_LIST_HEAD(&(ioapic->ack_free_list));
-    v3_lock_init(&(ioapic->ack_tbl_lock));
-    v3_lock_init(&(ioapic->lvl_cnt_lock));
+    v3_spinlock_init(&(ioapic->ack_tbl_lock));
+    v3_spinlock_init(&(ioapic->lvl_cnt_lock));
 
     for (i = 0; i < FREE_LIST_SIZE; i++) {
 	struct ack_entry * tmp_entry = V3_Malloc(sizeof(struct ack_entry));
@@ -364,7 +364,7 @@ static int ioapic_eoi(struct guest_info * core, uint32_t irq, void * private_dat
 
 	if (irq_entry->vec != irq)  continue;
 
-	flags = v3_lock_irqsave(ioapic->ack_tbl_lock);
+	flags = v3_spin_lock_irqsave(ioapic->ack_tbl_lock);
 
 	list_for_each_entry_safe(ack, tmp, &(ioapic->ack_tbl[i]), node) {
 	    PrintDebug("ioapic %u: ACKING IOAPIC IRQ (fn=%p) apic_irq=%d, ioapic_irq=%d\n", 
@@ -378,7 +378,7 @@ static int ioapic_eoi(struct guest_info * core, uint32_t irq, void * private_dat
 
 	    list_move_tail(&(ack->node), &(ioapic->ack_free_list));
 	}
-	v3_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+	v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
 
 
 	if (irq_entry->trig_mode) {
@@ -435,9 +435,9 @@ static int ioapic_raise_irq(struct v3_vm_info * vm, void * private_data, struct 
 	PrintDebug("ioapic %u: Incrementing level_cnt for ioapic.irq=%d (prev_val=%d)\n", 
 		   ioapic->ioapic_id.id, irq_num, ioapic->level_cnt[irq_num]);
 
-	flags = v3_lock_irqsave(ioapic->lvl_cnt_lock);
+	flags = v3_spin_lock_irqsave(ioapic->lvl_cnt_lock);
 	ioapic->level_cnt[irq_num]++;
-	v3_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
+	v3_spin_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
     }
 
 
@@ -445,7 +445,7 @@ static int ioapic_raise_irq(struct v3_vm_info * vm, void * private_data, struct 
 	struct ack_entry * tmp_ack_entry = NULL;
 	unsigned int flags = 0;
 
-	flags = v3_lock_irqsave(ioapic->ack_tbl_lock);	
+	flags = v3_spin_lock_irqsave(ioapic->ack_tbl_lock);	
 
 	// scan for identical call sites, if one exists then this interrupt is ignored. 
 	list_for_each_entry(tmp_ack_entry, &(ioapic->ack_tbl[irq_num]), node) {
@@ -453,14 +453,14 @@ static int ioapic_raise_irq(struct v3_vm_info * vm, void * private_data, struct 
 		(tmp_ack_entry->private_data == irq->private_data)) {
 		    
 		// Refire of a level triggered IRQ, safe to ignore
-		v3_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+		v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
 		return 0;
 	    }
 	}
 	    
 	if (list_empty(&(ioapic->ack_free_list))) {
 	    PrintError("Error: ioapic %u - Callback free list is exhausted...\n", ioapic->ioapic_id.id);
-	    v3_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+	    v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
 	    return -1;
 	}
 
@@ -473,7 +473,7 @@ static int ioapic_raise_irq(struct v3_vm_info * vm, void * private_data, struct 
 	    
 	list_move_tail(&(tmp_ack_entry->node), &(ioapic->ack_tbl[irq_num]));
 
-	v3_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+	v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
     }
 
 
@@ -515,13 +515,13 @@ static int ioapic_lower_irq(struct v3_vm_info * vm, void * private_data, struct 
 
     if (irq_entry->trig_mode) {
 	
-	flags = v3_lock_irqsave(ioapic->lvl_cnt_lock);
+	flags = v3_spin_lock_irqsave(ioapic->lvl_cnt_lock);
 	
 	if (ioapic->level_cnt[irq_num] <= 0) {
 	    PrintError("Error: ioapic %u - No active IRQ line to lower (irq_num=%d) (lvl_cnt=%d)\n", 
 		       ioapic->ioapic_id.id,
 		       irq_num, ioapic->level_cnt[irq_num] );
-	    v3_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
+	    v3_spin_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
 	    
 	    return -1;
 	}
@@ -531,7 +531,7 @@ static int ioapic_lower_irq(struct v3_vm_info * vm, void * private_data, struct 
 
 	ioapic->level_cnt[irq_num]--;
 
-	v3_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
+	v3_spin_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
 
     }
 

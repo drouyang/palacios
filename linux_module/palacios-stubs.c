@@ -514,7 +514,7 @@ palacios_mutex_free(void * mutex) {
  * Locks a mutex.
  */
 void 
-palacios_mutex_lock(void * mutex, int must_spin) {
+palacios_mutex_lock(void * mutex) {
     spin_lock((spinlock_t *)mutex);
 }
 
@@ -523,7 +523,7 @@ palacios_mutex_lock(void * mutex, int must_spin) {
  * Locks a mutex, disabling interrupts on this core
  */
 void *
-palacios_mutex_lock_irqsave(void * mutex, int must_spin) {
+palacios_mutex_lock_irqsave(void * mutex) {
     
     unsigned long flags; 
     

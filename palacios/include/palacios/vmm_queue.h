@@ -39,7 +39,7 @@ struct v3_queue_entry {
 struct v3_queue {
     uint_t num_entries;
     struct list_head entries;
-    v3_lock_t lock;
+    v3_spinlock_t lock;
 };
 
 

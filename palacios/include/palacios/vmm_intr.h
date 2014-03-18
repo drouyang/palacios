@@ -55,7 +55,7 @@ struct v3_irq_hook {
 struct v3_intr_routers {
     struct list_head router_list;
 
-    v3_lock_t irq_lock;
+    v3_spinlock_t irq_lock;
 
     /* some way to get the [A]PIC intr */
     struct v3_irq_hook * hooks[256];
@@ -71,7 +71,7 @@ struct v3_intr_core_state {
 
     uint8_t virq_map[MAX_IRQ / 8];
 
-    v3_lock_t irq_lock;
+    v3_spinlock_t irq_lock;
 
     struct list_head controller_list;
 };

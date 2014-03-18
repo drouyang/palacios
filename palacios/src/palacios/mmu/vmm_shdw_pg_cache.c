@@ -78,7 +78,7 @@ struct cache_core_state {
 
 struct cache_vm_state {
     
-    v3_lock_t cache_lock;
+    v3_spinlock_t cache_lock;
 
     struct hashtable * page_htable; // GPA to shdw_pg_data
     struct hashtable * reverse_map;
@@ -487,7 +487,7 @@ static int cache_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
     cache_state->page_htable = v3_create_htable(0, cache_hash_fn, cache_eq_fn);
     cache_state->reverse_map = v3_create_htable(0, rmap_hash_fn, rmap_eq_fn);
-    v3_lock_init(&(cache_state->cache_lock));
+    v3_spinlock_init(&(cache_state->cache_lock));
     INIT_LIST_HEAD(&(cache_state->pg_queue));
     INIT_LIST_HEAD(&(cache_state->free_list));
     cache_state->max_cache_pgs = cache_size;

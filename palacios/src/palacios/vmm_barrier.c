@@ -27,7 +27,7 @@ int v3_init_barrier(struct v3_vm_info * vm_info) {
 
     memset(barrier, 0, sizeof(struct v3_barrier));
     v3_bitmap_init(&(barrier->cpu_map), vm_info->num_cores); 
-    v3_lock_init(&(barrier->lock));
+    v3_spinlock_init(&(barrier->lock));
 
     return 0;
 }
@@ -36,7 +36,7 @@ int v3_deinit_barrier(struct v3_vm_info * vm_info) {
     struct v3_barrier * barrier = &(vm_info->barrier);
 
     v3_bitmap_deinit(&(barrier->cpu_map));
-    v3_lock_deinit(&(barrier->lock));
+    v3_spinlock_deinit(&(barrier->lock));
 
     return 0;
 }
@@ -49,14 +49,14 @@ int v3_raise_barrier_nowait(struct v3_vm_info * vm_info, struct guest_info * loc
     int local_vcpu = -1;
     int i = 0;
 
-    flag = v3_lock_irqsave(barrier->lock);
+    flag = v3_spin_lock_irqsave(barrier->lock);
 
     if (barrier->active == 0) {
 	barrier->active = 1;
 	acquired = 1;
     }
 
-    v3_unlock_irqrestore(barrier->lock, flag);
+    v3_spin_unlock_irqrestore(barrier->lock, flag);
 
     if (acquired == 0) {
 	/* If we are in a core context and the barrier has already been acquired 

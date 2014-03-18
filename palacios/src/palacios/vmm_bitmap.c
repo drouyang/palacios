@@ -24,7 +24,7 @@
 int v3_bitmap_init(struct v3_bitmap * bitmap, int num_bits) {
     int num_bytes = (num_bits / 8) + ((num_bits % 8) > 0);
 
-    v3_lock_init(&(bitmap->lock));
+    v3_spinlock_init(&(bitmap->lock));
     bitmap->num_bits = num_bits;
     bitmap->bits = V3_Malloc(num_bytes);
 
@@ -41,7 +41,7 @@ int v3_bitmap_init(struct v3_bitmap * bitmap, int num_bits) {
 
 
 void v3_bitmap_deinit(struct v3_bitmap * bitmap) {
-    v3_lock_deinit(&(bitmap->lock));
+    v3_spinlock_deinit(&(bitmap->lock));
     V3_Free(bitmap->bits);
 }
 
@@ -67,12 +67,12 @@ int v3_bitmap_set(struct v3_bitmap * bitmap, int index) {
     }
 
 
-    flags = v3_lock_irqsave(bitmap->lock);
+    flags = v3_spin_lock_irqsave(bitmap->lock);
 
     old_val = (bitmap->bits[major] & (0x1 << minor));
     bitmap->bits[major] |= (0x1 << minor);
 
-    v3_unlock_irqrestore(bitmap->lock, flags);
+    v3_spin_unlock_irqrestore(bitmap->lock, flags);
 
     return old_val;
 }
@@ -90,12 +90,12 @@ int v3_bitmap_clear(struct v3_bitmap * bitmap, int index) {
 	return -1;
     }
 
-    flags = v3_lock_irqsave(bitmap->lock);
+    flags = v3_spin_lock_irqsave(bitmap->lock);
 
     old_val = (bitmap->bits[major] & (0x1 << minor));
     bitmap->bits[major] &= ~(0x1 << minor);
 
-    v3_unlock_irqrestore(bitmap->lock, flags);
+    v3_spin_unlock_irqrestore(bitmap->lock, flags);
 
     return old_val;
 }

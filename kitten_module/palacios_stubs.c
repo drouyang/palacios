@@ -437,8 +437,7 @@ palacios_mutex_free(
  */
 static void 
 palacios_mutex_lock(
-	void *			mutex, 
-	int			must_spin
+	void *			mutex
 )
 {
 	spin_lock((spinlock_t *)mutex);
@@ -462,8 +461,7 @@ palacios_mutex_unlock(
  */
 static void *
 palacios_mutex_lock_irqsave(
-	void *			mutex,
-	int			must_spin
+	void *			mutex
 )
 {
 	unsigned long flags;

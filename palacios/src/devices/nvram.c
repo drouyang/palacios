@@ -116,7 +116,7 @@ struct nvram_internal {
     
     struct v3_timer   *timer;
 
-    v3_lock_t nvram_lock;
+    v3_spinlock_t nvram_lock;
 
     uint64_t        us;   //microseconds - for clock update - zeroed every second
     uint64_t        pus;  //microseconds - for periodic interrupt - cleared every period
@@ -659,7 +659,7 @@ static int init_nvram_state(struct v3_vm_info * vm, struct nvram_internal * nvra
     memset(nvram->mem_state, 0, NVRAM_REG_MAX);
     memset(nvram->reg_map, 0, NVRAM_REG_MAX / 8);
 
-    v3_lock_init(&(nvram->nvram_lock));
+    v3_spinlock_init(&(nvram->nvram_lock));
 
     //
     // 2 1.44 MB floppy drives
@@ -776,7 +776,7 @@ static int nvram_read_data_port(struct guest_info * core, uint16_t port,
 
     struct nvram_internal * data = priv_data;
 
-    addr_t irq_state = v3_lock_irqsave(data->nvram_lock);
+    addr_t irq_state = v3_spin_lock_irqsave(data->nvram_lock);
 
     if (get_memory(data, data->thereg, (uint8_t *)dst) == -1) {
 	PrintError("nvram: Register %d (0x%x) Not set - POSSIBLE BUG IN MACHINE INIT - CONTINUING\n", data->thereg, data->thereg);
@@ -790,7 +790,7 @@ static int nvram_read_data_port(struct guest_info * core, uint16_t port,
 	data->mem_state[data->thereg] ^= 0x80;  // toggle Update in progess
     }
 
-    v3_unlock_irqrestore(data->nvram_lock, irq_state);
+    v3_spin_unlock_irqrestore(data->nvram_lock, irq_state);
 
     return 1;
 }
@@ -801,11 +801,11 @@ static int nvram_write_data_port(struct guest_info * core, uint16_t port,
 
     struct nvram_internal * data = priv_data;
 
-    addr_t irq_state = v3_lock_irqsave(data->nvram_lock);
+    addr_t irq_state = v3_spin_lock_irqsave(data->nvram_lock);
 
     set_memory(data, data->thereg, *(uint8_t *)src);
 
-    v3_unlock_irqrestore(data->nvram_lock, irq_state);
+    v3_spin_unlock_irqrestore(data->nvram_lock, irq_state);
 
     PrintDebug("nvram: nvram_write_data_port(0x%x) = 0x%x\n", 
 	       data->thereg, data->mem_state[data->thereg]);

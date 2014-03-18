@@ -33,7 +33,7 @@ struct v3_barrier {
 
     struct v3_bitmap cpu_map;
 
-    v3_lock_t lock;
+    v3_spinlock_t lock;
 };
 
 struct v3_vm_info;

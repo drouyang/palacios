@@ -257,7 +257,7 @@ struct apic_state {
 
 
     struct {
-	v3_lock_t lock;
+	v3_spinlock_t lock;
 	
 	uint64_t num_entries;
 	struct list_head entries;
@@ -273,7 +273,7 @@ struct apic_state {
 struct apic_dev_state {
     int num_apics;
   
-    v3_lock_t state_lock;
+    v3_spinlock_t state_lock;
 
     struct apic_state apics[0];
 } __attribute__((packed));
@@ -372,7 +372,7 @@ static int init_apic_state(struct apic_state * apic, uint32_t id) {
 	INIT_LIST_HEAD(&(apic->irq_queue.free_list));
 
 
-	v3_lock_init(&(apic->irq_queue.lock));
+	v3_spinlock_init(&(apic->irq_queue.lock));
 	apic->irq_queue.num_entries = 0;
  
 	for (i = 0; i < MAX_IRQ_QUEUE_SIZE; i++) {
@@ -498,11 +498,11 @@ static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num, uint8_
 	return -1;
     }
 
-    flags = v3_lock_irqsave(apic->irq_queue.lock);
+    flags = v3_spin_lock_irqsave(apic->irq_queue.lock);
 
     if (list_empty(&(apic->irq_queue.free_list))) {
 	PrintError("IRQ Free list is exhausted. Cannot Inject IRQ %d.\n", irq_num);
-	v3_unlock_irqrestore(apic->irq_queue.lock, flags); 
+	v3_spin_unlock_irqrestore(apic->irq_queue.lock, flags); 
 	return -1;
     }
 
@@ -516,7 +516,7 @@ static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num, uint8_
     list_move_tail(&(entry->list_node), &(apic->irq_queue.entries));
     apic->irq_queue.num_entries++;
 
-    v3_unlock_irqrestore(apic->irq_queue.lock, flags);
+    v3_spin_unlock_irqrestore(apic->irq_queue.lock, flags);
   
     return 0;
 }
@@ -527,10 +527,10 @@ static void drain_irq_entries(struct apic_state * apic) {
 	unsigned int flags = 0;
 	struct irq_queue_entry * entry = NULL;
     
-	flags = v3_lock_irqsave(apic->irq_queue.lock);
+	flags = v3_spin_lock_irqsave(apic->irq_queue.lock);
 	
 	if (list_empty(&(apic->irq_queue.entries))) {
-	    v3_unlock_irqrestore(apic->irq_queue.lock, flags);
+	    v3_spin_unlock_irqrestore(apic->irq_queue.lock, flags);
 	    break;
 	}
 	
@@ -548,7 +548,7 @@ static void drain_irq_entries(struct apic_state * apic) {
 	apic->irq_queue.num_entries--;
 	list_move_tail(&(entry->list_node), &(apic->irq_queue.free_list));
 
-	v3_unlock_irqrestore(apic->irq_queue.lock, flags);	
+	v3_spin_unlock_irqrestore(apic->irq_queue.lock, flags);	
     }
 }
 
@@ -768,7 +768,7 @@ static int should_deliver_ipi(struct apic_dev_state * apic_dev,
     addr_t flags = 0;
     int ret = 0;
 
-    flags = v3_lock_irqsave(apic_dev->state_lock);
+    flags = v3_spin_lock_irqsave(apic_dev->state_lock);
 
     if (dst_apic->dst_fmt.model == 0xf) {
 
@@ -791,7 +791,7 @@ static int should_deliver_ipi(struct apic_dev_state * apic_dev,
 	ret = -1;
     }
     
-    v3_unlock_irqrestore(apic_dev->state_lock, flags);
+    v3_spin_unlock_irqrestore(apic_dev->state_lock, flags);
 
 
     if (ret == -1) {
@@ -931,7 +931,7 @@ static struct apic_state * find_physical_apic(struct apic_dev_state * apic_dev, 
     addr_t flags;
     int i;
 
-    flags = v3_lock_irqsave(apic_dev->state_lock);
+    flags = v3_spin_lock_irqsave(apic_dev->state_lock);
 
 
     for (i = 0; i < apic_dev->num_apics; i++) { 
@@ -940,7 +940,7 @@ static struct apic_state * find_physical_apic(struct apic_dev_state * apic_dev, 
 	}
     }
 
-    v3_unlock_irqrestore(apic_dev->state_lock, flags);
+    v3_spin_unlock_irqrestore(apic_dev->state_lock, flags);
 
     return dst_apic;
 
@@ -1035,7 +1035,7 @@ static int route_ipi(struct apic_dev_state * apic_dev,
 			    // update priority for lowest priority scan
 			    addr_t flags = 0;
 
-			    flags = v3_lock_irqsave(apic_dev->state_lock);
+			    flags = v3_spin_lock_irqsave(apic_dev->state_lock);
 
 			    if (cur_best_apic == 0) {
 				cur_best_apic = dest_apic;  
@@ -1043,7 +1043,7 @@ static int route_ipi(struct apic_dev_state * apic_dev,
 				cur_best_apic = dest_apic;
 			    } 
 
-			    v3_unlock_irqrestore(apic_dev->state_lock, flags);
+			    v3_spin_unlock_irqrestore(apic_dev->state_lock, flags);
 
 			}
 		    }
@@ -1456,14 +1456,14 @@ static int apic_write(struct guest_info * core, addr_t guest_addr, void * src, u
 	case LDR_OFFSET:
 	    PrintDebug("apic %u: core %u: setting log_dst.val to 0x%x\n",
 		       apic->lapic_id.val, core->vcpu_id, op_val);
-	    flags = v3_lock_irqsave(apic_dev->state_lock);
+	    flags = v3_spin_lock_irqsave(apic_dev->state_lock);
 	    apic->log_dst.val = op_val;
-	    v3_unlock_irqrestore(apic_dev->state_lock, flags);
+	    v3_spin_unlock_irqrestore(apic_dev->state_lock, flags);
 	    break;
 	case DFR_OFFSET:
-	    flags = v3_lock_irqsave(apic_dev->state_lock);
+	    flags = v3_spin_lock_irqsave(apic_dev->state_lock);
 	    apic->dst_fmt.val = op_val;
-	    v3_unlock_irqrestore(apic_dev->state_lock, flags);
+	    v3_spin_unlock_irqrestore(apic_dev->state_lock, flags);
 	    break;
 	case SPURIOUS_INT_VEC_OFFSET:
 	    apic->spurious_int.val = op_val;
@@ -1967,7 +1967,7 @@ static int apic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     }
 
     apic_dev->num_apics = vm->num_cores;
-    v3_lock_init(&(apic_dev->state_lock));
+    v3_spinlock_init(&(apic_dev->state_lock));
 
     struct vm_device * dev = v3_add_device(vm, dev_id, &dev_ops, apic_dev);
 
