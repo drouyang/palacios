@@ -21,7 +21,7 @@
 #include <palacios/vmm_lock.h>
 #include <palacios/vmm_lowlevel.h>
 
-#define v3_irqsave(x) do { __asm__ __volatile__("# save_flags \n\t pushfq ; popq %q0":"=g" (x): /* no input */ :"memory"); } while (0)
+#define v3_irqsave(x) do { __asm__ __volatile__("# local_irq_save \n\t pushfq ; popq %0 ; cli":"=g" (x): /* no input */ :"memory"); } while (0)
 #define v3_irqrestore(x) __asm__ __volatile__("# restore_flags \n\t pushq %0 ; popfq": /* no output */ :"g" (x):"memory", "cc")
 
 
