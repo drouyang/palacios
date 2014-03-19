@@ -415,19 +415,22 @@ void palacios_restore_fpu(void) {
 static void *
 palacios_mutex_alloc(void)
 {
-	spinlock_t *lock = kmem_alloc(sizeof(spinlock_t));
-	if (lock)
-		spin_lock_init(lock);
-	return lock;
+    struct semaphore * sem = kmem_alloc(sizeof(struct semaphore));
+    if (sem) {
+        sema_init(sem, 1);
+    } else {
+        printk(KERN_ERR "unable to allocate semaphore\n");
+        return NULL;
+    }
+
+    return sem;
 }
 
 /**
  * Frees a mutex.
  */
 static void
-palacios_mutex_free(
-	void *			mutex
-) 
+palacios_mutex_free(void * mutex)
 {
 	kmem_free(mutex);
 }
@@ -436,22 +439,18 @@ palacios_mutex_free(
  * Locks a mutex.
  */
 static void 
-palacios_mutex_lock(
-	void *			mutex
-)
+palacios_mutex_lock(void * mutex)
 {
-	spin_lock((spinlock_t *)mutex);
+    down(mutex);
 }
 
 /**
  * Unlocks a mutex.
  */
 static void 
-palacios_mutex_unlock(
-	void *			mutex
-) 
+palacios_mutex_unlock(void * mutex)
 {
-	spin_unlock((spinlock_t *)mutex);
+    up(mutex);
 }
 
 /**
@@ -459,6 +458,7 @@ palacios_mutex_unlock(
  * Return value should be passed to the corresponding
  * palacios_mutex_unlock_irqrestore() as the flags argument.
  */
+/*
 static void *
 palacios_mutex_lock_irqsave(
 	void *			mutex
@@ -468,10 +468,12 @@ palacios_mutex_lock_irqsave(
 	spin_lock_irqsave((spinlock_t *)mutex, flags);
 	return (void *) flags;
 }
+*/
 
 /**
  * Unlocks a mutex and, if indicated by flags argument, restores interrupts.
  */
+/*
 static void
 palacios_mutex_unlock_irqrestore(
 	void *			mutex,
@@ -480,6 +482,7 @@ palacios_mutex_unlock_irqrestore(
 {
 	spin_unlock_irqrestore((spinlock_t *)mutex, (unsigned long)flags);
 }
+*/
 
 /**
  * Structure used by the Palacios hypervisor to interface with the host kernel.
@@ -504,8 +507,8 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.mutex_free		= palacios_mutex_free,
 	.mutex_lock		= palacios_mutex_lock, 
 	.mutex_unlock		= palacios_mutex_unlock,
-	.mutex_lock_irqsave	= palacios_mutex_lock_irqsave,
-	.mutex_unlock_irqrestore = palacios_mutex_unlock_irqrestore,
+	.mutex_lock_irqsave	= NULL,
+	.mutex_unlock_irqrestore = NULL,
 	.get_cpu		= palacios_get_cpu,
 	.interrupt_cpu		= palacios_interrupt_cpu,
 	.call_on_cpu		= palacios_xcall,

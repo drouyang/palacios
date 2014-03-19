@@ -490,16 +490,16 @@ void palacios_restore_fpu(void) {
 void *
 palacios_mutex_alloc(void)
 {
-    spinlock_t * lock = palacios_alloc(sizeof(spinlock_t));
+    struct semaphore * sem = palacios_alloc(sizeof(struct semaphore));
 
-    if (lock) {
-	spin_lock_init(lock);
+    if (sem) {
+        sema_init(sem, 1);
     } else {
-	ERROR("ALERT ALERT Unable to allocate lock\n");
-	return NULL;
+        ERROR("ALERT unable to allocate semaphore\n");
+        return NULL;
     }
-    
-    return lock;
+
+    return sem;
 }
 
 /**
@@ -515,13 +515,14 @@ palacios_mutex_free(void * mutex) {
  */
 void 
 palacios_mutex_lock(void * mutex) {
-    spin_lock((spinlock_t *)mutex);
+    down(mutex);
 }
 
 
 /**
  * Locks a mutex, disabling interrupts on this core
  */
+/*
 void *
 palacios_mutex_lock_irqsave(void * mutex) {
     
@@ -531,29 +532,30 @@ palacios_mutex_lock_irqsave(void * mutex) {
 
     return (void *)flags;
 }
+*/
 
 
 /**
  * Unlocks a mutex.
  */
 void 
-palacios_mutex_unlock(
-	void *			mutex
-) 
+palacios_mutex_unlock(void * mutex)
 {
-    spin_unlock((spinlock_t *)mutex);
+    up(mutex);
 }
 
 
 /**
  * Unlocks a mutex and restores previous interrupt state on this core
  */
+/*
 void 
 palacios_mutex_unlock_irqrestore(void *mutex, void *flags)
 {
     // This is correct, flags is opaque
     spin_unlock_irqrestore((spinlock_t *)mutex,(unsigned long)flags);
 }
+*/
 
 /**
  * Structure used by the Palacios hypervisor to interface with the host kernel.
@@ -579,8 +581,8 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.mutex_free		= palacios_mutex_free,
 	.mutex_lock		= palacios_mutex_lock, 
 	.mutex_unlock		= palacios_mutex_unlock,
-	.mutex_lock_irqsave     = palacios_mutex_lock_irqsave, 
-	.mutex_unlock_irqrestore= palacios_mutex_unlock_irqrestore,
+	.mutex_lock_irqsave     = NULL, 
+	.mutex_unlock_irqrestore= NULL,
 	.get_cpu		= palacios_get_cpu,
 	.interrupt_cpu		= palacios_interrupt_cpu,
 	.call_on_cpu		= palacios_xcall,
