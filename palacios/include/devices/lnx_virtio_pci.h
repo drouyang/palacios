@@ -107,6 +107,13 @@ struct virtio_config {
 } __attribute__((packed));
 
 
+struct shadow_vring_desc {
+    uint64_t addr_hva;
+    uint32_t length;
+    uint16_t flags;
+    uint16_t next;
+} __attribute__((packed));
+
 struct vring_desc {
     uint64_t addr_gpa;
     uint32_t length;

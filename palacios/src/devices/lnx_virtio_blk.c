@@ -19,14 +19,14 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_dev_mgr.h>
+#include <palacios/vmm_lock.h>
 #include <devices/lnx_virtio_pci.h>
 #include <palacios/vm_guest_mem.h>
 
 #include <devices/pci.h>
 
 
-
-#ifndef V3_CONFIG_DEBUG_VIRTIO_BLK
+#ifndef V3_CONFIG_DEBUG_VIRTIO_BLOCK
 #undef PrintDebug
 #define PrintDebug(fmt, args...)
 #endif
@@ -90,13 +90,12 @@ struct virtio_dev_state {
     struct list_head dev_list;
 };
 
-struct virtio_blk_state {
 
+struct virtio_blk_state {
     struct pci_device * pci_dev;
     struct blk_config block_cfg;
     struct virtio_config virtio_cfg;
 
-    
     struct virtio_queue queue;
 
     struct v3_dev_blk_ops * ops;
@@ -108,10 +107,17 @@ struct virtio_blk_state {
     struct virtio_dev_state * virtio_dev;
 
     struct list_head dev_link;
+
+    struct shadow_vring_desc shadow_desc[QUEUE_SIZE]; 
+    uint16_t shadow_avail_idx;
+    uint16_t shadow_used_idx;
+
+    /* async IO request queue */
+    void * io_thread;
+    v3_spinlock_t isr_lock;
 };
 
-
-
+static uint32_t async_io_enabled = 0;
 
 static int blk_reset(struct virtio_blk_state * virtio) {
 
@@ -123,73 +129,53 @@ static int blk_reset(struct virtio_blk_state * virtio) {
 
     virtio->virtio_cfg.status = 0;
     virtio->virtio_cfg.pci_isr = 0;
+
+    virtio->shadow_used_idx = 0;
+    virtio->shadow_avail_idx = 0;
     return 0;
 }
 
+static void vq_notify(struct virtio_blk_state * blk_state) 
+{
+    struct virtio_queue * vq = &(blk_state->queue);
 
-
-
-static int handle_read_op(struct virtio_blk_state * blk_state, uint8_t * buf, uint64_t * sector, uint64_t len) {
-    int ret = -1;
-
-    PrintDebug("Reading Disk\n");
-    ret = blk_state->ops->read(buf, (*sector) * SECTOR_SIZE, len, (void *)(blk_state->backend_data));
-    *sector += (len / SECTOR_SIZE);
-
-    return ret;
-}
-
-
-static int handle_write_op(struct virtio_blk_state * blk_state, uint8_t * buf, uint64_t * sector, uint64_t len) {
-    int ret = -1;
-
-    PrintDebug("Writing Disk\n");
-    ret = blk_state->ops->write(buf, (*sector) * SECTOR_SIZE, len, (void *)(blk_state->backend_data));
-    *sector += (len / SECTOR_SIZE);
-
-    return ret;
-}
-
-
-
-// multiple block operations need to increment the sector 
-
-static int handle_block_op(struct guest_info * core, struct virtio_blk_state * blk_state, struct blk_op_hdr * hdr, 
-			   struct vring_desc * buf_desc, uint8_t * status) {
-    uint8_t * buf = NULL;
-
-    PrintDebug("Handling Block op\n");
-    if (v3_gpa_to_hva(core, buf_desc->addr_gpa, (addr_t *)&(buf)) == -1) {
-	PrintError("Could not translate buffer address\n");
-	return -1;
+    if (!(vq->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
+        v3_spin_lock(blk_state->isr_lock);
+        if (blk_state->virtio_cfg.pci_isr == 0) {
+            PrintDebug("virtio_blk isr value: 0 -> 1, raise IRQ %d...\n", 
+                    blk_state->pci_dev->config_header.intr_line);
+            blk_state->virtio_cfg.pci_isr = 1;
+            v3_pci_raise_irq(blk_state->virtio_dev->pci_bus, 
+                    blk_state->pci_dev, 0);
+        } else {
+            PrintDebug("virtio_blk isr value: 1 -> 1\n");
+        }
+        v3_spin_unlock(blk_state->isr_lock);
+    } else {
+        PrintDebug("%s: VIRTIO_NO_IRQ_FLAG is set\n", __func__);
     }
-
-    PrintDebug("Sector=%p Length=%d\n", (void *)(addr_t)(hdr->sector), buf_desc->length);
-
-    if (hdr->type == BLK_IN_REQ) {
-	if (handle_read_op(blk_state, buf, &(hdr->sector), buf_desc->length) == -1) {
-	    *status = BLK_STATUS_ERR;
-	    return -1;
-	} else {
-	    *status = BLK_STATUS_OK;
-	}
-    } else if (hdr->type == BLK_OUT_REQ) {
-	if (handle_write_op(blk_state, buf, &(hdr->sector), buf_desc->length) == -1) {
-	    *status = BLK_STATUS_ERR;
-	    return -1;
-	} else {
-	    *status = BLK_STATUS_OK;
-	}
-    } else if (hdr->type == BLK_SCSI_CMD) {
-	PrintError("VIRTIO: SCSI Command Not supported!!!\n");
-	*status = BLK_STATUS_NOT_SUPPORTED;
-	return -1;
-    }
-
-    PrintDebug("Returning Status: %d\n", *status);
-
-    return 0;
 }
+
+static inline void vq_complete(
+        struct virtio_blk_state * blk_state, 
+        unsigned long long index, 
+        unsigned long long req_len)
+{
+    struct virtio_queue * vq = &(blk_state->queue);
+
+    PrintDebug("complete avail_index %llu into used_index %d\n", 
+            index % QUEUE_SIZE, 
+            vq->used->index % QUEUE_SIZE);
+
+    vq->used->ring[vq->used->index % QUEUE_SIZE].id 
+        = vq->avail->ring[index % QUEUE_SIZE];
+    vq->used->ring[vq->used->index % QUEUE_SIZE].length 
+        = req_len;
+    vq->used->index++;
+
+    vq_notify(blk_state);
+}
+
 
 static int get_desc_count(struct virtio_queue * q, int index) {
     struct vring_desc * tmp_desc = &(q->desc[index]);
@@ -204,101 +190,202 @@ static int get_desc_count(struct virtio_queue * q, int index) {
 }
 
 
-
-static int handle_kick(struct guest_info * core, struct virtio_blk_state * blk_state) {  
+static int fill_shadow_desc_buf(struct guest_info * core, struct virtio_blk_state * blk_state, int avail_idx) {
     struct virtio_queue * q = &(blk_state->queue);
+    struct shadow_vring_desc * shadow_desc = blk_state->shadow_desc;
 
-    PrintDebug("VIRTIO KICK: cur_index=%d (mod=%d), avail_index=%d\n", 
-	       q->cur_avail_idx, q->cur_avail_idx % QUEUE_SIZE, q->avail->index);
+    while (q->cur_avail_idx != avail_idx) {
+        struct vring_desc * hdr_desc = NULL;
+        struct vring_desc * buf_desc = NULL;
+        struct vring_desc * status_desc = NULL;
+        uint16_t desc_idx = q->avail->ring[q->cur_avail_idx % QUEUE_SIZE];
+        int desc_cnt = get_desc_count(q, desc_idx);
+        int i;
 
-    while (q->cur_avail_idx != q->avail->index) {
-	struct vring_desc * hdr_desc = NULL;
-	struct vring_desc * buf_desc = NULL;
-	struct vring_desc * status_desc = NULL;
-	struct blk_op_hdr hdr;
-	addr_t hdr_addr = 0;
-	uint16_t desc_idx = q->avail->ring[q->cur_avail_idx % QUEUE_SIZE];
-	int desc_cnt = get_desc_count(q, desc_idx);
-	int i = 0;
-	uint8_t * status_ptr = NULL;
-	uint8_t status = BLK_STATUS_OK;
-	uint32_t req_len = 0;
+        PrintDebug("%s: cur_avail_idx %d, avail_idx %d\n", 
+                __func__, q->cur_avail_idx, avail_idx);
 
-	PrintDebug("Descriptor Count=%d, index=%d\n", desc_cnt, q->cur_avail_idx % QUEUE_SIZE);
+        if (desc_cnt < 3) {
+            PrintError("Block operations must include at least 3 descriptors\n");
+            return -1;
+        }
 
-	if (desc_cnt < 3) {
-	    PrintError("Block operations must include at least 3 descriptors\n");
-	    return -1;
-	}
+        // header desc
+        hdr_desc = &(q->desc[desc_idx]);
+        memcpy(&shadow_desc[desc_idx], hdr_desc,
+                sizeof(struct vring_desc));
+        if (v3_gpa_to_hva(core, hdr_desc->addr_gpa, 
+                    (void *) &(shadow_desc[desc_idx].addr_hva)) == -1) {
+            PrintError("Could not translate block header address\n");
+            return -1;
+        }
 
-	hdr_desc = &(q->desc[desc_idx]);
+        desc_idx = hdr_desc->next;
 
+        // buf desc
+        for (i = 0; i < desc_cnt - 2; i++) {
+            buf_desc = &(q->desc[desc_idx]);
+            memcpy(&shadow_desc[desc_idx], buf_desc,
+                    sizeof(struct vring_desc));
+            if (v3_gpa_to_hva(core, 
+                        buf_desc->addr_gpa, 
+                        (void *) &shadow_desc[desc_idx].addr_hva) == -1) {
+                PrintError("Could not translate buffer address %d\n", i);
+                return -1;
+            }
+            desc_idx = buf_desc->next;
+        }
 
-	PrintDebug("Header Descriptor (ptr=%p) gpa=%p, len=%d, flags=%x, next=%d\n", hdr_desc, 
-		   (void *)(hdr_desc->addr_gpa), hdr_desc->length, hdr_desc->flags, hdr_desc->next);	
+        // status desc
+        status_desc = &(q->desc[desc_idx]);
+        memcpy(&shadow_desc[desc_idx], status_desc,
+                sizeof(struct vring_desc));
+        if (v3_gpa_to_hva(core, 
+                    status_desc->addr_gpa, 
+                    (void *)&(shadow_desc[desc_idx].addr_hva)) == -1) {
+            PrintError("Could not translate status address\n");
+            return -1;
+        }
 
-	if (v3_gpa_to_hva(core, hdr_desc->addr_gpa, &(hdr_addr)) == -1) {
-	    PrintError("Could not translate block header address\n");
-	    return -1;
-	}
-
-	// We copy the block op header out because we are going to modify its contents
-	memcpy(&hdr, (void *)hdr_addr, sizeof(struct blk_op_hdr));
-	
-	PrintDebug("Blk Op Hdr (ptr=%p) type=%d, sector=%p\n", (void *)hdr_addr, hdr.type, (void *)hdr.sector);
-
-	desc_idx = hdr_desc->next;
-
-	for (i = 0; i < desc_cnt - 2; i++) {
-	    uint8_t tmp_status = BLK_STATUS_OK;
-
-	    buf_desc = &(q->desc[desc_idx]);
-
-	    PrintDebug("Buffer Descriptor (ptr=%p) gpa=%p, len=%d, flags=%x, next=%d\n", buf_desc, 
-		       (void *)(buf_desc->addr_gpa), buf_desc->length, buf_desc->flags, buf_desc->next);
-
-	    if (handle_block_op(core, blk_state, &hdr, buf_desc, &tmp_status) == -1) {
-		PrintError("Error handling block operation\n");
-		return -1;
-	    }
-
-	    if (tmp_status != BLK_STATUS_OK) {
-		status = tmp_status;
-	    }
-
-	    req_len += buf_desc->length;
-	    desc_idx = buf_desc->next;
-	}
-
-	status_desc = &(q->desc[desc_idx]);
-
-	PrintDebug("Status Descriptor (ptr=%p) gpa=%p, len=%d, flags=%x, next=%d\n", status_desc, 
-		   (void *)(status_desc->addr_gpa), status_desc->length, status_desc->flags, status_desc->next);
-
-	if (v3_gpa_to_hva(core, status_desc->addr_gpa, (addr_t *)&(status_ptr)) == -1) {
-	    PrintError("Could not translate status address\n");
-	    return -1;
-	}
-
-	req_len += status_desc->length;
-	*status_ptr = status;
-
-	q->used->ring[q->used->index % QUEUE_SIZE].id = q->avail->ring[q->cur_avail_idx % QUEUE_SIZE];
-	q->used->ring[q->used->index % QUEUE_SIZE].length = req_len; // What do we set this to????
-
-	q->used->index++;
-	q->cur_avail_idx++;
-    }
-
-    if (!(q->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
-	if (blk_state->virtio_cfg.pci_isr == 0) {
-	    PrintDebug("Raising IRQ %d\n",  blk_state->pci_dev->config_header.intr_line);
-	    v3_pci_raise_irq(blk_state->virtio_dev->pci_bus, blk_state->pci_dev, 0);
-	    blk_state->virtio_cfg.pci_isr = 1;
-	}
+        q->cur_avail_idx++;
+        blk_state->shadow_avail_idx++;
     }
 
     return 0;
+}
+
+
+static int _handle_kick(struct virtio_blk_state * blk_state)
+{
+    struct virtio_queue * q = &(blk_state->queue);
+    uint16_t idx, end_idx;
+
+    idx = blk_state->shadow_used_idx;
+    end_idx = blk_state->shadow_avail_idx;
+
+
+    while (idx != blk_state->shadow_avail_idx) {
+        struct shadow_vring_desc * hdr_desc = NULL;
+        struct shadow_vring_desc * buf_desc = NULL;
+        struct shadow_vring_desc * status_desc = NULL;
+        struct blk_op_hdr hdr;
+        uint16_t desc_idx = q->avail->ring[idx % QUEUE_SIZE];
+        int desc_cnt = get_desc_count(q, desc_idx);
+        uint64_t    req_len = 0;
+        uint8_t status = BLK_STATUS_OK;
+        int i = 0, ret = 0;
+
+        PrintDebug("%s: shadow_used_idx=%d (mod=%d), shadow_avail_index=%d (mod=%d)\n", 
+                __func__,
+                blk_state->shadow_used_idx, blk_state->shadow_used_idx % QUEUE_SIZE, 
+                blk_state->shadow_avail_idx, blk_state->shadow_avail_idx % QUEUE_SIZE);
+        //PrintDebug("Descriptor Count=%d, index=%d\n", desc_cnt, idx % QUEUE_SIZE);
+
+        hdr_desc = &(blk_state->shadow_desc[desc_idx]);
+        //PrintDebug("Header Descriptor (ptr=%p) hva=%p, len=%d, flags=%x, next=%d\n", hdr_desc, 
+        //        (void *)(hdr_desc->addr_hva), hdr_desc->length, hdr_desc->flags, hdr_desc->next);	
+        // We copy the block op header out because we are going to modify its contents
+        memcpy(&hdr, (void *)hdr_desc->addr_hva, sizeof(struct blk_op_hdr));
+
+        //PrintDebug("Blk Op Hdr (ptr=%p) type=%d, sector=%p\n", 
+        //        (void *)hdr_desc->addr_hva, hdr.type, (void *)hdr.sector);
+
+        desc_idx = hdr_desc->next;
+
+
+        for (i = 0; i < desc_cnt - 2; i++) {
+            buf_desc = &(blk_state->shadow_desc[desc_idx]);
+
+            PrintDebug("Buffer Descriptor (ptr=%p) hva=%p, len=%d, flags=%x, next=%d\n", buf_desc, 
+                    (void *)(buf_desc->addr_hva), buf_desc->length, buf_desc->flags, buf_desc->next);
+
+            if (hdr.type == BLK_IN_REQ) {
+                PrintDebug("Issue read\n");
+                ret = blk_state->ops->read(
+                        (uint8_t *) buf_desc->addr_hva,
+                        hdr.sector * SECTOR_SIZE,
+                        buf_desc->length, 
+                        blk_state->backend_data);
+                if (ret < 0) {
+                    PrintError("Read Error\n");
+                    status = BLK_STATUS_ERR;
+                    break;
+                }
+            } else if (hdr.type == BLK_OUT_REQ) {
+                PrintDebug("Issue write\n");
+                ret = blk_state->ops->write(
+                        (uint8_t *) buf_desc->addr_hva,
+                        hdr.sector * SECTOR_SIZE,
+                        buf_desc->length, 
+                        blk_state->backend_data);
+                if (ret < 0) {
+                    PrintError("Write Error\n");
+                    status = BLK_STATUS_ERR;
+                    break;
+                }
+            } else {
+                PrintDebug("Unsupported\n");
+                status = BLK_STATUS_NOT_SUPPORTED;
+                break;
+            }
+
+            req_len += buf_desc->length;
+            hdr.sector += (buf_desc->length / SECTOR_SIZE);
+            desc_idx = buf_desc->next;
+        }
+
+        status_desc = &(blk_state->shadow_desc[desc_idx]);
+        /*
+        PrintDebug("Status Descriptor (ptr=%p) hva=%p, len=%d, flags=%x, next=%d\n", status_desc, 
+                (void *)(status_desc->addr_hva), 
+                status_desc->length, 
+                status_desc->flags, 
+                status_desc->next);
+                */
+        req_len += status_desc->length;
+        *((uint8_t *)status_desc->addr_hva) = status;
+
+        vq_complete(blk_state, idx, req_len);
+
+        idx++;
+        blk_state->shadow_used_idx++;
+    }
+
+    return 0;
+}
+
+static int io_dispatcher(void * arg) {
+    struct virtio_blk_state * blk_state = (struct virtio_blk_state *) arg;
+
+    PrintDebug("Start io_dispatcher\n");
+    while (1) {
+        if (blk_state->shadow_used_idx == blk_state->shadow_avail_idx) {
+            v3_yield(NULL, -1);
+            continue;
+        }
+
+        PrintDebug("%s: handle_kick\n", __func__);
+        _handle_kick(blk_state);
+    }
+
+    return 0;
+}
+
+
+
+static int handle_kick(struct guest_info * core, struct virtio_blk_state * blk_state) {
+    int avail_idx = blk_state->queue.avail->index;
+
+    if (fill_shadow_desc_buf(core, blk_state, avail_idx) < 0) {
+        PrintError("fill_shadow_desc_buf failed at index %d\n", avail_idx);
+        return -1;
+    }
+
+    if (async_io_enabled) {
+        return 0;
+    } else {
+        return _handle_kick(blk_state);
+    }
 }
 
 static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
@@ -308,7 +395,6 @@ static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, 
 
     PrintDebug("VIRTIO BLOCK Write for port %d (index=%d) len=%d, value=%x\n", 
 	       port, port_idx,  length, *(uint32_t *)src);
-
 
 
     switch (port_idx) {
@@ -380,11 +466,9 @@ static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, 
 
 	    break;
 	case VRING_Q_NOTIFY_PORT:
-	    PrintDebug("Handling Kick\n");
-	    if (handle_kick(core, blk_state) == -1) {
-		PrintError("Could not handle Block Notification\n");
-		return -1;
-	    }
+            if (handle_kick(core, blk_state) == -1) {
+                PrintError("Could not handle Block Notification\n");
+            }
 	    break;
 	case VIRTIO_STATUS_PORT:
 	    blk_state->virtio_cfg.status = *(uint8_t *)src;
@@ -397,7 +481,9 @@ static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, 
 	    break;
 
 	case VIRTIO_ISR_PORT:
+            v3_spin_lock(blk_state->isr_lock);
 	    blk_state->virtio_cfg.pci_isr = *(uint8_t *)src;
+            v3_spin_unlock(blk_state->isr_lock);
 	    break;
 	default:
 	    return -1;
@@ -461,13 +547,17 @@ static int virtio_io_read(struct guest_info * core, uint16_t port, void * dst, u
 	    break;
 
 	case VIRTIO_ISR_PORT:
+            v3_spin_lock(blk_state->isr_lock);
 	    *(uint8_t *)dst = blk_state->virtio_cfg.pci_isr;
 
 	    if (blk_state->virtio_cfg.pci_isr == 1) {
 		blk_state->virtio_cfg.pci_isr = 0;
-		//	PrintDebug("Lowering IRQ from Virtio BLOCK\n");
+		PrintDebug("Lowering IRQ from Virtio BLOCK...\n");
 		v3_pci_lower_irq(blk_state->virtio_dev->pci_bus, blk_state->pci_dev, 0);
-	    }
+	    } else {
+                PrintDebug("VIRTIO_ISR_PORT: isr not set\n");
+            }
+            v3_spin_unlock(blk_state->isr_lock);
 
 	    break;
 
@@ -643,6 +733,20 @@ static int connect_fn(struct v3_vm_info * vm,
     PrintDebug("Virtio Capacity = %d -- 0x%p\n", (int)(blk_state->block_cfg.capacity), 
 	       (void *)(addr_t)(blk_state->block_cfg.capacity));
 
+    v3_spinlock_init(&blk_state->isr_lock);
+
+    blk_state->shadow_used_idx = 0;
+    blk_state->shadow_avail_idx = 0;
+
+    if (async_io_enabled) {
+        V3_Print("virtio-blk: creating IO thread\n");
+        blk_state->io_thread = V3_CREATE_THREAD_ON_CPU(
+                0,
+                io_dispatcher,
+                blk_state,
+                "virtioblkd");
+    }
+
     return 0;
 }
 
@@ -651,6 +755,7 @@ static int virtio_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     struct vm_device * pci_bus = v3_find_dev(vm, v3_cfg_val(cfg, "bus"));
     struct virtio_dev_state * virtio_state = NULL;
     char * dev_id = v3_cfg_val(cfg, "ID");
+    char * async_io = v3_cfg_val(cfg, "async_io");
 
     PrintDebug("Initializing VIRTIO Block device\n");
 
@@ -666,6 +771,9 @@ static int virtio_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	PrintError("Cannot allocate in init\n");
 	return -1;
     }
+
+    async_io_enabled = (async_io == NULL) ? 0 : atoi(async_io);
+    PrintDebug("async %s: %d\n", (async_io == NULL) ? "" : async_io , async_io_enabled);
 
     memset(virtio_state, 0, sizeof(struct virtio_dev_state));
 
