@@ -57,7 +57,7 @@ struct xpmem_hypercall_info {
 
 struct xpmem_cmd_iter {
     struct list_head node;
-    struct xpmem_cmd * cmd;
+    struct xpmem_cmd_ex * cmd;
 };
 
 
@@ -69,10 +69,17 @@ struct xpmem_bar_state {
     uint8_t interrupt_status;
 
     /* Incoming command request */
-    struct xpmem_cmd request;
+    struct xpmem_cmd_ex request;
 
     /* Incoming response to a previously issued command */
-    struct xpmem_cmd response;
+    struct xpmem_cmd_ex response;
+};
+
+
+struct xpmem_mem_iter {
+    addr_t guest_start;
+    addr_t guest_end;
+    struct list_head node;
 };
 
 
@@ -88,10 +95,10 @@ struct v3_xpmem_state {
 
     /* List of pending incoming commands */
     struct list_head xpmem_cmd_list;
-    v3_lock_t xpmem_cmd_lock;
+    v3_spinlock_t xpmem_cmd_lock;
 
     /* Interrupt status lock */
-    v3_lock_t interrupt_lock;
+    v3_spinlock_t interrupt_lock;
 
     /* Bar exposed to guest */
     struct xpmem_bar_state * bar_state;
@@ -99,8 +106,11 @@ struct v3_xpmem_state {
     /* GPA of a buffer for storing the vPFNs mapping the result of a local outgoing attach request */
     addr_t local_pfn_gpa;
 
-    /* GPA of a buffer for storing the vPNFs mapping the result of a remote incoming attach request */
+    /* GPA of a buffer for storing the vPFNs mapping the result of a remote incoming attach request */
     addr_t remote_pfn_gpa;
+
+    /* Guest XPMEM memory map */
+    struct list_head mem_map;
 };
 
 
@@ -149,11 +159,11 @@ static int xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem) {
     return 0;
 }
 
-static int copy_guest_regs(struct v3_xpmem_state * state, struct guest_info * info, struct xpmem_cmd * cmd) {
+static int copy_guest_regs(struct v3_xpmem_state * state, struct guest_info * info, struct xpmem_cmd_ex * cmd) {
     unsigned long flags;
     int ret = 0;
 
-    flags = v3_lock_irqsave(state->interrupt_lock);
+    flags = v3_spin_lock_irqsave(state->interrupt_lock);
 
     switch (cmd->type) {
         case XPMEM_MAKE:
@@ -204,6 +214,7 @@ static int copy_guest_regs(struct v3_xpmem_state * state, struct guest_info * in
             break;
 
         case XPMEM_ATTACH_COMPLETE:
+            /* Copy GVA and core into state */
             state->remote_pfn_gpa = info->vm_regs.rbx;
             break;
 
@@ -216,42 +227,40 @@ static int copy_guest_regs(struct v3_xpmem_state * state, struct guest_info * in
             break;
     }
 
-    v3_unlock_irqrestore(state->interrupt_lock, flags);
+    v3_spin_unlock_irqrestore(state->interrupt_lock, flags);
     return ret;
 }
 
 static int make_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
-    struct xpmem_cmd * cmd = V3_Malloc(sizeof(struct xpmem_cmd));
+    struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
     if (!cmd) {
         PrintError("XPMEM failed to allocate memory for guest hypercall structure\n");
         return -1;
     }
 
-    memset(cmd, 0, sizeof(struct xpmem_cmd));
+    memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_MAKE;
 
     if (copy_guest_regs(state, info, cmd)) {
         PrintError("Failed to copy guest registers\n");
         return -1;
     }
-    
-    V3_Print("Passing XPMEM MAKE command to host\n");
 
     return v3_xpmem_host_command(state->host_handle, cmd);
 }
 
 static int remove_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
-    struct xpmem_cmd * cmd = V3_Malloc(sizeof(struct xpmem_cmd));
+    struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
     if (!cmd) {
         PrintError("XPMEM failed to allocate memory for guest hypercall structure\n");
         return -1;
     }
 
-    memset(cmd, 0, sizeof(struct xpmem_cmd));
+    memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_REMOVE;
 
     if (copy_guest_regs(state, info, cmd)) {
@@ -264,14 +273,14 @@ static int remove_hcall(struct guest_info * info, hcall_id_t hcall_id, void * pr
 
 static int get_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
-    struct xpmem_cmd * cmd = V3_Malloc(sizeof(struct xpmem_cmd));
+    struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
     if (!cmd) {
         PrintError("XPMEM failed to allocate memory for guest hypercall structure\n");
         return -1;
     }
 
-    memset(cmd, 0, sizeof(struct xpmem_cmd));
+    memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_GET;
 
     if (copy_guest_regs(state, info, cmd)) {
@@ -284,14 +293,14 @@ static int get_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_
 
 static int release_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
-    struct xpmem_cmd * cmd = V3_Malloc(sizeof(struct xpmem_cmd));
+    struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
     if (!cmd) {
         PrintError("XPMEM failed to allocate memory for guest hypercall structure\n");
         return -1;
     }
 
-    memset(cmd, 0, sizeof(struct xpmem_cmd));
+    memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_RELEASE;
 
     if (copy_guest_regs(state, info, cmd)) {
@@ -304,14 +313,14 @@ static int release_hcall(struct guest_info * info, hcall_id_t hcall_id, void * p
 
 static int attach_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
-    struct xpmem_cmd * cmd = V3_Malloc(sizeof(struct xpmem_cmd));
+    struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
     if (!cmd) {
         PrintError("XPMEM failed to allocate memory for guest hypercall structure\n");
         return -1;
     }
 
-    memset(cmd, 0, sizeof(struct xpmem_cmd));
+    memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_ATTACH;
 
     if (copy_guest_regs(state, info, cmd)) {
@@ -324,14 +333,14 @@ static int attach_hcall(struct guest_info * info, hcall_id_t hcall_id, void * pr
 
 static int detach_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
-    struct xpmem_cmd * cmd = V3_Malloc(sizeof(struct xpmem_cmd));
+    struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
     if (!cmd) {
         PrintError("XPMEM failed to allocate memory for guest hypercall structure\n");
         return -1;
     }
 
-    memset(cmd, 0, sizeof(struct xpmem_cmd));
+    memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_DETACH;
 
     if (copy_guest_regs(state, info, cmd)) {
@@ -342,10 +351,33 @@ static int detach_hcall(struct guest_info * info, hcall_id_t hcall_id, void * pr
     return v3_xpmem_host_command(state->host_handle, cmd);
 }
 
+static void set_complete(struct xpmem_cmd_ex * cmd) {
+    switch(cmd->type) {
+        case XPMEM_GET:
+            cmd->type = XPMEM_GET_COMPLETE;
+            break;
+
+        case XPMEM_RELEASE:
+            cmd->type = XPMEM_RELEASE_COMPLETE;
+            break;
+
+        case XPMEM_ATTACH:
+            cmd->type = XPMEM_ATTACH_COMPLETE;
+            break;
+
+        case XPMEM_DETACH:
+            cmd->type = XPMEM_DETACH_COMPLETE;
+            break;
+
+        default:
+            break;
+    }
+}
+
 
 static int command_complete_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
-    struct xpmem_cmd * cmd = V3_Malloc(sizeof(struct xpmem_cmd));
+    struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
     struct xpmem_cmd_iter * iter = NULL;
     unsigned long flags, interrupt_flags;
 
@@ -358,6 +390,8 @@ static int command_complete_hcall(struct guest_info * info, hcall_id_t hcall_id,
      * request structure, as the guest is required to process requests one at a
      * time in the order that they arrive
      */
+    set_complete(&(state->bar_state->request));
+
     if (copy_guest_regs(state, info, &(state->bar_state->request))) {
         PrintError("Failed to copy guest registers\n");
         return -1;
@@ -368,7 +402,7 @@ static int command_complete_hcall(struct guest_info * info, hcall_id_t hcall_id,
      */
     *cmd = state->bar_state->request;
 
-    if (cmd->type == XPMEM_ATTACH) {
+    if (cmd->type == XPMEM_ATTACH_COMPLETE) {
         /* Copy the attachment list pfns from the guest */
         uint64_t i = 0;
         addr_t host_buf_addr;
@@ -390,27 +424,40 @@ static int command_complete_hcall(struct guest_info * info, hcall_id_t hcall_id,
         for (i = 0;  i < cmd->attach.num_pfns; i++) {
             uint64_t guest_pfn = *((uint64_t *)(host_buf_addr + (i * sizeof(uint64_t))));
             uint64_t host_pfn;
+            addr_t guest_paddr;
+            addr_t host_paddr;
 
-            if (v3_gpa_to_hpa(info, (addr_t)guest_pfn, (addr_t *)&(host_pfn))) {
+            guest_paddr = (addr_t)(guest_pfn << 12);
+
+            if (v3_gpa_to_hpa(info, guest_paddr, &(host_paddr))) {
                 PrintError("Unable to convert GPA %p to HPA\n", (void *)guest_pfn);
                 return -1;
             }
+
+            host_pfn = (uint64_t)(host_paddr >> 12);
+
+            V3_Print("Guest PFN %llu ---> Host PFN %llu (%p -> %p)\n",
+                    (unsigned long long)guest_pfn,
+                    (unsigned long long)host_pfn,
+                    (void *)guest_paddr,
+                    (void *)host_paddr
+                    );
 
             cmd->attach.pfns[i] = (uint64_t)host_pfn;
         }
     }
 
-    interrupt_flags = v3_lock_irqsave(state->interrupt_lock);
-    flags = v3_lock_irqsave(state->xpmem_cmd_lock);
+    interrupt_flags = v3_spin_lock_irqsave(state->interrupt_lock);
+    flags = v3_spin_lock_irqsave(state->xpmem_cmd_lock);
 
-    if (!list_empty(&(state->xpmem_cmd_list))) {
-        v3_unlock_irqrestore(state->xpmem_cmd_lock, flags);
+    if (list_empty(&(state->xpmem_cmd_list))) {
+        v3_spin_unlock_irqrestore(state->xpmem_cmd_lock, flags);
         state->bar_state->interrupt_status &= ~INT_REQUEST;
-        v3_unlock_irqrestore(state->interrupt_lock, interrupt_flags);
+        v3_spin_unlock_irqrestore(state->interrupt_lock, interrupt_flags);
     } else {
         iter = list_first_entry(&(state->xpmem_cmd_list), struct xpmem_cmd_iter, node);
         list_del(&(iter->node));
-        v3_unlock_irqrestore(state->xpmem_cmd_lock, flags);
+        v3_spin_unlock_irqrestore(state->xpmem_cmd_lock, flags);
 
         state->bar_state->request = *(iter->cmd);
         state->bar_state->interrupt_status |= INT_REQUEST;
@@ -419,7 +466,7 @@ static int command_complete_hcall(struct guest_info * info, hcall_id_t hcall_id,
         V3_Free(iter->cmd);
         V3_Free(iter);
 
-        v3_unlock_irqrestore(state->interrupt_lock, interrupt_flags);
+        v3_spin_unlock_irqrestore(state->interrupt_lock, interrupt_flags);
     }
 
     return v3_xpmem_host_command(state->host_handle, cmd);
@@ -472,6 +519,124 @@ static int register_xpmem_dev(struct v3_xpmem_state * state) {
     return 0;
 }
 
+
+#define XPMEM_MEM_INCR 0x40000000LL
+#define XPMEM_MEM_SIZE 0x400000000LL
+#define XPMEM_MAX_ADDR 0x2000000000LL
+
+static int init_xpmem_mem_map(struct v3_xpmem_state * state) {
+    INIT_LIST_HEAD(&(state->mem_map));
+    addr_t try_addr = 0;
+
+    for (try_addr = 0; try_addr < XPMEM_MAX_ADDR; try_addr += XPMEM_MEM_INCR) {
+        if (!v3_add_shadow_mem(state->vm, 
+                    V3_MEM_CORE_ANY, V3_MEM_RD | V3_MEM_WR,
+                    try_addr,
+                    try_addr + XPMEM_MEM_SIZE,
+                    0)) {
+            struct xpmem_mem_iter * iter = V3_Malloc(sizeof(struct xpmem_mem_iter));
+            if (!iter) {
+                PrintError("XPMEM: Out of memory\n");
+                return -1;
+            }
+
+            iter->guest_start = try_addr;
+            iter->guest_end = try_addr + XPMEM_MEM_SIZE;
+            list_add(&(iter->node), &(state->mem_map));
+
+            V3_Print("Guest XPMEM memory range: [%p, %p)\n",
+                (void *)iter->guest_start,
+                (void *)iter->guest_end
+            );
+
+            return 0;
+        }
+    }
+
+    PrintError("Could not initialize guest XPMEM memory map: no available GPA space\n");
+    return -1;
+}
+
+static addr_t alloc_mem_region(struct v3_xpmem_state * state, uint64_t size) {
+    struct xpmem_mem_iter * free_iter = NULL, * free_next = NULL;
+
+    list_for_each_entry_safe(free_iter, free_next, &(state->mem_map), node) {
+        addr_t free_start = free_iter->guest_start;
+        addr_t free_end = free_iter->guest_end;
+        uint64_t free_size = free_end - free_start;
+  
+        if (free_size >= size) {
+            /* Delete existing free region */
+            {
+                struct v3_mem_region * old_reg = v3_get_mem_region(state->vm, V3_MEM_CORE_ANY, free_start);
+                if (!old_reg) {
+                    PrintError("XPMEML Cannot remove old guest shadow mapping - this should be impossible\n");
+                    return 0;
+                }
+                v3_delete_mem_region(state->vm, old_reg);
+            }
+
+            if (size == free_size) {
+                /* Exact fit */
+                list_del(&(free_iter->node));
+                V3_Free(free_iter);
+            } else {
+                /* Fix up hole */
+                free_iter->guest_start = free_start + size;
+
+                /* Re-insert NULL map */
+                if (v3_add_shadow_mem(state->vm,
+                        V3_MEM_CORE_ANY, V3_MEM_RD | V3_MEM_WR,
+                        free_iter->guest_start,
+                        free_end,
+                        0)) {
+                    PrintError("XPMEM: Could not add free range to guest shadow map - this should be impossible!\n");
+                    return 0;
+                }
+            }
+
+            return free_start;
+        }
+    }
+
+    PrintError("Could not carve XPMEM region from guest memory map\n");
+    return 0;
+}
+
+static addr_t xpmem_add_shadow_map(struct v3_xpmem_state * state, uint64_t * pfns, uint64_t num_pfns) {
+    uint64_t size = num_pfns * PAGE_SIZE;
+    uint64_t i = 0;
+    addr_t guest_start_addr = alloc_mem_region(state, size);
+
+    if (!guest_start_addr) {
+        return 0;
+    }
+
+    for (i = 0; i < num_pfns; i++) {
+        addr_t guest_addr = guest_start_addr + (PAGE_SIZE * i);
+        addr_t host_addr = (addr_t)pfns[i] << 12;
+
+        if (v3_add_shadow_mem(state->vm, V3_MEM_CORE_ANY, V3_MEM_RD | V3_MEM_WR,
+                    guest_addr,
+                    guest_addr + PAGE_SIZE,
+                    host_addr)) {
+            PrintError("Failed to add XPMEM shadow PFN region (%p -> %p)\n",
+                (void *)guest_addr,
+                (void *)host_addr
+            );
+            return 0;
+        }
+    }
+
+    return guest_start_addr;
+}
+
+/*
+static int xpmem_remove_shadow_map(struct v3_xpmem_state * state, uint64_t * pfns, uint64_t num_pfns) {
+    return 0;
+}
+*/
+
 static int xpmem_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg){
     struct vm_device * pci_bus = v3_find_dev(vm, v3_cfg_val(cfg, "bus"));
     char * dev_id = v3_cfg_val(cfg, "ID");
@@ -499,9 +664,9 @@ static int xpmem_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg){
     state->bar_state = V3_VAddr((void *)bar_pa);
 
     if (v3_add_shadow_mem(state->vm, V3_MEM_CORE_ANY, V3_MEM_RD,
-            GUEST_DEFAULT_BAR,
-            GUEST_DEFAULT_BAR + PAGE_SIZE,
-            bar_pa)) {
+                GUEST_DEFAULT_BAR,
+                GUEST_DEFAULT_BAR + PAGE_SIZE,
+                bar_pa)) {
         PrintError("Failed to add XPMEM shadow BAR region\n");
     }
 
@@ -522,10 +687,13 @@ static int xpmem_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg){
     v3_register_hypercall(vm, XPMEM_CMD_COMPLETE_HCALL, command_complete_hcall, state);
 
     INIT_LIST_HEAD(&(state->xpmem_cmd_list));
-    v3_lock_init(&(state->xpmem_cmd_lock));
+    v3_spinlock_init(&(state->xpmem_cmd_lock));
 
     state->bar_state->interrupt_status = 0;
-    v3_lock_init(&(state->interrupt_lock));
+    v3_spinlock_init(&(state->interrupt_lock));
+
+    // Initialize guest memory map
+    init_xpmem_mem_map(state);
 
     // Initialize host channel
     state->host_handle = v3_xpmem_host_connect(vm, state);
@@ -554,13 +722,13 @@ static int xpmem_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg){
  *      XPMEM_ATTACH    - remote process attaching to an apid
  *      XPMEM_DETACH    - remote process detaching from an apid
  */
-static int xpmem_command_request(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd * cmd) {
+static int xpmem_command_request(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd) {
     struct xpmem_cmd_iter * iter = NULL;
     unsigned long flags, interrupt_flags;
     int ret = 0;
 
-    interrupt_flags = v3_lock_irqsave(v3_xpmem->interrupt_lock);
-    flags = v3_lock_irqsave(v3_xpmem->xpmem_cmd_lock);
+    interrupt_flags = v3_spin_lock_irqsave(v3_xpmem->interrupt_lock);
+    flags = v3_spin_lock_irqsave(v3_xpmem->xpmem_cmd_lock);
 
     if (list_empty(&(v3_xpmem->xpmem_cmd_list))) {
         v3_xpmem->bar_state->request = *cmd;
@@ -580,8 +748,8 @@ static int xpmem_command_request(struct v3_xpmem_state * v3_xpmem, struct xpmem_
         list_add_tail(&(iter->node), &(v3_xpmem->xpmem_cmd_list));
     }
 
-    v3_unlock_irqrestore(v3_xpmem->xpmem_cmd_lock, flags);
-    v3_unlock_irqrestore(v3_xpmem->interrupt_lock, interrupt_flags);
+    v3_spin_unlock_irqrestore(v3_xpmem->xpmem_cmd_lock, flags);
+    v3_spin_unlock_irqrestore(v3_xpmem->interrupt_lock, interrupt_flags);
 
     return ret;
 }
@@ -599,46 +767,58 @@ static int xpmem_command_request(struct v3_xpmem_state * v3_xpmem, struct xpmem_
 /* We can write directly to the BAR - there is only ever a single outgoing
  * request at a time, so we can always write the response directly in
  */
-static int xpmem_command_complete(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd * cmd) {
+static int xpmem_command_complete(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd) {
     unsigned long interrupt_flags;
 
-    if (cmd->type == XPMEM_ATTACH_COMPLETE) {
-        /* Copy the attachment list pfns into the guest */
-        uint64_t i = 0;
-        addr_t host_buf_addr;
-        addr_t guest_buf_addr = v3_xpmem->local_pfn_gpa;
-        v3_xpmem->bar_state->response.attach.num_pfns = v3_xpmem->bar_state->response.attach.size / PAGE_SIZE;
-
-        if (v3_gpa_to_hva(v3_xpmem->info, guest_buf_addr, &(host_buf_addr))) {
-            PrintError("Unable to convert GPA %p to HVA\n", (void *)guest_buf_addr);
+    if ((cmd->type == XPMEM_ATTACH_COMPLETE) && (cmd->attach.num_pfns > 0)) {
+        addr_t guest_start_addr = 0;
+        
+        /* Add new shadow map for the PFNs */
+        if ((guest_start_addr = xpmem_add_shadow_map(v3_xpmem, cmd->attach.pfns, cmd->attach.num_pfns)) == 0) {
+            PrintError("XPMEM: Unable to complete remote XPMEM attachment: cannot update shadow map\n");
             return -1;
         }
 
-        for (i = 0; i < cmd->attach.num_pfns; i++) {
-            uint32_t guest_pfn = host_buf_addr + (i * sizeof(uint64_t));
-            uint32_t host_pfn = cmd->attach.pfns[i];
+        /* Copy the attachment list pfns into the guest */
+        {
+            uint64_t i = 0;
+            addr_t host_buf_addr;
+            addr_t guest_buf_addr = v3_xpmem->local_pfn_gpa;
 
-            /* TODO: allocate out of free guest memory, set those pfn
-             * numbers by using host_buf_addr
-             */
-            addr_t guest_mem = (addr_t)0; /*some_new_pfn;*/
-
-            if (v3_add_shadow_mem(v3_xpmem->vm, V3_MEM_CORE_ANY, V3_MEM_RD | V3_MEM_WR, 
-                        guest_mem, guest_mem + PAGE_SIZE, (addr_t)host_pfn)) {
-                PrintError("Unable to map GPA %lx to HPA %lx\n", (unsigned long)guest_pfn, 
-                        (unsigned long)host_pfn);
+            if (v3_gpa_to_hva(v3_xpmem->info, guest_buf_addr, &(host_buf_addr))) {
+                PrintError("Unable to convert GPA %p to HVA\n", (void *)guest_buf_addr);
                 return -1;
             }
-        }
 
+            /* Now, host_buf_addr points to the guest page frame list */
+            for (i = 0; i < cmd->attach.num_pfns; i++) {
+                uint64_t guest_pfn;
+                uint64_t host_pfn;
+                addr_t guest_paddr;
+                addr_t guest_buf;
+
+                guest_paddr = guest_start_addr + (i * PAGE_SIZE);
+                guest_pfn = (uint64_t)(guest_paddr >> 12);
+                host_pfn = cmd->attach.pfns[i];
+
+                V3_Print("Guest PFN %llu ---> Host PFN %llu (%p -> %p)\n",
+                        (unsigned long long)guest_pfn,
+                        (unsigned long long)host_pfn,
+                        (void *)guest_paddr,
+                        (void *)(host_pfn << 12)
+                );
+
+                guest_buf = host_buf_addr + (i * sizeof(uint64_t));
+                *((uint64_t *)guest_buf) = guest_pfn;
+            }
+
+            V3_Free(cmd->attach.pfns);
+        }
     }
 
-    interrupt_flags = v3_lock_irqsave(v3_xpmem->interrupt_lock);
+    interrupt_flags = v3_spin_lock_irqsave(v3_xpmem->interrupt_lock);
     v3_xpmem->bar_state->interrupt_status |= INT_COMPLETE;
-    v3_unlock_irqrestore(v3_xpmem->interrupt_lock, interrupt_flags);
-
-    V3_Print("XPMEM raising IRQ for command completion (%d)\n", 
-        cmd->type);
+    v3_spin_unlock_irqrestore(v3_xpmem->interrupt_lock, interrupt_flags);
 
     v3_xpmem->bar_state->response = *cmd;
     V3_Free(cmd);
@@ -646,14 +826,14 @@ static int xpmem_command_complete(struct v3_xpmem_state * v3_xpmem, struct xpmem
     return xpmem_raise_irq(v3_xpmem);
 }
 
-int v3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd * cmd) {
+int v3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd) {
     switch (cmd->type) {
         case XPMEM_GET:
         case XPMEM_RELEASE:
         case XPMEM_ATTACH:
         case XPMEM_DETACH:
             return xpmem_command_request(v3_xpmem, cmd);
-        
+
         case XPMEM_MAKE_COMPLETE:
         case XPMEM_REMOVE_COMPLETE:
         case XPMEM_GET_COMPLETE:

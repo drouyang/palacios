@@ -26,7 +26,7 @@
 #include <palacios/vmm_types.h>
 
 
-int v3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd * cmd);
+int v3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd);
 
 #endif // ! __V3VEE__
 

@@ -27,16 +27,31 @@
 /* Opaque handle to host xpmem state */
 typedef void * xpmem_host_handle_t;
 
+typedef enum {
+    LOCAL,
+    VM, 
+    ENCLAVE,
+} xpmem_endpoint_t;
 
-struct xpmem_make_cmd {
+struct xpmem_loc {
+    int fd; 
+
+    xpmem_endpoint_t type;
+    int id; 
+
+    xpmem_endpoint_t type2;
+    int id2;
+};
+
+struct xpmem_cmd_make_ex {
     sint64_t segid; /* Input/Output - nameserver must ensure uniqueness */
 };
 
-struct xpmem_remove_cmd {
+struct xpmem_cmd_remove_ex {
     sint64_t segid;
 };
 
-struct xpmem_get_cmd {
+struct xpmem_cmd_get_ex {
     sint64_t segid;
     uint32_t flags;
     uint32_t permit_type;
@@ -44,11 +59,11 @@ struct xpmem_get_cmd {
     sint64_t apid; /* Output */
 };
 
-struct xpmem_release_cmd {
+struct xpmem_cmd_release_ex {
     sint64_t apid;
 };
 
-struct xpmem_attach_cmd {
+struct xpmem_cmd_attach_ex {
     sint64_t apid;
     uint64_t off;
     uint64_t size;
@@ -56,7 +71,7 @@ struct xpmem_attach_cmd {
     uint64_t * pfns;
 };
 
-struct xpmem_detach_cmd {
+struct xpmem_cmd_detach_ex {
     uint64_t vaddr;
 };
 
@@ -75,16 +90,17 @@ typedef enum {
     XPMEM_DETACH_COMPLETE,
 } xpmem_op_t;
 
-struct xpmem_cmd {
+struct xpmem_cmd_ex {
     xpmem_op_t type;
     union {
-        struct xpmem_make_cmd make;
-        struct xpmem_remove_cmd remove;
-        struct xpmem_get_cmd get;
-        struct xpmem_release_cmd release;
-        struct xpmem_attach_cmd attach;
-        struct xpmem_detach_cmd detach;
+        struct xpmem_cmd_make_ex make;
+        struct xpmem_cmd_remove_ex remove;
+        struct xpmem_cmd_get_ex get;
+        struct xpmem_cmd_release_ex release;
+        struct xpmem_cmd_attach_ex attach;
+        struct xpmem_cmd_detach_ex detach;
     };
+    struct xpmem_loc src_loc;
 };
 
 struct v3_xpmem_state;
@@ -92,8 +108,8 @@ struct v3_xpmem_state;
 struct v3_xpmem_hooks {
     xpmem_host_handle_t (*xpmem_host_connect)(void * private_data, struct v3_xpmem_state * v3_xpmem);
     int (*xpmem_host_disconnect)(xpmem_host_handle_t handle);
-    int (*xpmem_command)(xpmem_host_handle_t handle, struct xpmem_cmd * cmd);
-    int (*xpmem_command_complete)(xpmem_host_handle_t handle, struct xpmem_cmd * cmd);
+    int (*xpmem_command)(xpmem_host_handle_t handle, struct xpmem_cmd_ex * cmd);
+    int (*xpmem_command_complete)(xpmem_host_handle_t handle, struct xpmem_cmd_ex * cmd);
 };
 
 
@@ -103,7 +119,7 @@ struct v3_xpmem_hooks {
 void V3_Init_Xpmem(struct v3_xpmem_hooks * hooks);
 
 // Incoming command requests/responses
-int V3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd * cmd);
+int V3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd);
 
 
 /* VMM --> Host interface */
@@ -111,6 +127,6 @@ xpmem_host_handle_t v3_xpmem_host_connect(struct v3_vm_info * vm, struct v3_xpme
 int v3_xpmem_host_disconnect(xpmem_host_handle_t handle);
 
 // Outgoing command requests/responses
-int v3_xpmem_host_command(xpmem_host_handle_t handle, struct xpmem_cmd * cmd);
+int v3_xpmem_host_command(xpmem_host_handle_t handle, struct xpmem_cmd_ex * cmd);
 
 #endif

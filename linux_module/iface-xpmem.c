@@ -27,7 +27,7 @@ struct xpmem_cmd_state {
 };
 
 struct xpmem_cmd_iter {
-    struct xpmem_cmd * cmd;
+    struct xpmem_cmd_ex * cmd;
     struct list_head node;
 };
 
@@ -143,7 +143,7 @@ static int palacios_xpmem_host_disconnect(void * private_data) {
 }
 
 
-static int palacios_xpmem_command(void * private_data, struct xpmem_cmd * cmd) {
+static int palacios_xpmem_command(void * private_data, struct xpmem_cmd_ex * cmd) {
     struct host_xpmem_state * state = (struct host_xpmem_state *)private_data;
     struct xpmem_cmd_state * cmd_state = &(state->cmd_state);
     struct xpmem_cmd_iter * iter = NULL;
@@ -202,13 +202,11 @@ static ssize_t xpmem_read(struct file * filp, char __user * buffer, size_t size,
     list_del(&(iter->node));
     spin_unlock_irqrestore(&(cmd_state->lock), flags);
 
-    if (size > sizeof(struct xpmem_cmd)) {
-        size = sizeof(struct xpmem_cmd);
+    if (size > sizeof(struct xpmem_cmd_ex)) {
+        size = sizeof(struct xpmem_cmd_ex);
     }
 
     ret = size;
-
-    printk("iter->cmd: %d\n", iter->cmd->type);
 
     if (copy_to_user(buffer, (void *)iter->cmd, size)) {
         ERROR("Cannot copy XPMEM request to user\n");
@@ -223,24 +221,38 @@ static ssize_t xpmem_read(struct file * filp, char __user * buffer, size_t size,
 
 static ssize_t xpmem_write(struct file * filp, const char __user * buffer, size_t size, loff_t * offp) {
     struct host_xpmem_state * state = (struct host_xpmem_state *)filp->private_data;
-    struct xpmem_cmd * cmd = palacios_kmalloc(sizeof(struct xpmem_cmd), GFP_KERNEL);
+    struct xpmem_cmd_ex * cmd = palacios_kmalloc(sizeof(struct xpmem_cmd_ex), GFP_KERNEL);
 
     if (!cmd) {
+        palacios_kfree(cmd);
         ERROR("Cannot allocate memory for XPMEM command\n");
         return -ENOMEM;
     }
 
-    if (size != sizeof(struct xpmem_cmd)) {
+    if (size != sizeof(struct xpmem_cmd_ex)) {
+        palacios_kfree(cmd);
         ERROR("Invalid command size\n");
         return -EFAULT;
     }
 
     if (copy_from_user((void *)cmd, buffer, size)) {
+        palacios_kfree(cmd);
         ERROR("Cannot copy XPMEM request from user\n");
         return -EFAULT;
     }
 
-    switch (cmd->type)
+    if (cmd->type == XPMEM_ATTACH_COMPLETE) {
+        printk("Palacios PFN list:\n");
+        {
+            u64 i = 0;
+            for (i = 0; i < cmd->attach.num_pfns; i++) {
+                printk("%llu  ", (unsigned long long)cmd->attach.pfns[i]);
+            }
+            printk("\n");
+        }
+    }
+
+    switch (cmd->type) {
         case XPMEM_GET:
         case XPMEM_RELEASE:
         case XPMEM_ATTACH:
@@ -249,12 +261,13 @@ static ssize_t xpmem_write(struct file * filp, const char __user * buffer, size_
         case XPMEM_REMOVE_COMPLETE:
         case XPMEM_GET_COMPLETE:
         case XPMEM_RELEASE_COMPLETE:
-        case XPMEM_ATTACH_COMPLETE: {
-        case XPMEM_DETACH_COMPLETE:
+        case XPMEM_ATTACH_COMPLETE: 
+        case XPMEM_DETACH_COMPLETE: 
             V3_xpmem_command(state->v3_xpmem, cmd);
             break;
 
         default:
+            palacios_kfree(cmd);
             ERROR("Cannot handle XPMEM write - not a valid command structure (%d)\n", cmd->type);
             return -EFAULT;
     }

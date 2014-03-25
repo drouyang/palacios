@@ -35,7 +35,7 @@ void V3_Init_Xpmem(struct v3_xpmem_hooks * hooks) {
 }
 
 // Incoming command requests/responses
-int V3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd * cmd) {
+int V3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd) {
     return v3_xpmem_command(v3_xpmem, cmd);
 }
 
@@ -56,7 +56,7 @@ int v3_xpmem_host_disconnect(xpmem_host_handle_t handle) {
 }
 
 // Outgoing command requests/responses
-int v3_xpmem_host_command(xpmem_host_handle_t handle, struct xpmem_cmd * cmd) {
+int v3_xpmem_host_command(xpmem_host_handle_t handle, struct xpmem_cmd_ex * cmd) {
     V3_ASSERT(xpmem_hooks);
     V3_ASSERT(xpmem_hooks->xpmem_command);
 
