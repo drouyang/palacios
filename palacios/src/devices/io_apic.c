@@ -43,6 +43,7 @@
 #define IOAPIC_REDIR_BASE_REG 0x10
 
 #define REDIR_LO_MASK  ~0x00005000
+#define IOAPIC_REDIR_MASK_BIT  0x00010000
 
 struct ioapic_reg_sel {
     union {
@@ -315,8 +316,7 @@ static int ioapic_write(struct guest_info * core, addr_t guest_addr, void * src,
 	    case IOAPIC_ARB_REG:
 		ioapic->ioapic_arb_id.val = op_val;
 		break;
-	    default:
-		{
+	    default: {
 		    uint_t redir_index = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) >> 1;
 		    uint_t hi_val = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) & 1;
 
@@ -332,12 +332,28 @@ static int ioapic_write(struct guest_info * core, addr_t guest_addr, void * src,
 			PrintDebug("ioapic %u: Writing to hi of pin %d (val=0x%x)\n", ioapic->ioapic_id.id, redir_index, op_val);
 
 			ioapic->redir_tbl[redir_index].hi = op_val;
-			// TODO: send pending irqs
 		    } else {
 			PrintDebug("ioapic %u: Writing to lo of pin %d (val=0x%x)\n", ioapic->ioapic_id.id, redir_index, op_val);
 			op_val &= REDIR_LO_MASK;
 			ioapic->redir_tbl[redir_index].lo &= ~REDIR_LO_MASK;
 			ioapic->redir_tbl[redir_index].lo |= op_val;
+
+			// send pending irqs after unmask
+                        if ((ioapic->redir_tbl[redir_index].lo
+                                & IOAPIC_REDIR_MASK_BIT) == 0) {
+                            struct redir_tbl_entry * irq_entry = 
+                                &(ioapic->redir_tbl[redir_index]);
+                                if (irq_entry->trig_mode) {
+                                    if (ioapic->level_cnt[redir_index] > 0) {
+                                        PrintDebug("  Resend pending IRQ\n");
+                                        if (ioapic_send_ipi(core->vm_info,
+                                                    ioapic, irq_entry) == -1) {
+                                            PrintError("Error: %s: ioapic %u,APIC vector=%d\n", 
+                                                    __func__, ioapic->ioapic_id.id, irq_entry->vec);
+                                        }
+                                    }
+                                }
+                        }
 		    }
 		}
 	}
@@ -386,7 +402,7 @@ static int ioapic_eoi(struct guest_info * core, uint32_t irq, void * private_dat
 	    
 	    if (ioapic->level_cnt[i] > 0) {
 		if (ioapic_send_ipi(core->vm_info, ioapic, irq_entry) == -1) {
-		    PrintError("Error: ioapi %u - resending IPI after EOI (IRQ=%d) (APIC vector=%d)\n", 
+		    PrintError("Error: ioapic %u - resending IPI after EOI (IRQ=%d) (APIC vector=%d)\n", 
 			       ioapic->ioapic_id.id, irq, irq_entry->vec);
 		}
 	    }
