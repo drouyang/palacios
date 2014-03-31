@@ -130,17 +130,3 @@ void v3_mutex_unlock(v3_mutex_t mutex) {
     os_hooks->mutex_unlock((void *)mutex);
 }
 
-addr_t v3_mutex_irqsave(v3_mutex_t mutex) {
-    V3_ASSERT(os_hooks);
-    V3_ASSERT(os_hooks->mutex_lock_irqsave);
-
-    return (addr_t) (os_hooks->mutex_lock_irqsave((void *)mutex));
-}
-
-
-void v3_mutex_irqrestore(v3_mutex_t mutex, addr_t irq_state) {
-    V3_ASSERT(os_hooks);
-    V3_ASSERT(os_hooks->mutex_unlock_irqrestore);
-
-    os_hooks->mutex_unlock_irqrestore((void *)mutex,(void*)irq_state);
-}

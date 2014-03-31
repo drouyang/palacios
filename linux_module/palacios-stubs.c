@@ -519,20 +519,6 @@ palacios_mutex_lock(void * mutex) {
 }
 
 
-/**
- * Locks a mutex, disabling interrupts on this core
- */
-/*
-void *
-palacios_mutex_lock_irqsave(void * mutex) {
-    
-    unsigned long flags; 
-    
-    spin_lock_irqsave((spinlock_t *)mutex,flags);
-
-    return (void *)flags;
-}
-*/
 
 
 /**
@@ -545,17 +531,6 @@ palacios_mutex_unlock(void * mutex)
 }
 
 
-/**
- * Unlocks a mutex and restores previous interrupt state on this core
- */
-/*
-void 
-palacios_mutex_unlock_irqrestore(void *mutex, void *flags)
-{
-    // This is correct, flags is opaque
-    spin_unlock_irqrestore((spinlock_t *)mutex,(unsigned long)flags);
-}
-*/
 
 /**
  * Structure used by the Palacios hypervisor to interface with the host kernel.
@@ -581,8 +556,6 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.mutex_free		= palacios_mutex_free,
 	.mutex_lock		= palacios_mutex_lock, 
 	.mutex_unlock		= palacios_mutex_unlock,
-	.mutex_lock_irqsave     = NULL, 
-	.mutex_unlock_irqrestore= NULL,
 	.get_cpu		= palacios_get_cpu,
 	.interrupt_cpu		= palacios_interrupt_cpu,
 	.call_on_cpu		= palacios_xcall,

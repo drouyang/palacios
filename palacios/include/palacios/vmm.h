@@ -382,8 +382,6 @@ struct v3_os_hooks {
     void (*mutex_free)(void * mutex);
     void (*mutex_lock)(void * mutex);
     void (*mutex_unlock)(void * mutex);
-    void *(*mutex_lock_irqsave)(void * mutex);
-    void (*mutex_unlock_irqrestore)(void * mutex, void *flags);
 
     unsigned int (*get_cpu)(void);
 
