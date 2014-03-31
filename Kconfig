@@ -99,7 +99,7 @@ config DEBUG_INFO
 
 choice 
 	prompt "X86 decoder"
-	default XED
+	default V3_DECODER
 
 config XED
 	bool "XED decoder library"
@@ -168,7 +168,7 @@ config TELEMETRY
 
 config SHADOW_PAGING_TELEMETRY
 	bool "Enable Shadow Paging Telemetry"
-	default y
+	default n
 	depends on TELEMETRY
 	help
 	  Enable telemetry information for shadow paging 
@@ -240,7 +240,7 @@ config DEBUG_SHDW_PG_VTLB
 
 config SHADOW_PAGING_CACHE1
 	bool "Shadow Page Cache (1)"
-	default y
+	default n
 	depends on SHADOW_PAGING
 	help 
 	   Enables caching implemenation for shadow paging

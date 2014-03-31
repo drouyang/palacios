@@ -8,7 +8,7 @@ config APIC
 
 config APIC_ENQUEUE_MISSED_TMR_IRQS
 	bool "Enqueue missed APIC timer interrpts"
-	default n
+	default y
 	depends on APIC
 	help
 	  Make up missed APIC periodic timer interrupts on later 
@@ -34,14 +34,6 @@ config DEBUG_IO_APIC
 	depends on IO_APIC && DEBUG_ON 
 	help 
 	  Enable debugging for the IO APIC
-
-
-config MPTABLE
-	bool "MPTABLE"
-	default y
-	depends on APIC
-	help 
-	  Includes the MPTABLE to map the APICs and IO-APIC
 
 
 config BOCHS_DEBUG
@@ -117,7 +109,7 @@ config DEBUG_KEYBOARD
 
 config LINUX_VIRTIO_BALLOON
 	bool "Linux Virtio Balloon Device"
-	default y
+	default n
 	depends on PCI
 	help 
 	  Includes the Linux virtio balloon device
