@@ -59,13 +59,13 @@
 #define FW_CFG_ARCH_LOCAL       0x8000
 #define FW_CFG_ENTRY_MASK       ~(FW_CFG_WRITE_CHANNEL | FW_CFG_ARCH_LOCAL)
 
-#define FW_CFG_ACPI_TABLES (FW_CFG_ARCH_LOCAL + 0)
-#define FW_CFG_SMBIOS_ENTRIES (FW_CFG_ARCH_LOCAL + 1)
-#define FW_CFG_IRQ0_OVERRIDE (FW_CFG_ARCH_LOCAL + 2)
-#define FW_CFG_E820_TABLE (FW_CFG_ARCH_LOCAL + 3)
-#define FW_CFG_HPET (FW_CFG_ARCH_LOCAL + 4)
+#define FW_CFG_ACPI_TABLES     (FW_CFG_ARCH_LOCAL + 0)
+#define FW_CFG_SMBIOS_ENTRIES  (FW_CFG_ARCH_LOCAL + 1)
+#define FW_CFG_IRQ0_OVERRIDE   (FW_CFG_ARCH_LOCAL + 2)
+#define FW_CFG_E820_TABLE      (FW_CFG_ARCH_LOCAL + 3)
+#define FW_CFG_HPET            (FW_CFG_ARCH_LOCAL + 4)
 
-#define FW_CFG_INVALID          0xffff
+#define FW_CFG_INVALID        0xffff
 
 
 
@@ -93,7 +93,8 @@ struct e820_table {
 
 */
 
-static int fw_cfg_add_bytes(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint8_t * data, uint32_t len)
+static int 
+fw_cfg_add_bytes(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint8_t * data, uint32_t len)
 {
     int arch = !!(key & FW_CFG_ARCH_LOCAL);
     // JRL: Well this is demented... Its basically generating a 1 or 0 from a mask operation
@@ -105,47 +106,53 @@ static int fw_cfg_add_bytes(struct v3_fw_cfg_state * cfg_state, uint16_t key, ui
     }
 
     cfg_state->entries[arch][key].data = data;
-    cfg_state->entries[arch][key].len = len;
+    cfg_state->entries[arch][key].len  = len;
 
     return 1;
 }
 
-static int fw_cfg_add_i16(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint16_t value)
+static int 
+fw_cfg_add_i16(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint16_t value)
 {
     uint16_t * copy = NULL;
 
-    copy = V3_Malloc(sizeof(uint16_t));
+    copy  = V3_Malloc(sizeof(uint16_t));
     *copy = value;
     return fw_cfg_add_bytes(cfg_state, key, (uint8_t *)copy, sizeof(uint16_t));
 }
 
-static int fw_cfg_add_i32(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint32_t value)
+static int 
+fw_cfg_add_i32(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint32_t value)
 {
     uint32_t * copy = NULL;
 
-    copy = V3_Malloc(sizeof(uint32_t));
+    copy  = V3_Malloc(sizeof(uint32_t));
     *copy = value;
     return fw_cfg_add_bytes(cfg_state, key, (uint8_t *)copy, sizeof(uint32_t));
 }
 
-static int fw_cfg_add_i64(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint64_t value)
+static int 
+fw_cfg_add_i64(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint64_t value)
 {
     uint64_t * copy = NULL;
 
-    copy = V3_Malloc(sizeof(uint64_t));
+    copy  = V3_Malloc(sizeof(uint64_t));
     *copy = value;
     return fw_cfg_add_bytes(cfg_state, key, (uint8_t *)copy, sizeof(uint64_t));
 }
 
-static int fw_cfg_ctl_read(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+fw_cfg_ctl_read(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     return length;
 }
 
-static int fw_cfg_ctl_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+fw_cfg_ctl_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
+{
     V3_ASSERT(length == 2);
 
     struct v3_fw_cfg_state * cfg_state = (struct v3_fw_cfg_state *)priv_data;
-    uint16_t key = *(uint16_t *)src;
+    uint16_t                 key       = *(uint16_t *)src;
     int ret = 0;
 
     cfg_state->cur_offset = 0;
@@ -162,7 +169,9 @@ static int fw_cfg_ctl_write(struct guest_info * core, uint16_t port, void * src,
 }
 
 
-static int fw_cfg_data_read(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+fw_cfg_data_read(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
+{
     V3_ASSERT(length == 1);
 
     struct v3_fw_cfg_state * cfg_state = (struct v3_fw_cfg_state *)priv_data;
@@ -170,8 +179,8 @@ static int fw_cfg_data_read(struct guest_info * core, uint16_t port, void * src,
     struct v3_fw_cfg_entry * cfg_entry = &cfg_state->entries[arch][cfg_state->cur_entry & FW_CFG_ENTRY_MASK];
     uint8_t ret;
 
-    if ( (cfg_state->cur_entry == FW_CFG_INVALID) || 
-	 (cfg_entry->data == NULL) || 
+    if ( (cfg_state->cur_entry  == FW_CFG_INVALID) || 
+	 (cfg_entry->data       == NULL) || 
 	 (cfg_state->cur_offset >= cfg_entry->len)) {
 
         ret = 0;
@@ -184,16 +193,18 @@ static int fw_cfg_data_read(struct guest_info * core, uint16_t port, void * src,
     return length;
 }
 
-static int fw_cfg_data_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+fw_cfg_data_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
+{
     V3_ASSERT(length == 1);
 
     struct v3_fw_cfg_state * cfg_state = (struct v3_fw_cfg_state *)priv_data;
     int arch = !!(cfg_state->cur_entry & FW_CFG_ARCH_LOCAL);
     struct v3_fw_cfg_entry * cfg_entry = &cfg_state->entries[arch][cfg_state->cur_entry & FW_CFG_ENTRY_MASK];
 
-    if ( (cfg_state->cur_entry & FW_CFG_WRITE_CHANNEL) && 
-	 (cfg_entry->callback != NULL) &&
-	 (cfg_state->cur_offset < cfg_entry->len)) {
+    if ( (cfg_state->cur_entry  &  FW_CFG_WRITE_CHANNEL) && 
+	 (cfg_entry->callback   != NULL) &&
+	 (cfg_state->cur_offset <  cfg_entry->len)) {
 
         cfg_entry->data[cfg_state->cur_offset++] = *(uint8_t *)src;
 
@@ -202,13 +213,16 @@ static int fw_cfg_data_write(struct guest_info * core, uint16_t port, void * src
             cfg_state->cur_offset = 0;
         }
     }
+
     return length;
 }
 
 /*
-static struct e820_table * e820_populate(struct v3_vm_info * vm) {
+static struct e820_table * 
+e820_populate(struct v3_vm_info * vm) 
+{
     struct v3_e820_entry * entry = NULL;
-    struct e820_table * e820 = NULL;
+    struct e820_table    * e820  = NULL;
     int i = 0;
 
     if (vm->mem_map.e820_count > E820_MAX_COUNT) {
@@ -236,10 +250,9 @@ static struct e820_table * e820_populate(struct v3_vm_info * vm) {
 }
 */
 
-int v3_fw_cfg_init(struct v3_vm_info * vm) {
-
-
-
+int 
+v3_fw_cfg_init(struct v3_vm_info * vm) 
+{
     struct v3_fw_cfg_state * cfg_state = &(vm->fw_cfg_state);
     int ret = 0;
 
@@ -255,7 +268,7 @@ int v3_fw_cfg_init(struct v3_vm_info * vm) {
     */
 
 
-    ret |= v3_hook_io_port(vm, FW_CFG_CTL_PORT, fw_cfg_ctl_read, &fw_cfg_ctl_write, cfg_state);
+    ret |= v3_hook_io_port(vm, FW_CFG_CTL_PORT,  fw_cfg_ctl_read,  &fw_cfg_ctl_write,  cfg_state);
     ret |= v3_hook_io_port(vm, FW_CFG_DATA_PORT, fw_cfg_data_read, &fw_cfg_data_write, cfg_state);
 
     if (ret != 0) {
@@ -266,19 +279,19 @@ int v3_fw_cfg_init(struct v3_vm_info * vm) {
 
     fw_cfg_add_bytes(cfg_state, FW_CFG_SIGNATURE, (uint8_t *)"QEMU", 4);
     //fw_cfg_add_bytes(cfg_state, FW_CFG_UUID, qemu_uuid, 16);
-    fw_cfg_add_i16(cfg_state, FW_CFG_NOGRAPHIC, /*(uint16_t)(display_type == DT_NOGRAPHIC)*/ 0);
-    fw_cfg_add_i16(cfg_state, FW_CFG_NB_CPUS, (uint16_t)vm->num_cores);
-    fw_cfg_add_i16(cfg_state, FW_CFG_MAX_CPUS, (uint16_t)vm->num_cores);
-    fw_cfg_add_i16(cfg_state, FW_CFG_BOOT_MENU, (uint16_t)1);
+    fw_cfg_add_i16(cfg_state,   FW_CFG_NOGRAPHIC, /*(uint16_t)(display_type == DT_NOGRAPHIC)*/ 0);
+    fw_cfg_add_i16(cfg_state,   FW_CFG_NB_CPUS,   (uint16_t)vm->num_cores);
+    fw_cfg_add_i16(cfg_state,   FW_CFG_MAX_CPUS,  (uint16_t)vm->num_cores);
+    fw_cfg_add_i16(cfg_state,   FW_CFG_BOOT_MENU, (uint16_t)1);
     //fw_cfg_bootsplash(cfg_state);
 
-    fw_cfg_add_i32(cfg_state, FW_CFG_ID, 1);
-    fw_cfg_add_i64(cfg_state, FW_CFG_RAM_SIZE, (uint64_t)vm->mem_size / (1024 * 1024));
+    fw_cfg_add_i32(cfg_state,   FW_CFG_ID, 1);
+    fw_cfg_add_i64(cfg_state,   FW_CFG_RAM_SIZE,  (uint64_t)vm->mem_size / (1024 * 1024));
 
     //fw_cfg_add_bytes(cfg_state, FW_CFG_ACPI_TABLES, (uint8_t *)acpi_tables,
     //       acpi_tables_len);
 
-    fw_cfg_add_i32(cfg_state, FW_CFG_IRQ0_OVERRIDE, 1);
+    fw_cfg_add_i32(cfg_state,   FW_CFG_IRQ0_OVERRIDE, 1);
 
     /*
       smbios_table = smbios_get_table(&smbios_len);
@@ -299,14 +312,14 @@ int v3_fw_cfg_init(struct v3_vm_info * vm) {
 
     /* NUMA layout */
     {
-	v3_cfg_tree_t * layout_cfg = v3_cfg_subtree(vm->cfg_data->cfg, "mem_layout");
-	char * num_nodes_str = v3_cfg_val(layout_cfg, "vnodes");
+	v3_cfg_tree_t * layout_cfg    = v3_cfg_subtree(vm->cfg_data->cfg, "mem_layout");
+	char          * num_nodes_str = v3_cfg_val(layout_cfg, "vnodes");
 	int num_nodes = 0;
 	
 	/* locations in fw_cfg NUMA array for each info region. */
 	int node_offset = 0;
 	int core_offset = 1;
-	int mem_offset = 1 + vm->num_cores;
+	int mem_offset  = 1 + vm->num_cores;
 	
 	if (num_nodes_str) {
 	    num_nodes = atoi(num_nodes_str);
@@ -361,12 +374,12 @@ int v3_fw_cfg_init(struct v3_vm_info * vm) {
 		
 		while (region_desc) {
 		    char * start_addr_str = v3_cfg_val(region_desc, "start_addr");
-		    char * end_addr_str = v3_cfg_val(region_desc, "end_addr");
-		    char * vnode_id_str = v3_cfg_val(region_desc, "vnode");
+		    char * end_addr_str   = v3_cfg_val(region_desc, "end_addr");
+		    char * vnode_id_str   = v3_cfg_val(region_desc, "vnode");
 		    
 		    addr_t start_addr = 0;
-		    addr_t end_addr = 0;
-		    int vnode_id = 0;
+		    addr_t end_addr   = 0;
+		    int vnode_id      = 0;
 
 		    if ((!start_addr_str) || (!end_addr_str) || (!vnode_id_str)) {
 			PrintError("Invalid memory layout in configuration\n");
@@ -375,8 +388,8 @@ int v3_fw_cfg_init(struct v3_vm_info * vm) {
 		    }
 		    
 		    start_addr = atox(start_addr_str);
-		    end_addr = atox(end_addr_str);
-		    vnode_id = atoi(vnode_id_str);
+		    end_addr   = atox(end_addr_str);
+		    vnode_id   = atoi(vnode_id_str);
 		    
 		    numa_fw_cfg[mem_offset + vnode_id] = end_addr - start_addr;
 
@@ -415,7 +428,9 @@ int v3_fw_cfg_init(struct v3_vm_info * vm) {
     return 0;
 }
 
-void v3_fw_cfg_deinit(struct v3_vm_info *vm) {
+void 
+v3_fw_cfg_deinit(struct v3_vm_info * vm) 
+{
     struct v3_fw_cfg_state * cfg_state = &(vm->fw_cfg_state);
     int i, j;
 

@@ -34,20 +34,26 @@
 #include <palacios/vmm_dev_mgr.h>
 
 
-v3_cpu_mode_t v3_get_vm_cpu_mode(struct guest_info * info) {
-    struct cr0_32 * cr0;
-    struct efer_64 * efer;
-    struct cr4_32 * cr4 = (struct cr4_32 *)&(info->ctrl_regs.cr4);
-    struct v3_segment * cs = &(info->segments.cs);
+v3_cpu_mode_t 
+v3_get_vm_cpu_mode(struct guest_info * info) 
+{
+    struct cr0_32     * cr0  = NULL;
+    struct efer_64    * efer = NULL;
+    struct cr4_32     * cr4  = (struct cr4_32 *)&(info->ctrl_regs.cr4);
+    struct v3_segment * cs   = &(info->segments.cs);
 
 
-    if (info->shdw_pg_mode == SHADOW_PAGING) {
-	cr0 = (struct cr0_32 *)&(info->shdw_pg_state.guest_cr0);
+    if (info->shdw_pg_mode == SHADOW_PAGING) 
+    {
+	cr0  = (struct cr0_32  *)&(info->shdw_pg_state.guest_cr0);
 	efer = (struct efer_64 *)&(info->shdw_pg_state.guest_efer);
-    } else if (info->shdw_pg_mode == NESTED_PAGING) {
-	cr0 = (struct cr0_32 *)&(info->ctrl_regs.cr0);
+    } 
+    else if (info->shdw_pg_mode == NESTED_PAGING) 
+    {
+	cr0  = (struct cr0_32  *)&(info->ctrl_regs.cr0);
 	efer = (struct efer_64 *)&(info->ctrl_regs.efer);
-    } else {
+    } 
+    else {
 	PrintError("Invalid Paging Mode...\n");
 	V3_ASSERT(0);
 	return -1;
@@ -68,20 +74,26 @@ v3_cpu_mode_t v3_get_vm_cpu_mode(struct guest_info * info) {
 }
 
 // Get address width in bytes
-uint_t v3_get_addr_width(struct guest_info * info) {
-    struct cr0_32 * cr0;
-    struct cr4_32 * cr4 = (struct cr4_32 *)&(info->ctrl_regs.cr4);
-    struct efer_64 * efer;
-    struct v3_segment * cs = &(info->segments.cs);
+uint_t 
+v3_get_addr_width(struct guest_info * info) 
+{
+    struct cr0_32     * cr0  = NULL;
+    struct efer_64    * efer = NULL;
+    struct cr4_32     * cr4  = (struct cr4_32 *)&(info->ctrl_regs.cr4);
+    struct v3_segment * cs   = &(info->segments.cs);
 
 
-    if (info->shdw_pg_mode == SHADOW_PAGING) {
-	cr0 = (struct cr0_32 *)&(info->shdw_pg_state.guest_cr0);
+    if (info->shdw_pg_mode == SHADOW_PAGING) 
+    {
+	cr0  = (struct cr0_32  *)&(info->shdw_pg_state.guest_cr0);
 	efer = (struct efer_64 *)&(info->shdw_pg_state.guest_efer);
-    } else if (info->shdw_pg_mode == NESTED_PAGING) {
-	cr0 = (struct cr0_32 *)&(info->ctrl_regs.cr0);
+    } 
+    else if (info->shdw_pg_mode == NESTED_PAGING)
+    {
+	cr0  = (struct cr0_32  *)&(info->ctrl_regs.cr0);
 	efer = (struct efer_64 *)&(info->ctrl_regs.efer);
-    } else {
+    } 
+    else {
 	PrintError("Invalid Paging Mode...\n");
 	V3_ASSERT(0);
 	return -1;
@@ -89,7 +101,7 @@ uint_t v3_get_addr_width(struct guest_info * info) {
 
     if (cr0->pe == 0) {
 	return 2;
-    } else if ((cr4->pae == 0) && (efer->lme == 0)) {
+    } else if ((cr4->pae == 0)  && (efer->lme == 0)) {
 	return 4;
     } else if (efer->lme == 0) {
 	return 4;
@@ -102,14 +114,16 @@ uint_t v3_get_addr_width(struct guest_info * info) {
 }
 
 
-static const uchar_t REAL_STR[] = "Real";
-static const uchar_t PROTECTED_STR[] = "Protected";
-static const uchar_t PROTECTED_PAE_STR[] = "Protected+PAE";
-static const uchar_t LONG_STR[] = "Long";
+static const uchar_t REAL_STR[]           = "Real";
+static const uchar_t PROTECTED_STR[]      = "Protected";
+static const uchar_t PROTECTED_PAE_STR[]  = "Protected+PAE";
+static const uchar_t LONG_STR[]           = "Long";
 static const uchar_t LONG_32_COMPAT_STR[] = "32bit Compat";
 static const uchar_t LONG_16_COMPAT_STR[] = "16bit Compat";
 
-const uchar_t * v3_cpu_mode_to_str(v3_cpu_mode_t mode) {
+const uchar_t * 
+v3_cpu_mode_to_str(v3_cpu_mode_t mode) 
+{
     switch (mode) {
 	case REAL:
 	    return REAL_STR;
@@ -128,18 +142,25 @@ const uchar_t * v3_cpu_mode_to_str(v3_cpu_mode_t mode) {
     }
 }
 
-v3_mem_mode_t v3_get_vm_mem_mode(struct guest_info * info) {
+v3_mem_mode_t 
+v3_get_vm_mem_mode(struct guest_info * info) 
+{
     struct cr0_32 * cr0;
 
-    if (info->shdw_pg_mode == SHADOW_PAGING) {
+    if (info->shdw_pg_mode == SHADOW_PAGING) 
+    {
 	cr0 = (struct cr0_32 *)&(info->shdw_pg_state.guest_cr0);
-    } else if (info->shdw_pg_mode == NESTED_PAGING) {
+    } 
+    else if (info->shdw_pg_mode == NESTED_PAGING) 
+    {
 	cr0 = (struct cr0_32 *)&(info->ctrl_regs.cr0);
-    } else {
+    } 
+    else {
 	PrintError("Invalid Paging Mode...\n");
 	V3_ASSERT(0);
 	return -1;
     }
+
 
     if (cr0->pg == 0) {
 	return PHYSICAL_MEM;
@@ -151,7 +172,9 @@ v3_mem_mode_t v3_get_vm_mem_mode(struct guest_info * info) {
 static const uchar_t PHYS_MEM_STR[] = "Physical Memory";
 static const uchar_t VIRT_MEM_STR[] = "Virtual Memory";
 
-const uchar_t * v3_mem_mode_to_str(v3_mem_mode_t mode) {
+const uchar_t * 
+v3_mem_mode_to_str(v3_mem_mode_t mode) 
+{
     switch (mode) {
 	case PHYSICAL_MEM:
 	    return PHYS_MEM_STR;
@@ -170,7 +193,9 @@ const uchar_t * v3_mem_mode_to_str(v3_mem_mode_t mode) {
 /* The BSP flag is housed in the APIC Base address MSR... 
    With no APIC we default to BSP, otherwise we have to check
  */
-int v3_is_core_bsp(struct guest_info * core) {
+int 
+v3_is_core_bsp(struct guest_info * core) 
+{
     struct vm_device * apic_dev =  v3_find_dev(core->vm_info, "apic");
 
     if (apic_dev == NULL) {
@@ -190,7 +215,9 @@ int v3_is_core_bsp(struct guest_info * core) {
 
 #include <palacios/vmcs.h>
 #include <palacios/vmcb.h>
-static int info_hcall(struct guest_info * core, uint_t hcall_id, void * priv_data) {
+static int 
+info_hcall(struct guest_info * core, uint_t hcall_id, void * priv_data) 
+{
     extern v3_cpu_arch_t v3_mach_type;
     int cpu_valid = 0;
 
@@ -233,7 +260,9 @@ static int info_hcall(struct guest_info * core, uint_t hcall_id, void * priv_dat
 #endif
 
 
-int v3_init_vm(struct v3_vm_info * vm) {
+int 
+v3_init_vm(struct v3_vm_info * vm) 
+{
     extern v3_cpu_arch_t v3_mach_type;
 
 
@@ -309,7 +338,9 @@ int v3_init_vm(struct v3_vm_info * vm) {
 }
 
 
-int v3_free_vm_internal(struct v3_vm_info * vm) {
+int 
+v3_free_vm_internal(struct v3_vm_info * vm) 
+{
     extern v3_cpu_arch_t v3_mach_type;
 
     v3_remove_hypercall(vm, GUEST_INFO_HCALL);
@@ -371,9 +402,11 @@ int v3_free_vm_internal(struct v3_vm_info * vm) {
 }
 
 
-int v3_init_core(struct guest_info * core) {
+int 
+v3_init_core(struct guest_info * core) 
+{
     extern v3_cpu_arch_t v3_mach_type;
-    struct v3_vm_info * vm = core->vm_info;
+    struct v3_vm_info  * vm = core->vm_info;
 
 
 
@@ -432,7 +465,9 @@ int v3_init_core(struct guest_info * core) {
 
 
 
-int v3_free_core(struct guest_info * core) {
+int 
+v3_free_core(struct guest_info * core) 
+{
     extern v3_cpu_arch_t v3_mach_type;
 
     

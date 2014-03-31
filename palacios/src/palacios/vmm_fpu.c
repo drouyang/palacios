@@ -59,8 +59,8 @@ static inline addr_t get_cr4() {
 
 
 static inline uint64_t xgetbv() {
-    uint32_t eax = 0;
-    uint32_t edx = 0;
+    uint32_t eax   = 0;
+    uint32_t edx   = 0;
     uint32_t index = 0;
 
     __asm__ __volatile__ (XGETBV
@@ -75,8 +75,8 @@ static inline uint64_t xgetbv() {
 
 
 static inline void xsetbv(uint64_t value) {
-    uint32_t eax = value;
-    uint32_t edx = value >> 32;
+    uint32_t eax   = value;
+    uint32_t edx   = value >> 32;
     uint32_t index = 0;
 
     __asm__ __volatile__ (XSETBV
@@ -96,10 +96,10 @@ static inline void xsetbv(uint64_t value) {
 #define CR0_MP 0x00000002
 
 static int vmx_disable_fpu_exits(struct guest_info * core) {
-    struct vmx_data * vmx_state = (struct vmx_data *)core->vmm_data;
-    struct cr0_32 * cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
-    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
-    addr_t cr0_mask = 0;
+    struct vmx_data * vmx_state  = (struct vmx_data *)core->vmm_data;
+    struct cr0_32   * cr0        = (struct cr0_32 *)&(core->ctrl_regs.cr0);
+    struct cr0_32   * guest_cr0  = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
+    addr_t            cr0_mask   = 0;
     int vmx_ret = 0;
 
     vmx_state->excp_bmap.nm = 0;
@@ -108,18 +108,18 @@ static int vmx_disable_fpu_exits(struct guest_info * core) {
     cr0->ts = guest_cr0->ts;
     cr0->mp = guest_cr0->mp;
 
-    vmx_ret |= check_vmcs_read(VMCS_CR0_MASK, &cr0_mask);
+    vmx_ret  |= check_vmcs_read(VMCS_CR0_MASK, &cr0_mask);
     cr0_mask &= ~(CR0_TS);
-    vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, cr0_mask);
+    vmx_ret  |= check_vmcs_write(VMCS_CR0_MASK, cr0_mask);
 
     return vmx_ret;
 }
 
 static int vmx_enable_fpu_exits(struct guest_info * core) {
-    struct vmx_data * vmx_state = (struct vmx_data *)core->vmm_data;
-    struct cr0_32 * cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
+    struct vmx_data * vmx_state  = (struct vmx_data *)core->vmm_data;
+    struct cr0_32   * cr0        = (struct cr0_32 *)&(core->ctrl_regs.cr0);
+    addr_t            cr0_mask   = 0;
     int vmx_ret = 0;
-    addr_t cr0_mask = 0;
 
     vmx_state->excp_bmap.nm = 1;
     vmx_ret |= check_vmcs_write(VMCS_EXCP_BITMAP, vmx_state->excp_bmap.value);
@@ -127,9 +127,9 @@ static int vmx_enable_fpu_exits(struct guest_info * core) {
     cr0->ts = 1;
     cr0->mp = 1;
 
-    vmx_ret |= check_vmcs_read(VMCS_CR0_MASK, &cr0_mask);
+    vmx_ret  |= check_vmcs_read(VMCS_CR0_MASK, &cr0_mask);
     cr0_mask |= (CR0_TS);
-    vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, cr0_mask);
+    vmx_ret  |= check_vmcs_write(VMCS_CR0_MASK, cr0_mask);
 
     return vmx_ret;
 }
@@ -140,15 +140,15 @@ static int vmx_enable_fpu_exits(struct guest_info * core) {
 #include <palacios/vmcb.h>
 
 static int svm_disable_fpu_exits(struct guest_info * core) {
-    struct cr0_32 * cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
+    struct cr0_32 * cr0       = (struct cr0_32 *)&(core->ctrl_regs.cr0);
     struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
-    vmcb_ctrl_t * ctrl_area = GET_VMCB_CTRL_AREA((vmcb_t *)(core->vmm_data));
+    vmcb_ctrl_t   * ctrl_area = GET_VMCB_CTRL_AREA((vmcb_t *)(core->vmm_data));
 
     ctrl_area->exceptions.nm = 0;
     *cr0 = *guest_cr0;
 
     if (core->shdw_pg_mode == NESTED_PAGING) {
-	ctrl_area->cr_reads.cr0 = 0;
+	ctrl_area->cr_reads.cr0  = 0;
 	ctrl_area->cr_writes.cr0 = 0;
     } else {
 	/* Fix up Shadow CR0 fields based on SHADOW PAGING requirements */
@@ -166,9 +166,9 @@ static int svm_disable_fpu_exits(struct guest_info * core) {
 }
 
 static int svm_enable_fpu_exits(struct guest_info * core) {
-    struct cr0_32 * cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
+    struct cr0_32 * cr0       = (struct cr0_32 *)&(core->ctrl_regs.cr0);
     struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
-    vmcb_ctrl_t * ctrl_area = GET_VMCB_CTRL_AREA((vmcb_t *)(core->vmm_data));
+    vmcb_ctrl_t   * ctrl_area = GET_VMCB_CTRL_AREA((vmcb_t *)(core->vmm_data));
 
     /* Cache current Guest CR0 value, before we modify it */
     *guest_cr0 = *cr0;
@@ -179,7 +179,7 @@ static int svm_enable_fpu_exits(struct guest_info * core) {
     ctrl_area->exceptions.nm = 1;
 
     if (core->shdw_pg_mode == NESTED_PAGING) {
-	ctrl_area->cr_reads.cr0 = 1;
+	ctrl_area->cr_reads.cr0  = 1;
 	ctrl_area->cr_writes.cr0 = 1;
     }
 
@@ -196,10 +196,10 @@ static int svm_enable_fpu_exits(struct guest_info * core) {
 
 int v3_fpu_init(struct guest_info * core) {
     
-    struct v3_fpu_state * fpu = &(core->fpu_state);
-    struct v3_fpu_arch * arch_state = &(fpu->arch_state);
-    addr_t host_cr4_val = get_cr4();
-    struct cr4_32 * host_cr4 = (struct cr4_32 *)&host_cr4_val;
+    struct v3_fpu_state * fpu          = &(core->fpu_state);
+    struct v3_fpu_arch  * arch_state   = &(fpu->arch_state);
+    addr_t                host_cr4_val = get_cr4();
+    struct cr4_32       * host_cr4     = (struct cr4_32 *)&host_cr4_val;
     //    struct cr4_32 * guest_cr4 = (struct cr4_32 *)&(core->ctrl_regs.cr4);
 
     V3_Print("Initializing FPU for core %d\n", core->vcpu_id);
@@ -235,16 +235,16 @@ int v3_fpu_init(struct guest_info * core) {
     v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), (1 << 24));
     
 
-    arch_state->cwd = 0x37f;
+    arch_state->cwd   = 0x37f;
     arch_state->mxcsr = 0x1f80;
 
     if (fpu->osxsave_enabled) {
 	fpu->guest_xcr0 = XCR0_INIT_STATE;
-	fpu->host_xcr0 = xgetbv();
+	fpu->host_xcr0  = xgetbv();
 	
 	
 	V3_Print("Guest XCR0=%p\n", (void *)fpu->guest_xcr0);
-	V3_Print("Host XCR0=%p\n", (void *)fpu->host_xcr0);
+	V3_Print("Host XCR0=%p\n",  (void *)fpu->host_xcr0);
     }
 
     fpu->enable_fpu_exits = 1;
@@ -258,7 +258,7 @@ int v3_fpu_init(struct guest_info * core) {
 /* Executes atomically as part of the core entry procedure */
 int v3_fpu_on_entry(struct guest_info * core) {
     struct v3_fpu_state * fpu = &(core->fpu_state);
-    struct cr0_32 * cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
+    struct cr0_32       * cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
 
 
     if (fpu->disable_fpu_exits == 1) {
@@ -355,7 +355,7 @@ int v3_fpu_deactivate(struct guest_info * core) {
 	}
 			      
 
-	fpu->fpu_activated = 0;
+	fpu->fpu_activated    = 0;
 	fpu->enable_fpu_exits = 1;
 
 	// restore host state
@@ -383,7 +383,7 @@ int v3_fpu_activate(struct guest_info * core) {
     V3_SaveFPU();
 
     
-    fpu->fpu_activated = 1;
+    fpu->fpu_activated     = 1;
     fpu->disable_fpu_exits = 1;
     
     if (fpu->osxsave_enabled) {
@@ -426,8 +426,8 @@ int v3_fpu_activate(struct guest_info * core) {
 
 
 int v3_fpu_handle_xsetbv(struct guest_info * core) {
-    struct v3_fpu_state * fpu = &(core->fpu_state);
-    uint32_t index = core->vm_regs.rcx;
+    struct v3_fpu_state * fpu   = &(core->fpu_state);
+    uint32_t              index = core->vm_regs.rcx;
 
 
     if (index != 0) {
@@ -436,7 +436,7 @@ int v3_fpu_handle_xsetbv(struct guest_info * core) {
     }
 
     if (core->ctrl_regs.cr4 & 0x40000) {
-	fpu->guest_xcr0 = (uint32_t)(core->vm_regs.rax);
+	fpu->guest_xcr0  = (uint32_t)(core->vm_regs.rax);
 	fpu->guest_xcr0 += (core->vm_regs.rdx << 32);
 
 	if (fpu->osxsave_enabled) { // This should always evaluate to true

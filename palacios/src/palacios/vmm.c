@@ -47,7 +47,7 @@ v3_cpu_arch_t v3_mach_type = V3_INVALID_CPU;
 struct guest_info * v3_cores_current[V3_CONFIG_MAX_CPUS];
 
 struct v3_os_hooks * os_hooks = NULL;
-int v3_dbg_enable = 0;
+int v3_dbg_enable             = 0;
 
 #ifdef V3_CONFIG_KITTEN
 extern void lapic_set_timer_freq(unsigned int hz);
@@ -307,10 +307,10 @@ static int start_core(void * p)
 
 
 int v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask) {
+    uint8_t * core_mask   = (uint8_t *)&cpu_mask; // This is to make future expansion easier
+    uint32_t  avail_cores = 0;
+    int       vcore_id    = 0;
     uint32_t i;
-    uint8_t * core_mask = (uint8_t *)&cpu_mask; // This is to make future expansion easier
-    uint32_t avail_cores = 0;
-    int vcore_id = 0;
 
 
     if (vm->run_state != VM_STOPPED) {
@@ -350,11 +350,11 @@ int v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask) {
     // Spawn off threads for each core. 
     // We work backwards, so that core 0 is always started last.
     for (i = 0, vcore_id = vm->num_cores - 1; (i < MAX_CORES) && (vcore_id >= 0); i++) {
+	struct guest_info * core            = &(vm->cores[vcore_id]);
+	char              * specified_cpu   = v3_cfg_val(core->core_cfg_data, "target_cpu");
+	uint32_t            core_idx        = 0;
 	int major = 0;
  	int minor = 0;
-	struct guest_info * core = &(vm->cores[vcore_id]);
-	char * specified_cpu = v3_cfg_val(core->core_cfg_data, "target_cpu");
-	uint32_t core_idx = 0;
 
 	if (specified_cpu != NULL) {
 	    core_idx = atoi(specified_cpu);
@@ -534,8 +534,8 @@ int v3_stop_vm(struct v3_vm_info * vm) {
     // XXX force exit all cores via a cross call/IPI XXX
 
     while (1) {
-	int i = 0;
 	int still_running = 0;
+	int i = 0;
 
 	for (i = 0; i < vm->num_cores; i++) {
 	    if (vm->cores[i].core_run_state != CORE_STOPPED) {
@@ -606,10 +606,10 @@ static int sim_callback(struct guest_info * core, void * private_data) {
 
 int v3_simulate_vm(struct v3_vm_info * vm, unsigned int msecs) {
     struct v3_bitmap timeout_map;
+    int all_blocked   = 0;
+    uint64_t cycles   = 0;
+    uint64_t cpu_khz  = V3_CPU_KHZ();
     int i = 0;
-    int all_blocked = 0;
-    uint64_t cycles = 0;
-    uint64_t cpu_khz = V3_CPU_KHZ();
 
     if (vm->run_state != VM_PAUSED) {
 	PrintError("VM must be paused before simulation begins\n");
