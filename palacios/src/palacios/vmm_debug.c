@@ -38,7 +38,9 @@
 #define SINGLE_EXIT_MODE 0x80000000 // enable single exit when this flag is set, until flag is cleared
 
 
-static int core_handler(struct v3_core_info * core, uint32_t cmd) {
+static int 
+core_handler(struct v3_core_info * core, uint32_t cmd) 
+{
 
 
 
@@ -72,9 +74,11 @@ static int core_handler(struct v3_core_info * core, uint32_t cmd) {
     return 0;
 }
 
-static int clear_counters(struct v3_core_info * core) {
+static int 
+clear_counters(struct v3_core_info * core) 
+{
     core->time_state.time_in_guest = 0;
-    core->time_state.time_in_host = 0;
+    core->time_state.time_in_host  = 0;
 
     // clear telemetry
     v3_telemetry_reset(core);
@@ -83,7 +87,9 @@ static int clear_counters(struct v3_core_info * core) {
 }
 
 
-static int evt_handler(struct v3_vm_info * vm, struct v3_debug_event * evt, void * priv_data) {
+static int 
+evt_handler(struct v3_vm_info * vm, struct v3_debug_event * evt, void * priv_data) 
+{
     int i = 0;
 
 
@@ -118,7 +124,9 @@ static int evt_handler(struct v3_vm_info * vm, struct v3_debug_event * evt, void
 
 
 
-static int debug_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) {
+static int 
+debug_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) 
+{
     uint32_t cmd = core->vm_regs.rbx;
 
     if (cmd & CLEAR_COUNTERS) {
@@ -131,7 +139,9 @@ static int debug_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * p
 }
 
 
-int v3_init_vm_debugging(struct v3_vm_info * vm) {
+int 
+v3_init_vm_debugging(struct v3_vm_info * vm) 
+{
     v3_hook_host_event(vm, HOST_DEBUG_EVT, 
 		       V3_HOST_EVENT_HANDLER(evt_handler), 
 		       NULL);
@@ -146,18 +156,19 @@ int v3_init_vm_debugging(struct v3_vm_info * vm) {
 
 
 
-void v3_print_segments(struct v3_segments * segs) {
+void 
+v3_print_segments(struct v3_segments * segs) 
+{
+    struct v3_segment * seg_ptr     = (struct v3_segment *)segs;
+    char              * seg_names[] = {"CS", "DS" , "ES", "FS", "GS", "SS" , "LDTR", "GDTR", "IDTR", "TR", NULL};
     int i = 0;
-    struct v3_segment * seg_ptr;
-
-    seg_ptr=(struct v3_segment *)segs;
   
-    char *seg_names[] = {"CS", "DS" , "ES", "FS", "GS", "SS" , "LDTR", "GDTR", "IDTR", "TR", NULL};
     V3_Print("Segments\n");
 
     for (i = 0; seg_names[i] != NULL; i++) {
 
-	V3_Print("\t%s: Sel=%x, base=%p, limit=%x long_mode=%d, db=%d, type=%x )\n", seg_names[i], seg_ptr[i].selector, 
+	V3_Print("\t%s: Sel=%x, base=%p, limit=%x long_mode=%d, db=%d, type=%x )\n", 
+		 seg_names[i], seg_ptr[i].selector, 
 		 (void *)(addr_t)seg_ptr[i].base, seg_ptr[i].limit,
 		 seg_ptr[i].long_mode, seg_ptr[i].db, seg_ptr[i].type);
 	V3_Print("\t\tSys=%d, dpl=%x, P=%d, avail=%d, gran.=%d, unusable=%d\n", 
@@ -169,15 +180,14 @@ void v3_print_segments(struct v3_segments * segs) {
 
 
 
-void v3_print_ctrl_regs(struct v3_core_info * core) {
-    struct v3_ctrl_regs * regs = &(core->ctrl_regs);
+void 
+v3_print_ctrl_regs(struct v3_core_info * core) 
+{
+    struct v3_ctrl_regs * regs        = &(core->ctrl_regs);
+    v3_reg_t            * reg_ptr     = (v3_reg_t *)regs;
+    char                * reg_names[] = {"CR0", "CR2", "CR3", "CR4", "CR8", "FLAGS", "EFER", NULL};
     int i = 0;
-    v3_reg_t * reg_ptr;
-    char * reg_names[] = {"CR0", "CR2", "CR3", "CR4", "CR8", "FLAGS", "EFER", NULL};
    
-
-    reg_ptr = (v3_reg_t *)regs;
-
     V3_Print("Ctrl Regs:\n");
 
     for (i = 0; reg_names[i] != NULL; i++) {
@@ -188,7 +198,9 @@ void v3_print_ctrl_regs(struct v3_core_info * core) {
 }
 
 #if 0
-static int safe_gva_to_hva(struct v3_core_info * core, addr_t linear_addr, addr_t * host_addr) {
+static int 
+safe_gva_to_hva(struct v3_core_info * core, addr_t linear_addr, addr_t * host_addr) 
+{
     /* select the proper translation based on guest mode */
     if (core->mem_mode == PHYSICAL_MEM) {
     	if (v3_gpa_to_hva(core, linear_addr, host_addr) == -1) return -1;
@@ -198,7 +210,9 @@ static int safe_gva_to_hva(struct v3_core_info * core, addr_t linear_addr, addr_
     return 0;
 }
 
-static int v3_print_disassembly(struct v3_core_info * core) {
+static int 
+v3_print_disassembly(struct v3_core_info * core) 
+{
     int passed_rip = 0;
     addr_t rip, rip_linear, rip_host;
 
@@ -241,9 +255,11 @@ static int v3_print_disassembly(struct v3_core_info * core) {
 
 #endif
 
-void v3_print_guest_state(struct v3_core_info * core) {
+void 
+v3_print_guest_state(struct v3_core_info * core) 
+{
     addr_t linear_addr = 0; 
-    addr_t host_addr = 0;
+    addr_t host_addr   = 0;
     int ret = 0;
 
 
@@ -254,6 +270,7 @@ void v3_print_guest_state(struct v3_core_info * core) {
 
 
     V3_Print("RIP: %p\n", (void *)(addr_t)(core->rip));
+
     linear_addr = get_addr_linear(core, core->rip, V3_SEG_CS);
     V3_Print("RIP Linear: %p\n", (void *)linear_addr);
 
@@ -321,7 +338,9 @@ void v3_print_guest_state(struct v3_core_info * core) {
 
 #include <palacios/vmm_msr.h>
 #include <palacios/vmm_lowlevel.h>
-void v3_print_arch_state(struct v3_core_info * core) {
+void 
+v3_print_arch_state(struct v3_core_info * core) 
+{
     extern v3_cpu_arch_t v3_mach_type;
 
 
@@ -357,7 +376,9 @@ void v3_print_arch_state(struct v3_core_info * core) {
 }
 
 
-void v3_print_guest_state_all(struct v3_vm_info * vm) {
+void 
+v3_print_guest_state_all(struct v3_vm_info * vm) 
+{
     int i = 0;
 
     V3_Print("=========================================\n");
@@ -382,11 +403,13 @@ void v3_print_guest_state_all(struct v3_vm_info * vm) {
 
 
 
-void v3_print_stack(struct v3_core_info * core) {
-    addr_t linear_addr = 0;
-    addr_t host_addr = 0;
+void 
+v3_print_stack(struct v3_core_info * core) 
+{
+    addr_t        linear_addr = 0;
+    addr_t        host_addr   = 0;
+    v3_cpu_mode_t cpu_mode    = v3_get_vm_cpu_mode(core);
     int i = 0;
-    v3_cpu_mode_t cpu_mode = v3_get_vm_cpu_mode(core);
 
 
 
@@ -433,11 +456,13 @@ void v3_print_stack(struct v3_core_info * core) {
 }    
 
 
-void v3_print_backtrace(struct v3_core_info * core) {
-    addr_t gla_rbp = 0;
-    int i = 0;
-    v3_cpu_mode_t cpu_mode = v3_get_vm_cpu_mode(core);
+void 
+v3_print_backtrace(struct v3_core_info * core) 
+{
     struct v3_cfg_file * system_map = v3_cfg_get_file(core->vm_info, "System.map");
+    v3_cpu_mode_t        cpu_mode   = v3_get_vm_cpu_mode(core);
+    addr_t               gla_rbp    = 0;
+    int i = 0;
 
     V3_Print("=========================================\n");
     V3_Print("=========================================\n");
@@ -449,10 +474,10 @@ void v3_print_backtrace(struct v3_core_info * core) {
 
 
     for (i = 0; i < 30; i++) {
-	addr_t hva_rbp = 0; 
-	addr_t hva_rip = 0; 
+	addr_t hva_rbp  = 0; 
+	addr_t hva_rip  = 0; 
 	char * sym_name = NULL;
-	addr_t rip_val = 0;
+	addr_t rip_val  = 0;
 
 	if (core->mem_mode == PHYSICAL_MEM) {
 	    if (v3_gpa_to_hva(core, gla_rbp, &hva_rbp) == -1) {
@@ -478,10 +503,10 @@ void v3_print_backtrace(struct v3_core_info * core) {
 	}
 
 	if (system_map) {
-	    char * tmp_ptr = system_map->data;
-	    char * sym_ptr = NULL;
+	    char   * tmp_ptr     = system_map->data;
+	    char   * sym_ptr     = NULL;
 	    uint64_t file_offset = 0; 
-	    uint64_t sym_offset = 0;
+	    uint64_t sym_offset  = 0;
 
 	    while (file_offset < system_map->size) {
 		sym_offset = strtox(tmp_ptr, &tmp_ptr);
@@ -545,13 +570,13 @@ void v3_print_backtrace(struct v3_core_info * core) {
 
 #ifdef __V3_32BIT__
 
-void v3_print_GPRs(struct v3_core_info * core) {
-    struct v3_gprs * regs = &(core->vm_regs);
+void 
+v3_print_GPRs(struct v3_core_info * core) 
+{
+    struct v3_gprs * regs        = &(core->vm_regs);
+    v3_reg_t       * reg_ptr     = (v3_reg_t *)regs;
+    char           * reg_names[] = { "RDI", "RSI", "RBP", "RSP", "RBX", "RDX", "RCX", "RAX", NULL};
     int i = 0;
-    v3_reg_t * reg_ptr;
-    char * reg_names[] = { "RDI", "RSI", "RBP", "RSP", "RBX", "RDX", "RCX", "RAX", NULL};
-
-    reg_ptr = (v3_reg_t *)regs;
 
     V3_Print("32 bit GPRs:\n");
 
@@ -562,14 +587,15 @@ void v3_print_GPRs(struct v3_core_info * core) {
 
 #elif __V3_64BIT__
 
-void v3_print_GPRs(struct v3_core_info * core) {
-    struct v3_gprs * regs = &(core->vm_regs);
+void 
+v3_print_GPRs(struct v3_core_info * core) 
+{
+    struct v3_gprs * regs        = &(core->vm_regs);
+    v3_reg_t       * reg_ptr     = (v3_reg_t *)regs;
+    char           * reg_names[] = { "RDI", "RSI", "RBP", "RSP", "RBX", "RDX", "RCX", "RAX", \
+				     "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15", NULL};
     int i = 0;
-    v3_reg_t * reg_ptr;
-    char * reg_names[] = { "RDI", "RSI", "RBP", "RSP", "RBX", "RDX", "RCX", "RAX", \
-			   "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15", NULL};
 
-    reg_ptr = (v3_reg_t *)regs;
 
     V3_Print("64 bit GPRs:\n");
 

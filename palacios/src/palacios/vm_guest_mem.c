@@ -33,7 +33,9 @@ extern struct v3_os_hooks * os_hooks;
 /* GROUP 0                        */
 /**********************************/
 
-int v3_hva_to_hpa(addr_t hva, addr_t * hpa) {
+int 
+v3_hva_to_hpa(addr_t hva, addr_t * hpa)
+{
     if ((os_hooks) && (os_hooks)->vaddr_to_paddr) {
 
 	*hpa = (addr_t)(os_hooks)->vaddr_to_paddr((void *)hva);
@@ -51,7 +53,9 @@ int v3_hva_to_hpa(addr_t hva, addr_t * hpa) {
 }
 
 
-int v3_hpa_to_hva(addr_t hpa, addr_t * hva) {
+int 
+v3_hpa_to_hva(addr_t hpa, addr_t * hva) 
+{
     if ((os_hooks) && (os_hooks)->paddr_to_vaddr) {
 
 	*hva = (addr_t)(os_hooks)->paddr_to_vaddr((void *)hpa);
@@ -68,7 +72,9 @@ int v3_hpa_to_hva(addr_t hpa, addr_t * hva) {
     return 0;
 }
 
-int v3_gpa_to_hpa(struct v3_core_info * core, addr_t gpa, addr_t * hpa) {
+int 
+v3_gpa_to_hpa(struct v3_core_info * core, addr_t gpa, addr_t * hpa) 
+{
     struct v3_mem_region * reg = v3_get_mem_region(core->vm_info, core->vcpu_id, gpa);
 
     if (reg == NULL) {
@@ -94,7 +100,9 @@ int v3_gpa_to_hpa(struct v3_core_info * core, addr_t gpa, addr_t * hpa) {
 // This is a scan of the shadow map
 // For now we ignore it
 // 
-int v3_hpa_to_gpa(struct v3_core_info * v3_core_info, addr_t hpa, addr_t * gpa) {
+int 
+v3_hpa_to_gpa(struct v3_core_info * v3_core_info, addr_t hpa, addr_t * gpa) 
+{
     *gpa = 0;
     PrintDebug("ERROR!!! HPA->GPA currently not implemented!!!\n");
 
@@ -110,9 +118,11 @@ int v3_hpa_to_gpa(struct v3_core_info * v3_core_info, addr_t hpa, addr_t * gpa) 
 
 /* !! Currently not implemented !! */
 // This will return negative until we implement hpa_to_guest_pa()
-int v3_hva_to_gpa(struct v3_core_info * v3_core_info, addr_t hva, addr_t * gpa) {
+int 
+v3_hva_to_gpa(struct v3_core_info * v3_core_info, addr_t hva, addr_t * gpa) 
+{
     addr_t hpa = 0;
-    *gpa = 0;
+    *gpa       = 0;
 
     if (v3_hva_to_hpa(hva, &hpa) != 0) {
 	PrintDebug("In HVA->GPA: Invalid HVA(%p)->HPA lookup\n", 
@@ -132,10 +142,11 @@ int v3_hva_to_gpa(struct v3_core_info * v3_core_info, addr_t hva, addr_t * gpa) 
 
 
 
-int v3_gpa_to_hva(struct v3_core_info * core, addr_t gpa, addr_t * hva) {
+int 
+v3_gpa_to_hva(struct v3_core_info * core, addr_t gpa, addr_t * hva) 
+{
     addr_t hpa = 0;
-
-    *hva = 0;
+    *hva       = 0;
 
     if (v3_gpa_to_hpa(core, gpa, &hpa) != 0) {
 	//	PrintDebug("In GPA->HVA: Invalid GPA(%p)->HPA lookup\n", 
@@ -153,7 +164,9 @@ int v3_gpa_to_hva(struct v3_core_info * core, addr_t gpa, addr_t * hva) {
 }
 
 
-int v3_gva_to_gpa(struct v3_core_info * core, addr_t gva, addr_t * gpa) {
+int 
+v3_gva_to_gpa(struct v3_core_info * core, addr_t gva, addr_t * gpa) 
+{
     v3_reg_t guest_cr3 = 0;
 
     if (core->mem_mode == PHYSICAL_MEM) {
@@ -208,7 +221,9 @@ int v3_gva_to_gpa(struct v3_core_info * core, addr_t gva, addr_t * gpa) {
  * 
  * For now we ignore it...
  */
-int v3_gpa_to_gva(struct v3_core_info * core, addr_t gpa, addr_t * gva) {
+int 
+v3_gpa_to_gva(struct v3_core_info * core, addr_t gpa, addr_t * gva) 
+{
     *gva = 0;
     PrintDebug("ERROR!!: GPA->GVA Not Implemented!!\n");
     return -1;
@@ -220,10 +235,11 @@ int v3_gpa_to_gva(struct v3_core_info * core, addr_t gpa, addr_t * gva) {
 /**********************************/
 
 
-int v3_gva_to_hpa(struct v3_core_info * core, addr_t gva, addr_t * hpa) {
+int 
+v3_gva_to_hpa(struct v3_core_info * core, addr_t gva, addr_t * hpa) 
+{
     addr_t gpa = 0;
-
-    *hpa = 0;
+    *hpa       = 0;
 
     if (v3_gva_to_gpa(core, gva, &gpa) != 0) {
 	PrintDebug("In GVA->HPA: Invalid GVA(%p)->GPA lookup\n", 
@@ -241,10 +257,11 @@ int v3_gva_to_hpa(struct v3_core_info * core, addr_t gva, addr_t * hpa) {
 }
 
 /* !! Currently not implemented !! */
-int v3_hpa_to_gva(struct v3_core_info * core, addr_t hpa, addr_t * gva) {
+int 
+v3_hpa_to_gva(struct v3_core_info * core, addr_t hpa, addr_t * gva) 
+{
     addr_t gpa = 0;
-
-    *gva = 0;
+    *gva       = 0;
 
     if (v3_hpa_to_gpa(core, hpa, &gpa) != 0) {
 	PrintDebug("In HPA->GVA: Invalid HPA(%p)->GPA lookup\n", 
@@ -264,11 +281,12 @@ int v3_hpa_to_gva(struct v3_core_info * core, addr_t hpa, addr_t * gva) {
 
 
 
-int v3_gva_to_hva(struct v3_core_info * core, addr_t gva, addr_t * hva) {
+int 
+v3_gva_to_hva(struct v3_core_info * core, addr_t gva, addr_t * hva) 
+{
     addr_t gpa = 0;
     addr_t hpa = 0;
-
-    *hva = 0;
+    *hva       = 0;
 
     if (v3_gva_to_gpa(core, gva, &gpa) != 0) {
 	PrintDebug("In GVA->HVA: Invalid GVA(%p)->GPA lookup\n", 
@@ -293,11 +311,12 @@ int v3_gva_to_hva(struct v3_core_info * core, addr_t gva, addr_t * hva) {
 
 
 /* !! Currently not implemented !! */
-int v3_hva_to_gva(struct v3_core_info * core, addr_t hva, addr_t * gva) {
+int 
+v3_hva_to_gva(struct v3_core_info * core, addr_t hva, addr_t * gva) 
+{
     addr_t hpa = 0;
     addr_t gpa = 0;
-
-    *gva = 0;
+    *gva       = 0;
 
     if (v3_hva_to_hpa(hva, &hpa) != 0) {
 	PrintDebug("In HVA->GVA: Invalid HVA(%p)->HPA lookup\n", 
@@ -328,16 +347,18 @@ int v3_hva_to_gva(struct v3_core_info * core, addr_t hva, addr_t * gva) {
 /* This is a straight address conversion + copy, 
  *   except for the tiny little issue of crossing page boundries.....
  */
-int v3_read_gva_memory(struct v3_core_info * core, addr_t gva, int count, uchar_t * dest) {
-    addr_t cursor = gva;
-    int bytes_read = 0;
+int 
+v3_read_gva_memory(struct v3_core_info * core, addr_t gva, int count, uint8_t * dest) 
+{
+    addr_t cursor     = gva;
+    int    bytes_read = 0;
 
 
 
     while (count > 0) {
-	int dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
-	int bytes_to_copy = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
-	addr_t host_addr = 0;
+	int    dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
+	int    bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
+	addr_t host_addr       = 0;
 
     
 	if (v3_gva_to_hva(core, cursor, &host_addr) != 0) {
@@ -347,11 +368,11 @@ int v3_read_gva_memory(struct v3_core_info * core, addr_t gva, int count, uchar_
     
     
 
-	memcpy(dest + bytes_read, (void*)host_addr, bytes_to_copy);
+	memcpy(dest + bytes_read, (void *)host_addr, bytes_to_copy);
     
 	bytes_read += bytes_to_copy;
-	count -= bytes_to_copy;
-	cursor += bytes_to_copy;    
+	count      -= bytes_to_copy;
+	cursor     += bytes_to_copy;    
     }
 
     return bytes_read;
@@ -365,14 +386,16 @@ int v3_read_gva_memory(struct v3_core_info * core, addr_t gva, int count, uchar_
 /* This is a straight address conversion + copy, 
  *   except for the tiny little issue of crossing page boundries.....
  */
-int v3_read_gpa_memory(struct v3_core_info * core, addr_t gpa, int count, uchar_t * dest) {
-    addr_t cursor = gpa;
-    int bytes_read = 0;
+int 
+v3_read_gpa_memory(struct v3_core_info * core, addr_t gpa, int count, uint8_t * dest) 
+{
+    addr_t cursor     = gpa;
+    int    bytes_read = 0;
 
     while (count > 0) {
-	int dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
-	int bytes_to_copy = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
-	addr_t host_addr = 0;
+	int    dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
+	int    bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
+	addr_t host_addr       = 0;
 
 	if (v3_gpa_to_hva(core, cursor, &host_addr) != 0) {
 	    return bytes_read;
@@ -385,11 +408,11 @@ int v3_read_gpa_memory(struct v3_core_info * core, addr_t gpa, int count, uchar_
 	  PrintDebug("guest_pa=0x%x\n", guest_pa);
 	*/
     
-	memcpy(dest + bytes_read, (void*)host_addr, bytes_to_copy);
+	memcpy(dest + bytes_read, (void *)host_addr, bytes_to_copy);
 
 	bytes_read += bytes_to_copy;
-	count -= bytes_to_copy;
-	cursor += bytes_to_copy;
+	count      -= bytes_to_copy;
+	cursor     += bytes_to_copy;
     }
 
     return bytes_read;
@@ -399,16 +422,18 @@ int v3_read_gpa_memory(struct v3_core_info * core, addr_t gpa, int count, uchar_
 /* This clones v3_read_gva_memory
  *   We write only as far as page translations are available 
  */
-int v3_write_gva_memory(struct v3_core_info * core, addr_t gva, int count, uchar_t * src) {
-    addr_t cursor = gva;
-    int bytes_written = 0;
+int 
+v3_write_gva_memory(struct v3_core_info * core, addr_t gva, int count, uint8_t * src) 
+{
+    addr_t cursor        = gva;
+    int    bytes_written = 0;
 
 
 
     while (count > 0) {
-	int dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
-	int bytes_to_copy = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
-	addr_t host_addr = 0;
+	int    dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
+	int    bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
+	addr_t host_addr       = 0;
 
     
 	if (v3_gva_to_hva(core, cursor, &host_addr) != 0) {
@@ -417,14 +442,11 @@ int v3_write_gva_memory(struct v3_core_info * core, addr_t gva, int count, uchar
 	}
     
     
-
-	memcpy((void*)host_addr,
-	       src + bytes_written, 
-	       bytes_to_copy);
+	memcpy((void *)host_addr, src + bytes_written, bytes_to_copy);
     
 	bytes_written += bytes_to_copy;
-	count -= bytes_to_copy;
-	cursor += bytes_to_copy;    
+	count         -= bytes_to_copy;
+	cursor        += bytes_to_copy;    
     }
 
     return bytes_written;
@@ -436,25 +458,27 @@ int v3_write_gva_memory(struct v3_core_info * core, addr_t gva, int count, uchar
 /* This is a straight address conversion + copy, 
  *   except for the tiny little issue of crossing page boundries.....
  */
-int v3_write_gpa_memory(struct v3_core_info * core, addr_t gpa, int count, uchar_t * src) {
-    addr_t cursor = gpa;
-    int bytes_written = 0;
+int 
+v3_write_gpa_memory(struct v3_core_info * core, addr_t gpa, int count, uint8_t * src) 
+{
+    addr_t cursor        = gpa;
+    int    bytes_written = 0;
 
     while (count > 0) {
-	int dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
-	int bytes_to_copy = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
-	addr_t host_addr;
+	int    dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
+	int    bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
+	addr_t host_addr       = 0;
 
 	if (v3_gpa_to_hva(core, cursor, &host_addr) != 0) {
 	    return bytes_written;
 	}
 
 
-	memcpy((void*)host_addr, src + bytes_written, bytes_to_copy);
+	memcpy((void *)host_addr, src + bytes_written, bytes_to_copy);
 
 	bytes_written += bytes_to_copy;
-	count -= bytes_to_copy;
-	cursor += bytes_to_copy;    
+	count         -= bytes_to_copy;
+	cursor        += bytes_to_copy;    
     }
 
     return bytes_written;
