@@ -136,19 +136,6 @@ config DEBUG_VIRTIO_BLOCK
 	help 
 	  Enable debugging for the Linux Virtio Block Device
 
-config LINUX_VIRTIO_SYM
-	bool "Linux Virtio Symbiotic Device"
-	default y
-	depends on PCI && SYMBIOTIC
-	help 
-	  Includes the Linux virtio symbiotic device
-
-config DEBUG_VIRTIO_SYM
-	bool "Linux Virtio Symbiotic Debugging"
-	default n
-	depends on LINUX_VIRTIO_SYM && DEBUG_ON 
-	help 
-	  Enable debugging for the Linux Virtio Symbiotic Device
 
 config LINUX_VIRTIO_CONSOLE
         bool "Enable Virtio Console Device"
@@ -411,27 +398,6 @@ config TMPDISK
 	depends on IDE || LINUX_VIRTIO_BLOCK
 	help 
 	  Includes the temporary RAM disk 
-
-config SWAPBYPASS_DISK_CACHE
-	bool "SwapBypass disk cache"
-	default n
-	depends on SWAPBYPASS && (LINUX_VIRTIO_BLOCK || IDE)
-	help 
-	  Includes the SwapBypass ram based swap disk cache
-
-config SWAPBYPASS_DISK_CACHE2
-	bool "SwapBypass disk cache v2"
-	default n
-	depends on SWAPBYPASS && (LINUX_VIRTIO_BLOCK || IDE)
-	help 
-	  Includes the SwapBypass ram based swap disk cache
-
-config DISK_MODEL
-	bool "Disk Performance Model"
-	default n
-	depends on LINUX_VIRTIO_BLOCK || IDE
-	help 
-	  Includes Performance model filter for disk operations
 
 config VGA
 	bool "VGA"
