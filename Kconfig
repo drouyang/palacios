@@ -248,47 +248,6 @@ config SHADOW_PAGING_CACHE1
 
 endmenu
 
-menu "Symbiotic Functions"
-
-config SYMBIOTIC
-	bool "Enable Symbiotic Functionality"
-	default n
-	help 
-	  Enable Symbiotic components of the VMM. 
-	  This includes the SymSpy interface.
-
-config SYMCALL
-	bool "Symbiotic upcalls"
-	default n
-	depends on SYMBIOTIC && EXPERIMENTAL
-	help
-	  Enables the Symbiotic upcall interface
-
-config SWAPBYPASS
-	bool "SwapBypass"
-	default n
-	depends on SYMBIOTIC && SYMCALL && EXPERIMENTAL
-	help 
-	  This enables the SwapBypass architecture
-
-config SWAPBYPASS_TELEMETRY
-	bool "Enable SwapBypass Telemetry"
-	default n
-	depends on TELEMETRY && SWAPBYPASS
-	help 
-	  Enable the telemetry information for the SwapBypass subsystem
-
-menuconfig SYMMOD 
-	bool "Symbiotic Modules"
-	default n
-	depends on EXPERIMENTAL
-#	depends on SYMBIOTIC
-	help
-	  Enable Symbiotic module loading
-
-
-endmenu
-
 menu "VNET"
 
 config VNET
