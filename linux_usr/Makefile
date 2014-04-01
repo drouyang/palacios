@@ -27,7 +27,6 @@ CFLAGS += -I../linux_module -I$(PETLIB) -L$(PETLIB)
 
 
 execs-y := 	v3_mem \
-		v3_mem_free \
 		v3_free \
 		v3_launch \
 		v3_stop \
@@ -46,21 +45,8 @@ execs-$(V3_CONFIG_CONSOLE) += 	v3_cons \
 				v3_monitor
 
 execs-$(V3_CONFIG_STREAM)  += v3_stream
-execs-$(V3_CONFIG_KEYED_STREAM) += 	v3_user_keyed_stream_example \
-					v3_user_keyed_stream_file
-
-
-execs-$(V3_CONFIG_HOST_DEVICE) +=	v3_os_debug \
-					v3_user_host_dev_example
-
 execs-$(V3_CONFIG_HOST_PCI) += v3_pci
 
-
-execs-$(V3_CONFIG_HOST_HYPERCALL) += v3_hypercall
-execs-$(V3_CONFIG_EXT_ENV_INJECT) += v3_env_inject
-execs-$(V3_CONFIG_EXT_CODE_INJECT) += v3_top_inject
-execs-$(V3_CONFIG_EXT_SELECTIVE_SYSCALL_EXIT) += v3_syscall
-execs-$(V3_CONFIG_EXT_MACH_CHECK) += v3_inject_ecc_scrubber_mce 
 
 execs-$(V3_CONFIG_LIVE_MIGRATION) += 	v3_send \
 					v3_receive
@@ -72,9 +58,6 @@ execs-$(V3_CONFIG_CHECKPOINT) += 	v3_save \
 libs-y := 	ezxml.a 
 
 
-
-libs-$(V3_CONFIG_HOST_DEVICE) += v3_user_host_dev.a
-libs-$(V3_CONFIG_KEYED_STREAM) += v3_user_keyed_stream.a
 
 CFILES = $(execs-y:%=%.c) $(libs-y:%.a=%.c) 
 
@@ -137,20 +120,6 @@ v3_create: v3_create.c ezxml.a v3_ctrl.h
 	$(call build,CC,$(CC) $(CFLAGS) $^ -o $@)
 
 
-
-v3_os_debug: v3_os_debug.c v3_user_host_dev.a
-	$(call build,CC,$(CC) $(CFLAGS) $^ -o $@)
-
-v3_user_host_dev_example : v3_user_host_dev_example.c v3_user_host_dev.a
-	$(call build,CC,$(CC) $(CFLAGS) $^ -o $@)
-
-
-
-v3_user_keyed_stream_file : v3_user_keyed_stream_file.c v3_user_keyed_stream.a
-	$(call build,CC,$(CC) $(CFLAGS) $^ -o $@)
-
-v3_user_keyed_stream_example : v3_user_keyed_stream_example.c v3_user_keyed_stream.a
-	$(call build,CC,$(CC) $(CFLAGS) $^  -o $@)
 
 
 #
