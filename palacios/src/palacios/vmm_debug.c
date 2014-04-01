@@ -353,7 +353,7 @@ v3_print_arch_state(struct v3_core_info * core)
 #ifdef V3_CONFIG_SVM
         case V3_SVM_CPU:
         case V3_SVM_REV3_CPU:
-	    PrintDebugVMCB(core->vmm_data);
+	    v3_print_vmcb(core->vmm_data);
             break;
 #endif
 #ifdef V3_CONFIG_VMX

@@ -227,7 +227,7 @@ static int info_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_d
 #ifdef V3_CONFIG_SVM
     if ((v3_mach_type == V3_SVM_CPU) || (v3_mach_type == V3_SVM_REV3_CPU)) {
 	cpu_valid = 1;
-	PrintDebugVMCB((vmcb_t *)(core->vmm_data));
+	v3_print_vmcb((vmcb_t *)(core->vmm_data));
     }
 #endif
 #ifdef V3_CONFIG_VMX
