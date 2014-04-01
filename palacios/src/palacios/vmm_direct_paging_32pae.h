@@ -25,10 +25,10 @@
 #include <palacios/vmm_paging.h>
 #include <palacios/vmm.h>
 #include <palacios/vm_guest_mem.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
-static inline int handle_passthrough_pagefault_32pae(struct guest_info * info, 
+static inline int handle_passthrough_pagefault_32pae(struct v3_core_info * core, 
 						     addr_t fault_addr, 
 						     pf_error_t error_code) {
     pdpe32pae_t * pdpe = NULL;
@@ -40,7 +40,7 @@ static inline int handle_passthrough_pagefault_32pae(struct guest_info * info,
     int pde_index = PDE32PAE_INDEX(fault_addr);
     int pte_index = PTE32PAE_INDEX(fault_addr);
 
-    struct v3_mem_region * region =  v3_get_mem_region(info->vm_info, info->vcpu_id, fault_addr);
+    struct v3_mem_region * region =  v3_get_mem_region(core->vm_info, core->vcpu_id, fault_addr);
   
     if (region == NULL) {
 	PrintError("Invalid region in passthrough page fault 32PAE, addr=%p\n", 
@@ -49,10 +49,10 @@ static inline int handle_passthrough_pagefault_32pae(struct guest_info * info,
     }
 
     // Lookup the correct PDPE address based on the PAGING MODE
-    if (info->shdw_pg_mode == SHADOW_PAGING) {
-	pdpe = CR3_TO_PDPE32PAE_VA(info->ctrl_regs.cr3);
+    if (core->shdw_pg_mode == SHADOW_PAGING) {
+	pdpe = CR3_TO_PDPE32PAE_VA(core->ctrl_regs.cr3);
     } else {
-	pdpe = CR3_TO_PDPE32PAE_VA(info->direct_map_pt);
+	pdpe = CR3_TO_PDPE32PAE_VA(core->direct_map_pt);
     }
 
     // Fix up the PDPE entry
@@ -102,24 +102,24 @@ static inline int handle_passthrough_pagefault_32pae(struct guest_info * info,
 	    }
 
 
-	    if (v3_gpa_to_hpa(info, fault_addr, &host_addr) == -1) {
+	    if (v3_gpa_to_hpa(core, fault_addr, &host_addr) == -1) {
 		PrintError("Could not translate fault address (%p)\n", (void *)fault_addr);
 		return -1;
 	    }
 
 	    pte[pte_index].page_base_addr = PAGE_BASE_ADDR(host_addr);
 	} else {
-	    return region->unhandled(info, fault_addr, fault_addr, region, error_code);
+	    return region->unhandled(core, fault_addr, fault_addr, region, error_code);
 	}
     } else {
-	return region->unhandled(info, fault_addr, fault_addr, region, error_code);
+	return region->unhandled(core, fault_addr, fault_addr, region, error_code);
     }
 
     return 0;
 }
 
 
-static inline int invalidate_addr_32pae(struct guest_info * info, addr_t inv_addr) {
+static inline int invalidate_addr_32pae(struct v3_core_info * core, addr_t inv_addr) {
     pdpe32pae_t * pdpe = NULL;
     pde32pae_t * pde = NULL;
     pte32pae_t * pte = NULL;
@@ -135,10 +135,10 @@ static inline int invalidate_addr_32pae(struct guest_info * info, addr_t inv_add
 
     
     // Lookup the correct PDE address based on the PAGING MODE
-    if (info->shdw_pg_mode == SHADOW_PAGING) {
-	pdpe = CR3_TO_PDPE32PAE_VA(info->ctrl_regs.cr3);
+    if (core->shdw_pg_mode == SHADOW_PAGING) {
+	pdpe = CR3_TO_PDPE32PAE_VA(core->ctrl_regs.cr3);
     } else {
-	pdpe = CR3_TO_PDPE32PAE_VA(info->direct_map_pt);
+	pdpe = CR3_TO_PDPE32PAE_VA(core->direct_map_pt);
     }    
 
 

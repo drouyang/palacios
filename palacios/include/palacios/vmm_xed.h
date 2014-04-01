@@ -22,7 +22,7 @@
 
 #ifdef __V3VEE__
 
-int v3_disasm(struct guest_info * info, void *instr_ptr, addr_t * rip, int mark);
+int v3_disasm(struct v3_core_info * core, void *instr_ptr, addr_t * rip, int mark);
 
 #endif // ! __V3VEE__
 

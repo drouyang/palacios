@@ -20,7 +20,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_intr.h>
 #include <palacios/vmm_config.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_ctrl_regs.h>
 #include <palacios/vmm_lowlevel.h>
 #include <palacios/vmm_sprintf.h>
@@ -44,7 +44,7 @@
 v3_cpu_arch_t v3_cpu_types[V3_CONFIG_MAX_CPUS];
 v3_cpu_arch_t v3_mach_type = V3_INVALID_CPU;
 
-struct guest_info * v3_cores_current[V3_CONFIG_MAX_CPUS];
+struct v3_core_info * v3_cores_current[V3_CONFIG_MAX_CPUS];
 
 struct v3_os_hooks * os_hooks = NULL;
 int v3_dbg_enable             = 0;
@@ -241,13 +241,13 @@ struct v3_vm_info * v3_create_vm(void * cfg, void * priv_data, char * name) {
 
 #ifdef V3_CONFIG_HOST_SCHED_EVENTS
 #include <interfaces/sched_events.h>
-static int core_sched_in(struct guest_info * core, int cpu) {
+static int core_sched_in(struct v3_core_info * core, int cpu) {
     v3_cores_current[cpu] = core;
     v3_telemetry_inc_core_counter(core, "CORE_SCHED_IN");
     return 0;
 }
 
-static int core_sched_out(struct guest_info * core, int cpu) {
+static int core_sched_out(struct v3_core_info * core, int cpu) {
     v3_telemetry_inc_core_counter(core, "CORE_SCHED_OUT");
 
     v3_fpu_deactivate(core);
@@ -261,7 +261,7 @@ static int core_sched_out(struct guest_info * core, int cpu) {
 
 static int start_core(void * p)
 {
-    struct guest_info * core = (struct guest_info *)p;
+    struct v3_core_info * core = (struct v3_core_info *)p;
     int ret = 0;
 
 #ifdef V3_CONFIG_HOST_SCHED_EVENTS
@@ -350,7 +350,7 @@ int v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask) {
     // Spawn off threads for each core. 
     // We work backwards, so that core 0 is always started last.
     for (i = 0, vcore_id = vm->num_cores - 1; (i < MAX_CORES) && (vcore_id >= 0); i++) {
-	struct guest_info * core            = &(vm->cores[vcore_id]);
+	struct v3_core_info * core            = &(vm->cores[vcore_id]);
 	char              * specified_cpu   = v3_cfg_val(core->core_cfg_data, "target_cpu");
 	uint32_t            core_idx        = 0;
 	int major = 0;
@@ -417,7 +417,7 @@ int v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask) {
 }
 
 
-int v3_reset_vm_core(struct guest_info * core, addr_t rip) {
+int v3_reset_vm_core(struct v3_core_info * core, addr_t rip) {
     
     switch (v3_cpu_types[core->pcpu_id]) {
 #ifdef V3_CONFIG_SVM
@@ -446,7 +446,7 @@ int v3_reset_vm_core(struct guest_info * core, addr_t rip) {
 
 /* move a virtual core to different physical core */
 int v3_move_vm_core(struct v3_vm_info * vm, int vcore_id, int target_cpu) {
-    struct guest_info * core = NULL;
+    struct v3_core_info * core = NULL;
 
     if ((vcore_id < 0) || (vcore_id >= vm->num_cores)) {
 	PrintError("Attempted to migrate invalid virtual core (%d)\n", vcore_id);
@@ -587,7 +587,7 @@ int v3_continue_vm(struct v3_vm_info * vm) {
 
 
 
-static int sim_callback(struct guest_info * core, void * private_data) {
+static int sim_callback(struct v3_core_info * core, void * private_data) {
     struct v3_bitmap * timeout_map = private_data;
 
     v3_bitmap_set(timeout_map, core->vcpu_id);
@@ -767,16 +767,16 @@ v3_cpu_mode_t v3_get_host_cpu_mode() {
 
 
 
-void v3_yield_cond(struct guest_info * info, int usec) {
+void v3_yield_cond(struct v3_core_info * core, int usec) {
     uint64_t cur_cycle = 0;
 
 
-    cur_cycle = v3_get_host_time(&info->time_state);
-    v3_telemetry_inc_core_counter(info, "YIELD_COND");
+    cur_cycle = v3_get_host_time(&core->time_state);
+    v3_telemetry_inc_core_counter(core, "YIELD_COND");
 
 
-    if (cur_cycle > (info->yield_start_cycle + info->vm_info->yield_cycle_period)) {
-	v3_telemetry_inc_core_counter(info, "YIELD_COND triggered");
+    if (cur_cycle > (core->yield_start_cycle + core->vm_info->yield_cycle_period)) {
+	v3_telemetry_inc_core_counter(core, "YIELD_COND triggered");
 
 	/*
        V3_Print("Conditional Yield (cur_cyle=%p, start_cycle=%p, period=%p)\n", 
@@ -792,7 +792,7 @@ void v3_yield_cond(struct guest_info * info, int usec) {
 
 	//	v3_fpu_load(info);
 
-        info->yield_start_cycle +=  info->vm_info->yield_cycle_period;
+        core->yield_start_cycle +=  core->vm_info->yield_cycle_period;
     }
 
 }
@@ -806,7 +806,7 @@ void v3_yield_cond(struct guest_info * info, int usec) {
  * usec <0  => the non-timed yield is used
  * usec >=0 => the timed yield is used, which also usually implies interruptible
  */ 
-void v3_yield(struct guest_info * info, int usec) {
+void v3_yield(struct v3_core_info * core, int usec) {
     
 
     if (usec < 0) { 
@@ -815,9 +815,9 @@ void v3_yield(struct guest_info * info, int usec) {
 	V3_Sleep(usec);
     }
 
-    if (info) {
-	//	v3_fpu_load(info);
-	//        info->yield_start_cycle = ;
+    if (core) {
+	//	v3_fpu_load(core);
+	//        core->yield_start_cycle = ;
     }
 }
 
@@ -849,19 +849,19 @@ void v3_interrupt_cpu(struct v3_vm_info * vm, int logical_cpu, int vector) {
 
 
 
-int v3_vm_enter(struct guest_info * info) {
+int v3_vm_enter(struct v3_core_info * core) {
     switch (v3_mach_type) {
 #ifdef V3_CONFIG_SVM
 	case V3_SVM_CPU:
 	case V3_SVM_REV3_CPU:
-	    return v3_svm_enter(info);
+	    return v3_svm_enter(core);
 	    break;
 #endif
 #if V3_CONFIG_VMX
 	case V3_VMX_CPU:
 	case V3_VMX_EPT_CPU:
 	case V3_VMX_EPT_UG_CPU:
-	    return v3_vmx_enter(info);
+	    return v3_vmx_enter(core);
 	    break;
 #endif
 	default:

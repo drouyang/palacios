@@ -19,7 +19,7 @@
 
 
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vmm_intr.h>
 #include <palacios/vmm_extensions.h>
@@ -80,7 +80,7 @@ static int free_code_inject (struct v3_vm_info * vm, struct v3_code_inject_info 
  * helper function to save a chunk of code in an inject object's state and
  * overwrite it with something else (mostly for injecting hypercalls)
  */
-static int v3_plant_code (struct guest_info * core, struct v3_code_inject_info * inject,
+static int v3_plant_code (struct v3_core_info * core, struct v3_code_inject_info * inject,
                           char * hva, char * code, uint_t size) {
     int i;
 
@@ -103,7 +103,7 @@ static int v3_plant_code (struct guest_info * core, struct v3_code_inject_info *
 }
 
 
-static int v3_restore_pre_mmap_state (struct guest_info * core, struct v3_code_inject_info * inject) {
+static int v3_restore_pre_mmap_state (struct v3_core_info * core, struct v3_code_inject_info * inject) {
     int ret;
     addr_t rip_hva, mmap_gva;
 
@@ -131,7 +131,7 @@ static int v3_restore_pre_mmap_state (struct guest_info * core, struct v3_code_i
 }
 
 
-static int v3_restore_pre_inject_state (struct guest_info * core, struct v3_code_inject_info * inject) {
+static int v3_restore_pre_inject_state (struct v3_core_info * core, struct v3_code_inject_info * inject) {
     int ret;
     addr_t rip_hva;
 
@@ -158,7 +158,7 @@ static int v3_restore_pre_inject_state (struct guest_info * core, struct v3_code
  * mmap space for the real code has been injected and has completed. This mmap
  * code will hypercall back into Placios, getting us here.
  */
-static int mmap_init_handler (struct guest_info * core, unsigned int hcall_id, void * priv_data) {
+static int mmap_init_handler (struct v3_core_info * core, unsigned int hcall_id, void * priv_data) {
     struct v3_code_inject_info * inject = current_inject;
     v3_restore_pre_mmap_state(core, inject);
     return 0;
@@ -171,7 +171,7 @@ static int mmap_init_handler (struct guest_info * core, unsigned int hcall_id, v
  * VMM. After this, it only remains to unmap the space we injected it into (the
  * 4th and final stage)
  */
-static int inject_code_finish (struct guest_info * core, unsigned int hcall_id, void * priv_data) {
+static int inject_code_finish (struct v3_core_info * core, unsigned int hcall_id, void * priv_data) {
     struct v3_code_inject_info * inject = current_inject;
     addr_t hva;
 
@@ -209,7 +209,7 @@ static int inject_code_finish (struct guest_info * core, unsigned int hcall_id, 
 // up and removal of the current inject's structures and state, and its
 // removal from any injection queues
 // 
-static int munmap_finish (struct guest_info * core, unsigned int hcall_id, void * priv_data) {
+static int munmap_finish (struct v3_core_info * core, unsigned int hcall_id, void * priv_data) {
     struct v3_code_inject_info * inject = current_inject;
     int i = 0;
     addr_t hva;
@@ -250,7 +250,7 @@ static int munmap_finish (struct guest_info * core, unsigned int hcall_id, void 
  * mmap'd region, but we will jump back to the same RIP every time, which
  * contains the hypercall that invokes this function.
  */
-static int mmap_pf_handler (struct guest_info * core, unsigned int hcall_id, void * priv_data) {
+static int mmap_pf_handler (struct v3_core_info * core, unsigned int hcall_id, void * priv_data) {
     struct v3_code_inject_info * inject = current_inject;
     pf_error_t err;
     int i, offset = core->vm_regs.rbx;
@@ -357,7 +357,7 @@ static int deinit_code_inject (struct v3_vm_info * vm, void * priv_data) {
 
 /* KCH currently unused */
 /* this dynamic linking stuff will eventually be moved out of this file... */
-static addr_t v3_get_dyn_entry (struct guest_info * core, addr_t elf_gva, addr_t elf_hva, 
+static addr_t v3_get_dyn_entry (struct v3_core_info * core, addr_t elf_gva, addr_t elf_hva, 
                                     int section_code) {
     ElfW(Ehdr) *ehdr;
     ElfW(Phdr) *phdr, *phdr_cursor;
@@ -400,7 +400,7 @@ static addr_t v3_get_dyn_entry (struct guest_info * core, addr_t elf_gva, addr_t
 }
 
 
-static int v3_do_resolve (struct guest_info * core, addr_t elf_gva, addr_t elf_hva) {
+static int v3_do_resolve (struct v3_core_info * core, addr_t elf_gva, addr_t elf_hva) {
 
     addr_t got_gva, symtab_gva, strtab_gva;
 
@@ -427,7 +427,7 @@ static int v3_do_resolve (struct guest_info * core, addr_t elf_gva, addr_t elf_h
     return 0;
 }
 
-static int v3_do_cont (struct guest_info * core, struct v3_code_inject_info * inject,  addr_t check) {
+static int v3_do_cont (struct v3_core_info * core, struct v3_code_inject_info * inject,  addr_t check) {
 
     addr_t hva;
     pf_error_t err_code;
@@ -485,7 +485,7 @@ static int v3_do_cont (struct guest_info * core, struct v3_code_inject_info * in
 // return  E_NEED_PF up the call stack to signal page fault injection
 // (so rip doesn't get incremented and sw_intr doesn't get injected
 //
-int v3_do_inject (struct guest_info * core, struct v3_code_inject_info * inject, int mmap_state) {
+int v3_do_inject (struct v3_core_info * core, struct v3_code_inject_info * inject, int mmap_state) {
 	addr_t rip_hva, elf_hva, elf_gva;
 	int ret = 0, i = 0;
     pf_error_t err_code;
@@ -571,7 +571,7 @@ int v3_do_inject (struct guest_info * core, struct v3_code_inject_info * inject,
  *             MMAP_COMPLETE = mmap complete, time to do real inject
  *
  */
-int v3_do_static_inject (struct guest_info * core, struct v3_code_inject_info * inject,
+int v3_do_static_inject (struct v3_core_info * core, struct v3_code_inject_info * inject,
                          int mmap_state, addr_t region_gva) {
 	addr_t rip_hva;
 	int ret;
@@ -648,7 +648,7 @@ int v3_do_static_inject (struct guest_info * core, struct v3_code_inject_info * 
  * 2. An exec has been intercepted and we've popped off the next hooked inject
  *
  */
-int v3_handle_guest_inject (struct guest_info * core, void * priv_data) {
+int v3_handle_guest_inject (struct v3_core_info * core, void * priv_data) {
     struct v3_code_inject_info * inject = (struct v3_code_inject_info *)priv_data;
 
     /* eventually this should turn into a mutex lock */

@@ -30,19 +30,19 @@ struct v3_exec_hooks {
 
 
 struct exec_hook {
-    int (*handler)(struct guest_info * core, void * priv_data);
+    int (*handler)(struct v3_core_info * core, void * priv_data);
     struct list_head hook_node;
     void * priv_data;
 };
 
 
-int v3_execve_handler (struct guest_info * core, uint_t syscall_nr, void * priv_data);
+int v3_execve_handler (struct v3_core_info * core, uint_t syscall_nr, void * priv_data);
 
 #endif
 
 int v3_hook_executable (struct v3_vm_info * vm, 
     const uchar_t * binfile,
-    int (*handler)(struct guest_info * core, void * priv_data),
+    int (*handler)(struct v3_core_info * core, void * priv_data),
     void * priv_data);
 
 int v3_unhook_executable (struct v3_vm_info * core, const uchar_t * binfile); 

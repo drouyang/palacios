@@ -25,7 +25,7 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_types.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 struct v3_execve_varchunk {
@@ -37,12 +37,12 @@ struct v3_execve_varchunk {
 	int active;
 };
 
-int v3_replace_arg (struct guest_info * core, uint_t argnum, const char * newval);
-int v3_replace_env (struct guest_info * core, const char * envname, const char * newval);
+int v3_replace_arg (struct v3_core_info * core, uint_t argnum, const char * newval);
+int v3_replace_env (struct v3_core_info * core, const char * envname, const char * newval);
 
-int v3_inject_strings (struct guest_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt);
+int v3_inject_strings (struct v3_core_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt);
 
-addr_t v3_prepare_guest_stack (struct guest_info * core, uint_t bytes_needed);
+addr_t v3_prepare_guest_stack (struct v3_core_info * core, uint_t bytes_needed);
 
 
 #endif

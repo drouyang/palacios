@@ -20,7 +20,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_debug.h>
 #include <palacios/vmm_types.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 #include <interfaces/sched_events.h>
 
@@ -33,9 +33,9 @@ void V3_Init_SchedEvents(struct v3_sched_hooks * hooks) {
     return;
 }
 
-int v3_hook_core_preemptions(struct guest_info * core, 
-			     int (*sched_in)(struct guest_info * core, int cpu), 
-			     int (*sched_out)(struct guest_info * core, int cpu)) {
+int v3_hook_core_preemptions(struct v3_core_info * core, 
+			     int (*sched_in)(struct v3_core_info * core, int cpu), 
+			     int (*sched_out)(struct v3_core_info * core, int cpu)) {
     if ((sched_hooks == NULL) || 
 	(sched_hooks->hook_sched_evts == NULL)) {
 	PrintError("Error: Scheduler event hooks not initialized correctly\n");
@@ -54,9 +54,9 @@ int v3_hook_core_preemptions(struct guest_info * core,
 
 
 
-int v3_unhook_core_preemptions(struct guest_info * core, 
-			       int (*sched_in)(struct guest_info * core, int cpu), 
-			       int (*sched_out)(struct guest_info * core, int cpu)) {
+int v3_unhook_core_preemptions(struct v3_core_info * core, 
+			       int (*sched_in)(struct v3_core_info * core, int cpu), 
+			       int (*sched_out)(struct v3_core_info * core, int cpu)) {
     if ((sched_hooks == NULL) || 
 	(sched_hooks->unhook_sched_evts == NULL)) {
 	PrintError("Error: Scheduler event hooks not initialized correctly\n");

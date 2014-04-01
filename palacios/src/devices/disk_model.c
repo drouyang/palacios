@@ -19,7 +19,7 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_dev_mgr.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 

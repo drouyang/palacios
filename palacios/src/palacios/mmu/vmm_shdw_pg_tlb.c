@@ -20,7 +20,7 @@
 #include <palacios/vmm_shadow_paging.h>
 #include <palacios/vmm_ctrl_regs.h>
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vm_guest_mem.h>
 
 
@@ -45,7 +45,7 @@ struct vtlb_local_state {
 };
 
 
-static struct shadow_page_data * create_new_shadow_pt(struct guest_info * core);
+static struct shadow_page_data * create_new_shadow_pt(struct v3_core_info * core);
 
 
 #include "vmm_shdw_pg_tlb_32.h"
@@ -53,7 +53,7 @@ static struct shadow_page_data * create_new_shadow_pt(struct guest_info * core);
 #include "vmm_shdw_pg_tlb_64.h"
 
 
-static struct shadow_page_data * create_new_shadow_pt(struct guest_info * core) {
+static struct shadow_page_data * create_new_shadow_pt(struct v3_core_info * core) {
     struct v3_shdw_pg_state * state = &(core->shdw_pg_state);
     struct vtlb_local_state * impl_state = (struct vtlb_local_state *)(state->local_impl_data);
     v3_reg_t cur_cr3 = core->ctrl_regs.cr3;
@@ -120,7 +120,7 @@ static int vtlb_deinit(struct v3_vm_info * vm) {
     return 0;
 }
 
-static int vtlb_local_init(struct guest_info * core) {
+static int vtlb_local_init(struct v3_core_info * core) {
     struct v3_shdw_pg_state * state = &(core->shdw_pg_state);
     struct vtlb_local_state * vtlb_state = NULL;
 
@@ -141,7 +141,7 @@ static int vtlb_local_init(struct guest_info * core) {
 }
 
 
-static int vtlb_local_deinit(struct guest_info * core) {
+static int vtlb_local_deinit(struct v3_core_info * core) {
     struct v3_shdw_pg_state * state = &(core->shdw_pg_state);
     struct vtlb_local_state * vtlb_state = state->local_impl_data;
 
@@ -162,7 +162,7 @@ static int vtlb_local_deinit(struct guest_info * core) {
 }
 
 
-static int vtlb_activate_shdw_pt(struct guest_info * core) {
+static int vtlb_activate_shdw_pt(struct v3_core_info * core) {
     switch (v3_get_vm_cpu_mode(core)) {
 
 	case PROTECTED:
@@ -181,12 +181,12 @@ static int vtlb_activate_shdw_pt(struct guest_info * core) {
     return 0;
 }
 
-static int vtlb_invalidate_shdw_pt(struct guest_info * core) {
+static int vtlb_invalidate_shdw_pt(struct v3_core_info * core) {
     return vtlb_activate_shdw_pt(core);
 }
 
 
-static int vtlb_handle_pf(struct guest_info * core, addr_t fault_addr, pf_error_t error_code) {
+static int vtlb_handle_pf(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
 
 	switch (v3_get_vm_cpu_mode(core)) {
 	    case PROTECTED:
@@ -206,7 +206,7 @@ static int vtlb_handle_pf(struct guest_info * core, addr_t fault_addr, pf_error_
 }
 
 
-static int vtlb_handle_invlpg(struct guest_info * core, addr_t vaddr) {
+static int vtlb_handle_invlpg(struct v3_core_info * core, addr_t vaddr) {
 
     switch (v3_get_vm_cpu_mode(core)) {
 	case PROTECTED:

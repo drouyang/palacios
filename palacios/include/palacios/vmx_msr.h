@@ -22,7 +22,7 @@
 
 #ifdef __V3VEE__
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 int v3_init_vmx_msr_map(struct v3_vm_info * vm);
 int v3_deinit_vmx_msr_map(struct v3_vm_info * vm);

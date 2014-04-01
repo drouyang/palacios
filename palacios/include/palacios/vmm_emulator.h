@@ -28,7 +28,7 @@
 
 struct x86_instr;
 
-int v3_emulate(struct guest_info * core, struct x86_instr * instr, 
+int v3_emulate(struct v3_core_info * core, struct x86_instr * instr, 
 	       int mem_op_size, addr_t mem_hva_src, addr_t mem_hva_dst);
 
 

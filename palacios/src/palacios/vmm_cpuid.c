@@ -19,7 +19,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_cpuid.h>
 #include <palacios/vmm_lowlevel.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 struct masked_cpuid {
     uint32_t rax_mask;
@@ -89,7 +89,7 @@ void v3_init_cpuid_map(struct v3_vm_info * vm) {
 }
 
 
-void fixup_cpuid(struct guest_info * core, 
+void fixup_cpuid(struct v3_core_info * core, 
 		 uint32_t cpuid, 
 		 uint32_t * eax, uint32_t * ebx, 
 		 uint32_t * ecx, uint32_t * edx) {
@@ -195,7 +195,7 @@ static struct v3_cpuid_hook * get_cpuid_hook(struct v3_vm_info * vm, uint32_t cp
 
 
 
-static int mask_hook(struct guest_info * core, uint32_t cpuid, 
+static int mask_hook(struct v3_core_info * core, uint32_t cpuid, 
 	      uint32_t * eax, uint32_t * ebx, 
 	      uint32_t * ecx, uint32_t * edx,
 	      void * priv_data) {
@@ -327,7 +327,7 @@ int v3_unhook_cpuid(struct v3_vm_info * vm, uint32_t cpuid) {
 }
 
 int v3_hook_cpuid(struct v3_vm_info * vm, uint32_t cpuid, 
-		  int (*hook_fn)(struct guest_info * info, uint32_t cpuid, \
+		  int (*hook_fn)(struct v3_core_info * core, uint32_t cpuid, \
 				 uint32_t * eax, uint32_t * ebx, \
 				 uint32_t * ecx, uint32_t * edx, \
 				 void * private_data), 
@@ -359,9 +359,9 @@ int v3_hook_cpuid(struct v3_vm_info * vm, uint32_t cpuid,
     return 0;
 }
 
-int v3_handle_cpuid(struct guest_info * info) {
-    uint32_t cpuid = info->vm_regs.rax;
-    struct v3_cpuid_hook * hook = get_cpuid_hook(info->vm_info, cpuid);
+int v3_handle_cpuid(struct v3_core_info * core) {
+    uint32_t cpuid = core->vm_regs.rax;
+    struct v3_cpuid_hook * hook = get_cpuid_hook(core->vm_info, cpuid);
 
     //PrintDebug("CPUID called for 0x%x\n", cpuid);
 
@@ -369,18 +369,18 @@ int v3_handle_cpuid(struct guest_info * info) {
 	//PrintDebug("Calling passthrough handler\n");
 	// call the passthrough handler
 	v3_cpuid(cpuid, 
-		 (uint32_t *)&(info->vm_regs.rax), 
-		 (uint32_t *)&(info->vm_regs.rbx), 
-		 (uint32_t *)&(info->vm_regs.rcx), 
-		 (uint32_t *)&(info->vm_regs.rdx));
+		 (uint32_t *)&(core->vm_regs.rax), 
+		 (uint32_t *)&(core->vm_regs.rbx), 
+		 (uint32_t *)&(core->vm_regs.rcx), 
+		 (uint32_t *)&(core->vm_regs.rdx));
     } else {
 	//	PrintDebug("Calling hook function\n");
 
-	if (hook->hook_fn(info, cpuid, 
-			  (uint32_t *)&(info->vm_regs.rax), 
-			  (uint32_t *)&(info->vm_regs.rbx), 
-			  (uint32_t *)&(info->vm_regs.rcx), 
-			  (uint32_t *)&(info->vm_regs.rdx), 
+	if (hook->hook_fn(core, cpuid, 
+			  (uint32_t *)&(core->vm_regs.rax), 
+			  (uint32_t *)&(core->vm_regs.rbx), 
+			  (uint32_t *)&(core->vm_regs.rcx), 
+			  (uint32_t *)&(core->vm_regs.rdx), 
 			  hook->private_data) == -1) {
 	    PrintError("Error in cpuid handler for 0x%x\n", cpuid);
 	    return -1;
@@ -389,12 +389,12 @@ int v3_handle_cpuid(struct guest_info * info) {
 
     //    PrintDebug("Cleaning up register contents\n");
 
-    info->vm_regs.rax &= 0x00000000ffffffffLL;
-    info->vm_regs.rbx &= 0x00000000ffffffffLL;
-    info->vm_regs.rcx &= 0x00000000ffffffffLL;
-    info->vm_regs.rdx &= 0x00000000ffffffffLL;
+    core->vm_regs.rax &= 0x00000000ffffffffLL;
+    core->vm_regs.rbx &= 0x00000000ffffffffLL;
+    core->vm_regs.rcx &= 0x00000000ffffffffLL;
+    core->vm_regs.rdx &= 0x00000000ffffffffLL;
 
-    info->rip += 2;
+    core->rip += 2;
 
     return 0;
 }

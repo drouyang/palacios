@@ -29,7 +29,7 @@
 // TODO: CPUID field add failure.
 // IF adding CPUID fields fails on the second hook there is no way to back out of the first add.
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm.h>
 #include <palacios/vmm_cpuid.h>
 #include <palacios/vmm_excp.h>
@@ -233,7 +233,7 @@ void init_state(struct mcheck_state * const state) {
  * Handles guest writes to MCG MSRs.
  */
 static
-int mcg_write_handler(struct guest_info * core, uint32_t msr, struct v3_msr src, void * priv_data) {
+int mcg_write_handler(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data) {
     struct mcheck_state * state = (struct mcheck_state *)priv_data;
 
     switch (msr) {
@@ -270,7 +270,7 @@ int mcg_write_handler(struct guest_info * core, uint32_t msr, struct v3_msr src,
  * Handles guest reads to MCG MSRs.
  */
 static
-int mcg_read_handler(struct guest_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data) {
+int mcg_read_handler(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data) {
     struct mcheck_state * state = (struct mcheck_state *)priv_data;
 
      switch(msr) {
@@ -316,7 +316,7 @@ static struct mci_bank * get_mci_reg(struct mcheck_state * state, uint32_t msr) 
  * Handles guest reads to MCi MSRs.
  */
 static
-int mci_read_handler(struct guest_info * const core,
+int mci_read_handler(struct v3_core_info * const core,
                      const uint32_t msr,
                      struct v3_msr * const dst,
                      void * const priv_data) {
@@ -364,7 +364,7 @@ int mci_read_handler(struct guest_info * const core,
  * Handles guest writes to MCi MSRs.
  */
 static
-int mci_write_handler(struct guest_info * const core,
+int mci_write_handler(struct v3_core_info * const core,
               const uint_t msr,
               const struct v3_msr src,
               void * const priv_data) {

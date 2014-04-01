@@ -23,7 +23,7 @@
 
 #ifdef __V3VEE__
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_mem.h>
 
 
@@ -40,11 +40,11 @@ int v3_hva_to_hpa(addr_t host_va, addr_t * host_pa);
 int v3_hpa_to_hva(addr_t host_pa, addr_t * host_va);
 
 // guest_pa -> (shadow map) -> host_pa
-int v3_gpa_to_hpa(struct guest_info * guest_info, addr_t guest_pa, addr_t * host_pa);
+int v3_gpa_to_hpa(struct v3_core_info * core, addr_t guest_pa, addr_t * host_pa);
 
 /* !! Currently not implemented !! */
 // host_pa -> (shadow_map) -> guest_pa
-int v3_hpa_to_gpa(struct guest_info * guest_info, addr_t host_pa, addr_t * guest_pa);
+int v3_hpa_to_gpa(struct v3_core_info * core, addr_t host_pa, addr_t * guest_pa);
 
 
 /**********************************/
@@ -54,18 +54,18 @@ int v3_hpa_to_gpa(struct guest_info * guest_info, addr_t host_pa, addr_t * guest
 
 /* !! Currently not implemented !! */
 // host_va -> host_pa -> guest_pa
-int v3_hva_to_gpa(struct guest_info * guest_info, addr_t host_va, addr_t * guest_pa);
+int v3_hva_to_gpa(struct v3_core_info * core, addr_t host_va, addr_t * guest_pa);
 
 
 // guest_pa -> host_pa -> host_va
-int v3_gpa_to_hva(struct guest_info * guest_info, addr_t guest_pa, addr_t * host_va);
+int v3_gpa_to_hva(struct v3_core_info * core, addr_t guest_pa, addr_t * host_va);
 
 
 // Look up the address in the guests page tables.. This can cause multiple calls that translate
 //     ------------------------------------------------
 //     |                                              |
 //     -->   guest_pa -> host_pa -> host_va ->   (read table) --> guest_pa
-int v3_gva_to_gpa(struct guest_info * guest_info, addr_t guest_va, addr_t * guest_pa);
+int v3_gva_to_gpa(struct v3_core_info * core, addr_t guest_va, addr_t * guest_pa);
 
 
 
@@ -74,7 +74,7 @@ int v3_gva_to_gpa(struct guest_info * guest_info, addr_t guest_va, addr_t * gues
 //     ------------------------------------------------
 //     |                                              |
 //     -->   guest_pa -> host_pa -> host_va ->   (read table) --> guest_va
-int v3_gpa_to_gva(struct guest_info * guest_info, addr_t guest_pa, addr_t * guest_va);
+int v3_gpa_to_gva(struct v3_core_info * core, addr_t guest_pa, addr_t * guest_va);
 
 
 
@@ -82,20 +82,20 @@ int v3_gpa_to_gva(struct guest_info * guest_info, addr_t guest_pa, addr_t * gues
 /* GROUP 2                        */
 /**********************************/
 // guest_va -> guest_pa -> host_pa
-int v3_gva_to_hpa(struct guest_info * guest_info, addr_t guest_va, addr_t * host_pa);
+int v3_gva_to_hpa(struct v3_core_info * core, addr_t guest_va, addr_t * host_pa);
 
 
 /* !! Currently not implemented !! */
 // host_pa -> guest_pa -> guest_va
-int v3_hpa_to_gva(struct guest_info * guest_info, addr_t host_pa, addr_t * guest_va);
+int v3_hpa_to_gva(struct v3_core_info * core, addr_t host_pa, addr_t * guest_va);
 
 // guest_va -> guest_pa -> host_pa -> host_va
-int v3_gva_to_hva(struct guest_info * guest_info, addr_t guest_va, addr_t * host_va);
+int v3_gva_to_hva(struct v3_core_info * core, addr_t guest_va, addr_t * host_va);
 
 
 /* !! Currently not implemented !! */
 // host_va -> host_pa -> guest_pa -> guest_va
-int v3_hva_to_gva(struct guest_info * guest_info, addr_t host_va, addr_t  * guest_va);
+int v3_hva_to_gva(struct v3_core_info * core, addr_t host_va, addr_t  * guest_va);
 
 
 
@@ -105,10 +105,10 @@ int v3_hva_to_gva(struct guest_info * guest_info, addr_t host_va, addr_t  * gues
 
 
 
-int v3_read_gva_memory(struct guest_info * guest_info, addr_t guest_va, int count, uint8_t * dest);
-int v3_read_gpa_memory(struct guest_info * guest_info, addr_t guest_pa, int count, uint8_t * dest);
-int v3_write_gpa_memory(struct guest_info * guest_info, addr_t guest_pa, int count, uint8_t * src);
-int v3_write_gva_memory(struct guest_info * guest_info, addr_t guest_va, int count, uint8_t * src);
+int v3_read_gva_memory(struct v3_core_info * core, addr_t guest_va, int count, uint8_t * dest);
+int v3_read_gpa_memory(struct v3_core_info * core, addr_t guest_pa, int count, uint8_t * dest);
+int v3_write_gpa_memory(struct v3_core_info * core, addr_t guest_pa, int count, uint8_t * src);
+int v3_write_gva_memory(struct v3_core_info * core, addr_t guest_va, int count, uint8_t * src);
 
 
 #endif // ! __V3VEE__

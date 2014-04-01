@@ -21,7 +21,7 @@
 #include <interfaces/vmm_xpmem.h>
 #include <palacios/vmm.h>
 #include <palacios/vmm_types.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <devices/xpmem.h>
 
 static struct v3_xpmem_hooks * xpmem_hooks = NULL;

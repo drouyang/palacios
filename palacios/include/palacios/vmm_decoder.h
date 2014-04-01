@@ -22,7 +22,7 @@
 
 #ifdef __V3VEE__
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm.h>
 
 
@@ -41,11 +41,11 @@ typedef enum {INVALID_OPERAND, REG_OPERAND, MEM_OPERAND, IMM_OPERAND} v3_operand
 
 
 struct x86_operand {
-    addr_t operand;
-    uint_t size;
+    addr_t            operand;
+    uint_t            size;
     v3_operand_type_t type;
-    uint8_t read : 1;   // This operand value will be read by the instruction
-    uint8_t write : 1;  // This operand value will be written to by the instruction
+    uint8_t           read   : 1;   // This operand value will be read by the instruction
+    uint8_t           write  : 1;   // This operand value will be written to by the instruction
 } __attribute__((packed));
 
 struct x86_prefixes {
@@ -53,24 +53,24 @@ struct x86_prefixes {
 	uint32_t val;
 	
 	struct {
-	    uint32_t lock   : 1;  // 0xF0
-	    uint32_t repne  : 1;  // 0xF2
-	    uint32_t repnz  : 1;  // 0xF2
-	    uint32_t rep    : 1;  // 0xF3
-	    uint32_t repe   : 1;  // 0xF3
-	    uint32_t repz   : 1;  // 0xF3
-	    uint32_t cs_override : 1;  // 0x2E
-	    uint32_t ss_override : 1;  // 0x36
-	    uint32_t ds_override : 1;  // 0x3E
-	    uint32_t es_override : 1;  // 0x26
-	    uint32_t fs_override : 1;  // 0x64
-	    uint32_t gs_override : 1;  // 0x65
-	    uint32_t br_not_taken : 1;  // 0x2E
-	    uint32_t br_taken   : 1;  // 0x3E
-	    uint32_t op_size     : 1;  // 0x66
-	    uint32_t addr_size   : 1;  // 0x67
+	    uint32_t lock          : 1;  // 0xF0
+	    uint32_t repne         : 1;  // 0xF2
+	    uint32_t repnz         : 1;  // 0xF2
+	    uint32_t rep           : 1;  // 0xF3
+	    uint32_t repe          : 1;  // 0xF3
+	    uint32_t repz          : 1;  // 0xF3
+	    uint32_t cs_override   : 1;  // 0x2E
+	    uint32_t ss_override   : 1;  // 0x36
+	    uint32_t ds_override   : 1;  // 0x3E
+	    uint32_t es_override   : 1;  // 0x26
+	    uint32_t fs_override   : 1;  // 0x64
+	    uint32_t gs_override   : 1;  // 0x65
+	    uint32_t br_not_taken  : 1;  // 0x2E
+	    uint32_t br_taken      : 1;  // 0x3E
+	    uint32_t op_size       : 1;  // 0x66
+	    uint32_t addr_size     : 1;  // 0x67
 
-	    uint32_t rex   : 1;
+	    uint32_t rex           : 1;
     
 	    uint32_t rex_rm        : 1;  // REX.B
 	    uint32_t rex_sib_idx   : 1;  // REX.X
@@ -84,15 +84,15 @@ struct x86_prefixes {
 
 
 struct x86_instr {
-    struct x86_prefixes prefixes;
-    uint8_t instr_length;
-    v3_op_type_t op_type;
-    uint_t num_operands;
-    struct x86_operand dst_operand;
-    struct x86_operand src_operand;
-    struct x86_operand third_operand;
-    addr_t str_op_length;
-    addr_t is_str_op;
+    struct x86_prefixes  prefixes;
+    uint8_t              instr_length;
+    v3_op_type_t         op_type;
+    uint_t               num_operands;
+    struct x86_operand   dst_operand;
+    struct x86_operand   src_operand;
+    struct x86_operand   third_operand;
+    addr_t               str_op_length;
+    addr_t               is_str_op;
 };
 
 
@@ -107,8 +107,8 @@ struct x86_instr {
 /* 
  * Initializes a decoder
  */
-int v3_init_decoder(struct guest_info * core);
-int v3_deinit_decoder(struct guest_info * core);
+int v3_init_decoder(struct v3_core_info * core);
+int v3_deinit_decoder(struct v3_core_info * core);
 
 /* 
  * Decodes an instruction 
@@ -117,7 +117,7 @@ int v3_deinit_decoder(struct guest_info * core);
  * IMPORTANT: make sure the instr_ptr is in contiguous host memory
  *   ie. Copy it to a buffer before the call
  */
-int v3_decode(struct guest_info * info, addr_t instr_ptr, struct x86_instr * instr);
+int v3_decode(struct v3_core_info * core, addr_t instr_ptr, struct x86_instr * instr);
 
 /* 
  * Encodes an instruction
@@ -127,7 +127,7 @@ int v3_decode(struct guest_info * info, addr_t instr_ptr, struct x86_instr * ins
  * any unused bytes at the end of instr_buf will be filled with nops
  * IMPORTANT: instr_buf must be allocated and 15 bytes long
  */
-int v3_encode(struct guest_info * info, struct x86_instr * instr, uint8_t * instr_buf);
+int v3_encode(struct v3_core_info * core, struct x86_instr * instr, uint8_t * instr_buf);
 
 
 
@@ -183,8 +183,8 @@ static inline int is_prefix_byte(uchar_t byte) {
 }
 
 
-static inline v3_reg_t get_gpr_mask(struct guest_info * info) {
-    switch (info->cpu_mode) {
+static inline v3_reg_t get_gpr_mask(struct v3_core_info * core) {
+    switch (core->cpu_mode) {
 	case REAL: 
 	case LONG_16_COMPAT:
 	    return 0xffff;
@@ -203,10 +203,10 @@ static inline v3_reg_t get_gpr_mask(struct guest_info * info) {
 
 
 
-static inline addr_t get_addr_linear(struct guest_info * info, addr_t addr, v3_seg_type_t seg_type) {
-    struct v3_segment * seg = &(info->segments.seg_arr[seg_type]);
+static inline addr_t get_addr_linear(struct v3_core_info * core, addr_t addr, v3_seg_type_t seg_type) {
+    struct v3_segment * seg = &(core->segments.seg_arr[seg_type]);
 
-    switch (info->cpu_mode) {
+    switch (core->cpu_mode) {
 	case REAL: {
 	    return ((seg->selector & 0xffff) << 4) + (addr & 0xffff);
 	    break;
@@ -231,7 +231,7 @@ static inline addr_t get_addr_linear(struct guest_info * info, addr_t addr, v3_s
 	}
 	case LONG_16_COMPAT:
 	default:
-	    PrintError("Unsupported CPU Mode: %d\n", info->cpu_mode);
+	    PrintError("Unsupported CPU Mode: %d\n", core->cpu_mode);
 	    return -1;
     }
 }

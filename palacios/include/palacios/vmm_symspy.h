@@ -79,7 +79,7 @@ struct v3_symspy_local_state {
 
 
 int v3_init_symspy_vm(struct v3_vm_info * vm, struct v3_symspy_global_state * state);
-int v3_init_symspy_core(struct guest_info * core, struct v3_symspy_local_state * state);
+int v3_init_symspy_core(struct v3_core_info * core, struct v3_symspy_local_state * state);
 
 
 
@@ -90,7 +90,7 @@ int v3_sym_unmap_pci_passthrough(struct v3_vm_info * vm, uint_t bus, uint_t dev,
 
 
 struct v3_symspy_global_page * v3_sym_get_symspy_vm(struct v3_vm_info * vm);
-struct v3_symspy_local_page * v3_sym_get_symspy_core(struct guest_info * core);
+struct v3_symspy_local_page * v3_sym_get_symspy_core(struct v3_core_info * core);
 
 #endif
 

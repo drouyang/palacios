@@ -20,7 +20,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_dev_mgr.h>
 #include <palacios/vmm_swapbypass.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 #ifdef V3_CONFIG_SWAPBYPASS_TELEMETRY

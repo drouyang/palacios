@@ -1181,7 +1181,7 @@ static uint8_t find_increment_write(struct vga_internal *vga, addr_t new_guest_a
 
 
 
-static int vga_write(struct guest_info * core, 
+static int vga_write(struct v3_core_info * core, 
 		     addr_t guest_addr, 
 		     void * src, 
 		     uint_t length, 
@@ -1564,7 +1564,7 @@ static uint8_t find_increment_read(struct vga_internal *vga, addr_t new_guest_ad
 }
 
 
-static int vga_read(struct guest_info * core, 
+static int vga_read(struct v3_core_info * core, 
 		    addr_t guest_addr, 
 		    void * dst, 
 		    uint_t length, 
@@ -1749,7 +1749,7 @@ static inline void passthrough_io_out(uint16_t port, const void * src, uint_t le
 #define PASSTHROUGH_READ_CHECK(vga,inter,pass) \
     do { if ((vga)->passthrough) { if ((inter)!=(pass)) { PrintError("vga: passthrough error: passthrough value read is 0x%x, but internal value read is 0x%x\n",(pass),(inter)); } } } while (0)
 
-static int misc_out_read(struct guest_info *core, 
+static int misc_out_read(struct v3_core_info *core, 
 			 uint16_t port, 
 			 void *dest,
 			 uint_t len,
@@ -1770,7 +1770,7 @@ static int misc_out_read(struct guest_info *core,
     return len;
 }
 
-static int misc_out_write(struct guest_info *core, 
+static int misc_out_write(struct v3_core_info *core, 
 			  uint16_t port, 
 			  void *src,
 			  uint_t len,
@@ -1793,7 +1793,7 @@ static int misc_out_write(struct guest_info *core,
 
 
 
-static int input_stat0_read(struct guest_info *core, 
+static int input_stat0_read(struct v3_core_info *core, 
 			    uint16_t port, 
 			    void *dest,
 			    uint_t len,
@@ -1815,7 +1815,7 @@ static int input_stat0_read(struct guest_info *core,
 }
 
 
-static int input_stat1_read(struct guest_info *core, 
+static int input_stat1_read(struct v3_core_info *core, 
 			    uint16_t port, 
 			    void *dest,
 			    uint_t len,
@@ -1846,7 +1846,7 @@ static int input_stat1_read(struct guest_info *core,
 }
 			 
 
-static int feature_control_read(struct guest_info *core, 
+static int feature_control_read(struct v3_core_info *core, 
 				uint16_t port, 
 				void *dest,
 				uint_t len,
@@ -1869,7 +1869,7 @@ static int feature_control_read(struct guest_info *core,
     return len;
 }
 
-static int feature_control_write(struct guest_info *core, 
+static int feature_control_write(struct v3_core_info *core, 
 				 uint16_t port, 
 				 void *src,
 				 uint_t len,
@@ -1893,7 +1893,7 @@ static int feature_control_write(struct guest_info *core,
 }
 
 
-static int video_subsys_enable_read(struct guest_info *core, 
+static int video_subsys_enable_read(struct v3_core_info *core, 
 				    uint16_t port, 
 				    void *dest,
 				    uint_t len,
@@ -1915,7 +1915,7 @@ static int video_subsys_enable_read(struct guest_info *core,
     return len;
 }
 
-static int video_subsys_enable_write(struct guest_info *core, 
+static int video_subsys_enable_write(struct v3_core_info *core, 
 				     uint16_t port, 
 				     void *src,
 				     uint_t len,
@@ -1936,7 +1936,7 @@ static int video_subsys_enable_write(struct guest_info *core,
     return len;
 }
 
-static int sequencer_address_read(struct guest_info *core, 
+static int sequencer_address_read(struct v3_core_info *core, 
 				  uint16_t port, 
 				  void *dest,
 				  uint_t len,
@@ -1958,7 +1958,7 @@ static int sequencer_address_read(struct guest_info *core,
     return len;
 }
 
-static int sequencer_data_write(struct guest_info *core, 
+static int sequencer_data_write(struct v3_core_info *core, 
 			       uint16_t port, 
 			       void *src,
 			       uint_t len,
@@ -1990,7 +1990,7 @@ static int sequencer_data_write(struct guest_info *core,
     return len;
 }
 
-static int sequencer_address_write(struct guest_info *core, 
+static int sequencer_address_write(struct v3_core_info *core, 
 				  uint16_t port, 
 				  void *src,
 				  uint_t len,
@@ -2021,7 +2021,7 @@ static int sequencer_address_write(struct guest_info *core,
     return len;
 }
 
-static int sequencer_data_read(struct guest_info *core, 
+static int sequencer_data_read(struct v3_core_info *core, 
 			      uint16_t port, 
 			      void *dest,
 			      uint_t len,
@@ -2058,7 +2058,7 @@ static int sequencer_data_read(struct guest_info *core,
  
 
 
-static int crt_controller_address_read(struct guest_info *core, 
+static int crt_controller_address_read(struct v3_core_info *core, 
 					uint16_t port, 
 					void *dest,
 					uint_t len,
@@ -2081,7 +2081,7 @@ static int crt_controller_address_read(struct guest_info *core,
     return len;
 }
 
-static int crt_controller_data_write(struct guest_info *core, 
+static int crt_controller_data_write(struct v3_core_info *core, 
 				     uint16_t port, 
 				     void *src,
 				     uint_t len,
@@ -2114,7 +2114,7 @@ static int crt_controller_data_write(struct guest_info *core,
     return len;
 }
 
-static int crt_controller_address_write(struct guest_info *core, 
+static int crt_controller_address_write(struct v3_core_info *core, 
 					uint16_t port, 
 					void *src,
 					uint_t len,
@@ -2147,7 +2147,7 @@ static int crt_controller_address_write(struct guest_info *core,
     return len;
 }
 
-static int crt_controller_data_read(struct guest_info *core, 
+static int crt_controller_data_read(struct v3_core_info *core, 
 				    uint16_t port, 
 				    void *dest,
 				    uint_t len,
@@ -2181,7 +2181,7 @@ static int crt_controller_data_read(struct guest_info *core,
 
 
 
-static int graphics_controller_address_read(struct guest_info *core, 
+static int graphics_controller_address_read(struct v3_core_info *core, 
 					    uint16_t port, 
 					    void *dest,
 					    uint_t len,
@@ -2203,7 +2203,7 @@ static int graphics_controller_address_read(struct guest_info *core,
     return len;
 }
 
-static int graphics_controller_data_write(struct guest_info *core, 
+static int graphics_controller_data_write(struct v3_core_info *core, 
 					  uint16_t port, 
 					  void *src,
 					  uint_t len,
@@ -2235,7 +2235,7 @@ static int graphics_controller_data_write(struct guest_info *core,
     return len;
 }
 
-static int graphics_controller_address_write(struct guest_info *core, 
+static int graphics_controller_address_write(struct v3_core_info *core, 
 					     uint16_t port, 
 					     void *src,
 					     uint_t len,
@@ -2267,7 +2267,7 @@ static int graphics_controller_address_write(struct guest_info *core,
     return len;
 }
 
-static int graphics_controller_data_read(struct guest_info *core, 
+static int graphics_controller_data_read(struct v3_core_info *core, 
 					 uint16_t port, 
 					 void *dest,
 					 uint_t len,
@@ -2306,7 +2306,7 @@ static int graphics_controller_data_read(struct guest_info *core,
 
 /* Note that these guys have a bizarre protocol*/
 
-static int attribute_controller_address_read(struct guest_info *core, 
+static int attribute_controller_address_read(struct v3_core_info *core, 
 					     uint16_t port, 
 					     void *dest,
 					     uint_t len,
@@ -2330,7 +2330,7 @@ static int attribute_controller_address_read(struct guest_info *core,
     return len;
 }
 
-static int attribute_controller_address_and_data_write(struct guest_info *core, 
+static int attribute_controller_address_and_data_write(struct v3_core_info *core, 
 						       uint16_t port, 
 						       void *src,
 						       uint_t len,
@@ -2380,7 +2380,7 @@ static int attribute_controller_address_and_data_write(struct guest_info *core,
 	
 }
 
-static int attribute_controller_data_read(struct guest_info *core, 
+static int attribute_controller_data_read(struct v3_core_info *core, 
 					  uint16_t port, 
 					  void *dest,
 					  uint_t len,
@@ -2419,7 +2419,7 @@ static int attribute_controller_data_read(struct guest_info *core,
    since they need to squeeze 18 bits of data through
    an 8 bit port 
 */
-static int dac_write_address_read(struct guest_info *core, 
+static int dac_write_address_read(struct v3_core_info *core, 
 				  uint16_t port, 
 				  void *dest,
 				  uint_t len,
@@ -2444,7 +2444,7 @@ static int dac_write_address_read(struct guest_info *core,
     return len;
 }
 
-static int dac_write_address_write(struct guest_info *core, 
+static int dac_write_address_write(struct v3_core_info *core, 
 				   uint16_t port, 
 				   void *src,
 				   uint_t len,
@@ -2474,7 +2474,7 @@ static int dac_write_address_write(struct guest_info *core,
 }
 
 
-static int dac_read_address_read(struct guest_info *core, 
+static int dac_read_address_read(struct v3_core_info *core, 
 				 uint16_t port, 
 				 void *dest,
 				 uint_t len,
@@ -2498,7 +2498,7 @@ static int dac_read_address_read(struct guest_info *core,
     return len;
 }
 
-static int dac_read_address_write(struct guest_info *core, 
+static int dac_read_address_write(struct v3_core_info *core, 
 				  uint16_t port, 
 				  void *src,
 				  uint_t len,
@@ -2528,7 +2528,7 @@ static int dac_read_address_write(struct guest_info *core,
 }
 
 
-static int dac_data_read(struct guest_info *core, 
+static int dac_data_read(struct v3_core_info *core, 
 			 uint16_t port, 
 			 void *dest,
 			 uint_t len,
@@ -2575,7 +2575,7 @@ static int dac_data_read(struct guest_info *core,
 
 
 
-static int dac_data_write(struct guest_info *core, 
+static int dac_data_write(struct v3_core_info *core, 
 			  uint16_t port, 
 			  void *src,
 			  uint_t len,
@@ -2629,7 +2629,7 @@ static int dac_data_write(struct guest_info *core,
 
  
 
-static int dac_pixel_mask_read(struct guest_info *core, 
+static int dac_pixel_mask_read(struct v3_core_info *core, 
 			       uint16_t port, 
 			       void *dest,
 			       uint_t len,
@@ -2651,7 +2651,7 @@ static int dac_pixel_mask_read(struct guest_info *core,
     return len;
 }
 
-static int dac_pixel_mask_write(struct guest_info *core, 
+static int dac_pixel_mask_write(struct v3_core_info *core, 
 				uint16_t port, 
 				void *src,
 				uint_t len,

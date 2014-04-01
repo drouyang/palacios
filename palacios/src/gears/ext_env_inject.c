@@ -17,7 +17,7 @@
  * redistribute, and modify it as specified in the file "V3VEE_LICENSE".
  */
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_intr.h>
 #include <palacios/vmm_extensions.h>
 
@@ -33,7 +33,7 @@ static int free_env_inject (struct v3_vm_info * vm, struct v3_env_inject_info * 
     return 0;
 }
 
-static int v3_env_inject_handler (struct guest_info * core, void * priv_data) {
+static int v3_env_inject_handler (struct v3_core_info * core, void * priv_data) {
     int i = 0;
     struct v3_env_inject_info * inject = (struct v3_env_inject_info*)priv_data;
 

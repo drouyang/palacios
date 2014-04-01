@@ -13,7 +13,7 @@
 #include <linux/sched.h>
 
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <interfaces/vmm_host_hypercall.h>
 
 #include "mpi_hc.h"

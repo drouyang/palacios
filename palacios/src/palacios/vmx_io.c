@@ -71,7 +71,7 @@ int v3_deinit_vmx_io_map(struct v3_vm_info * vm) {
 }
 
 
-int v3_handle_vmx_io_in(struct guest_info * core, struct vmx_exit_info * exit_info) {
+int v3_handle_vmx_io_in(struct v3_core_info * core, struct vmx_exit_info * exit_info) {
     struct vmx_exit_io_qual io_qual = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);;
     struct v3_io_hook * hook = NULL;
     int read_size = 0;
@@ -100,7 +100,7 @@ int v3_handle_vmx_io_in(struct guest_info * core, struct vmx_exit_info * exit_in
     return 0;
 }
 
-int v3_handle_vmx_io_ins(struct guest_info * core, struct vmx_exit_info * exit_info) {
+int v3_handle_vmx_io_ins(struct v3_core_info * core, struct vmx_exit_info * exit_info) {
     struct vmx_exit_io_qual io_qual = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);;
     struct v3_io_hook * hook = NULL;
     int read_size = 0;
@@ -179,7 +179,7 @@ int v3_handle_vmx_io_ins(struct guest_info * core, struct vmx_exit_info * exit_i
 
 
 
-int v3_handle_vmx_io_out(struct guest_info * core, struct vmx_exit_info * exit_info) {
+int v3_handle_vmx_io_out(struct v3_core_info * core, struct vmx_exit_info * exit_info) {
     struct vmx_exit_io_qual io_qual = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);
     struct v3_io_hook * hook = NULL;
     int write_size = 0;
@@ -207,7 +207,7 @@ int v3_handle_vmx_io_out(struct guest_info * core, struct vmx_exit_info * exit_i
 
 
 
-int v3_handle_vmx_io_outs(struct guest_info * core, struct vmx_exit_info * exit_info) {
+int v3_handle_vmx_io_outs(struct v3_core_info * core, struct vmx_exit_info * exit_info) {
     struct vmx_exit_io_qual io_qual = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);
     struct v3_io_hook * hook = NULL;
     int write_size;

@@ -57,8 +57,8 @@ extern v3_cpu_arch_t v3_mach_type;
 
 static addr_t host_vmcs_ptrs[V3_CONFIG_MAX_CPUS] = { [0 ... V3_CONFIG_MAX_CPUS - 1] = 0};
 
-extern int v3_vmx_launch(struct v3_gprs * vm_regs, struct guest_info * info, struct v3_ctrl_regs * ctrl_regs);
-extern int v3_vmx_resume(struct v3_gprs * vm_regs, struct guest_info * info, struct v3_ctrl_regs * ctrl_regs);
+extern int v3_vmx_launch(struct v3_gprs * vm_regs, struct v3_core_info * core, struct v3_ctrl_regs * ctrl_regs);
+extern int v3_vmx_resume(struct v3_gprs * vm_regs, struct v3_core_info * core, struct v3_ctrl_regs * ctrl_regs);
 
 
 
@@ -86,7 +86,7 @@ static addr_t allocate_vmcs() {
 
 
 #if 0
-static int debug_efer_read(struct guest_info * core, uint_t msr, struct v3_msr * src, void * priv_data) {
+static int debug_efer_read(struct v3_core_info * core, uint_t msr, struct v3_msr * src, void * priv_data) {
     struct v3_msr * efer = (struct v3_msr *)&(core->ctrl_regs.efer);
     V3_Print("\n\nEFER READ (val = %p)\n", (void *)efer->value);
     
@@ -98,7 +98,7 @@ static int debug_efer_read(struct guest_info * core, uint_t msr, struct v3_msr *
     return 0;
 }
 
-static int debug_efer_write(struct guest_info * core, uint_t msr, struct v3_msr src, void * priv_data) {
+static int debug_efer_write(struct v3_core_info * core, uint_t msr, struct v3_msr src, void * priv_data) {
     struct v3_msr * efer = (struct v3_msr *)&(core->ctrl_regs.efer);
     V3_Print("\n\nEFER WRITE (old_val = %p) (new_val = %p)\n", (void *)efer->value, (void *)src.value);
     
@@ -112,7 +112,7 @@ static int debug_efer_write(struct guest_info * core, uint_t msr, struct v3_msr 
 #endif
 
 
-static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state) {
+static int init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state) {
     int vmx_ret = 0;
 
     // disable global interrupts for vm state initialization
@@ -626,7 +626,7 @@ static int init_vmcs_bios(struct guest_info * core, struct vmx_data * vmx_state)
 
 
 static void __init_vmx_vmcs(void * arg) {
-    struct guest_info * core = arg;
+    struct v3_core_info * core = arg;
     struct vmx_data * vmx_state = NULL;
     int vmx_ret = 0;
     
@@ -681,7 +681,7 @@ static void __init_vmx_vmcs(void * arg) {
 
 
 
-int v3_init_vmx_vmcs(struct guest_info * core, v3_vm_class_t vm_class) {
+int v3_init_vmx_vmcs(struct v3_core_info * core, v3_vm_class_t vm_class) {
     extern v3_cpu_arch_t v3_cpu_types[];
 
     if (v3_cpu_types[V3_Get_CPU()] == V3_INVALID_CPU) {
@@ -713,7 +713,7 @@ int v3_init_vmx_vmcs(struct guest_info * core, v3_vm_class_t vm_class) {
 }
 
 
-int v3_deinit_vmx_vmcs(struct guest_info * core) {
+int v3_deinit_vmx_vmcs(struct v3_core_info * core) {
     struct vmx_data * vmx_state = core->vmm_data;
 
     V3_FreePages((void *)(vmx_state->vmcs_ptr_phys), 1);
@@ -730,7 +730,7 @@ int v3_deinit_vmx_vmcs(struct guest_info * core) {
 /* 
  * JRL: This is broken
  */
-int v3_vmx_save_core(struct guest_info * core, void * ctx){
+int v3_vmx_save_core(struct v3_core_info * core, void * ctx){
     struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
 
     // note that the vmcs pointer is an HPA, but we need an HVA
@@ -743,7 +743,7 @@ int v3_vmx_save_core(struct guest_info * core, void * ctx){
     return 0;
 }
 
-int v3_vmx_load_core(struct guest_info * core, void * ctx){
+int v3_vmx_load_core(struct v3_core_info * core, void * ctx){
     struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
     struct cr0_32 * shadow_cr0;
     addr_t vmcs_page_paddr;  //HPA
@@ -794,7 +794,7 @@ int v3_vmx_load_core(struct guest_info * core, void * ctx){
 #endif
 
 
-void v3_flush_vmx_vm_core(struct guest_info * core) {
+void v3_flush_vmx_vm_core(struct v3_core_info * core) {
     struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
     vmcs_clear(vmx_info->vmcs_ptr_phys);
     vmx_info->state = VMX_UNLAUNCHED;
@@ -802,62 +802,62 @@ void v3_flush_vmx_vm_core(struct guest_info * core) {
 
 
 
-static int update_irq_exit_state(struct guest_info * info) {
+static int update_irq_exit_state(struct v3_core_info * core) {
     struct vmx_exit_idt_vec_info idt_vec_info;
 
     check_vmcs_read(VMCS_IDT_VECTOR_INFO, &(idt_vec_info.value));
 
-    if ((info->intr_core_state.irq_started == 1) && (idt_vec_info.valid == 0)) {
+    if ((core->intr_core_state.irq_started == 1) && (idt_vec_info.valid == 0)) {
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
         V3_Print("Calling v3_injecting_intr\n");
 #endif
-        info->intr_core_state.irq_started = 0;
-        v3_injecting_intr(info, info->intr_core_state.irq_vector, V3_EXTERNAL_IRQ);
+        core->intr_core_state.irq_started = 0;
+        v3_injecting_intr(core, core->intr_core_state.irq_vector, V3_EXTERNAL_IRQ);
     }
 
     return 0;
 }
 
-static int update_irq_entry_state(struct guest_info * info) {
+static int update_irq_entry_state(struct v3_core_info * core) {
     struct vmx_exit_idt_vec_info idt_vec_info;
     struct vmcs_interrupt_state intr_core_state;
-    struct vmx_data * vmx_info = (struct vmx_data *)(info->vmm_data);
+    struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
 
     check_vmcs_read(VMCS_IDT_VECTOR_INFO, &(idt_vec_info.value));
     check_vmcs_read(VMCS_GUEST_INT_STATE, &(intr_core_state));
 
     /* Check for pending exceptions to inject */
-    if (v3_excp_pending(info)) {
+    if (v3_excp_pending(core)) {
         struct vmx_entry_int_info int_info;
         int_info.value = 0;
 
         // In VMX, almost every exception is hardware
         // Software exceptions are pretty much only for breakpoint or overflow
         int_info.type = 3;
-        int_info.vector = v3_get_excp_number(info);
+        int_info.vector = v3_get_excp_number(core);
 
-        if (info->excp_state.excp_error_code_valid) {
-            check_vmcs_write(VMCS_ENTRY_EXCP_ERR, info->excp_state.excp_error_code);
+        if (core->excp_state.excp_error_code_valid) {
+            check_vmcs_write(VMCS_ENTRY_EXCP_ERR, core->excp_state.excp_error_code);
             int_info.error_code = 1;
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
             V3_Print("Injecting exception %d with error code %x\n", 
-                    int_info.vector, info->excp_state.excp_error_code);
+                    int_info.vector, core->excp_state.excp_error_code);
 #endif
         }
 
         int_info.valid = 1;
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
-        V3_Print("Injecting exception %d (EIP=%p)\n", int_info.vector, (void *)(addr_t)info->rip);
+        V3_Print("Injecting exception %d (EIP=%p)\n", int_info.vector, (void *)(addr_t)core->rip);
 #endif
         check_vmcs_write(VMCS_ENTRY_INT_INFO, int_info.value);
 
-        v3_injecting_excp(info, int_info.vector);
+        v3_injecting_excp(core, int_info.vector);
 
-    } else if ((((struct rflags *)&(info->ctrl_regs.rflags))->intr == 1) && 
+    } else if ((((struct rflags *)&(core->ctrl_regs.rflags))->intr == 1) && 
 	       (intr_core_state.val == 0)) {
        
-        if ((info->intr_core_state.irq_started == 1) && (idt_vec_info.valid == 1)) {
+        if ((core->intr_core_state.irq_started == 1) && (idt_vec_info.valid == 1)) {
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
             V3_Print("IRQ pending from previous injection\n");
@@ -878,23 +878,23 @@ static int update_irq_entry_state(struct guest_info * info) {
             struct vmx_entry_int_info ent_int;
             ent_int.value = 0;
 
-            switch (v3_intr_pending(info)) {
+            switch (v3_intr_pending(core)) {
                 case V3_EXTERNAL_IRQ: {
-                    info->intr_core_state.irq_vector = v3_get_intr(info); 
-                    ent_int.vector = info->intr_core_state.irq_vector;
+                    core->intr_core_state.irq_vector = v3_get_intr(core); 
+                    ent_int.vector = core->intr_core_state.irq_vector;
                     ent_int.type = 0;
                     ent_int.error_code = 0;
                     ent_int.valid = 1;
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
                     V3_Print("Injecting Interrupt %d at exit %u(EIP=%p)\n", 
-			       info->intr_core_state.irq_vector, 
-			       (uint32_t)info->num_exits, 
-			       (void *)(addr_t)info->rip);
+			       core->intr_core_state.irq_vector, 
+			       (uint32_t)core->num_exits, 
+			       (void *)(addr_t)core->rip);
 #endif
 
                     check_vmcs_write(VMCS_ENTRY_INT_INFO, ent_int.value);
-                    info->intr_core_state.irq_started = 1;
+                    core->intr_core_state.irq_started = 1;
 
                     break;
                 }
@@ -925,7 +925,7 @@ static int update_irq_entry_state(struct guest_info * info) {
                     break;
             }
         }
-    } else if ((v3_intr_pending(info)) && (vmx_info->pri_proc_ctrls.int_wndw_exit == 0)) {
+    } else if ((v3_intr_pending(core)) && (vmx_info->pri_proc_ctrls.int_wndw_exit == 0)) {
         // Enable INTR window exiting so we know when IF=1
         uint32_t instr_len;
 
@@ -950,12 +950,12 @@ static uint64_t rip_log[10];
 
 
 
-static void print_exit_log(struct guest_info * info) {
-    int cnt = info->num_exits % 10;
+static void print_exit_log(struct v3_core_info * core) {
+    int cnt = core->num_exits % 10;
     int i = 0;
     
 
-    V3_Print("\nExit Log (%d total exits):\n", (uint32_t)info->num_exits);
+    V3_Print("\nExit Log (%d total exits):\n", (uint32_t)core->num_exits);
 
     for (i = 0; i < 10; i++) {
 	struct vmx_exit_info * tmp = &exit_log[cnt];
@@ -980,10 +980,10 @@ static void print_exit_log(struct guest_info * info) {
 }
 
 int 
-v3_vmx_config_tsc_virtualization(struct guest_info * info) {
-    struct vmx_data * vmx_info = (struct vmx_data *)(info->vmm_data);
+v3_vmx_config_tsc_virtualization(struct v3_core_info * core) {
+    struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
 
-    if (info->time_state.flags & VM_TIME_TRAP_RDTSC) {
+    if (core->time_state.flags & VM_TIME_TRAP_RDTSC) {
 	if  (!vmx_info->pri_proc_ctrls.rdtsc_exit) {
 	    vmx_info->pri_proc_ctrls.rdtsc_exit = 1;
 	    check_vmcs_write(VMCS_PROC_CTRLS, vmx_info->pri_proc_ctrls.value);
@@ -997,10 +997,10 @@ v3_vmx_config_tsc_virtualization(struct guest_info * info) {
 	    check_vmcs_write(VMCS_PROC_CTRLS, vmx_info->pri_proc_ctrls.value);
 	}
 
-	if (info->time_state.flags & VM_TIME_TSC_PASSTHROUGH) {
+	if (core->time_state.flags & VM_TIME_TSC_PASSTHROUGH) {
 	    tsc_offset = 0;
 	} else {
-            tsc_offset = v3_tsc_host_offset(&info->time_state);
+            tsc_offset = v3_tsc_host_offset(&core->time_state);
 	}
         tsc_offset_high = (uint32_t)(( tsc_offset >> 32) & 0xffffffff);
         tsc_offset_low = (uint32_t)(tsc_offset & 0xffffffff);
@@ -1019,21 +1019,21 @@ v3_vmx_config_tsc_virtualization(struct guest_info * info) {
  * on its contents will cause things to break. The contents at the time of the exit WILL 
  * change before the exit handler is executed.
  */
-int v3_vmx_enter(struct guest_info * info) {
+int v3_vmx_enter(struct v3_core_info * core) {
     int ret = 0;
     struct vmx_exit_info exit_info;
-    struct vmx_data * vmx_info = (struct vmx_data *)(info->vmm_data);
+    struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
     uint64_t guest_cycles = 0;
 
     // Conditionally yield the CPU if the timeslice has expired
-    v3_yield_cond(info, -1);
+    v3_yield_cond(core, -1);
     
     // Update timer devices late after being in the VM so that as much 
     // of the time in the VM is accounted for as possible. Also do it before
     // updating IRQ entry state so that any interrupts the timers raise get 
     // handled on the next VM entry.
-    v3_advance_time(info, NULL);
-    v3_update_timers(info);
+    v3_advance_time(core, NULL);
+    v3_update_timers(core);
 
     // disable global interrupts for vm state transition
     v3_disable_ints();
@@ -1045,17 +1045,17 @@ int v3_vmx_enter(struct guest_info * info) {
     }
 
     // Update FPU state, this must come before the guest state is serialized back to the VMCS
-    v3_fpu_on_entry(info);
+    v3_fpu_on_entry(core);
 
-    v3_vmx_restore_vmcs(info, &hw_info);
+    v3_vmx_restore_vmcs(core, &hw_info);
 
 
 #ifdef V3_CONFIG_SYMCALL
-    if (info->sym_core_state.symcall_state.sym_call_active == 0) {
-	update_irq_entry_state(info);
+    if (core->sym_core_state.symcall_state.sym_call_active == 0) {
+	update_irq_entry_state(core);
     }
 #else 
-    update_irq_entry_state(info);
+    update_irq_entry_state(core);
 #endif
 
     /*
@@ -1067,11 +1067,11 @@ int v3_vmx_enter(struct guest_info * info) {
     */
 
     // Perform last-minute time setup prior to entering the VM
-    v3_vmx_config_tsc_virtualization(info);
+    v3_vmx_config_tsc_virtualization(core);
 
 
 
-    if (v3_update_vmcs_host_state(info, &hw_info)) {
+    if (v3_update_vmcs_host_state(core, &hw_info)) {
 	v3_enable_ints();
         PrintError("Could not write host state\n");
         return -1;
@@ -1082,8 +1082,8 @@ int v3_vmx_enter(struct guest_info * info) {
 	/* Preemption timer is active */
 	uint32_t preempt_window = 0xffffffff;
 
-	if (info->timeouts.timeout_active) {
-	    preempt_window = info->timeouts.next_timeout;
+	if (core->timeouts.timeout_active) {
+	    preempt_window = core->timeouts.next_timeout;
 	}
 	
 	check_vmcs_write(VMCS_PREEMPT_TIMER, preempt_window);
@@ -1097,21 +1097,21 @@ int v3_vmx_enter(struct guest_info * info) {
 	if (vmx_info->state == VMX_UNLAUNCHED) {
 	    vmx_info->state = VMX_LAUNCHED;
 	    rdtscll(entry_tsc);
-	    ret = v3_vmx_launch(&(info->vm_regs), info, &(info->ctrl_regs));
+	    ret = v3_vmx_launch(&(core->vm_regs), core, &(core->ctrl_regs));
 	    rdtscll(exit_tsc);
 
 	} else {
 	    V3_ASSERT(vmx_info->state != VMX_UNLAUNCHED);
 	    rdtscll(entry_tsc);
-	    ret = v3_vmx_resume(&(info->vm_regs), info, &(info->ctrl_regs));
+	    ret = v3_vmx_resume(&(core->vm_regs), core, &(core->ctrl_regs));
 	    rdtscll(exit_tsc);
 	}
 
 	guest_cycles = exit_tsc - entry_tsc;	
-	info->time_state.time_in_guest += guest_cycles;
-	info->time_state.time_in_host += ((exit_tsc - info->time_state.tsc_at_last_exit) - guest_cycles);
-	info->time_state.tsc_at_last_entry = entry_tsc;
-	info->time_state.tsc_at_last_exit = exit_tsc;
+	core->time_state.time_in_guest += guest_cycles;
+	core->time_state.time_in_host += ((exit_tsc - core->time_state.tsc_at_last_exit) - guest_cycles);
+	core->time_state.tsc_at_last_entry = entry_tsc;
+	core->time_state.tsc_at_last_exit = exit_tsc;
     }
 
     //  PrintDebug("VMX Exit: ret=%d\n", ret);
@@ -1127,30 +1127,30 @@ int v3_vmx_enter(struct guest_info * info) {
     }
 
 
-    info->num_exits++;
+    core->num_exits++;
 
     /* If we have the preemption time, then use it to get more accurate guest time */
     if (vmx_info->pin_ctrls.active_preempt_timer) {
 	uint32_t cycles_left = 0;
 	check_vmcs_read(VMCS_PREEMPT_TIMER, &(cycles_left));
 
-	if (info->timeouts.timeout_active) {
-	    guest_cycles = info->timeouts.next_timeout - cycles_left;
+	if (core->timeouts.timeout_active) {
+	    guest_cycles = core->timeouts.next_timeout - cycles_left;
 	} else {
 	    guest_cycles = 0xffffffff - cycles_left;
 	}
     }
 
     // Immediate exit from VM time bookkeeping
-    v3_advance_time(info, &guest_cycles);
+    v3_advance_time(core, &guest_cycles);
 
     /* Update guest state */
-    v3_vmx_save_vmcs(info, &hw_info);
+    v3_vmx_save_vmcs(core, &hw_info);
 
-    // info->cpl = info->segments.cs.selector & 0x3;
+    // core->cpl = core->segments.cs.selector & 0x3;
 
-    info->mem_mode = v3_get_vm_mem_mode(info);
-    info->cpu_mode = v3_get_vm_cpu_mode(info);
+    core->mem_mode = v3_get_vm_mem_mode(core);
+    core->cpu_mode = v3_get_vm_cpu_mode(core);
 
 
 
@@ -1162,21 +1162,21 @@ int v3_vmx_enter(struct guest_info * info) {
     check_vmcs_read(VMCS_EXIT_INT_ERR, &(exit_info.int_err));
     check_vmcs_read(VMCS_GUEST_LINEAR_ADDR, &(exit_info.guest_linear_addr));
 
-    if (info->shdw_pg_mode == NESTED_PAGING) {
+    if (core->shdw_pg_mode == NESTED_PAGING) {
 	check_vmcs_read(VMCS_GUEST_PHYS_ADDR, &(exit_info.ept_fault_addr));
     }
 
     //PrintDebug("VMX Exit taken, id-qual: %u-%lu\n", exit_info.exit_reason, exit_info.exit_qual);
 
-    exit_log[info->num_exits % 10] = exit_info;
-    rip_log[info->num_exits % 10] = get_addr_linear(info, info->rip, V3_SEG_CS);
+    exit_log[core->num_exits % 10] = exit_info;
+    rip_log[core->num_exits % 10] = get_addr_linear(core, core->rip, V3_SEG_CS);
 
 #ifdef V3_CONFIG_SYMCALL
-    if (info->sym_core_state.symcall_state.sym_call_active == 0) {
-	update_irq_exit_state(info);
+    if (core->sym_core_state.symcall_state.sym_call_active == 0) {
+	update_irq_exit_state(core);
     }
 #else
-    update_irq_exit_state(info);
+    update_irq_exit_state(core);
 #endif
 
     if (exit_info.exit_reason == VMX_EXIT_INTR_WINDOW) {
@@ -1186,7 +1186,7 @@ int v3_vmx_enter(struct guest_info * info) {
         vmcs_write(VMCS_PROC_CTRLS, vmx_info->pri_proc_ctrls.value);
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
-       V3_Print("Interrupts available again! (RIP=%llx)\n", info->rip);
+       V3_Print("Interrupts available again! (RIP=%llx)\n", core->rip);
 #endif
     }
 
@@ -1206,43 +1206,43 @@ int v3_vmx_enter(struct guest_info * info) {
     v3_enable_ints();
 
     // Conditionally yield the CPU if the timeslice has expired
-    v3_yield_cond(info, -1);
+    v3_yield_cond(core, -1);
    
-    v3_advance_time(info, NULL);
-    v3_update_timers(info);
+    v3_advance_time(core, NULL);
+    v3_update_timers(core);
 
-    if (v3_handle_vmx_exit(info, &exit_info) == -1) {
+    if (v3_handle_vmx_exit(core, &exit_info) == -1) {
 	PrintError("Error in VMX exit handler (Exit reason=%x)\n", exit_info.exit_reason);
 	return -1;
     }
 
-    if (info->timeouts.timeout_active) {
+    if (core->timeouts.timeout_active) {
 	/* Check to see if any timeouts have expired */
-	v3_handle_timeouts(info, guest_cycles);
+	v3_handle_timeouts(core, guest_cycles);
     }
 
     return 0;
 }
 
 
-int v3_start_vmx_guest(struct guest_info * info) {
+int v3_start_vmx_guest(struct v3_core_info * core) {
 
-    V3_Print("Starting VMX core %u\n", info->vcpu_id);
+    V3_Print("Starting VMX core %u\n", core->vcpu_id);
     
     while (1) {
 
-	if (info->core_run_state == CORE_STOPPED) {
+	if (core->core_run_state == CORE_STOPPED) {
 
-	    if (v3_is_core_bsp(info)) {
-		PrintDebug("BSP (core %d) is in STOPPED state, starting immediately\n", info->vcpu_id);
-		info->core_run_state = CORE_RUNNING;
+	    if (v3_is_core_bsp(core)) {
+		PrintDebug("BSP (core %d) is in STOPPED state, starting immediately\n", core->vcpu_id);
+		core->core_run_state = CORE_RUNNING;
 	    } else {
 	    
-		PrintDebug("VMX core %u is STOPPED: Waiting for core initialization\n", info->vcpu_id);
+		PrintDebug("VMX core %u is STOPPED: Waiting for core initialization\n", core->vcpu_id);
 
-		while (info->core_run_state == CORE_STOPPED) {
+		while (core->core_run_state == CORE_STOPPED) {
 
-		    if (info->vm_info->run_state == VM_STOPPED) {
+		    if (core->vm_info->run_state == VM_STOPPED) {
 			// The VM was stopped before this core was initialized. 
 			return 0;
 		    }
@@ -1250,67 +1250,67 @@ int v3_start_vmx_guest(struct guest_info * info) {
 
 
 
-		    v3_yield(info, -1);
-		    //PrintDebug("VMX core %u: still waiting for INIT\n",info->vcpu_id);
+		    v3_yield(core, -1);
+		    //PrintDebug("VMX core %u: still waiting for INIT\n",core->vcpu_id);
 		}
 	
-		PrintDebug("VMX core %u initialized\n", info->vcpu_id);
+		PrintDebug("VMX core %u initialized\n", core->vcpu_id);
 
 		// We'll be paranoid about race conditions here
-		v3_wait_at_barrier(info);
+		v3_wait_at_barrier(core);
 	    }
 
 
 	    PrintDebug("VMX core %u: I am starting at CS=0x%x (base=0x%p, limit=0x%x),  RIP=0x%p\n",
-		       info->vcpu_id, info->segments.cs.selector, (void *)(info->segments.cs.base),
-		       info->segments.cs.limit, (void *)(info->rip));
+		       core->vcpu_id, core->segments.cs.selector, (void *)(core->segments.cs.base),
+		       core->segments.cs.limit, (void *)(core->rip));
 
 
-	    PrintDebug("VMX core %u: Launching VMX VM on logical core %u\n", info->vcpu_id, info->pcpu_id);
+	    PrintDebug("VMX core %u: Launching VMX VM on logical core %u\n", core->vcpu_id, core->pcpu_id);
 
-	    v3_start_time(info);
+	    v3_start_time(core);
 	}
 
-	if (info->vm_info->run_state == VM_STOPPED) {
-	    info->core_run_state = CORE_STOPPED;
+	if (core->vm_info->run_state == VM_STOPPED) {
+	    core->core_run_state = CORE_STOPPED;
 	    break;
 	}
 
-	if (v3_vmx_enter(info) == -1) {
+	if (v3_vmx_enter(core) == -1) {
 
-            info->vm_info->run_state = VM_ERROR;
+            core->vm_info->run_state = VM_ERROR;
             
-            V3_Print("VMX core %u: VMX ERROR!!\n", info->vcpu_id); 
+            V3_Print("VMX core %u: VMX ERROR!!\n", core->vcpu_id); 
             
-            v3_print_guest_state(info);
+            v3_print_guest_state(core);
             
 	    v3_print_vmcs();
-	    print_exit_log(info);
+	    print_exit_log(core);
 	    return -1;
 	}
 
 	// Check for single step mode...
-	if (info->brk_exit != 0) {
+	if (core->brk_exit != 0) {
 	    V3_Print("Single Stepping Guest: (entry_tsc=%llu) (exit_tsc=%llu)\n", 
-		     info->time_state.tsc_at_last_entry,
-		     info->time_state.tsc_at_last_exit);
+		     core->time_state.tsc_at_last_entry,
+		     core->time_state.tsc_at_last_exit);
 	    
-	    while ((info->num_exits >= info->brk_exit) && 
-		   (info->brk_exit != 0)) {
-		v3_yield(info, -1);
-		v3_wait_at_barrier(info);
+	    while ((core->num_exits >= core->brk_exit) && 
+		   (core->brk_exit != 0)) {
+		v3_yield(core, -1);
+		v3_wait_at_barrier(core);
 	    }
 	} else {
-	    v3_wait_at_barrier(info);
+	    v3_wait_at_barrier(core);
 	}
 
-	if (info->vm_info->run_state == VM_STOPPED) {
-	    info->core_run_state = CORE_STOPPED;
+	if (core->vm_info->run_state == VM_STOPPED) {
+	    core->core_run_state = CORE_STOPPED;
 	    break;
 	}
 /*
-	if ((info->num_exits % 5000) == 0) {
-	    V3_Print("VMX Exit number %d\n", (uint32_t)info->num_exits);
+	if ((core->num_exits % 5000) == 0) {
+	    V3_Print("VMX Exit number %d\n", (uint32_t)core->num_exits);
 	}
 */
 
@@ -1353,7 +1353,7 @@ int v3_is_vmx_capable() {
 }
 
 
-int v3_reset_vmx_vm_core(struct guest_info * core, addr_t rip) {
+int v3_reset_vmx_vm_core(struct v3_core_info * core, addr_t rip) {
     // init vmcs bios
     
     if ((core->shdw_pg_mode == NESTED_PAGING) && 

@@ -23,9 +23,6 @@
 
 #ifdef __V3VEE__
 
-#include <palacios/vm_guest.h>
-#include <palacios/vmm.h>
-
 
 int V3_init_options(char * options);
 char * v3_lookup_option(char * option);

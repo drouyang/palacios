@@ -40,7 +40,7 @@
 #define IA32_KERN_GS_BASE_MSR 0xc0000102
 
 
-struct guest_info;
+struct v3_core_info;
 struct v3_vm_info;
 
 struct v3_msr {
@@ -61,8 +61,8 @@ typedef struct v3_msr v3_msr_t;
 struct v3_msr_hook {
     uint32_t msr;
   
-    int (*read)(struct guest_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data);
-    int (*write)(struct guest_info * core, uint32_t msr, struct v3_msr src, void * priv_data);
+    int (*read)(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data);
+    int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data);
 
     void * priv_data;
 
@@ -89,13 +89,13 @@ int v3_deinit_msr_map(struct v3_vm_info * vm);
 int v3_unhook_msr(struct v3_vm_info * vm, uint32_t msr);
 
 int v3_hook_msr(struct v3_vm_info * vm, uint32_t msr,
-		int (*read)(struct guest_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
-		int (*write)(struct guest_info * core, uint32_t msr, struct v3_msr src, void * priv_data), 
+		int (*read)(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
+		int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data), 
 		void * priv_data);
 
 
-int v3_msr_unhandled_read(struct guest_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data);
-int v3_msr_unhandled_write(struct guest_info * core, uint32_t msr, struct v3_msr src, void * priv_data);
+int v3_msr_unhandled_read(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data);
+int v3_msr_unhandled_write(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data);
 
 struct v3_msr_hook * v3_get_msr_hook(struct v3_vm_info * vm, uint32_t msr);
 
@@ -103,8 +103,8 @@ void v3_refresh_msr_map(struct v3_vm_info * vm);
 
 void v3_print_msr_map(struct v3_vm_info * vm);
 
-int v3_handle_msr_write(struct guest_info * info);
-int v3_handle_msr_read(struct guest_info * info);
+int v3_handle_msr_write(struct v3_core_info * core);
+int v3_handle_msr_read(struct v3_core_info * core);
 
 
 

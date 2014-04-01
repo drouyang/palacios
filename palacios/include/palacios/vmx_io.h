@@ -23,16 +23,16 @@
 
 
 struct vmx_exit_info;
-struct guest_info;
+struct v3_core_info;
 struct v3_vm_info;
 
 int v3_init_vmx_io_map(struct v3_vm_info * vm);
 int v3_deinit_vmx_io_map(struct v3_vm_info * vm);
 
-int v3_handle_vmx_io_in(struct guest_info * info, struct vmx_exit_info * exit_info);
-int v3_handle_vmx_io_ins(struct guest_info * info, struct vmx_exit_info * exit_info);
-int v3_handle_vmx_io_out(struct guest_info * info, struct vmx_exit_info * exit_info);
-int v3_handle_vmx_io_outs(struct guest_info * info, struct vmx_exit_info * exit_info);
+int v3_handle_vmx_io_in(struct v3_core_info * core, struct vmx_exit_info * exit_info);
+int v3_handle_vmx_io_ins(struct v3_core_info * core, struct vmx_exit_info * exit_info);
+int v3_handle_vmx_io_out(struct v3_core_info * core, struct vmx_exit_info * exit_info);
+int v3_handle_vmx_io_outs(struct v3_core_info * core, struct vmx_exit_info * exit_info);
 
 
 #endif

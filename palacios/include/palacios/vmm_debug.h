@@ -29,15 +29,15 @@
 
 int v3_init_vm_debugging(struct v3_vm_info * vm);
 
-void v3_print_guest_state(struct guest_info * core);
-void v3_print_arch_state(struct guest_info * core);
+void v3_print_guest_state(struct v3_core_info * core);
+void v3_print_arch_state(struct v3_core_info * core);
 
 void v3_print_segments(struct v3_segments * segs);
-void v3_print_ctrl_regs(struct guest_info * core);
-void v3_print_GPRs(struct guest_info * core);
+void v3_print_ctrl_regs(struct v3_core_info * core);
+void v3_print_GPRs(struct v3_core_info * core);
 
-void v3_print_backtrace(struct guest_info * core);
-void v3_print_stack(struct guest_info * core);
+void v3_print_backtrace(struct v3_core_info * core);
+void v3_print_stack(struct v3_core_info * core);
 void v3_print_guest_state_all(struct v3_vm_info * vm);
 
 #endif // !__V3VEE__

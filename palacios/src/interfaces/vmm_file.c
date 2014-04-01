@@ -22,7 +22,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_debug.h>
 #include <palacios/vmm_types.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 static struct v3_file_hooks * file_hooks = NULL;
 

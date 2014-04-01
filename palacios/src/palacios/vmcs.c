@@ -159,9 +159,9 @@ void v3_seg_to_vmxseg(struct v3_segment * seg, struct vmcs_segment * vmcs_seg) {
 
 
 
-int v3_update_vmcs_ctrl_fields(struct guest_info * info) {
+int v3_update_vmcs_ctrl_fields(struct v3_core_info * core) {
     int vmx_ret = 0;
-    struct vmx_data * arch_data = (struct vmx_data *)(info->vmm_data);
+    struct vmx_data * arch_data = (struct vmx_data *)(core->vmm_data);
 
     vmx_ret |= check_vmcs_write(VMCS_PIN_CTRLS, arch_data->pin_ctrls.value);
     vmx_ret |= check_vmcs_write(VMCS_PROC_CTRLS, arch_data->pri_proc_ctrls.value);
@@ -174,8 +174,8 @@ int v3_update_vmcs_ctrl_fields(struct guest_info * info) {
     vmx_ret |= check_vmcs_write(VMCS_ENTRY_CTRLS, arch_data->entry_ctrls.value);
     vmx_ret |= check_vmcs_write(VMCS_EXCP_BITMAP, arch_data->excp_bmap.value);
 
-    if (info->shdw_pg_mode == NESTED_PAGING) {
-	vmx_ret |= check_vmcs_write(VMCS_EPT_PTR, info->direct_map_pt);
+    if (core->shdw_pg_mode == NESTED_PAGING) {
+	vmx_ret |= check_vmcs_write(VMCS_EPT_PTR, core->direct_map_pt);
     }
 
     return vmx_ret;
@@ -186,91 +186,91 @@ int v3_update_vmcs_ctrl_fields(struct guest_info * info) {
 
 
 
-int v3_vmx_save_vmcs(struct guest_info * info, struct vmx_hw_info * hw_info) {
-    struct vmx_data * vmx_info = (struct vmx_data *)(info->vmm_data);
+int v3_vmx_save_vmcs(struct v3_core_info * core, struct vmx_hw_info * hw_info) {
+    struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
     int error = 0;
 
-    check_vmcs_read(VMCS_GUEST_RIP, &(info->rip));
-    check_vmcs_read(VMCS_GUEST_RSP, &(info->vm_regs.rsp));
+    check_vmcs_read(VMCS_GUEST_RIP, &(core->rip));
+    check_vmcs_read(VMCS_GUEST_RSP, &(core->vm_regs.rsp));
 
-    check_vmcs_read(VMCS_GUEST_CR0, &(info->ctrl_regs.cr0));
-    check_vmcs_read(VMCS_CR0_READ_SHDW, &(info->shdw_pg_state.guest_cr0));
-    check_vmcs_read(VMCS_GUEST_CR3, &(info->ctrl_regs.cr3));
-    check_vmcs_read(VMCS_GUEST_CR4, &(info->ctrl_regs.cr4));
+    check_vmcs_read(VMCS_GUEST_CR0, &(core->ctrl_regs.cr0));
+    check_vmcs_read(VMCS_CR0_READ_SHDW, &(core->shdw_pg_state.guest_cr0));
+    check_vmcs_read(VMCS_GUEST_CR3, &(core->ctrl_regs.cr3));
+    check_vmcs_read(VMCS_GUEST_CR4, &(core->ctrl_regs.cr4));
     check_vmcs_read(VMCS_CR4_READ_SHDW, &(vmx_info->guest_cr4));
-    check_vmcs_read(VMCS_GUEST_DR7, &(info->dbg_regs.dr7));
+    check_vmcs_read(VMCS_GUEST_DR7, &(core->dbg_regs.dr7));
 
-    check_vmcs_read(VMCS_GUEST_RFLAGS, &(info->ctrl_regs.rflags));
+    check_vmcs_read(VMCS_GUEST_RFLAGS, &(core->ctrl_regs.rflags));
 
 #ifdef __V3_64BIT__
-    check_vmcs_read(VMCS_GUEST_EFER, &(info->ctrl_regs.efer));
+    check_vmcs_read(VMCS_GUEST_EFER, &(core->ctrl_regs.efer));
     check_vmcs_read(VMCS_ENTRY_CTRLS, &(vmx_info->entry_ctrls.value));
 #endif
     
-    error =  v3_read_vmcs_segments(&(info->segments));
+    error =  v3_read_vmcs_segments(&(core->segments));
 
     /* Save MSRs from MSR SAVE Area (whereever that is...)*/
 
-    info->msrs.star = vmx_info->msr_area->guest_star.hi;
-    info->msrs.star <<= 32;
-    info->msrs.star |= vmx_info->msr_area->guest_star.lo;
+    core->msrs.star = vmx_info->msr_area->guest_star.hi;
+    core->msrs.star <<= 32;
+    core->msrs.star |= vmx_info->msr_area->guest_star.lo;
 
-    info->msrs.lstar = vmx_info->msr_area->guest_lstar.hi;
-    info->msrs.lstar <<= 32;
-    info->msrs.lstar |= vmx_info->msr_area->guest_lstar.lo;
+    core->msrs.lstar = vmx_info->msr_area->guest_lstar.hi;
+    core->msrs.lstar <<= 32;
+    core->msrs.lstar |= vmx_info->msr_area->guest_lstar.lo;
 
-    info->msrs.sfmask = vmx_info->msr_area->guest_fmask.hi;
-    info->msrs.sfmask <<= 32;
-    info->msrs.sfmask |= vmx_info->msr_area->guest_fmask.lo;
+    core->msrs.sfmask = vmx_info->msr_area->guest_fmask.hi;
+    core->msrs.sfmask <<= 32;
+    core->msrs.sfmask |= vmx_info->msr_area->guest_fmask.lo;
 
-    info->msrs.kern_gs_base = vmx_info->msr_area->guest_kern_gs.hi;
-    info->msrs.kern_gs_base <<= 32;
-    info->msrs.kern_gs_base |= vmx_info->msr_area->guest_kern_gs.lo;
+    core->msrs.kern_gs_base = vmx_info->msr_area->guest_kern_gs.hi;
+    core->msrs.kern_gs_base <<= 32;
+    core->msrs.kern_gs_base |= vmx_info->msr_area->guest_kern_gs.lo;
 
 
     return error;
 }
 
 
-int v3_vmx_restore_vmcs(struct guest_info * info, struct vmx_hw_info * hw_info) {
-    struct vmx_data * vmx_info = (struct vmx_data *)(info->vmm_data);
+int v3_vmx_restore_vmcs(struct v3_core_info * core, struct vmx_hw_info * hw_info) {
+    struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
     int error = 0;
 
-    check_vmcs_write(VMCS_GUEST_RIP, info->rip);
-    check_vmcs_write(VMCS_GUEST_RSP, info->vm_regs.rsp);
+    check_vmcs_write(VMCS_GUEST_RIP, core->rip);
+    check_vmcs_write(VMCS_GUEST_RSP, core->vm_regs.rsp);
 
-    check_vmcs_write(VMCS_GUEST_CR0, info->ctrl_regs.cr0);
-    check_vmcs_write(VMCS_CR0_READ_SHDW, info->shdw_pg_state.guest_cr0);
-    check_vmcs_write(VMCS_GUEST_CR3, info->ctrl_regs.cr3);
-    check_vmcs_write(VMCS_GUEST_CR4, info->ctrl_regs.cr4);
+    check_vmcs_write(VMCS_GUEST_CR0, core->ctrl_regs.cr0);
+    check_vmcs_write(VMCS_CR0_READ_SHDW, core->shdw_pg_state.guest_cr0);
+    check_vmcs_write(VMCS_GUEST_CR3, core->ctrl_regs.cr3);
+    check_vmcs_write(VMCS_GUEST_CR4, core->ctrl_regs.cr4);
     check_vmcs_write(VMCS_CR4_READ_SHDW, vmx_info->guest_cr4);
-    check_vmcs_write(VMCS_GUEST_DR7, info->dbg_regs.dr7);
+    check_vmcs_write(VMCS_GUEST_DR7, core->dbg_regs.dr7);
 
-    check_vmcs_write(VMCS_GUEST_RFLAGS, info->ctrl_regs.rflags);
+    check_vmcs_write(VMCS_GUEST_RFLAGS, core->ctrl_regs.rflags);
 
 #ifdef __V3_64BIT__
     if (hw_info->caps.virt_efer) {
-	check_vmcs_write(VMCS_GUEST_EFER, info->ctrl_regs.efer);
+	check_vmcs_write(VMCS_GUEST_EFER, core->ctrl_regs.efer);
     }
 
     check_vmcs_write(VMCS_ENTRY_CTRLS, vmx_info->entry_ctrls.value);
 #endif
 
-    error = v3_write_vmcs_segments(&(info->segments));
+    error = v3_write_vmcs_segments(&(core->segments));
 
     /* Restore MSRs from MSR SAVE Area (whereever that is...)*/
 
-    vmx_info->msr_area->guest_star.hi = (info->msrs.star >> 32);
-    vmx_info->msr_area->guest_star.lo = (info->msrs.star & 0xffffffff);
+    vmx_info->msr_area->guest_star.hi = (core->msrs.star >> 32);
+    vmx_info->msr_area->guest_star.lo = (core->msrs.star & 0xffffffff);
 
-    vmx_info->msr_area->guest_lstar.hi = (info->msrs.lstar >> 32);
-    vmx_info->msr_area->guest_lstar.lo = (info->msrs.lstar & 0xffffffff);
+    vmx_info->msr_area->guest_lstar.hi = (core->msrs.lstar >> 32);
+    vmx_info->msr_area->guest_lstar.lo = (core->msrs.lstar & 0xffffffff);
 
-    vmx_info->msr_area->guest_fmask.hi = (info->msrs.sfmask >> 32);
-    vmx_info->msr_area->guest_fmask.lo = (info->msrs.sfmask & 0xffffffff);
+    vmx_info->msr_area->guest_fmask.hi = (core->msrs.sfmask >> 32);
+    vmx_info->msr_area->guest_fmask.lo = (core->msrs.sfmask & 0xffffffff);
 
-    vmx_info->msr_area->guest_kern_gs.hi = (info->msrs.kern_gs_base >> 32);
-    vmx_info->msr_area->guest_kern_gs.lo = (info->msrs.kern_gs_base & 0xffffffff);
+    vmx_info->msr_area->guest_kern_gs.hi = (core->msrs.kern_gs_base >> 32);
+    vmx_info->msr_area->guest_kern_gs.lo = (core->msrs.kern_gs_base & 0xffffffff);
 
     return error;
 
@@ -278,7 +278,7 @@ int v3_vmx_restore_vmcs(struct guest_info * info, struct vmx_hw_info * hw_info) 
 
 
 
-int v3_update_vmcs_host_state(struct guest_info * info, struct vmx_hw_info * hw_info) {
+int v3_update_vmcs_host_state(struct v3_core_info * core, struct vmx_hw_info * hw_info) {
     int vmx_ret = 0;
     addr_t tmp;
     struct v3_msr tmp_msr;
@@ -499,7 +499,7 @@ int v3_update_vmcs_host_state(struct guest_info * info, struct vmx_hw_info * hw_
 
     // save STAR, LSTAR, FMASK, KERNEL_GS_BASE MSRs in MSR load/store area
     {
-	struct vmx_data * vmx_state = (struct vmx_data *)info->vmm_data;
+	struct vmx_data * vmx_state = (struct vmx_data *)core->vmm_data;
 	struct vmcs_msr_save_area * msr_entries = vmx_state->msr_area;
 
     

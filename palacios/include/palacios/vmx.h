@@ -26,7 +26,7 @@
 #include <palacios/vmm_types.h>
 #include <palacios/vmcs.h>
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 #define VMX_SUCCESS        0
@@ -247,17 +247,17 @@ int v3_is_vmx_capable();
 void v3_init_vmx_cpu(int cpu_id);
 void v3_deinit_vmx_cpu(int cpu_id);
 
-int v3_init_vmx_vmcs(struct guest_info * info, v3_vm_class_t vm_class);
-int v3_deinit_vmx_vmcs(struct guest_info * core);
+int v3_init_vmx_vmcs(struct v3_core_info * core, v3_vm_class_t vm_class);
+int v3_deinit_vmx_vmcs(struct v3_core_info * core);
 
-int v3_start_vmx_guest(struct guest_info* info);
-int v3_reset_vmx_vm_core(struct guest_info * core, addr_t rip);
-void v3_flush_vmx_vm_core(struct guest_info * core);
+int v3_start_vmx_guest(struct v3_core_info* info);
+int v3_reset_vmx_vm_core(struct v3_core_info * core, addr_t rip);
+void v3_flush_vmx_vm_core(struct v3_core_info * core);
 
-int v3_vmx_enter(struct guest_info * info);
+int v3_vmx_enter(struct v3_core_info * core);
 
-int v3_vmx_load_core(struct guest_info * core, void * ctx);
-int v3_vmx_save_core(struct guest_info * core, void * ctx);
+int v3_vmx_load_core(struct v3_core_info * core, void * ctx);
+int v3_vmx_save_core(struct v3_core_info * core, void * ctx);
 
 
 

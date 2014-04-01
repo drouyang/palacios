@@ -21,7 +21,7 @@
 #include <palacios/vmm_debug.h>
 #include <palacios/vmm.h>
 #include <palacios/vmm_host_events.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_decoder.h>
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vmm_config.h>
@@ -38,7 +38,7 @@
 #define SINGLE_EXIT_MODE 0x80000000 // enable single exit when this flag is set, until flag is cleared
 
 
-static int core_handler(struct guest_info * core, uint32_t cmd) {
+static int core_handler(struct v3_core_info * core, uint32_t cmd) {
 
 
 
@@ -72,7 +72,7 @@ static int core_handler(struct guest_info * core, uint32_t cmd) {
     return 0;
 }
 
-static int clear_counters(struct guest_info * core) {
+static int clear_counters(struct v3_core_info * core) {
     core->time_state.time_in_guest = 0;
     core->time_state.time_in_host = 0;
 
@@ -118,7 +118,7 @@ static int evt_handler(struct v3_vm_info * vm, struct v3_debug_event * evt, void
 
 
 
-static int debug_hcall(struct guest_info * core, hcall_id_t hcall_id, void * priv_data) {
+static int debug_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) {
     uint32_t cmd = core->vm_regs.rbx;
 
     if (cmd & CLEAR_COUNTERS) {
@@ -169,7 +169,7 @@ void v3_print_segments(struct v3_segments * segs) {
 
 
 
-void v3_print_ctrl_regs(struct guest_info * core) {
+void v3_print_ctrl_regs(struct v3_core_info * core) {
     struct v3_ctrl_regs * regs = &(core->ctrl_regs);
     int i = 0;
     v3_reg_t * reg_ptr;
@@ -188,7 +188,7 @@ void v3_print_ctrl_regs(struct guest_info * core) {
 }
 
 #if 0
-static int safe_gva_to_hva(struct guest_info * core, addr_t linear_addr, addr_t * host_addr) {
+static int safe_gva_to_hva(struct v3_core_info * core, addr_t linear_addr, addr_t * host_addr) {
     /* select the proper translation based on guest mode */
     if (core->mem_mode == PHYSICAL_MEM) {
     	if (v3_gpa_to_hva(core, linear_addr, host_addr) == -1) return -1;
@@ -198,7 +198,7 @@ static int safe_gva_to_hva(struct guest_info * core, addr_t linear_addr, addr_t 
     return 0;
 }
 
-static int v3_print_disassembly(struct guest_info * core) {
+static int v3_print_disassembly(struct v3_core_info * core) {
     int passed_rip = 0;
     addr_t rip, rip_linear, rip_host;
 
@@ -241,7 +241,7 @@ static int v3_print_disassembly(struct guest_info * core) {
 
 #endif
 
-void v3_print_guest_state(struct guest_info * core) {
+void v3_print_guest_state(struct v3_core_info * core) {
     addr_t linear_addr = 0; 
     addr_t host_addr = 0;
     int ret = 0;
@@ -321,7 +321,7 @@ void v3_print_guest_state(struct guest_info * core) {
 
 #include <palacios/vmm_msr.h>
 #include <palacios/vmm_lowlevel.h>
-void v3_print_arch_state(struct guest_info * core) {
+void v3_print_arch_state(struct v3_core_info * core) {
     extern v3_cpu_arch_t v3_mach_type;
 
 
@@ -382,7 +382,7 @@ void v3_print_guest_state_all(struct v3_vm_info * vm) {
 
 
 
-void v3_print_stack(struct guest_info * core) {
+void v3_print_stack(struct v3_core_info * core) {
     addr_t linear_addr = 0;
     addr_t host_addr = 0;
     int i = 0;
@@ -433,7 +433,7 @@ void v3_print_stack(struct guest_info * core) {
 }    
 
 
-void v3_print_backtrace(struct guest_info * core) {
+void v3_print_backtrace(struct v3_core_info * core) {
     addr_t gla_rbp = 0;
     int i = 0;
     v3_cpu_mode_t cpu_mode = v3_get_vm_cpu_mode(core);
@@ -545,7 +545,7 @@ void v3_print_backtrace(struct guest_info * core) {
 
 #ifdef __V3_32BIT__
 
-void v3_print_GPRs(struct guest_info * core) {
+void v3_print_GPRs(struct v3_core_info * core) {
     struct v3_gprs * regs = &(core->vm_regs);
     int i = 0;
     v3_reg_t * reg_ptr;
@@ -562,7 +562,7 @@ void v3_print_GPRs(struct guest_info * core) {
 
 #elif __V3_64BIT__
 
-void v3_print_GPRs(struct guest_info * core) {
+void v3_print_GPRs(struct v3_core_info * core) {
     struct v3_gprs * regs = &(core->vm_regs);
     int i = 0;
     v3_reg_t * reg_ptr;

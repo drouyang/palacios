@@ -19,12 +19,12 @@
 
 
 #include <palacios/vmm_symbiotic.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 #define SYM_CPUID_NUM 0x90000000
 
-static int cpuid_fn(struct guest_info * core, uint32_t cpuid, 
+static int cpuid_fn(struct v3_core_info * core, uint32_t cpuid, 
 		    uint32_t * eax, uint32_t * ebx,
 		    uint32_t * ecx, uint32_t * edx,
 		    void * private_data) {
@@ -92,7 +92,7 @@ int v3_deinit_symbiotic_vm(struct v3_vm_info * vm) {
 
 
 
-int v3_init_symbiotic_core(struct guest_info * core) {
+int v3_init_symbiotic_core(struct v3_core_info * core) {
     struct v3_sym_core_state * core_state = &(core->sym_core_state);
     memset(core_state, 0, sizeof(struct v3_sym_core_state));
     
@@ -106,7 +106,7 @@ int v3_init_symbiotic_core(struct guest_info * core) {
 }
 
 
-int v3_deinit_symbiotic_core(struct guest_info * core) {
+int v3_deinit_symbiotic_core(struct v3_core_info * core) {
 
     return 0;
 }

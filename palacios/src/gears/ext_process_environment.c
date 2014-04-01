@@ -19,7 +19,7 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_decoder.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vm_guest_mem.h>
 
 #include <gears/process_environment.h>
@@ -29,7 +29,7 @@ static struct v3_execve_varchunk var_dump;
 
 /* KCH: currently only checks if we can perform a user-mode write
    return 1 on success */
-static int v3_gva_can_access(struct guest_info * core, addr_t gva) {
+static int v3_gva_can_access(struct v3_core_info * core, addr_t gva) {
 
     v3_reg_t guest_cr3 = 0;
     pf_error_t access_type;
@@ -78,7 +78,7 @@ static int v3_gva_can_access(struct guest_info * core, addr_t gva) {
     }
 }
 
-static int v3_copy_chunk_guest32(struct guest_info * core, addr_t gva, uint_t argcnt, uint_t envcnt) {
+static int v3_copy_chunk_guest32(struct v3_core_info * core, addr_t gva, uint_t argcnt, uint_t envcnt) {
 
     int ret = 0, i = 0;
     addr_t hva;
@@ -174,7 +174,7 @@ static int v3_copy_chunk_guest32(struct guest_info * core, addr_t gva, uint_t ar
 }
 
 
-static int v3_copy_chunk_vmm32(struct guest_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt) {
+static int v3_copy_chunk_vmm32(struct v3_core_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt) {
 
     addr_t envp, argv;
     uint_t argc = 0, envc = 0, bytes = 0;
@@ -335,7 +335,7 @@ static int v3_copy_chunk_vmm32(struct guest_info * core, const char ** argstrs, 
 }
 
 
-static int v3_inject_strings32 (struct guest_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt) {
+static int v3_inject_strings32 (struct v3_core_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt) {
 
     addr_t inject_gva;
     uint_t bytes_needed = 0;
@@ -360,7 +360,7 @@ static int v3_inject_strings32 (struct guest_info * core, const char ** argstrs,
 }
 
 
-static int v3_copy_chunk_guest64(struct guest_info * core, addr_t gva, uint_t argcnt, uint_t envcnt) {
+static int v3_copy_chunk_guest64(struct v3_core_info * core, addr_t gva, uint_t argcnt, uint_t envcnt) {
 
     int ret = 0, i = 0;
     addr_t hva;
@@ -452,7 +452,7 @@ static int v3_copy_chunk_guest64(struct guest_info * core, addr_t gva, uint_t ar
 }
 
 
-static int v3_copy_chunk_vmm64(struct guest_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt) {
+static int v3_copy_chunk_vmm64(struct v3_core_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt) {
 
     addr_t envp, argv;
     uint_t argc = 0, envc = 0, bytes = 0;
@@ -614,7 +614,7 @@ static int v3_copy_chunk_vmm64(struct guest_info * core, const char ** argstrs, 
 }
 
 
-static int v3_inject_strings64 (struct guest_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt) {
+static int v3_inject_strings64 (struct v3_core_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt) {
 
     addr_t inject_gva;
     uint_t bytes_needed = 0;
@@ -638,7 +638,7 @@ static int v3_inject_strings64 (struct guest_info * core, const char ** argstrs,
 }
 
 
-addr_t v3_prepare_guest_stack (struct guest_info * core, uint_t bytes_needed) {
+addr_t v3_prepare_guest_stack (struct v3_core_info * core, uint_t bytes_needed) {
 
     /* TODO: check if we've injected a page fault to get more stack space */
 
@@ -682,19 +682,19 @@ addr_t v3_prepare_guest_stack (struct guest_info * core, uint_t bytes_needed) {
 
 
 /* TODO: give these next to functions the ability to copy into guest stack */
-int v3_replace_arg (struct guest_info * core, uint_t argnum, const char * newval) { 
+int v3_replace_arg (struct v3_core_info * core, uint_t argnum, const char * newval) { 
 
     return 0;
 }
 
 
-int v3_replace_env (struct guest_info * core, const char * envname, const char * newval) {
+int v3_replace_env (struct v3_core_info * core, const char * envname, const char * newval) {
 
     return 0;
 }
 
 
-int v3_inject_strings (struct guest_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt) {
+int v3_inject_strings (struct v3_core_info * core, const char ** argstrs, const char ** envstrs, uint_t argcnt, uint_t envcnt) {
     
     if (core->cpu_mode == LONG) {
         if (v3_inject_strings64(core, argstrs, envstrs, argcnt, envcnt) == -1) {

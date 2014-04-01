@@ -1,5 +1,5 @@
 obj-y := \
-	vm_guest.o \
+	vm.o \
 	vm_guest_mem.o \
 	vmm.o \
 	vmm_config.o \

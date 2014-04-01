@@ -21,7 +21,7 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_sprintf.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/svm.h>
 #include <palacios/vmx.h>
 #include <palacios/vmm_checkpoint.h>
@@ -290,7 +290,7 @@ struct mem_migration_state {
     struct v3_bitmap  modified_pages; 
 };
 
-static int paging_callback(struct guest_info *core, 
+static int paging_callback(struct v3_core_info *core, 
 			   struct v3_shdw_pg_event *event,
 			   void      *priv_data)
 {
@@ -587,14 +587,14 @@ static int load_header(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
 }
 
 
-static int load_core(struct guest_info * info, struct v3_chkpt * chkpt) {
+static int load_core(struct v3_core_info * core, struct v3_chkpt * chkpt) {
     extern v3_cpu_arch_t v3_mach_type;
     void * ctx = NULL;
     char key_name[16];
 
     memset(key_name, 0, 16);
 
-    snprintf(key_name, 16, "guest_info%d", info->vcpu_id);
+    snprintf(key_name, 16, "v3_core_info%d", info->vcpu_id);
 
     ctx = v3_chkpt_open_ctx(chkpt, NULL, key_name);
 
@@ -624,7 +624,7 @@ static int load_core(struct guest_info * info, struct v3_chkpt * chkpt) {
 
     v3_chkpt_close_ctx(ctx);
 
-    PrintDebug("Finished reading guest_info information\n");
+    PrintDebug("Finished reading v3_core_info information\n");
 
     info->cpu_mode = v3_get_vm_cpu_mode(info);
     info->mem_mode = v3_get_vm_mem_mode(info);
@@ -702,7 +702,7 @@ static int load_core(struct guest_info * info, struct v3_chkpt * chkpt) {
 }
 
 
-static int save_core(struct guest_info * info, struct v3_chkpt * chkpt) {
+static int save_core(struct v3_core_info * core, struct v3_chkpt * chkpt) {
     extern v3_cpu_arch_t v3_mach_type;
     void * ctx = NULL;
     char key_name[16];
@@ -712,7 +712,7 @@ static int save_core(struct guest_info * info, struct v3_chkpt * chkpt) {
     v3_print_guest_state(info);
 
 
-    snprintf(key_name, 16, "guest_info%d", info->vcpu_id);
+    snprintf(key_name, 16, "v3_core_info%d", info->vcpu_id);
 
     ctx = v3_chkpt_open_ctx(chkpt, NULL, key_name);
     

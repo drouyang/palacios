@@ -45,13 +45,13 @@ struct v3_gen_ipi {
     uint8_t dst;
 
 
-    int (*ack)(struct guest_info * core, uint32_t irq, void * private_data);
+    int (*ack)(struct v3_core_info * core, uint32_t irq, void * private_data);
     void * private_data;
 } __attribute__((packed));
 
 int v3_apic_send_ipi(struct v3_vm_info * vm, struct v3_gen_ipi * ipi, void * dev_data);
 
-int v3_apic_is_bsp(struct guest_info * core, void * dev_data);
+int v3_apic_is_bsp(struct v3_core_info * core, void * dev_data);
 
 
 

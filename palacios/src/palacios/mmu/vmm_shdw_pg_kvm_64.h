@@ -5,7 +5,7 @@
 #define PT64_NX_MASK (1ULL << 63)
 //#define SHOW_ALL 
 
-static inline int activate_shadow_pt_64(struct guest_info * core) {
+static inline int activate_shadow_pt_64(struct v3_core_info * core) {
     struct cr3_64 * shadow_cr3 = (struct cr3_64 *)&(core->ctrl_regs.cr3);
     struct cr3_64 * guest_cr3 = (struct cr3_64 *)&(core->shdw_pg_state.guest_cr3);
 
@@ -50,7 +50,7 @@ static inline int activate_shadow_pt_64(struct guest_info * core) {
  * *
  */
 
-static inline void burst_64 (struct guest_info * core) {
+static inline void burst_64 (struct v3_core_info * core) {
 #ifdef SHOW_ALL
 		struct shadow_page_cache_data * sp, *node;
 		pte64_t * pt, *pte;
@@ -79,7 +79,7 @@ static inline int fix_read_pf_64(pte64_t *shadow_pte, uint_t vmm_info) {
     return 0;		
 }
 
-static inline int fix_write_pf_64(struct guest_info *core, pte64_t *shadow_pte, pte64_t *guest_pte,
+static inline int fix_write_pf_64(struct v3_core_info *core, pte64_t *shadow_pte, pte64_t *guest_pte,
     int user, int *write_pt, addr_t guest_fn, uint_t vmm_info) {
 
     int writable_shadow;
@@ -146,20 +146,20 @@ static inline int fix_write_pf_64(struct guest_info *core, pte64_t *shadow_pte, 
 }
 
 
-static int handle_2MB_shadow_pagefault_64(struct guest_info * core, addr_t fault_addr, pf_error_t error_code,
+static int handle_2MB_shadow_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code,
 					  pte64_t * shadow_pt, pde64_2MB_t * large_guest_pde, uint32_t inherited_ar);
 
-static int handle_pte_shadow_pagefault_64(struct guest_info * core, addr_t fault_addr, pf_error_t error_code,
+static int handle_pte_shadow_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code,
 					  pte64_t * shadow_pt, pte64_t * guest_pt, uint32_t inherited_ar);
 
-static int handle_pde_shadow_pagefault_64(struct guest_info * core, addr_t fault_addr, pf_error_t error_code,
+static int handle_pde_shadow_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code,
 					  pde64_t * shadow_pd, pde64_t * guest_pd, uint32_t inherited_ar);
 
-static int handle_pdpe_shadow_pagefault_64(struct guest_info * core, addr_t fault_addr, pf_error_t error_code,
+static int handle_pdpe_shadow_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code,
 					   pdpe64_t * shadow_pdp, pdpe64_t * guest_pdp, uint32_t inherited_ar);
 
 
-static inline int handle_shadow_pagefault_64(struct guest_info * core, addr_t fault_addr, pf_error_t error_code) {
+static inline int handle_shadow_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
     pml4e64_t * guest_pml = NULL;
     pml4e64_t * shadow_pml = CR3_TO_PML4E64_VA(core->ctrl_regs.cr3);
     addr_t guest_cr3 = CR3_TO_PML4E64_PA(core->shdw_pg_state.guest_cr3);
@@ -290,7 +290,7 @@ pml4e_noerror:
 
 
 // For now we are not going to handle 1 Gigabyte pages
-static int handle_pdpe_shadow_pagefault_64(struct guest_info * core, addr_t fault_addr, pf_error_t error_code,
+static int handle_pdpe_shadow_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code,
 					   pdpe64_t * shadow_pdp, pdpe64_t * guest_pdp, uint32_t inherited_ar) {
     pt_access_status_t guest_pdpe_access;
     pt_access_status_t shadow_pdpe_access;
@@ -403,7 +403,7 @@ pdpe_noerror:
 }
 
 
-static int handle_pde_shadow_pagefault_64(struct guest_info * core, addr_t fault_addr, pf_error_t error_code,
+static int handle_pde_shadow_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code,
 					  pde64_t * shadow_pd, pde64_t * guest_pd, uint32_t inherited_ar) {
     pt_access_status_t guest_pde_access;
     pt_access_status_t shadow_pde_access;
@@ -523,7 +523,7 @@ pde_noerror:
 }
 
 
-static int handle_pte_shadow_pagefault_64(struct guest_info * core, addr_t fault_addr, pf_error_t error_code,
+static int handle_pte_shadow_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code,
 					  pte64_t * shadow_pt, pte64_t * guest_pt, uint32_t inherited_ar)  {
     pt_access_status_t guest_pte_access;
     pt_access_status_t shadow_pte_access;
@@ -710,7 +710,7 @@ pte_noerror:
 
 
 
-static int handle_2MB_shadow_pagefault_64(struct guest_info * core, 
+static int handle_2MB_shadow_pagefault_64(struct v3_core_info * core, 
 					  addr_t fault_addr, pf_error_t error_code, 
 					  pte64_t * shadow_pt, pde64_2MB_t * large_guest_pde, uint32_t inherited_ar) 
 {
@@ -848,7 +848,7 @@ static int handle_2MB_shadow_pagefault_64(struct guest_info * core,
 
 
 
-static int invalidation_cb_64(struct guest_info * core, page_type_t type, 
+static int invalidation_cb_64(struct v3_core_info * core, page_type_t type, 
 			      addr_t vaddr, addr_t page_ptr, addr_t page_pa, 
 			      void * private_data) {
 
@@ -917,7 +917,7 @@ static int invalidation_cb_64(struct guest_info * core, page_type_t type,
 }
 
 
-static inline int handle_shadow_invlpg_64(struct guest_info * core, addr_t vaddr) {
+static inline int handle_shadow_invlpg_64(struct v3_core_info * core, addr_t vaddr) {
     PrintDebug("INVLPG64 - %p\n",(void*)vaddr);
 
     int ret =  v3_drill_host_pt_64(core, core->ctrl_regs.cr3, vaddr, invalidation_cb_64, NULL);

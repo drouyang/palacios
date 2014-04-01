@@ -99,7 +99,7 @@ static int get_desc_count(struct virtio_queue * q, int index) {
 }
 
 
-static int handle_kick(struct guest_info * core, struct virtio_console_state * virtio) {
+static int handle_kick(struct v3_core_info * core, struct virtio_console_state * virtio) {
     struct virtio_queue * q = virtio->cur_queue;
 
     PrintDebug("VIRTIO CONSOLE KICK: cur_index=%d (mod=%d), avail_index=%d\n", 
@@ -206,7 +206,7 @@ static uint64_t virtio_input(struct v3_vm_info * vm, uint8_t * buf, uint64_t len
 }
 
 
-static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
+static int virtio_io_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
     struct virtio_console_state * virtio = (struct virtio_console_state *)private_data;
     int port_idx = port % virtio->io_range_size;
 
@@ -314,7 +314,7 @@ static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, 
 }
 
 
-static int virtio_io_read(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * private_data) {
+static int virtio_io_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * private_data) {
     struct virtio_console_state * virtio = (struct virtio_console_state *)private_data;
     int port_idx = port % virtio->io_range_size;
 

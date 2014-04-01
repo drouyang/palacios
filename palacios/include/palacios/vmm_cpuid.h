@@ -29,7 +29,7 @@
 
 
 
-struct guest_info;
+struct v3_core_info;
 
 void v3_init_cpuid_map(struct v3_vm_info * vm);
 int v3_deinit_cpuid_map(struct v3_vm_info * vm);
@@ -37,7 +37,7 @@ int v3_deinit_cpuid_map(struct v3_vm_info * vm);
 struct v3_cpuid_hook {
     uint32_t cpuid;
     
-    int (*hook_fn)(struct guest_info * info, uint32_t cpuid, \
+    int (*hook_fn)(struct v3_core_info * core, uint32_t cpuid, \
 		   uint32_t * eax, uint32_t * ebx, \
 		   uint32_t * ecx, uint32_t * edx, \
 		   void * private_data);
@@ -61,7 +61,7 @@ int v3_cpuid_add_fields(struct v3_vm_info * vm, uint32_t cpuid,
 			uint32_t rdx_mask, uint32_t rdx);
 
 int v3_hook_cpuid(struct v3_vm_info * vm, uint32_t cpuid, 
-		  int (*hook_fn)(struct guest_info * info, uint32_t cpuid, \
+		  int (*hook_fn)(struct v3_core_info * core, uint32_t cpuid, \
 				 uint32_t * eax, uint32_t * ebx, \
 				 uint32_t * ecx, uint32_t * edx, \
 				 void * private_data), 
@@ -69,7 +69,7 @@ int v3_hook_cpuid(struct v3_vm_info * vm, uint32_t cpuid,
 
 int v3_unhook_cpuid(struct v3_vm_info * vm, uint32_t cpuid);
 
-int v3_handle_cpuid(struct guest_info * info);
+int v3_handle_cpuid(struct v3_core_info * core);
 
 
 

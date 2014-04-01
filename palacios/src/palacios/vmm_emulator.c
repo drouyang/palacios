@@ -30,7 +30,7 @@
 #endif
 
 
-static int run_op(struct guest_info * info, v3_op_type_t op_type, 
+static int run_op(struct v3_core_info * core, v3_op_type_t op_type, 
 		  addr_t src_addr, addr_t dst_addr, 
 		  int src_op_size, int dst_op_size) {
 
@@ -39,22 +39,22 @@ static int run_op(struct guest_info * info, v3_op_type_t op_type,
 
 	switch (op_type) {
 	    case V3_OP_ADC:
-		adc8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		adc8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_ADD:
-		add8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		add8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_AND:
-		and8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		and8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_OR:
-		or8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		or8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_XOR:
-		xor8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		xor8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SUB:
-		sub8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		sub8((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 
 	    case V3_OP_MOV:
@@ -77,61 +77,61 @@ static int run_op(struct guest_info * info, v3_op_type_t op_type,
       
 
 	    case V3_OP_INC:
-		inc8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		inc8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_DEC:
-		dec8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		dec8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_NEG:
-		neg8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		neg8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETB:
-		setb8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setb8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETBE:
-		setbe8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setbe8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETL:
-		setl8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setl8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETLE:
-		setle8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setle8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETNB:
-		setnb8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setnb8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETNBE:
-		setnbe8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setnbe8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETNL:
-		setnl8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setnl8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETNLE:
-		setnle8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setnle8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETNO:
-		setno8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setno8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETNP:
-		setnp8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setnp8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETNS:
-		setns8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setns8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETNZ:
-		setnz8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setnz8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETO:
-		seto8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		seto8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETP:
-		setp8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setp8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETS:
-		sets8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		sets8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SETZ:
-		setz8((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		setz8((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 
 	    default:
@@ -144,33 +144,33 @@ static int run_op(struct guest_info * info, v3_op_type_t op_type,
 
 	switch (op_type) {
 	    case V3_OP_ADC:
-		adc16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		adc16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_ADD:
-		add16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		add16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_AND:
-		and16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		and16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_OR:
-		or16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		or16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_XOR:
-		xor16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		xor16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SUB:
-		sub16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		sub16((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 
 
 	    case V3_OP_INC:
-		inc16((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		inc16((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_DEC:
-		dec16((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		dec16((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_NEG:
-		neg16((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		neg16((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 
 	    case V3_OP_MOV:
@@ -199,32 +199,32 @@ static int run_op(struct guest_info * info, v3_op_type_t op_type,
 
 	switch (op_type) {
 	    case V3_OP_ADC:
-		adc32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		adc32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_ADD:
-		add32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		add32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_AND:
-		and32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		and32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_OR:
-		or32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		or32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_XOR:
-		xor32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		xor32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SUB:
-		sub32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		sub32((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 
 	    case V3_OP_INC:
-		inc32((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		inc32((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_DEC:
-		dec32((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		dec32((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_NEG:
-		neg32((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		neg32((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 
 	    case V3_OP_MOV:
@@ -249,32 +249,32 @@ static int run_op(struct guest_info * info, v3_op_type_t op_type,
 
 	switch (op_type) {
 	    case V3_OP_ADC:
-		adc64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		adc64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_ADD:
-		add64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		add64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_AND:
-		and64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		and64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_OR:
-		or64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		or64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_XOR:
-		xor64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		xor64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_SUB:
-		sub64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		sub64((addr_t *)dst_addr, (addr_t *)src_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 
 	    case V3_OP_INC:
-		inc64((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		inc64((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_DEC:
-		dec64((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		dec64((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 	    case V3_OP_NEG:
-		neg64((addr_t *)dst_addr, (addr_t *)&(info->ctrl_regs.rflags));
+		neg64((addr_t *)dst_addr, (addr_t *)&(core->ctrl_regs.rflags));
 		break;
 
 	    case V3_OP_MOV:
@@ -305,7 +305,7 @@ static int run_op(struct guest_info * info, v3_op_type_t op_type,
 
 
 /* Returns the number of bytes written, or -1 if there is an error */
-static int run_str_op(struct guest_info * core, struct x86_instr * instr, 
+static int run_str_op(struct v3_core_info * core, struct x86_instr * instr, 
 		      addr_t src_addr, addr_t dst_addr, 
 		      int op_size, int rep_cnt) {
 
@@ -384,7 +384,7 @@ static int run_str_op(struct guest_info * core, struct x86_instr * instr,
 
 
 
-int v3_emulate(struct guest_info * core, struct x86_instr * instr, 
+int v3_emulate(struct v3_core_info * core, struct x86_instr * instr, 
 	       int mem_op_size, addr_t mem_hva_src, addr_t mem_hva_dst) {
 
     addr_t src_hva = 0;

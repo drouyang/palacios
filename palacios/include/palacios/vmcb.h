@@ -23,7 +23,7 @@
 #ifdef __V3VEE__
 
 #include <palacios/vmm_types.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 #define VMCB_CTRL_AREA_OFFSET                   0x0
 #define VMCB_STATE_SAVE_AREA_OFFSET             0x400

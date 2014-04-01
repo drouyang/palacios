@@ -22,7 +22,7 @@
 #include <palacios/vmm_extensions.h>
 #include <palacios/vmm_io.h>
 #include <palacios/vmm_cpuid.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 #define VMWARE_CPUID_LEAF 0x40000000
@@ -33,7 +33,7 @@
 #define VMWARE_IO_GETHZ 45
 
 
-static int io_read(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
+static int io_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
     uint64_t cpu_hz = V3_CPU_KHZ() * 1000;
     uint32_t magic = (uint32_t)(core->vm_regs.rax);
     uint32_t cmd = (uint32_t)(core->vm_regs.rcx);
@@ -60,14 +60,14 @@ static int io_read(struct guest_info * core, uint16_t port, void * dst, uint_t l
 }
 
 
-static int io_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int io_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
 
     PrintError("VMWARE IO PORT WRITE\n");
     return -1;
 }
 
 
-static int vmware_cpuid_handler(struct guest_info * core, uint32_t cpuid, 
+static int vmware_cpuid_handler(struct v3_core_info * core, uint32_t cpuid, 
 				uint32_t * eax, uint32_t * ebx, 
 				uint32_t * ecx, uint32_t * edx, 
 				void * priv_data) {

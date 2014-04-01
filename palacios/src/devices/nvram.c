@@ -27,7 +27,7 @@
 #include <devices/ide.h>
 #include <palacios/vmm_intr.h>
 #include <palacios/vmm_host_events.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 #ifndef V3_CONFIG_DEBUG_NVRAM
@@ -468,7 +468,7 @@ static void update_time(struct nvram_internal * data, uint64_t period_us) {
 }
 
 
-static void nvram_update_timer(struct guest_info *vm,
+static void nvram_update_timer(struct v3_core_info *vm,
 			       ullong_t           cpu_cycles,
 			       ullong_t           cpu_freq,
 			       void              *priv_data)
@@ -757,7 +757,7 @@ static int init_nvram_state(struct v3_vm_info * vm, struct nvram_internal * nvra
 
 
 
-static int nvram_write_reg_port(struct guest_info * core, uint16_t port,
+static int nvram_write_reg_port(struct v3_core_info * core, uint16_t port,
 				void * src, uint_t length, void * priv_data) {
     uint8_t reg;
     struct nvram_internal * data = priv_data;
@@ -771,7 +771,7 @@ static int nvram_write_reg_port(struct guest_info * core, uint16_t port,
     return 1;
 }
 
-static int nvram_read_data_port(struct guest_info * core, uint16_t port,
+static int nvram_read_data_port(struct v3_core_info * core, uint16_t port,
 				void * dst, uint_t length, void * priv_data) {
 
     struct nvram_internal * data = priv_data;
@@ -796,7 +796,7 @@ static int nvram_read_data_port(struct guest_info * core, uint16_t port,
 }
 
 
-static int nvram_write_data_port(struct guest_info * core, uint16_t port,
+static int nvram_write_data_port(struct v3_core_info * core, uint16_t port,
 				 void * src, uint_t length, void * priv_data) {
 
     struct nvram_internal * data = priv_data;
@@ -819,7 +819,7 @@ static int nvram_write_data_port(struct guest_info * core, uint16_t port,
 static int nvram_free(struct nvram_internal * nvram_state) {
     
     // unregister host events
-    struct guest_info *info = &(nvram_state->vm->cores[0]);
+    struct v3_core_info *info = &(nvram_state->vm->cores[0]);
 
     if (nvram_state->timer) { 
 	v3_remove_timer(info,nvram_state->timer);

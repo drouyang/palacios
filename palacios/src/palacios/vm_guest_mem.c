@@ -68,8 +68,8 @@ int v3_hpa_to_hva(addr_t hpa, addr_t * hva) {
     return 0;
 }
 
-int v3_gpa_to_hpa(struct guest_info * info, addr_t gpa, addr_t * hpa) {
-    struct v3_mem_region * reg = v3_get_mem_region(info->vm_info, info->vcpu_id, gpa);
+int v3_gpa_to_hpa(struct v3_core_info * core, addr_t gpa, addr_t * hpa) {
+    struct v3_mem_region * reg = v3_get_mem_region(core->vm_info, core->vcpu_id, gpa);
 
     if (reg == NULL) {
 	PrintDebug("In GPA->HPA: Could not find address in shadow map (addr=%p) (NULL REGION)\n", 
@@ -80,7 +80,7 @@ int v3_gpa_to_hpa(struct guest_info * info, addr_t gpa, addr_t * hpa) {
     if (reg->flags.alloced == 0) {
 	//PrintDebug("In GPA->HPA: Tried to translate physical address of non allocated page (addr=%p)\n", 
 	//	   (void *)gpa);
-    //v3_print_mem_map(info->vm_info);
+    //v3_print_mem_map(core->vm_info);
 	return -1;
     }
 	
@@ -94,7 +94,7 @@ int v3_gpa_to_hpa(struct guest_info * info, addr_t gpa, addr_t * hpa) {
 // This is a scan of the shadow map
 // For now we ignore it
 // 
-int v3_hpa_to_gpa(struct guest_info * guest_info, addr_t hpa, addr_t * gpa) {
+int v3_hpa_to_gpa(struct v3_core_info * v3_core_info, addr_t hpa, addr_t * gpa) {
     *gpa = 0;
     PrintDebug("ERROR!!! HPA->GPA currently not implemented!!!\n");
 
@@ -110,7 +110,7 @@ int v3_hpa_to_gpa(struct guest_info * guest_info, addr_t hpa, addr_t * gpa) {
 
 /* !! Currently not implemented !! */
 // This will return negative until we implement hpa_to_guest_pa()
-int v3_hva_to_gpa(struct guest_info * guest_info, addr_t hva, addr_t * gpa) {
+int v3_hva_to_gpa(struct v3_core_info * v3_core_info, addr_t hva, addr_t * gpa) {
     addr_t hpa = 0;
     *gpa = 0;
 
@@ -120,7 +120,7 @@ int v3_hva_to_gpa(struct guest_info * guest_info, addr_t hva, addr_t * gpa) {
 	return -1;
     }
 
-    if (v3_hpa_to_gpa(guest_info, hpa, gpa) != 0) {
+    if (v3_hpa_to_gpa(v3_core_info, hpa, gpa) != 0) {
 	PrintDebug("In HVA->GPA: Invalid HPA(%p)->GPA lookup\n", 
 		   (void *)hpa);
 	return -1;
@@ -132,12 +132,12 @@ int v3_hva_to_gpa(struct guest_info * guest_info, addr_t hva, addr_t * gpa) {
 
 
 
-int v3_gpa_to_hva(struct guest_info * guest_info, addr_t gpa, addr_t * hva) {
+int v3_gpa_to_hva(struct v3_core_info * core, addr_t gpa, addr_t * hva) {
     addr_t hpa = 0;
 
     *hva = 0;
 
-    if (v3_gpa_to_hpa(guest_info, gpa, &hpa) != 0) {
+    if (v3_gpa_to_hpa(core, gpa, &hpa) != 0) {
 	//	PrintDebug("In GPA->HVA: Invalid GPA(%p)->HPA lookup\n", 
 	//	   (void *)gpa);
 	return -1;
@@ -153,33 +153,33 @@ int v3_gpa_to_hva(struct guest_info * guest_info, addr_t gpa, addr_t * hva) {
 }
 
 
-int v3_gva_to_gpa(struct guest_info * guest_info, addr_t gva, addr_t * gpa) {
+int v3_gva_to_gpa(struct v3_core_info * core, addr_t gva, addr_t * gpa) {
     v3_reg_t guest_cr3 = 0;
 
-    if (guest_info->mem_mode == PHYSICAL_MEM) {
+    if (core->mem_mode == PHYSICAL_MEM) {
 	// guest virtual address is the same as the physical
 	*gpa = gva;
 	return 0;
     }
 
-    if (guest_info->shdw_pg_mode == SHADOW_PAGING) {
-	guest_cr3 = guest_info->shdw_pg_state.guest_cr3;
+    if (core->shdw_pg_mode == SHADOW_PAGING) {
+	guest_cr3 = core->shdw_pg_state.guest_cr3;
     } else {
-	guest_cr3 = guest_info->ctrl_regs.cr3;
+	guest_cr3 = core->ctrl_regs.cr3;
     }
 
 
     // Guest Is in Paged mode
-    switch (guest_info->cpu_mode) {
+    switch (core->cpu_mode) {
 	case PROTECTED:
-	    if (v3_translate_guest_pt_32(guest_info, guest_cr3, gva, gpa) == -1) {
+	    if (v3_translate_guest_pt_32(core, guest_cr3, gva, gpa) == -1) {
 		PrintDebug("Could not translate addr (%p) through 32 bit guest PT at %p\n", 
 			   (void *)gva, (void *)(addr_t)guest_cr3);
 		return -1;
 	    }
 	    break;
 	case PROTECTED_PAE:
-	    if (v3_translate_guest_pt_32pae(guest_info, guest_cr3, gva, gpa) == -1) {
+	    if (v3_translate_guest_pt_32pae(core, guest_cr3, gva, gpa) == -1) {
 		PrintDebug("Could not translate addr (%p) through 32 bitpae guest PT at %p\n", 
 			   (void *)gva, (void *)(addr_t)guest_cr3);
 		return -1;
@@ -188,7 +188,7 @@ int v3_gva_to_gpa(struct guest_info * guest_info, addr_t gva, addr_t * gpa) {
 	case LONG:
 	case LONG_32_COMPAT:
 	case LONG_16_COMPAT:
-	    if (v3_translate_guest_pt_64(guest_info, guest_cr3, gva, gpa) == -1) {
+	    if (v3_translate_guest_pt_64(core, guest_cr3, gva, gpa) == -1) {
 		PrintDebug("Could not translate addr (%p) through 64 bit guest PT at %p\n", 
 			   (void *)gva, (void *)(addr_t)guest_cr3);
 		return -1;
@@ -208,7 +208,7 @@ int v3_gva_to_gpa(struct guest_info * guest_info, addr_t gva, addr_t * gpa) {
  * 
  * For now we ignore it...
  */
-int v3_gpa_to_gva(struct guest_info * guest_info, addr_t gpa, addr_t * gva) {
+int v3_gpa_to_gva(struct v3_core_info * core, addr_t gpa, addr_t * gva) {
     *gva = 0;
     PrintDebug("ERROR!!: GPA->GVA Not Implemented!!\n");
     return -1;
@@ -220,18 +220,18 @@ int v3_gpa_to_gva(struct guest_info * guest_info, addr_t gpa, addr_t * gva) {
 /**********************************/
 
 
-int v3_gva_to_hpa(struct guest_info * guest_info, addr_t gva, addr_t * hpa) {
+int v3_gva_to_hpa(struct v3_core_info * core, addr_t gva, addr_t * hpa) {
     addr_t gpa = 0;
 
     *hpa = 0;
 
-    if (v3_gva_to_gpa(guest_info, gva, &gpa) != 0) {
+    if (v3_gva_to_gpa(core, gva, &gpa) != 0) {
 	PrintDebug("In GVA->HPA: Invalid GVA(%p)->GPA lookup\n", 
 		   (void *)gva);
 	return -1;
     }
   
-    if (v3_gpa_to_hpa(guest_info, gpa, hpa) != 0) {
+    if (v3_gpa_to_hpa(core, gpa, hpa) != 0) {
 	PrintDebug("In GVA->HPA: Invalid GPA(%p)->HPA lookup\n", 
 		   (void *)gpa);
 	return -1;
@@ -241,18 +241,18 @@ int v3_gva_to_hpa(struct guest_info * guest_info, addr_t gva, addr_t * hpa) {
 }
 
 /* !! Currently not implemented !! */
-int v3_hpa_to_gva(struct guest_info * guest_info, addr_t hpa, addr_t * gva) {
+int v3_hpa_to_gva(struct v3_core_info * core, addr_t hpa, addr_t * gva) {
     addr_t gpa = 0;
 
     *gva = 0;
 
-    if (v3_hpa_to_gpa(guest_info, hpa, &gpa) != 0) {
+    if (v3_hpa_to_gpa(core, hpa, &gpa) != 0) {
 	PrintDebug("In HPA->GVA: Invalid HPA(%p)->GPA lookup\n", 
 		   (void *)hpa);
 	return -1;
     }
 
-    if (v3_gpa_to_gva(guest_info, gpa, gva) != 0) {
+    if (v3_gpa_to_gva(core, gpa, gva) != 0) {
 	PrintDebug("In HPA->GVA: Invalid GPA(%p)->GVA lookup\n", 
 		   (void *)gpa);
 	return -1;
@@ -264,19 +264,19 @@ int v3_hpa_to_gva(struct guest_info * guest_info, addr_t hpa, addr_t * gva) {
 
 
 
-int v3_gva_to_hva(struct guest_info * guest_info, addr_t gva, addr_t * hva) {
+int v3_gva_to_hva(struct v3_core_info * core, addr_t gva, addr_t * hva) {
     addr_t gpa = 0;
     addr_t hpa = 0;
 
     *hva = 0;
 
-    if (v3_gva_to_gpa(guest_info, gva, &gpa) != 0) {
+    if (v3_gva_to_gpa(core, gva, &gpa) != 0) {
 	PrintDebug("In GVA->HVA: Invalid GVA(%p)->GPA lookup\n", 
 		   (void *)gva);
 	return -1;
     }
 
-    if (v3_gpa_to_hpa(guest_info, gpa, &hpa) != 0) {
+    if (v3_gpa_to_hpa(core, gpa, &hpa) != 0) {
 	PrintDebug("In GVA->HVA: Invalid GPA(%p)->HPA lookup\n", 
 		   (void *)gpa);
 	return -1;
@@ -293,7 +293,7 @@ int v3_gva_to_hva(struct guest_info * guest_info, addr_t gva, addr_t * hva) {
 
 
 /* !! Currently not implemented !! */
-int v3_hva_to_gva(struct guest_info * guest_info, addr_t hva, addr_t * gva) {
+int v3_hva_to_gva(struct v3_core_info * core, addr_t hva, addr_t * gva) {
     addr_t hpa = 0;
     addr_t gpa = 0;
 
@@ -305,13 +305,13 @@ int v3_hva_to_gva(struct guest_info * guest_info, addr_t hva, addr_t * gva) {
 	return -1;
     }
 
-    if (v3_hpa_to_gpa(guest_info, hpa, &gpa) != 0) {
+    if (v3_hpa_to_gpa(core, hpa, &gpa) != 0) {
 	PrintDebug("In HVA->GVA: Invalid HPA(%p)->GPA lookup\n", 
 		   (void *)hva);
 	return -1;
     }
 
-    if (v3_gpa_to_gva(guest_info, gpa, gva) != 0) {
+    if (v3_gpa_to_gva(core, gpa, gva) != 0) {
 	PrintDebug("In HVA->GVA: Invalid GPA(%p)->GVA lookup\n", 
 		   (void *)gpa);
 	return -1;
@@ -328,7 +328,7 @@ int v3_hva_to_gva(struct guest_info * guest_info, addr_t hva, addr_t * gva) {
 /* This is a straight address conversion + copy, 
  *   except for the tiny little issue of crossing page boundries.....
  */
-int v3_read_gva_memory(struct guest_info * guest_info, addr_t gva, int count, uchar_t * dest) {
+int v3_read_gva_memory(struct v3_core_info * core, addr_t gva, int count, uchar_t * dest) {
     addr_t cursor = gva;
     int bytes_read = 0;
 
@@ -340,7 +340,7 @@ int v3_read_gva_memory(struct guest_info * guest_info, addr_t gva, int count, uc
 	addr_t host_addr = 0;
 
     
-	if (v3_gva_to_hva(guest_info, cursor, &host_addr) != 0) {
+	if (v3_gva_to_hva(core, cursor, &host_addr) != 0) {
 	    PrintDebug("Invalid GVA(%p)->HVA lookup\n", (void *)cursor);
 	    return bytes_read;
 	}
@@ -365,7 +365,7 @@ int v3_read_gva_memory(struct guest_info * guest_info, addr_t gva, int count, uc
 /* This is a straight address conversion + copy, 
  *   except for the tiny little issue of crossing page boundries.....
  */
-int v3_read_gpa_memory(struct guest_info * guest_info, addr_t gpa, int count, uchar_t * dest) {
+int v3_read_gpa_memory(struct v3_core_info * core, addr_t gpa, int count, uchar_t * dest) {
     addr_t cursor = gpa;
     int bytes_read = 0;
 
@@ -374,7 +374,7 @@ int v3_read_gpa_memory(struct guest_info * guest_info, addr_t gpa, int count, uc
 	int bytes_to_copy = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
 	addr_t host_addr = 0;
 
-	if (v3_gpa_to_hva(guest_info, cursor, &host_addr) != 0) {
+	if (v3_gpa_to_hva(core, cursor, &host_addr) != 0) {
 	    return bytes_read;
 	}    
     
@@ -399,7 +399,7 @@ int v3_read_gpa_memory(struct guest_info * guest_info, addr_t gpa, int count, uc
 /* This clones v3_read_gva_memory
  *   We write only as far as page translations are available 
  */
-int v3_write_gva_memory(struct guest_info * guest_info, addr_t gva, int count, uchar_t * src) {
+int v3_write_gva_memory(struct v3_core_info * core, addr_t gva, int count, uchar_t * src) {
     addr_t cursor = gva;
     int bytes_written = 0;
 
@@ -411,7 +411,7 @@ int v3_write_gva_memory(struct guest_info * guest_info, addr_t gva, int count, u
 	addr_t host_addr = 0;
 
     
-	if (v3_gva_to_hva(guest_info, cursor, &host_addr) != 0) {
+	if (v3_gva_to_hva(core, cursor, &host_addr) != 0) {
 	    PrintDebug("Invalid GVA(%p)->HVA lookup\n", (void *)cursor);
 	    return bytes_written;
 	}
@@ -436,7 +436,7 @@ int v3_write_gva_memory(struct guest_info * guest_info, addr_t gva, int count, u
 /* This is a straight address conversion + copy, 
  *   except for the tiny little issue of crossing page boundries.....
  */
-int v3_write_gpa_memory(struct guest_info * guest_info, addr_t gpa, int count, uchar_t * src) {
+int v3_write_gpa_memory(struct v3_core_info * core, addr_t gpa, int count, uchar_t * src) {
     addr_t cursor = gpa;
     int bytes_written = 0;
 
@@ -445,7 +445,7 @@ int v3_write_gpa_memory(struct guest_info * guest_info, addr_t gpa, int count, u
 	int bytes_to_copy = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
 	addr_t host_addr;
 
-	if (v3_gpa_to_hva(guest_info, cursor, &host_addr) != 0) {
+	if (v3_gpa_to_hva(core, cursor, &host_addr) != 0) {
 	    return bytes_written;
 	}
 

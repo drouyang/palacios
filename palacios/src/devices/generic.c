@@ -59,7 +59,7 @@ struct generic_internal {
 
 
 
-static int generic_write_port_passthrough(struct guest_info * core, 
+static int generic_write_port_passthrough(struct v3_core_info * core, 
 					  uint16_t port, 
 					  void * src, 
 					  uint_t length, 
@@ -104,7 +104,7 @@ static int generic_write_port_passthrough(struct guest_info * core,
     }
 }
 
-static int generic_write_port_print_and_passthrough(struct guest_info * core, uint16_t port, void * src, 
+static int generic_write_port_print_and_passthrough(struct v3_core_info * core, uint16_t port, void * src, 
 						    uint_t length, void * priv_data) {
     uint_t i;
     int rc;
@@ -133,7 +133,7 @@ static int generic_write_port_print_and_passthrough(struct guest_info * core, ui
     return rc;
 }
 
-static int generic_read_port_passthrough(struct guest_info * core, 
+static int generic_read_port_passthrough(struct v3_core_info * core, 
 					 uint16_t port, 
 					 void * dst, 
 					 uint_t length, 
@@ -178,7 +178,7 @@ static int generic_read_port_passthrough(struct guest_info * core,
     return -1;
 }
 
-static int generic_read_port_print_and_passthrough(struct guest_info * core, uint16_t port, void * src, 
+static int generic_read_port_print_and_passthrough(struct v3_core_info * core, uint16_t port, void * src, 
 						   uint_t length, void * priv_data) {
     uint_t i;
     int rc;
@@ -206,7 +206,7 @@ static int generic_read_port_print_and_passthrough(struct guest_info * core, uin
 }
 
 
-static int generic_read_port_ignore(struct guest_info * core, uint16_t port, void * src, 
+static int generic_read_port_ignore(struct v3_core_info * core, uint16_t port, void * src, 
 				    uint_t length, void * priv_data) {
 
     memset((uint8_t *)src, 0, length);
@@ -214,7 +214,7 @@ static int generic_read_port_ignore(struct guest_info * core, uint16_t port, voi
     return length;
 }
 
-static int generic_read_port_print_and_ignore(struct guest_info * core, uint16_t port, void * src, 
+static int generic_read_port_print_and_ignore(struct v3_core_info * core, uint16_t port, void * src, 
 					      uint_t length, void * priv_data) {
    
 #ifdef V3_CONFIG_DEBUG_GENERIC
@@ -232,13 +232,13 @@ static int generic_read_port_print_and_ignore(struct guest_info * core, uint16_t
     return length;
 }
 
-static int generic_write_port_ignore(struct guest_info * core, uint16_t port, void * src, 
+static int generic_write_port_ignore(struct v3_core_info * core, uint16_t port, void * src, 
 				     uint_t length, void * priv_data) {
 
     return length;
 }
 
-static int generic_write_port_print_and_ignore(struct guest_info * core, uint16_t port, void * src, 
+static int generic_write_port_print_and_ignore(struct v3_core_info * core, uint16_t port, void * src, 
 					      uint_t length, void * priv_data) {
     int i;
 
@@ -264,7 +264,7 @@ static int generic_write_port_print_and_ignore(struct guest_info * core, uint16_
 
 
 
-static int generic_write_mem_passthrough(struct guest_info * core, 
+static int generic_write_mem_passthrough(struct v3_core_info * core, 
 					 addr_t              gpa,
 					 void              * src,
 					 uint_t              len,
@@ -294,7 +294,7 @@ static int generic_write_mem_passthrough(struct guest_info * core,
     }
 }
 
-static int generic_write_mem_print_and_passthrough(struct guest_info * core, 
+static int generic_write_mem_print_and_passthrough(struct v3_core_info * core, 
 						   addr_t              gpa,
 						   void              * src,
 						   uint_t              len,
@@ -317,7 +317,7 @@ static int generic_write_mem_print_and_passthrough(struct guest_info * core,
     return rc;
 }
 
-static int generic_write_mem_ignore(struct guest_info * core, 
+static int generic_write_mem_ignore(struct v3_core_info * core, 
 				    addr_t              gpa,
 				    void              * src,
 				    uint_t              len,
@@ -326,7 +326,7 @@ static int generic_write_mem_ignore(struct guest_info * core,
     return len;
 }
 
-static int generic_write_mem_print_and_ignore(struct guest_info * core, 
+static int generic_write_mem_print_and_ignore(struct v3_core_info * core, 
 					      addr_t              gpa,
 					      void              * src,
 					      uint_t              len,
@@ -345,7 +345,7 @@ static int generic_write_mem_print_and_ignore(struct guest_info * core,
     return len;
 }
 
-static int generic_read_mem_passthrough(struct guest_info * core, 
+static int generic_read_mem_passthrough(struct v3_core_info * core, 
 					addr_t              gpa,
 					void              * dst,
 					uint_t              len,
@@ -376,7 +376,7 @@ static int generic_read_mem_passthrough(struct guest_info * core,
     return -1;
 }
 
-static int generic_read_mem_print_and_passthrough(struct guest_info * core, 
+static int generic_read_mem_print_and_passthrough(struct v3_core_info * core, 
 						  addr_t              gpa,
 						  void              * dst,
 						  uint_t              len,
@@ -399,7 +399,7 @@ static int generic_read_mem_print_and_passthrough(struct guest_info * core,
     return rc;
 }
 
-static int generic_read_mem_ignore(struct guest_info * core, 
+static int generic_read_mem_ignore(struct v3_core_info * core, 
 				   addr_t              gpa,
 				   void              * dst,
 				   uint_t              len,
@@ -423,7 +423,7 @@ static int generic_read_mem_ignore(struct guest_info * core,
 }
 
 
-static int generic_read_mem_print_and_ignore(struct guest_info * core, 
+static int generic_read_mem_print_and_ignore(struct v3_core_info * core, 
 					     addr_t              gpa,
 					     void              * dst,
 					     uint_t              len,
@@ -587,7 +587,7 @@ static int add_mem_range(struct vm_device * dev, addr_t start, addr_t end, gener
 
 //This is a hack for host device testing and will be removed
 
-static int osdebug_hcall(struct guest_info *core, uint_t hcall_id, void * priv_data) 
+static int osdebug_hcall(struct v3_core_info *core, uint_t hcall_id, void * priv_data) 
 {
     struct generic_internal * state = (struct generic_internal *)priv_data;
 

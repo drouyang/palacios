@@ -20,7 +20,7 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_time.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 #ifndef V3_CONFIG_DEBUG_TIME
 #undef PrintDebug
@@ -74,46 +74,46 @@
  */
 
 
-static int handle_cpufreq_hcall(struct guest_info * info, uint_t hcall_id, void * priv_data) {
-    struct vm_core_time * time_state = &(info->time_state);
+static int handle_cpufreq_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) {
+    struct vm_core_time * time_state = &(core->time_state);
 
-    info->vm_regs.rbx = time_state->guest_cpu_freq;
+    core->vm_regs.rbx = time_state->guest_cpu_freq;
 
-    PrintDebug("Guest request cpu frequency: return %ld\n", (long)info->vm_regs.rbx);
+    PrintDebug("Guest request cpu frequency: return %ld\n", (long)core->vm_regs.rbx);
     
     return 0;
 }
 
-static int handle_rdhtsc_hcall(struct guest_info * info, uint_t hcall_id, void * priv_data) {
-    struct vm_core_time * time_state = &(info->time_state);
+static int handle_rdhtsc_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) {
+    struct vm_core_time * time_state = &(core->time_state);
 
-    info->vm_regs.rbx = v3_get_host_time(time_state);
+    core->vm_regs.rbx = v3_get_host_time(time_state);
 
-    // PrintDebug("Guest request host TSC: return %ld\n", (long)info->vm_regs.rbx);
+    // PrintDebug("Guest request host TSC: return %ld\n", (long)core->vm_regs.rbx);
     
     return 0;
 }
 
 
 
-int v3_start_time(struct guest_info * info) {
+int v3_start_time(struct v3_core_info * core) {
     /* We start running with guest_time == host_time */
-    uint64_t t = v3_get_host_time(&info->time_state); 
+    uint64_t t = v3_get_host_time(&core->time_state); 
 
-    info->time_state.initial_host_time = t;
-    info->yield_start_cycle = t;
+    core->time_state.initial_host_time = t;
+    core->yield_start_cycle = t;
 
-    info->time_state.last_update = 0;
-    info->time_state.guest_cycles = 0;
+    core->time_state.last_update = 0;
+    core->time_state.guest_cycles = 0;
     PrintDebug("Starting time for core %d at host time %llu/guest time %llu.\n",
-	       info->vcpu_id, t, info->time_state.guest_cycles); 
-    v3_yield(info,-1);
+	       core->vcpu_id, t, core->time_state.guest_cycles); 
+    v3_yield(core,-1);
     return 0;
 }
 
 static sint64_t 
-host_to_guest_cycles(struct guest_info * info, sint64_t host_cycles) {
-    struct vm_core_time * core_time_state = &(info->time_state);
+host_to_guest_cycles(struct v3_core_info * core, sint64_t host_cycles) {
+    struct vm_core_time * core_time_state = &(core->time_state);
     uint32_t cl_num, cl_denom;
 
     cl_num = core_time_state->clock_ratio_num;
@@ -124,8 +124,8 @@ host_to_guest_cycles(struct guest_info * info, sint64_t host_cycles) {
 
 /*
 static sint64_t 
-guest_to_host_cycles(struct guest_info * info, sint64_t guest_cycles) {
-    struct vm_core_time * core_time_state = &(info->time_state);
+guest_to_host_cycles(struct v3_core_info * core, sint64_t guest_cycles) {
+    struct vm_core_time * core_time_state = &(core->time_state);
     uint32_t cl_num, cl_denom;
 
     cl_num = core_time_state->clock_ratio_num;
@@ -135,29 +135,29 @@ guest_to_host_cycles(struct guest_info * info, sint64_t guest_cycles) {
 }
 */
 
-int v3_advance_time(struct guest_info * info, uint64_t *host_cycles)
+int v3_advance_time(struct v3_core_info * core, uint64_t *host_cycles)
 {
     uint64_t guest_cycles;
 
-    if (info->time_state.flags & VM_TIME_SLAVE_HOST) {
-	struct v3_time *vm_ts = &(info->vm_info->time_state);
-        uint64_t ht = v3_get_host_time(&info->time_state);
-        uint64_t host_elapsed = ht - info->time_state.initial_host_time;
+    if (core->time_state.flags & VM_TIME_SLAVE_HOST) {
+	struct v3_time *vm_ts = &(core->vm_info->time_state);
+        uint64_t ht = v3_get_host_time(&core->time_state);
+        uint64_t host_elapsed = ht - core->time_state.initial_host_time;
 	uint64_t dilated_elapsed = (host_elapsed * vm_ts->td_num) / vm_ts->td_denom;
-	uint64_t guest_elapsed = host_to_guest_cycles(info, dilated_elapsed);
-	guest_cycles = guest_elapsed - v3_get_guest_time(&info->time_state);
+	uint64_t guest_elapsed = host_to_guest_cycles(core, dilated_elapsed);
+	guest_cycles = guest_elapsed - v3_get_guest_time(&core->time_state);
     } else if (host_cycles) {
-	guest_cycles = host_to_guest_cycles(info, *host_cycles);
+	guest_cycles = host_to_guest_cycles(core, *host_cycles);
     } else {
 	guest_cycles = 0;
     }
     
-    info->time_state.guest_cycles += guest_cycles;
+    core->time_state.guest_cycles += guest_cycles;
 
     return 0;
 } 
 
-struct v3_timer * v3_add_timer(struct guest_info * info, 
+struct v3_timer * v3_add_timer(struct v3_core_info * core, 
 			       struct v3_timer_ops * ops, 
 			       void * private_data) {
     struct v3_timer * timer = NULL;
@@ -173,22 +173,22 @@ struct v3_timer * v3_add_timer(struct guest_info * info,
     timer->ops = ops;
     timer->private_data = private_data;
 
-    list_add(&(timer->timer_link), &(info->time_state.timers));
-    info->time_state.num_timers++;
+    list_add(&(timer->timer_link), &(core->time_state.timers));
+    core->time_state.num_timers++;
 
     return timer;
 }
 
-int v3_remove_timer(struct guest_info * info, struct v3_timer * timer) {
+int v3_remove_timer(struct v3_core_info * core, struct v3_timer * timer) {
     list_del(&(timer->timer_link));
-    info->time_state.num_timers--;
+    core->time_state.num_timers--;
 
     V3_Free(timer);
     return 0;
 }
 
-void v3_update_timers(struct guest_info * info) {
-    struct vm_core_time *time_state = &info->time_state;
+void v3_update_timers(struct v3_core_info * core) {
+    struct vm_core_time *time_state = &core->time_state;
     struct v3_timer * tmp_timer;
     sint64_t cycles;
     uint64_t old_time = time_state->last_update;
@@ -203,7 +203,7 @@ void v3_update_timers(struct guest_info * info) {
 
     //PrintDebug("Updating timers with %lld elapsed cycles.\n", cycles);
     list_for_each_entry(tmp_timer, &(time_state->timers), timer_link) {
-	tmp_timer->ops->update_timer(info, cycles, time_state->guest_cpu_freq, tmp_timer->private_data);
+	tmp_timer->ops->update_timer(core, cycles, time_state->guest_cpu_freq, tmp_timer->private_data);
     }
 }
 
@@ -217,42 +217,42 @@ void v3_update_timers(struct guest_info * info) {
  * Possible TODO: Proper hooking of TSC read/writes?
  */ 
 
-int v3_rdtsc(struct guest_info * info) {
-    uint64_t tscval = v3_get_guest_tsc(&info->time_state);
+int v3_rdtsc(struct v3_core_info * core) {
+    uint64_t tscval = v3_get_guest_tsc(&core->time_state);
 
-    info->vm_regs.rdx = tscval >> 32;
-    info->vm_regs.rax = tscval & 0xffffffffLL;
+    core->vm_regs.rdx = tscval >> 32;
+    core->vm_regs.rax = tscval & 0xffffffffLL;
 
     return 0;
 }
 
-int v3_handle_rdtsc(struct guest_info * info) {
+int v3_handle_rdtsc(struct v3_core_info * core) {
     PrintDebug("Handling virtual RDTSC call.\n");
-    v3_rdtsc(info);
+    v3_rdtsc(core);
     
-    info->vm_regs.rax &= 0x00000000ffffffffLL;
-    info->vm_regs.rdx &= 0x00000000ffffffffLL;
+    core->vm_regs.rax &= 0x00000000ffffffffLL;
+    core->vm_regs.rdx &= 0x00000000ffffffffLL;
 
-    info->rip += 2;
+    core->rip += 2;
     
     return 0;
 }
 
-int v3_rdtscp(struct guest_info * info) {
+int v3_rdtscp(struct v3_core_info * core) {
     int ret;
     /* First get the MSR value that we need. It's safe to futz with
      * ra/c/dx here since they're modified by this instruction anyway. */
-    info->vm_regs.rcx = TSC_AUX_MSR; 
-    ret = v3_handle_msr_read(info);
+    core->vm_regs.rcx = TSC_AUX_MSR; 
+    ret = v3_handle_msr_read(core);
 
     if (ret != 0) {
 	return ret;
     }
 
-    info->vm_regs.rcx = info->vm_regs.rax;
+    core->vm_regs.rcx = core->vm_regs.rax;
 
     /* Now do the TSC half of the instruction */
-    ret = v3_rdtsc(info);
+    ret = v3_rdtsc(core);
 
     if (ret != 0) {
 	return ret;
@@ -262,23 +262,23 @@ int v3_rdtscp(struct guest_info * info) {
 }
 
 
-int v3_handle_rdtscp(struct guest_info * info) {
+int v3_handle_rdtscp(struct v3_core_info * core) {
     PrintDebug("Handling virtual RDTSCP call.\n");
 
-    v3_rdtscp(info);
+    v3_rdtscp(core);
 
-    info->vm_regs.rax &= 0x00000000ffffffffLL;
-    info->vm_regs.rcx &= 0x00000000ffffffffLL;
-    info->vm_regs.rdx &= 0x00000000ffffffffLL;
+    core->vm_regs.rax &= 0x00000000ffffffffLL;
+    core->vm_regs.rcx &= 0x00000000ffffffffLL;
+    core->vm_regs.rdx &= 0x00000000ffffffffLL;
 
-    info->rip += 3;
+    core->rip += 3;
     
     return 0;
 }
 
-static int tsc_aux_msr_read_hook(struct guest_info *info, uint_t msr_num, 
+static int tsc_aux_msr_read_hook(struct v3_core_info * core, uint_t msr_num, 
 				 struct v3_msr *msr_val, void *priv) {
-    struct vm_core_time * time_state = &(info->time_state);
+    struct vm_core_time * time_state = &(core->time_state);
 
     V3_ASSERT(msr_num == TSC_AUX_MSR);
 
@@ -288,9 +288,9 @@ static int tsc_aux_msr_read_hook(struct guest_info *info, uint_t msr_num,
     return 0;
 }
 
-static int tsc_aux_msr_write_hook(struct guest_info *info, uint_t msr_num, 
+static int tsc_aux_msr_write_hook(struct v3_core_info * core, uint_t msr_num, 
 			      struct v3_msr msr_val, void *priv) {
-    struct vm_core_time * time_state = &(info->time_state);
+    struct vm_core_time * time_state = &(core->time_state);
 
     V3_ASSERT(msr_num == TSC_AUX_MSR);
 
@@ -300,9 +300,9 @@ static int tsc_aux_msr_write_hook(struct guest_info *info, uint_t msr_num,
     return 0;
 }
 
-static int tsc_msr_read_hook(struct guest_info *info, uint_t msr_num,
+static int tsc_msr_read_hook(struct v3_core_info * core, uint_t msr_num,
 			     struct v3_msr *msr_val, void *priv) {
-    uint64_t time = v3_get_guest_tsc(&info->time_state);
+    uint64_t time = v3_get_guest_tsc(&core->time_state);
 
     PrintDebug("Handling virtual TSC MSR read call.\n");
     V3_ASSERT(msr_num == TSC_MSR);
@@ -313,9 +313,9 @@ static int tsc_msr_read_hook(struct guest_info *info, uint_t msr_num,
     return 0;
 }
 
-static int tsc_msr_write_hook(struct guest_info *info, uint_t msr_num,
+static int tsc_msr_write_hook(struct v3_core_info * core, uint_t msr_num,
 			     struct v3_msr msr_val, void *priv) {
-    struct vm_core_time * time_state = &(info->time_state);
+    struct vm_core_time * time_state = &(core->time_state);
     uint64_t guest_time, new_tsc;
 
     PrintDebug("Handling virtual TSC MSR write call.\n");
@@ -435,10 +435,10 @@ gcd ( uint32_t a, uint32_t b )
     return b;
 }
 
-static int compute_core_ratios(struct guest_info * info, 
+static int compute_core_ratios(struct v3_core_info * core, 
 			       uint32_t hostKhz, uint32_t guestKhz)
 {
-    struct vm_core_time * time_state = &(info->time_state);
+    struct vm_core_time * time_state = &(core->time_state);
     uint32_t khzGCD;
 
     /* Compute these using the GCD() of the guest and host CPU freq.
@@ -456,9 +456,9 @@ static int compute_core_ratios(struct guest_info * info,
     return 0;
 }
 
-void v3_init_time_core(struct guest_info * info) {
-    struct vm_core_time * time_state = &(info->time_state);
-    v3_cfg_tree_t * cfg_tree = info->core_cfg_data;
+void v3_init_time_core(struct v3_core_info * core) {
+    struct vm_core_time * time_state = &(core->time_state);
+    v3_cfg_tree_t * cfg_tree = core->core_cfg_data;
     char * khz = NULL;
 
     time_state->host_cpu_freq = V3_CPU_KHZ();
@@ -467,7 +467,7 @@ void v3_init_time_core(struct guest_info * info) {
     if (khz) {
 	time_state->guest_cpu_freq = atoi(khz);
 	PrintDebug("Logical Core %d (vcpu=%d) CPU frequency requested at %d khz.\n", 
-		   info->pcpu_id, info->vcpu_id, time_state->guest_cpu_freq);
+		   core->pcpu_id, core->vcpu_id, time_state->guest_cpu_freq);
     } 
     
     if ( (khz == NULL) || 
@@ -475,21 +475,21 @@ void v3_init_time_core(struct guest_info * info) {
 /*  || (time_state->guest_cpu_freq > time_state->host_cpu_freq) ) { */
 	time_state->guest_cpu_freq = time_state->host_cpu_freq;
     }
-    compute_core_ratios(info, time_state->host_cpu_freq, 
+    compute_core_ratios(core, time_state->host_cpu_freq, 
 			time_state->guest_cpu_freq);
     
     time_state->flags = 0;
-    if (info->vm_info->time_state.flags & V3_TIME_SLAVE_HOST) {
+    if (core->vm_info->time_state.flags & V3_TIME_SLAVE_HOST) {
 	time_state->flags |= VM_TIME_SLAVE_HOST;
     }
-    if (info->vm_info->time_state.flags & V3_TIME_TSC_PASSTHROUGH) {
+    if (core->vm_info->time_state.flags & V3_TIME_TSC_PASSTHROUGH) {
 	time_state->flags |= VM_TIME_TSC_PASSTHROUGH;
     }
 
     if ((time_state->clock_ratio_denom != 1) ||
 	(time_state->clock_ratio_num != 1) ||
-	(info->vm_info->time_state.td_num != 1) || 
-	(info->vm_info->time_state.td_denom != 1)) { 
+	(core->vm_info->time_state.td_num != 1) || 
+	(core->vm_info->time_state.td_denom != 1)) { 
 	if (time_state->flags | VM_TIME_TSC_PASSTHROUGH) {
 	    PrintError("WARNING: Cannot use reqested passthrough TSC with clock or time modification also requested.\n");
 	    time_state->flags &= ~VM_TIME_TSC_PASSTHROUGH;
@@ -498,12 +498,12 @@ void v3_init_time_core(struct guest_info * info) {
     }
 
     PrintDebug("Logical Core %d (vcpu=%d) CPU frequency set to %d KHz (host CPU frequency = %d KHz).\n", 
-	       info->pcpu_id, info->vcpu_id,
+	       core->pcpu_id, core->vcpu_id,
 	       time_state->guest_cpu_freq, 
 	       time_state->host_cpu_freq);
     PrintDebug("    td_mult = %d/%d, cl_mult = %u/%u, ipc_mult = %u/%u.\n",
-	       info->vm_info->time_state.td_num, 
-	       info->vm_info->time_state.td_denom, 
+	       core->vm_info->time_state.td_num, 
+	       core->vm_info->time_state.td_denom, 
 	       time_state->clock_ratio_num, time_state->clock_ratio_denom,
 	       time_state->ipc_ratio_num, time_state->ipc_ratio_denom);
     PrintDebug("    time source = %s, tsc handling =  %s\n", 
@@ -525,7 +525,7 @@ void v3_init_time_core(struct guest_info * info) {
 }
 
 
-void v3_deinit_time_core(struct guest_info * core) {
+void v3_deinit_time_core(struct v3_core_info * core) {
     struct vm_core_time * time_state = &(core->time_state);
     struct v3_timer * tmr = NULL;
     struct v3_timer * tmp = NULL;

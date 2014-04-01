@@ -190,7 +190,7 @@ static int get_desc_count(struct virtio_queue * q, int index) {
 }
 
 
-static int fill_shadow_desc_buf(struct guest_info * core, struct virtio_blk_state * blk_state, int avail_idx) {
+static int fill_shadow_desc_buf(struct v3_core_info * core, struct virtio_blk_state * blk_state, int avail_idx) {
     struct virtio_queue * q = &(blk_state->queue);
     struct shadow_vring_desc * shadow_desc = blk_state->shadow_desc;
 
@@ -373,7 +373,7 @@ static int io_dispatcher(void * arg) {
 
 
 
-static int handle_kick(struct guest_info * core, struct virtio_blk_state * blk_state) {
+static int handle_kick(struct v3_core_info * core, struct virtio_blk_state * blk_state) {
     int avail_idx = blk_state->queue.avail->index;
 
     if (fill_shadow_desc_buf(core, blk_state, avail_idx) < 0) {
@@ -388,7 +388,7 @@ static int handle_kick(struct guest_info * core, struct virtio_blk_state * blk_s
     }
 }
 
-static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
+static int virtio_io_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
     struct virtio_blk_state * blk_state = (struct virtio_blk_state *)private_data;
     int port_idx = port % blk_state->io_range_size;
 
@@ -494,7 +494,7 @@ static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, 
 }
 
 
-static int virtio_io_read(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * private_data) {
+static int virtio_io_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * private_data) {
     struct virtio_blk_state * blk_state = (struct virtio_blk_state *)private_data;
     int port_idx = port % blk_state->io_range_size;
 

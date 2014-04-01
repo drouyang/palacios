@@ -79,7 +79,7 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int pic_init(struct guest_info * vm, void * cfg_data) {
+static int pic_init(struct v3_core_info * vm, void * cfg_data) {
     struct pic_internal * state = NULL;
     state = (struct pic_internal *)V3_Malloc(sizeof(struct pic_internal));
 

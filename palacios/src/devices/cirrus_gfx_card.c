@@ -113,7 +113,7 @@ void video_do_out(uint16_t port, void * src, uint_t length){
 #endif
 }
 
-static int video_write_mem(struct guest_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data) {
+static int video_write_mem(struct v3_core_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data) {
     struct vm_device * dev = (struct vm_device *)priv_data;
     struct video_internal * data = (struct video_internal *)dev->private_data;
     addr_t write_offset = guest_addr - START_ADDR;
@@ -145,20 +145,20 @@ static int video_write_mem(struct guest_info * core, addr_t guest_addr, void * d
     return length;
 }
 
-static int video_read_port(struct guest_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data ) {
+static int video_read_port(struct v3_core_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data ) {
     PrintDebug("Video: Read port 0x%x\n",port);
     video_do_in(port, dest, length);
     return length;
 }
 
-static int video_read_port_generic(struct guest_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int video_read_port_generic(struct v3_core_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data) {
     memset(dest, 0, length);
     video_do_in(port, dest, length);
     return length;
 }
 
 
-static int video_write_port(struct guest_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int video_write_port(struct v3_core_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data) {
     
       PrintDebug("Video: write port 0x%x...Wrote: ", port);
       uint_t i;
@@ -170,7 +170,7 @@ static int video_write_port(struct guest_info * dev, uint16_t port, void * dest,
     return length;
 }
 
-static int video_write_port_store(struct guest_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int video_write_port_store(struct v3_core_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data) {
     
       PrintDebug("Entering video_write_port_store...port 0x%x\n", port);
       uint_t i;
@@ -188,7 +188,7 @@ static int video_write_port_store(struct guest_info * dev, uint16_t port, void *
     return length;
 }
 
-static int video_write_port_3D5(struct guest_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int video_write_port_3D5(struct v3_core_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = (struct video_internal *)priv_data;
     uint8_t new_start = 0;
     uint_t index = 0;
@@ -263,7 +263,7 @@ static int video_write_port_3D5(struct guest_info * dev, uint16_t port, void * d
 }
 
 
-static int video_write_port_3C5(struct guest_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data ) {
+static int video_write_port_3C5(struct v3_core_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data ) {
     struct video_internal * video_state = (struct video_internal *)priv_data;
     uint_t index = 0;
 
@@ -288,7 +288,7 @@ static int video_write_port_3C5(struct guest_info * dev, uint16_t port, void * d
     return length;
 }
 
-static int video_write_port_3CF(struct guest_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int video_write_port_3CF(struct v3_core_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = (struct video_internal *)priv_data;
 
     PrintDebug("Entering write_port_3CF....port 0x%x\n", port);
@@ -310,7 +310,7 @@ static int video_write_port_3CF(struct guest_info * dev, uint16_t port, void * d
     return length;
 }
 
-static int video_write_port_3D4(struct guest_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data){
+static int video_write_port_3D4(struct v3_core_info * dev, uint16_t port, void * dest, uint_t length, void * priv_data){
     struct video_internal * video_state = (struct video_internal *)priv_data;
 
 #if 1
@@ -371,22 +371,22 @@ static int video_write_port_3D4(struct guest_info * dev, uint16_t port, void * d
     return length;
 }
 
-static int video_write_mem_region(struct guest_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data) {;
+static int video_write_mem_region(struct v3_core_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data) {;
     PrintDebug("Video write mem region guest_addr: 0x%p, src: 0x%p, length: %d, Value?= %x\n", (void *)guest_addr, dest, length, *((uint32_t *)V3_VAddr((void *)guest_addr)));
     return length;
 }
 
-static int video_read_mem_region(struct guest_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data){
+static int video_read_mem_region(struct v3_core_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data){
     PrintDebug("Video:  Within video_read_mem_region\n");
     return length;
 }
 
-static int video_write_io_region(struct guest_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data){
+static int video_write_io_region(struct v3_core_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data){
     PrintDebug("Video:  Within video_write_io_region\n");
     return length;
 }
 
-static int video_read_io_region(struct guest_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data){
+static int video_read_io_region(struct v3_core_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data){
     PrintDebug("Video:  Within video_read_io_region\n");
     return length;
 }

@@ -21,7 +21,7 @@
 #include <palacios/vmm_swapbypass.h>
 #include <palacios/vmm_ctrl_regs.h>
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vmm_paging.h>
 #include <palacios/vmm_hashtable.h>
@@ -503,14 +503,14 @@ static int cache_deinit(struct v3_vm_info * vm) {
 }
 
 
-static int cache_local_init(struct guest_info * core) {
+static int cache_local_init(struct v3_core_info * core) {
     //    struct v3_shdw_pg_state * core_state = &(vm->shdw_pg_state);
 
 
     return 0;
 }
 
-static int cache_activate_shdw_pt(struct guest_info * core) {
+static int cache_activate_shdw_pt(struct v3_core_info * core) {
     switch (v3_get_vm_cpu_mode(core)) {
 
 	case PROTECTED:
@@ -530,7 +530,7 @@ static int cache_activate_shdw_pt(struct guest_info * core) {
     return 0;
 }
 
-static int cache_invalidate_shdw_pt(struct guest_info * core) {
+static int cache_invalidate_shdw_pt(struct v3_core_info * core) {
     // wipe everything...
     V3_Print("Cache invalidation called\n");
     
@@ -539,7 +539,7 @@ static int cache_invalidate_shdw_pt(struct guest_info * core) {
 
 
 
-static int cache_handle_pf(struct guest_info * core, addr_t fault_addr, pf_error_t error_code) {
+static int cache_handle_pf(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
 
 	switch (v3_get_vm_cpu_mode(core)) {
 	    case PROTECTED:
@@ -558,7 +558,7 @@ static int cache_handle_pf(struct guest_info * core, addr_t fault_addr, pf_error
 }
 
 
-static int cache_handle_invlpg(struct guest_info * core, addr_t vaddr) {
+static int cache_handle_invlpg(struct v3_core_info * core, addr_t vaddr) {
     PrintError("INVLPG called for %p\n", (void *)vaddr);
 
     switch (v3_get_vm_cpu_mode(core)) {

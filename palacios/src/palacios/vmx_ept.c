@@ -46,7 +46,7 @@ static addr_t create_ept_page() {
 
 
 
-int v3_init_ept(struct guest_info * core, struct vmx_hw_info * hw_info) {
+int v3_init_ept(struct v3_core_info * core, struct vmx_hw_info * hw_info) {
     addr_t ept_pa = (addr_t)V3_PAddr((void *)create_ept_page());    
     vmx_eptp_t * ept_ptr = (vmx_eptp_t *)&(core->direct_map_pt);
 
@@ -72,7 +72,7 @@ int v3_init_ept(struct guest_info * core, struct vmx_hw_info * hw_info) {
 
 /* We can use the default paging macros, since the formats are close enough to allow it */
 
-int v3_handle_ept_fault(struct guest_info * core, addr_t fault_addr, struct ept_exit_qual * ept_qual) {
+int v3_handle_ept_fault(struct v3_core_info * core, addr_t fault_addr, struct ept_exit_qual * ept_qual) {
     ept_pml4_t    * pml     = NULL;
     //    ept_pdp_1GB_t * pdpe1gb = NULL;
     ept_pdp_t     * pdpe    = NULL;

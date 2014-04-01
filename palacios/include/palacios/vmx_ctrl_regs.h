@@ -24,14 +24,14 @@
 
 #include <palacios/vmx_handler.h>
 
-struct guest_info;
+struct v3_core_info;
 
-int v3_vmx_handle_cr0_access(struct guest_info * info, 
+int v3_vmx_handle_cr0_access(struct v3_core_info * core, 
 			     struct vmx_exit_cr_qual * cr_qual, 
 			     struct vmx_exit_info * exit_info);
-int v3_vmx_handle_cr3_access(struct guest_info * info, 
+int v3_vmx_handle_cr3_access(struct v3_core_info * core, 
 			     struct vmx_exit_cr_qual * cr_qual);
-int v3_vmx_handle_cr4_access(struct guest_info * info, 
+int v3_vmx_handle_cr4_access(struct v3_core_info * core, 
 			     struct vmx_exit_cr_qual * cr_qual);
 
 #endif

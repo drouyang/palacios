@@ -24,26 +24,26 @@
 
 #include <palacios/vmm_types.h>
 
-struct guest_info;
+struct v3_core_info;
 
 struct v3_core_timeouts {
     uint8_t timeout_active;
     uint64_t next_timeout; // # of cycles until next timeout
     
 
-    int (*callback)(struct guest_info * core, void * private_data);
+    int (*callback)(struct v3_core_info * core, void * private_data);
     void * private_data;
 };
 
 
 
-int v3_add_core_timeout(struct guest_info * core, uint64_t cycles,
-			int (*callback)(struct guest_info * core, 
+int v3_add_core_timeout(struct v3_core_info * core, uint64_t cycles,
+			int (*callback)(struct v3_core_info * core, 
 					void * private_data),
 			void * private_data);
 
 
-int v3_handle_timeouts(struct guest_info * core, uint64_t guest_cycles);
+int v3_handle_timeouts(struct v3_core_info * core, uint64_t guest_cycles);
 
 
 #endif

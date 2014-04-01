@@ -35,7 +35,7 @@
 #include <palacios/vmm_dev_mgr.h>
 #include <palacios/vmm_sprintf.h>
 #include <palacios/vmm_lowlevel.h>
-#include <palacios/vm_guest.h> // must include this to avoid dependency issue
+#include <palacios/vm.h> // must include this to avoid dependency issue
 #include <palacios/vmm_symspy.h>
 
 #include <devices/pci.h>
@@ -84,7 +84,7 @@ struct host_pci_state {
 
 
 
-static int pt_io_read(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
+static int pt_io_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
     struct v3_host_pci_bar * pbar = (struct v3_host_pci_bar *)priv_data;
     int port_offset = port % pbar->size;
 
@@ -103,7 +103,7 @@ static int pt_io_read(struct guest_info * core, uint16_t port, void * dst, uint_
 }
 
 
-static int pt_io_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int pt_io_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct v3_host_pci_bar * pbar = (struct v3_host_pci_bar *)priv_data;
     int port_offset = port % pbar->size;
 
@@ -834,7 +834,7 @@ static struct v3_device_ops dev_ops = {
 };
 
 
-static int irq_ack(struct guest_info * core, uint32_t irq, void * private_data) {
+static int irq_ack(struct v3_core_info * core, uint32_t irq, void * private_data) {
     struct host_pci_state * state = (struct host_pci_state *)private_data;
 
     v3_pci_lower_irq(state->pci_bus, state->pci_dev, 0);

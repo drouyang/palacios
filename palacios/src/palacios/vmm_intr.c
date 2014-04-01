@@ -21,7 +21,7 @@
 #include <palacios/vmm_intr.h>
 #include <palacios/vmm.h>
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_ctrl_regs.h>
 
 #include <palacios/vmm_lock.h>
@@ -50,8 +50,8 @@ struct intr_router {
 
 };
 
-void v3_init_intr_controllers(struct guest_info * info) {
-    struct v3_intr_core_state * intr_state = &(info->intr_core_state);
+void v3_init_intr_controllers(struct v3_core_info * core) {
+    struct v3_intr_core_state * intr_state = &(core->intr_core_state);
 
     intr_state->irq_pending = 0;
     intr_state->irq_started = 0;
@@ -63,7 +63,7 @@ void v3_init_intr_controllers(struct guest_info * info) {
 }
 
 
-void v3_deinit_intr_controllers(struct guest_info * core) {
+void v3_deinit_intr_controllers(struct v3_core_info * core) {
     struct v3_intr_core_state * intr_state = &(core->intr_core_state);
     struct intr_controller * ctrlr;
     struct intr_controller * tmp;
@@ -95,7 +95,7 @@ void v3_deinit_intr_routers(struct v3_vm_info * vm) {
     }  
 }
 
-void * v3_register_intr_controller(struct guest_info * info, struct intr_ctrl_ops * ops, void * priv_data) {
+void * v3_register_intr_controller(struct v3_core_info * core, struct intr_ctrl_ops * ops, void * priv_data) {
     struct intr_controller * ctrlr = (struct intr_controller *)V3_Malloc(sizeof(struct intr_controller));
 
     if (!ctrlr) {
@@ -106,12 +106,12 @@ void * v3_register_intr_controller(struct guest_info * info, struct intr_ctrl_op
     ctrlr->priv_data = priv_data;
     ctrlr->ctrl_ops = ops;
 
-    list_add(&(ctrlr->ctrl_node), &(info->intr_core_state.controller_list));
+    list_add(&(ctrlr->ctrl_node), &(core->intr_core_state.controller_list));
     
     return (void *)ctrlr;
 }
 
-void v3_remove_intr_controller(struct guest_info * core, void * handle) {
+void v3_remove_intr_controller(struct v3_core_info * core, void * handle) {
     struct v3_intr_core_state * intr_state = &(core->intr_core_state);
     struct intr_controller * ctrlr = handle;
     struct intr_controller * tmp = NULL;
@@ -254,7 +254,7 @@ int v3_deliver_irq(struct v3_vm_info * vm, struct v3_interrupt * intr) {
 
 
 
-int v3_raise_swintr (struct guest_info * core, uint8_t vector) {
+int v3_raise_swintr (struct v3_core_info * core, uint8_t vector) {
     struct v3_intr_core_state * intr_state = &(core->intr_core_state);
 
     PrintDebug("Signaling software interrupt in v3_signal_swintr()\n");
@@ -267,8 +267,8 @@ int v3_raise_swintr (struct guest_info * core, uint8_t vector) {
 
 
 
-int v3_raise_virq(struct guest_info * info, int irq) {
-    struct v3_intr_core_state * intr_state = &(info->intr_core_state);
+int v3_raise_virq(struct v3_core_info * core, int irq) {
+    struct v3_intr_core_state * intr_state = &(core->intr_core_state);
     int major = irq / 8;
     int minor = irq % 8;
 
@@ -277,8 +277,8 @@ int v3_raise_virq(struct guest_info * info, int irq) {
     return 0;
 }
 
-int v3_lower_virq(struct guest_info * info, int irq) {
-    struct v3_intr_core_state * intr_state = &(info->intr_core_state);
+int v3_lower_virq(struct v3_core_info * core, int irq) {
+    struct v3_intr_core_state * intr_state = &(core->intr_core_state);
     int major = irq / 8;
     int minor = irq % 8;
 
@@ -345,7 +345,7 @@ int v3_lower_acked_irq(struct v3_vm_info * vm, struct v3_irq irq) {
 
 
 
-void v3_clear_pending_intr(struct guest_info * core) {
+void v3_clear_pending_intr(struct v3_core_info * core) {
     struct v3_intr_core_state * intr_state = &(core->intr_core_state);
 
     intr_state->irq_pending = 0;
@@ -353,8 +353,8 @@ void v3_clear_pending_intr(struct guest_info * core) {
 }
 
 
-v3_intr_type_t v3_intr_pending(struct guest_info * info) {
-    struct v3_intr_core_state * intr_state = &(info->intr_core_state);
+v3_intr_type_t v3_intr_pending(struct v3_core_info * core) {
+    struct v3_intr_core_state * intr_state = &(core->intr_core_state);
     struct intr_controller * ctrl = NULL;
     int ret = V3_INVALID_INTR;
     int i = 0;
@@ -364,7 +364,7 @@ v3_intr_type_t v3_intr_pending(struct guest_info * info) {
 
     // External IRQs have lowest priority
     list_for_each_entry(ctrl, &(intr_state->controller_list), ctrl_node) {
-	if (ctrl->ctrl_ops->intr_pending(info, ctrl->priv_data) == 1) {
+	if (ctrl->ctrl_ops->intr_pending(core, ctrl->priv_data) == 1) {
 	    ret = V3_EXTERNAL_IRQ;
 	    break;
 	}
@@ -389,8 +389,8 @@ v3_intr_type_t v3_intr_pending(struct guest_info * info) {
 }
 
 
-uint32_t v3_get_intr(struct guest_info * info) {
-    struct v3_intr_core_state * intr_state = &(info->intr_core_state);
+uint32_t v3_get_intr(struct v3_core_info * core) {
+    struct v3_intr_core_state * intr_state = &(core->intr_core_state);
     struct intr_controller * ctrl = NULL;
     uint_t ret = 0;
     int i = 0;
@@ -418,8 +418,8 @@ uint32_t v3_get_intr(struct guest_info * info) {
 
     if (!ret) {
 	list_for_each_entry(ctrl, &(intr_state->controller_list), ctrl_node) {
-	    if (ctrl->ctrl_ops->intr_pending(info, ctrl->priv_data)) {
-		uint_t intr_num = ctrl->ctrl_ops->get_intr_number(info, ctrl->priv_data);
+	    if (ctrl->ctrl_ops->intr_pending(core, ctrl->priv_data)) {
+		uint_t intr_num = ctrl->ctrl_ops->get_intr_number(core, ctrl->priv_data);
 		
 		
 		if (intr_num < 32) {
@@ -439,8 +439,8 @@ uint32_t v3_get_intr(struct guest_info * info) {
 }
 
 /*
-intr_type_t v3_get_intr_type(struct guest_info * info) {
-    struct v3_intr_state * intr_state = &(info->intr_state);
+intr_type_t v3_get_intr_type(struct v3_core_info * core) {
+    struct v3_intr_state * intr_state = &(core->intr_state);
     struct intr_controller * ctrl = NULL;
     intr_type_t type = V3_INVALID_INTR;
 
@@ -470,8 +470,8 @@ intr_type_t v3_get_intr_type(struct guest_info * info) {
 
 
 
-int v3_injecting_intr(struct guest_info * info, uint_t intr_num, v3_intr_type_t type) {
-    struct v3_intr_core_state * intr_state = &(info->intr_core_state);
+int v3_injecting_intr(struct v3_core_info * core, uint_t intr_num, v3_intr_type_t type) {
+    struct v3_intr_core_state * intr_state = &(core->intr_core_state);
 
     if (type == V3_EXTERNAL_IRQ) {
 	struct intr_controller * ctrl = NULL;
@@ -480,7 +480,7 @@ int v3_injecting_intr(struct guest_info * info, uint_t intr_num, v3_intr_type_t 
 
 	//	PrintDebug("[injecting_intr] External_Irq with intr_num = %x\n", intr_num);
 	list_for_each_entry(ctrl, &(intr_state->controller_list), ctrl_node) {
-	    ctrl->ctrl_ops->begin_irq(info, ctrl->priv_data, intr_num);
+	    ctrl->ctrl_ops->begin_irq(core, ctrl->priv_data, intr_num);
 	}
 
 	v3_spin_unlock_irqrestore(intr_state->irq_lock, irq_state);

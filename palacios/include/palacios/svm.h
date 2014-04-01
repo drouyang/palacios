@@ -31,13 +31,13 @@
 #include <palacios/vmcb.h>
 #include <palacios/vmm_util.h>
 
-#define CPUID_EXT_FEATURE_IDS_ecx_svm_avail 0x00000004
+#define CPUID_EXT_FEATURE_IDS_ecx_svm_avail    0x00000004
 
-#define CPUID_SVM_REV_AND_FEATURE_IDS 0x8000000a
+#define CPUID_SVM_REV_AND_FEATURE_IDS          0x8000000a
 #define CPUID_SVM_REV_AND_FEATURE_IDS_edx_svml 0x00000004
-#define CPUID_SVM_REV_AND_FEATURE_IDS_edx_np  0x00000001
+#define CPUID_SVM_REV_AND_FEATURE_IDS_edx_np   0x00000001
 
-#define EFER_MSR_svm_enable      0x00001000
+#define EFER_MSR_svm_enable                    0x00001000
 
 /************/
 /* SVM MSRs */
@@ -63,9 +63,9 @@
 #define SVM_SMM_CTL_MSR_exit      0x00000008
 #define SVM_SMM_CTL_MSR_rsm_cycle 0x00000010
 
-#define SVM_VM_HSAVE_PA_MSR      0xc0010117
+#define SVM_VM_HSAVE_PA_MSR       0xc0010117
 
-#define SVM_KEY_MSR              0xc0010118
+#define SVM_KEY_MSR               0xc0010118
 
 /******/
 
@@ -83,15 +83,15 @@ void v3_deinit_svm_cpu(int cpu_id);
 
 
 
-int v3_init_svm_vmcb(struct guest_info * core, v3_vm_class_t vm_class);
-int v3_deinit_svm_vmcb(struct guest_info * core);
+int v3_init_svm_vmcb(struct v3_core_info * core, v3_vm_class_t vm_class);
+int v3_deinit_svm_vmcb(struct v3_core_info * core);
 
-int v3_svm_enter(struct guest_info * info);
-int v3_start_svm_guest(struct guest_info *info);
-int v3_reset_svm_vm_core(struct guest_info * core, addr_t rip);
+int v3_svm_enter(struct v3_core_info * info);
+int v3_start_svm_guest(struct v3_core_info *info);
+int v3_reset_svm_vm_core(struct v3_core_info * core, addr_t rip);
 
-int v3_svm_load_core(struct guest_info * core, void * ctx);
-int v3_svm_save_core(struct guest_info * core, void * ctx);
+int v3_svm_load_core(struct v3_core_info * core, void * ctx);
+int v3_svm_save_core(struct v3_core_info * core, void * ctx);
 
 
 #endif

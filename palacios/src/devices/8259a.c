@@ -23,7 +23,7 @@
 #include <palacios/vmm_types.h>
 #include <palacios/vmm.h>
 #include <palacios/vmm_dev_mgr.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 #ifndef V3_CONFIG_DEBUG_PIC
 #undef PrintDebug
@@ -184,10 +184,10 @@ struct pic_internal {
     pic_state_t master_state;
     pic_state_t slave_state;
 
-    struct guest_info * core;
+    struct v3_core_info * core;
 
     struct {
-	int (*ack)(struct guest_info * core, uint32_t irq, void * private_data);
+	int (*ack)(struct v3_core_info * core, uint32_t irq, void * private_data);
 	void * private_data;
     } irq_ack_cbs[15];
 
@@ -296,14 +296,14 @@ static int pic_lower_intr(struct v3_vm_info * vm, void * private_data, struct v3
 
 
 
-static int pic_intr_pending(struct guest_info * info, void * private_data) {
+static int pic_intr_pending(struct v3_core_info * core, void * private_data) {
     struct pic_internal * state = (struct pic_internal*)private_data;
 
     
 
     if (state->master_irr & ~(state->master_imr)) {
 
-	if ((v3_get_vm_cpu_mode(info) != REAL) && 
+	if ((v3_get_vm_cpu_mode(core) != REAL) && 
 	    (state->master_icw2 <= 24)) {
 	    /* JRL: HACK to avoid injecting invalid IRQs after transition to Protected Mode
 	     * This is to fix an issue with the SEABIOS using the PIT, and then leaving it running
@@ -325,7 +325,7 @@ static int pic_intr_pending(struct guest_info * info, void * private_data) {
     return 0;
 }
 
-static int pic_get_intr_number(struct guest_info * info, void * private_data) {
+static int pic_get_intr_number(struct v3_core_info * core, void * private_data) {
     struct pic_internal * state = (struct pic_internal *)private_data;
     int i = 0;
     int j = 0;
@@ -347,7 +347,7 @@ static int pic_get_intr_number(struct guest_info * info, void * private_data) {
 			//state->slave_isr |= (0x1 << (i - 8));
 			irq = j + state->slave_icw2;
 			
-			if ((v3_get_vm_cpu_mode(info) != REAL) && (irq < 32)) {
+			if ((v3_get_vm_cpu_mode(core) != REAL) && (irq < 32)) {
 			    // invalid IRQ... lets squash it for now
 			    irq = -1;
 			}
@@ -365,7 +365,7 @@ static int pic_get_intr_number(struct guest_info * info, void * private_data) {
 		PrintDebug("8259 PIC: IRQ: %d, master_icw2: %x\n", i, state->master_icw2);
 		irq = i + state->master_icw2;
 
-		if ((v3_get_vm_cpu_mode(info) != REAL) && (irq < 32)) {
+		if ((v3_get_vm_cpu_mode(core) != REAL) && (irq < 32)) {
 		    // invalid IRQ... lets squash it for now
 		    irq = -1;
 		}
@@ -381,7 +381,7 @@ static int pic_get_intr_number(struct guest_info * info, void * private_data) {
 
 
 /* The IRQ number is the number returned by pic_get_intr_number(), not the pin number */
-static int pic_begin_irq(struct guest_info * info, void * private_data, int irq) {
+static int pic_begin_irq(struct v3_core_info * core, void * private_data, int irq) {
     struct pic_internal * state = (struct pic_internal*)private_data;
     
     if ((irq >= state->master_icw2) && (irq <= state->master_icw2 + 7)) {
@@ -451,7 +451,7 @@ static struct intr_router_ops router_ops = {
 };
 
 
-static int read_master_port1(struct guest_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int read_master_port1(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
     struct pic_internal * state = (struct pic_internal *)priv_data;
 
     if (length != 1) {
@@ -470,7 +470,7 @@ static int read_master_port1(struct guest_info * core, ushort_t port, void * dst
     return 1;
 }
 
-static int read_master_port2(struct guest_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int read_master_port2(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
     struct pic_internal * state = (struct pic_internal *)priv_data;
 
     if (length != 1) {
@@ -484,7 +484,7 @@ static int read_master_port2(struct guest_info * core, ushort_t port, void * dst
   
 }
 
-static int read_slave_port1(struct guest_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int read_slave_port1(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
     struct pic_internal * state = (struct pic_internal *)priv_data;
 
     if (length != 1) {
@@ -503,7 +503,7 @@ static int read_slave_port1(struct guest_info * core, ushort_t port, void * dst,
     return 1;
 }
 
-static int read_slave_port2(struct guest_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int read_slave_port2(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
     struct pic_internal * state = (struct pic_internal *)priv_data;
 
     if (length != 1) {
@@ -517,7 +517,7 @@ static int read_slave_port2(struct guest_info * core, ushort_t port, void * dst,
 }
 
 
-static int write_master_port1(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int write_master_port1(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct pic_internal * state = (struct pic_internal *)priv_data;
     uint8_t cw = *(uint8_t *)src;
 
@@ -552,7 +552,7 @@ static int write_master_port1(struct guest_info * core, ushort_t port, void * sr
 		/*
 		// ack the irq if requested
 		if (state->irq_ack_cbs[irq].ack) {
-		    state->irq_ack_cbs[irq].ack(info, irq, state->irq_ack_cbs[irq].private_data);
+		    state->irq_ack_cbs[irq].ack(core, irq, state->irq_ack_cbs[irq].private_data);
 		}
 		*/
 
@@ -594,7 +594,7 @@ static int write_master_port1(struct guest_info * core, ushort_t port, void * sr
     return 1;
 }
 
-static int write_master_port2(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int write_master_port2(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct pic_internal * state = (struct pic_internal *)priv_data;
     uint8_t cw = *(uint8_t *)src;    
 
@@ -660,7 +660,7 @@ static int write_master_port2(struct guest_info * core, ushort_t port, void * sr
     return 1;
 }
 
-static int write_slave_port1(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int write_slave_port1(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct pic_internal * state = (struct pic_internal *)priv_data;
     uint8_t cw = *(uint8_t *)src;
 
@@ -726,7 +726,7 @@ static int write_slave_port1(struct guest_info * core, ushort_t port, void * src
     return 1;
 }
 
-static int write_slave_port2(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int write_slave_port2(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct pic_internal * state = (struct pic_internal *)priv_data;
     uint8_t cw = *(uint8_t *)src;    
 
@@ -786,7 +786,7 @@ static int write_slave_port2(struct guest_info * core, ushort_t port, void * src
 
 
 
-static int read_elcr_port(struct guest_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int read_elcr_port(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
     struct pic_internal * state = (struct pic_internal *)priv_data;
     
     if (length != 1) {
@@ -808,7 +808,7 @@ static int read_elcr_port(struct guest_info * core, ushort_t port, void * dst, u
 }
 
 
-static int write_elcr_port(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int write_elcr_port(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct pic_internal * state = (struct pic_internal *)priv_data;
     
     if (length != 1) {
@@ -832,7 +832,7 @@ static int write_elcr_port(struct guest_info * core, ushort_t port, void * src, 
 
 
 static int pic_free(struct pic_internal * state) {
-    struct guest_info * core = state->core;
+    struct v3_core_info * core = state->core;
 
     v3_remove_intr_controller(core, state->controller_handle);
     v3_remove_intr_router(core->vm_info, state->router_handle);
@@ -945,7 +945,7 @@ static int pic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
     // PIC is only usable in non-multicore environments
     // just hardcode the core context
-    struct guest_info * core = &(vm->cores[0]);
+    struct v3_core_info * core = &(vm->cores[0]);
 	
     state = (struct pic_internal *)V3_Malloc(sizeof(struct pic_internal));
 

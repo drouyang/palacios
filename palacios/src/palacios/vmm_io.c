@@ -20,7 +20,7 @@
 #include <palacios/vmm_io.h>
 #include <palacios/vmm_string.h>
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 
@@ -31,8 +31,8 @@
 
 static int free_hook(struct v3_vm_info * vm, struct v3_io_hook * hook);
 
-static int default_write(struct guest_info * core, uint16_t port, void *src, uint_t length, void * priv_data);
-static int default_read(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data);
+static int default_write(struct v3_core_info * core, uint16_t port, void *src, uint_t length, void * priv_data);
+static int default_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data);
 
 
 void v3_init_io_map(struct v3_vm_info * vm) {
@@ -123,8 +123,8 @@ struct v3_io_hook * v3_get_io_hook(struct v3_vm_info * vm, uint16_t port) {
 
 
 int v3_hook_io_port(struct v3_vm_info * vm, uint16_t port, 
-		    int (*read)(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
-		    int (*write)(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data), 
+		    int (*read)(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
+		    int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data), 
 		    void * priv_data) {
   struct v3_io_hook * io_hook = (struct v3_io_hook *)V3_Malloc(sizeof(struct v3_io_hook));
 
@@ -318,7 +318,7 @@ uint_t v3_indw(uint16_t port) {
 
 
 /* FIX ME */
-static int default_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int default_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     if (length == 1) {
 	v3_outb(port, *(uint8_t *)src);
     } else if (length == 2) {
@@ -332,7 +332,7 @@ static int default_write(struct guest_info * core, uint16_t port, void * src, ui
     return length;
 }
 
-static int default_read(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
+static int default_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
     if (length == 1) {
 	*(uint8_t *)dst = v3_inb(port);
     } else if (length == 2) {

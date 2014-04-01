@@ -20,7 +20,7 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_config.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_string.h>
 #include <palacios/vmm_options.h>
 

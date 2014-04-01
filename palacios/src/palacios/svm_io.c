@@ -75,7 +75,7 @@ int v3_deinit_svm_io_map(struct v3_vm_info * vm) {
 
 
 // This should package up an IO request and call vmm_handle_io
-int v3_handle_svm_io_in(struct guest_info * core, struct svm_io_info * io_info) {
+int v3_handle_svm_io_in(struct v3_core_info * core, struct svm_io_info * io_info) {
     struct v3_io_hook * hook = v3_get_io_hook(core->vm_info, io_info->port);
     int read_size = 0;
 
@@ -113,7 +113,7 @@ int v3_handle_svm_io_in(struct guest_info * core, struct svm_io_info * io_info) 
 /* We might not handle wrap around of the RDI register correctly...
  * In that if we do wrap around the effect will manifest in the higher bits of the register
  */
-int v3_handle_svm_io_ins(struct guest_info * core, struct svm_io_info * io_info) {
+int v3_handle_svm_io_ins(struct v3_core_info * core, struct svm_io_info * io_info) {
     struct v3_io_hook * hook = v3_get_io_hook(core->vm_info, io_info->port);
     int read_size = 0;
     addr_t dst_addr = 0;
@@ -239,7 +239,7 @@ int v3_handle_svm_io_ins(struct guest_info * core, struct svm_io_info * io_info)
     return 0;
 }
 
-int v3_handle_svm_io_out(struct guest_info * core, struct svm_io_info * io_info) {
+int v3_handle_svm_io_out(struct v3_core_info * core, struct svm_io_info * io_info) {
     struct v3_io_hook * hook = v3_get_io_hook(core->vm_info, io_info->port);
     int write_size = 0;
 
@@ -272,7 +272,7 @@ int v3_handle_svm_io_out(struct guest_info * core, struct svm_io_info * io_info)
  * In that if we do wrap around the effect will manifest in the higher bits of the register
  */
 
-int v3_handle_svm_io_outs(struct guest_info * core, struct svm_io_info * io_info) {
+int v3_handle_svm_io_outs(struct v3_core_info * core, struct svm_io_info * io_info) {
  
     struct v3_io_hook * hook = v3_get_io_hook(core->vm_info, io_info->port);
     int write_size = 0;

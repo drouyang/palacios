@@ -23,12 +23,12 @@
 
 #ifdef __V3VEE__
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmcb.h>
 #include <palacios/vmm.h>
 
 
-int v3_handle_svm_pause(struct guest_info * info);
+int v3_handle_svm_pause(struct v3_core_info * core);
 
 
 #endif // ! __V3VEE__

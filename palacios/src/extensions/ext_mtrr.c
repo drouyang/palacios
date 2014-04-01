@@ -286,105 +286,105 @@ static void init_state(struct mtrr_state * state) {
     return;
 }
 
-static int mtrr_cap_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int mtrr_cap_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     dst->value = state->cap.value;
     return 0;
 }
 
-static int mtrr_cap_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int mtrr_cap_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     state->cap.value = src.value;
     return 0;
 }
 
-static int pat_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int pat_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     dst->value = state->pat.value;
     return 0;
 }
 
-static int pat_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int pat_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     state->pat.value = src.value;
     return 0;
 }
 
-static int def_type_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int def_type_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     dst->value = state->def_type.value;
     return 0;
 }
 
-static int def_type_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int def_type_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     state->def_type.value = src.value;
     return 0;
 }
 
 
-static int mtrr_phys_base_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int mtrr_phys_base_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int base_index = (msr - MTRR_PHYS_BASE_0) / 2;
     dst->value = state->bases[base_index].value;
     return 0;
 }
 
-static int mtrr_phys_base_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int mtrr_phys_base_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int base_index = (msr - MTRR_PHYS_BASE_0) / 2;
     state->bases[base_index].value = src.value;
     return 0;
 }
 
-static int mtrr_phys_mask_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int mtrr_phys_mask_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int mask_index = (msr - MTRR_PHYS_MASK_0) / 2;
     dst->value = state->masks[mask_index].value;
     return 0;
 }
 
-static int mtrr_phys_mask_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int mtrr_phys_mask_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int mask_index = (msr - MTRR_PHYS_MASK_0) / 2;
     state->masks[mask_index].value = src.value;
     return 0;
 }
 
-static int mtrr_fix_64k_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int mtrr_fix_64k_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     dst->value = state->fixed_64k.value;
     return 0;
 }
 
-static int mtrr_fix_64k_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int mtrr_fix_64k_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     state->fixed_64k.value = src.value;
     return 0;
 }
 
-static int mtrr_fix_16k_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int mtrr_fix_16k_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int index = msr - MTRR_FIX_16K_80000;
     dst->value = state->fixed_16k[index].value;
     return 0;
 }
 
-static int mtrr_fix_16k_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int mtrr_fix_16k_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int index = msr - MTRR_FIX_16K_80000;
     state->fixed_16k[index].value = src.value;
     return 0;
 }
 
-static int mtrr_fix_4k_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int mtrr_fix_4k_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int index = msr - MTRR_FIX_4K_C0000;
     dst->value = state->fixed_4k[index].value;
     return 0;
 }
 
-static int mtrr_fix_4k_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int mtrr_fix_4k_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int index = msr - MTRR_FIX_4K_C0000;
     state->fixed_4k[index].value = src.value;
@@ -392,19 +392,19 @@ static int mtrr_fix_4k_write(struct guest_info * core, uint_t msr, v3_msr_t src,
 }
 
 /* AMD specific registers */
-static int amd_syscfg_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int amd_syscfg_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     dst->value = state->amd_syscfg.value;
     return 0;
 }
 
-static int amd_syscfg_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int amd_syscfg_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     state->amd_syscfg.value = src.value;
     return 0;
 }
 
-static int amd_top_mem_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int amd_top_mem_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
 
     if (msr == TOP_MEM) {
@@ -416,7 +416,7 @@ static int amd_top_mem_read(struct guest_info * core, uint_t msr, v3_msr_t * dst
     return 0;
 }
 
-static int amd_top_mem_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int amd_top_mem_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     
     if (msr == TOP_MEM) {
@@ -429,28 +429,28 @@ static int amd_top_mem_write(struct guest_info * core, uint_t msr, v3_msr_t src,
 }
 
 
-static int amd_iorr_base_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int amd_iorr_base_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int base_index = (msr - IORR_BASE0) / 2;
     dst->value = state->iorr_bases[base_index].value;
     return 0;
 }
 
-static int amd_iorr_base_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int amd_iorr_base_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int base_index = (msr - IORR_BASE0) / 2;
     state->iorr_bases[base_index].value = src.value;
     return 0;
 }
 
-static int amd_iorr_mask_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int amd_iorr_mask_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int mask_index = (msr - IORR_MASK0) / 2;
     dst->value = state->iorr_masks[mask_index].value;
     return 0;
 }
 
-static int amd_iorr_mask_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int amd_iorr_mask_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     int mask_index = (msr - IORR_MASK0) / 2;
     state->iorr_masks[mask_index].value = src.value;
@@ -458,25 +458,25 @@ static int amd_iorr_mask_write(struct guest_info * core, uint_t msr, v3_msr_t sr
 }
 
 
-static int intel_smrr_base_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int intel_smrr_base_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     dst->value = state->intel_smrr_base.value;
     return 0;
 }
 
-static int intel_smrr_base_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int intel_smrr_base_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     state->intel_smrr_base.value = src.value;
     return 0;
 }
 
-static int intel_smrr_mask_read(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int intel_smrr_mask_read(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     dst->value = state->intel_smrr_mask.value;
     return 0;
 }
 
-static int intel_smrr_mask_write(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int intel_smrr_mask_write(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct mtrr_state * state = (struct mtrr_state *)priv_data;
     state->intel_smrr_mask.value = src.value;
     return 0;

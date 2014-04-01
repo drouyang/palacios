@@ -53,7 +53,7 @@ static struct hashtable * master_shdw_pg_table = NULL;
 
 
 struct event_callback {
-    int (*callback)(struct guest_info *core, struct v3_shdw_pg_event *event, void *priv_data);
+    int (*callback)(struct v3_core_info *core, struct v3_shdw_pg_event *event, void *priv_data);
     void *priv_data;
 
     struct list_head node;
@@ -71,12 +71,12 @@ static int shdw_pg_eq_fn(addr_t key1, addr_t key2) {
     return (strcmp(name1, name2) == 0);
 }
 
-static int have_callbacks(struct guest_info *core)
+static int have_callbacks(struct v3_core_info *core)
 {
     return !list_empty(&(core->vm_info->shdw_impl.event_callback_list));
 }
 
-static void dispatch_event(struct guest_info *core, struct v3_shdw_pg_event *event)
+static void dispatch_event(struct v3_core_info *core, struct v3_shdw_pg_event *event)
 {
     struct event_callback *cb,*temp;
     
@@ -135,7 +135,7 @@ int V3_deinit_shdw_paging() {
 static void telemetry_cb(struct v3_vm_info * vm, void * private_data, char * hdr) {
     int i = 0;
     for (i = 0; i < vm->num_cores; i++) {
-	struct guest_info * core = &(vm->cores[i]);
+	struct v3_core_info * core = &(vm->cores[i]);
 
 	V3_Print("%s Guest Page faults: %d\n", hdr, core->shdw_pg_state.guest_faults);
     }
@@ -144,7 +144,7 @@ static void telemetry_cb(struct v3_vm_info * vm, void * private_data, char * hdr
 
 
 
-int v3_init_shdw_pg_state(struct guest_info * core) {
+int v3_init_shdw_pg_state(struct v3_core_info * core) {
     struct v3_shdw_pg_state * state = &(core->shdw_pg_state);
     struct v3_shdw_pg_impl * impl = core->vm_info->shdw_impl.current_impl;
   
@@ -168,7 +168,7 @@ int v3_init_shdw_pg_state(struct guest_info * core) {
 }
 
 
-int v3_deinit_shdw_pg_state(struct guest_info * core) {
+int v3_deinit_shdw_pg_state(struct v3_core_info * core) {
     struct v3_shdw_pg_impl * impl = core->vm_info->shdw_impl.current_impl;
 
     if (impl->local_deinit(core) == -1) {
@@ -251,7 +251,7 @@ int v3_deinit_shdw_impl(struct v3_vm_info * vm) {
 // Reads the guest CR3 register
 // creates new shadow page tables
 // updates the shadow CR3 register to point to the new pts
-int v3_activate_shadow_pt(struct guest_info * core) {
+int v3_activate_shadow_pt(struct v3_core_info * core) {
     struct v3_shdw_impl_state * state = &(core->vm_info->shdw_impl);
     struct v3_shdw_pg_impl * impl = state->current_impl;
     
@@ -276,7 +276,7 @@ int v3_activate_shadow_pt(struct guest_info * core) {
 
 // This must flush any caches
 // and reset the cr3 value to the correct value
-int v3_invalidate_shadow_pts(struct guest_info * core) {
+int v3_invalidate_shadow_pts(struct v3_core_info * core) {
     struct v3_shdw_impl_state * state = &(core->vm_info->shdw_impl);
     struct v3_shdw_pg_impl * impl = state->current_impl;
 
@@ -298,7 +298,7 @@ int v3_invalidate_shadow_pts(struct guest_info * core) {
 }
 
 
-int v3_handle_shadow_pagefault(struct guest_info * core, addr_t fault_addr, pf_error_t error_code) 
+int v3_handle_shadow_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) 
 {
     int rc;
    
@@ -330,7 +330,7 @@ int v3_handle_shadow_pagefault(struct guest_info * core, addr_t fault_addr, pf_e
 }
 
 
-int v3_handle_shadow_invlpg(struct guest_info * core) {
+int v3_handle_shadow_invlpg(struct v3_core_info * core) {
     uchar_t instr[15];
     struct x86_instr dec_instr;
     int ret = 0;
@@ -396,7 +396,7 @@ int v3_handle_shadow_invlpg(struct guest_info * core) {
 
 
 
-int v3_inject_guest_pf(struct guest_info * core, addr_t fault_addr, pf_error_t error_code) {
+int v3_inject_guest_pf(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
     core->ctrl_regs.cr2 = fault_addr;
 
 #ifdef V3_CONFIG_SHADOW_PAGING_TELEMETRY
@@ -447,7 +447,7 @@ int v3_is_guest_pf(pt_access_status_t guest_access, pt_access_status_t shadow_ac
 
 
 int v3_register_shadow_paging_event_callback(struct v3_vm_info *vm,
-					     int (*callback)(struct guest_info *core, 
+					     int (*callback)(struct v3_core_info *core, 
 							     struct v3_shdw_pg_event *event,
 							     void      *priv_data),
 					     void *priv_data)
@@ -469,7 +469,7 @@ int v3_register_shadow_paging_event_callback(struct v3_vm_info *vm,
 }
 
 int v3_unregister_shadow_paging_event_callback(struct v3_vm_info *vm,
-					       int (*callback)(struct guest_info *core, 
+					       int (*callback)(struct v3_core_info *core, 
 							       struct v3_shdw_pg_event *event,
 							       void      *priv_data),
 					       void *priv_data)

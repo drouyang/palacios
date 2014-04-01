@@ -2,13 +2,13 @@
 #include "vmm_decoder.h"
 #include "vmm_xed.h"
 #include <xed/xed-interface.h>
-#include "vm_guest.h"
+#include "vm.h"
 #include "test.h"
 #else
 #include <palacios/vmm_decoder.h>
 #include <palacios/vmm_xed.h>
 #include <xed/xed-interface.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm.h>
 
 

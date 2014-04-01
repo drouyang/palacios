@@ -20,7 +20,7 @@
 
 
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_ctrl_regs.h>
 #include <palacios/vmm_decoder.h>
 #include <palacios/vmcb.h>
@@ -35,23 +35,23 @@
 
 
 v3_cpu_mode_t 
-v3_get_vm_cpu_mode(struct guest_info * info) 
+v3_get_vm_cpu_mode(struct v3_core_info * core) 
 {
     struct cr0_32     * cr0  = NULL;
     struct efer_64    * efer = NULL;
-    struct cr4_32     * cr4  = (struct cr4_32 *)&(info->ctrl_regs.cr4);
-    struct v3_segment * cs   = &(info->segments.cs);
+    struct cr4_32     * cr4  = (struct cr4_32 *)&(core->ctrl_regs.cr4);
+    struct v3_segment * cs   = &(core->segments.cs);
 
 
-    if (info->shdw_pg_mode == SHADOW_PAGING) 
+    if (core->shdw_pg_mode == SHADOW_PAGING) 
     {
-	cr0  = (struct cr0_32  *)&(info->shdw_pg_state.guest_cr0);
-	efer = (struct efer_64 *)&(info->shdw_pg_state.guest_efer);
+	cr0  = (struct cr0_32  *)&(core->shdw_pg_state.guest_cr0);
+	efer = (struct efer_64 *)&(core->shdw_pg_state.guest_efer);
     } 
-    else if (info->shdw_pg_mode == NESTED_PAGING) 
+    else if (core->shdw_pg_mode == NESTED_PAGING) 
     {
-	cr0  = (struct cr0_32  *)&(info->ctrl_regs.cr0);
-	efer = (struct efer_64 *)&(info->ctrl_regs.efer);
+	cr0  = (struct cr0_32  *)&(core->ctrl_regs.cr0);
+	efer = (struct efer_64 *)&(core->ctrl_regs.efer);
     } 
     else {
 	PrintError("Invalid Paging Mode...\n");
@@ -75,23 +75,23 @@ v3_get_vm_cpu_mode(struct guest_info * info)
 
 // Get address width in bytes
 uint_t 
-v3_get_addr_width(struct guest_info * info) 
+v3_get_addr_width(struct v3_core_info * core) 
 {
     struct cr0_32     * cr0  = NULL;
     struct efer_64    * efer = NULL;
-    struct cr4_32     * cr4  = (struct cr4_32 *)&(info->ctrl_regs.cr4);
-    struct v3_segment * cs   = &(info->segments.cs);
+    struct cr4_32     * cr4  = (struct cr4_32 *)&(core->ctrl_regs.cr4);
+    struct v3_segment * cs   = &(core->segments.cs);
 
 
-    if (info->shdw_pg_mode == SHADOW_PAGING) 
+    if (core->shdw_pg_mode == SHADOW_PAGING) 
     {
-	cr0  = (struct cr0_32  *)&(info->shdw_pg_state.guest_cr0);
-	efer = (struct efer_64 *)&(info->shdw_pg_state.guest_efer);
+	cr0  = (struct cr0_32  *)&(core->shdw_pg_state.guest_cr0);
+	efer = (struct efer_64 *)&(core->shdw_pg_state.guest_efer);
     } 
-    else if (info->shdw_pg_mode == NESTED_PAGING)
+    else if (core->shdw_pg_mode == NESTED_PAGING)
     {
-	cr0  = (struct cr0_32  *)&(info->ctrl_regs.cr0);
-	efer = (struct efer_64 *)&(info->ctrl_regs.efer);
+	cr0  = (struct cr0_32  *)&(core->ctrl_regs.cr0);
+	efer = (struct efer_64 *)&(core->ctrl_regs.efer);
     } 
     else {
 	PrintError("Invalid Paging Mode...\n");
@@ -143,17 +143,17 @@ v3_cpu_mode_to_str(v3_cpu_mode_t mode)
 }
 
 v3_mem_mode_t 
-v3_get_vm_mem_mode(struct guest_info * info) 
+v3_get_vm_mem_mode(struct v3_core_info * core) 
 {
     struct cr0_32 * cr0;
 
-    if (info->shdw_pg_mode == SHADOW_PAGING) 
+    if (core->shdw_pg_mode == SHADOW_PAGING) 
     {
-	cr0 = (struct cr0_32 *)&(info->shdw_pg_state.guest_cr0);
+	cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
     } 
-    else if (info->shdw_pg_mode == NESTED_PAGING) 
+    else if (core->shdw_pg_mode == NESTED_PAGING) 
     {
-	cr0 = (struct cr0_32 *)&(info->ctrl_regs.cr0);
+	cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
     } 
     else {
 	PrintError("Invalid Paging Mode...\n");
@@ -194,7 +194,7 @@ v3_mem_mode_to_str(v3_mem_mode_t mode)
    With no APIC we default to BSP, otherwise we have to check
  */
 int 
-v3_is_core_bsp(struct guest_info * core) 
+v3_is_core_bsp(struct v3_core_info* core) 
 {
     struct vm_device * apic_dev =  v3_find_dev(core->vm_info, "apic");
 
@@ -215,8 +215,7 @@ v3_is_core_bsp(struct guest_info * core)
 
 #include <palacios/vmcs.h>
 #include <palacios/vmcb.h>
-static int 
-info_hcall(struct guest_info * core, uint_t hcall_id, void * priv_data) 
+static int info_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) 
 {
     extern v3_cpu_arch_t v3_mach_type;
     int cpu_valid = 0;
@@ -330,9 +329,9 @@ v3_init_vm(struct v3_vm_info * vm)
 	    return -1;
     }
     
-    v3_register_hypercall(vm, GUEST_INFO_HCALL, info_hcall, NULL);
+    v3_register_hypercall(vm, VM_INFO_HCALL, info_hcall, NULL);
 
-    V3_Print("GUEST_INFO_HCALL=%x\n", GUEST_INFO_HCALL);
+    V3_Print("VM_INFO_HCALL=%x\n", VM_INFO_HCALL);
 
     return 0;
 }
@@ -343,7 +342,7 @@ v3_free_vm_internal(struct v3_vm_info * vm)
 {
     extern v3_cpu_arch_t v3_mach_type;
 
-    v3_remove_hypercall(vm, GUEST_INFO_HCALL);
+    v3_remove_hypercall(vm, VM_INFO_HCALL);
 
 
 
@@ -403,7 +402,7 @@ v3_free_vm_internal(struct v3_vm_info * vm)
 
 
 int 
-v3_init_core(struct guest_info * core) 
+v3_init_core(struct v3_core_info * core) 
 {
     extern v3_cpu_arch_t v3_mach_type;
     struct v3_vm_info  * vm = core->vm_info;
@@ -466,7 +465,7 @@ v3_init_core(struct guest_info * core)
 
 
 int 
-v3_free_core(struct guest_info * core) 
+v3_free_core(struct v3_core_info * core) 
 {
     extern v3_cpu_arch_t v3_mach_type;
 

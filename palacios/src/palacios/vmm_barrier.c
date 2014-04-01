@@ -20,7 +20,7 @@
 
 #include <palacios/vmm_barrier.h>
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 int v3_init_barrier(struct v3_vm_info * vm_info) {
     struct v3_barrier * barrier = &(vm_info->barrier);
@@ -41,7 +41,7 @@ int v3_deinit_barrier(struct v3_vm_info * vm_info) {
     return 0;
 }
 
-int v3_raise_barrier_nowait(struct v3_vm_info * vm_info, struct guest_info * local_core) {
+int v3_raise_barrier_nowait(struct v3_vm_info * vm_info, struct v3_core_info * local_core) {
     struct v3_barrier * barrier = &(vm_info->barrier);
     addr_t flag;
     int acquired = 0;
@@ -88,7 +88,7 @@ int v3_raise_barrier_nowait(struct v3_vm_info * vm_info, struct guest_info * loc
     return 0;
 }
 
-int v3_wait_for_barrier(struct v3_vm_info * vm_info, struct guest_info * local_core) {
+int v3_wait_for_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local_core) {
     struct v3_barrier * barrier = &(vm_info->barrier);
     int all_blocked = 0;
     int i = 0;
@@ -138,7 +138,7 @@ int v3_wait_for_barrier(struct v3_vm_info * vm_info, struct guest_info * local_c
  *                     if the calling thread is not associated with a VM's core context
  */
 
-int v3_raise_barrier(struct v3_vm_info * vm_info, struct guest_info * local_core) {
+int v3_raise_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local_core) {
     int ret = 0;
 
 
@@ -191,7 +191,7 @@ int v3_lower_barrier(struct v3_vm_info * vm_info) {
  *       it has reached the barrier and sit in a yield loop until the 
  *       barrier has been lowered
  */
-int v3_wait_at_barrier(struct guest_info * core) {
+int v3_wait_at_barrier(struct v3_core_info * core) {
     struct v3_barrier * barrier = &(core->vm_info->barrier);
 
     if (barrier->active == 0) {

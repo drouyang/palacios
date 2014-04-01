@@ -26,7 +26,7 @@
 #ifdef __V3VEE__
 
 #include <palacios/vmm_types.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 int v3_numa_gpa_to_node(struct v3_vm_info * vm, addr_t gpa);
 int v3_numa_hpa_to_node(addr_t hpa);

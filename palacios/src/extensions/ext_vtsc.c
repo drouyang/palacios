@@ -20,7 +20,7 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_time.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 // Functions for handling exits on the TSC when fully virtualizing 
@@ -28,8 +28,8 @@
 #define TSC_MSR     0x10
 #define TSC_AUX_MSR 0xC0000103
 
-int v3_handle_rdtscp(struct guest_info *info);
-int v3_handle_rdtsc(struct guest_info *info);
+int v3_handle_rdtscp(struct v3_core_info *info);
+int v3_handle_rdtsc(struct v3_core_info *info);
 
 
 struct vtsc_state {
@@ -49,7 +49,7 @@ struct vtsc_state {
  * Possible TODO: Proper hooking of TSC read/writes?
  */ 
 
-static int rdtsc(struct guest_info * info) {
+static int rdtsc(struct v3_core_info * core) {
     uint64_t tscval = v3_get_guest_tsc(&info->time_state);
 
     info->vm_regs.rdx = tscval >> 32;
@@ -58,7 +58,7 @@ static int rdtsc(struct guest_info * info) {
     return 0;
 }
 
-int v3_handle_rdtsc(struct guest_info * info) {
+int v3_handle_rdtsc(struct v3_core_info * core) {
     rdtsc(info);
     
     info->vm_regs.rax &= 0x00000000ffffffffLL;
@@ -69,7 +69,7 @@ int v3_handle_rdtsc(struct guest_info * info) {
     return 0;
 }
 
-int v3_rdtscp(struct guest_info * info) {
+int v3_rdtscp(struct v3_core_info * core) {
     int ret;
     /* First get the MSR value that we need. It's safe to futz with
      * ra/c/dx here since they're modified by this instruction anyway. */
@@ -93,7 +93,7 @@ int v3_rdtscp(struct guest_info * info) {
 }
 
 
-int v3_handle_rdtscp(struct guest_info * info) {
+int v3_handle_rdtscp(struct v3_core_info * core) {
   PrintDebug("Handling virtual RDTSCP call.\n");
 
     v3_rdtscp(info);
@@ -110,7 +110,7 @@ int v3_handle_rdtscp(struct guest_info * info) {
 
 
 
-static int tsc_aux_msr_read_hook(struct guest_info *info, uint_t msr_num, 
+static int tsc_aux_msr_read_hook(struct v3_core_info *info, uint_t msr_num, 
 				 struct v3_msr *msr_val, void *priv) {
     struct vm_time * time_state = &(info->time_state);
 
@@ -123,7 +123,7 @@ static int tsc_aux_msr_read_hook(struct guest_info *info, uint_t msr_num,
 }
 
 
-static int tsc_aux_msr_write_hook(struct guest_info *info, uint_t msr_num, 
+static int tsc_aux_msr_write_hook(struct v3_core_info *info, uint_t msr_num, 
 			      struct v3_msr msr_val, void *priv) {
     struct vm_time * time_state = &(info->time_state);
 
@@ -136,7 +136,7 @@ static int tsc_aux_msr_write_hook(struct guest_info *info, uint_t msr_num,
 }
 
 
-static int tsc_msr_read_hook(struct guest_info *info, uint_t msr_num,
+static int tsc_msr_read_hook(struct v3_core_info *info, uint_t msr_num,
 			     struct v3_msr *msr_val, void *priv) {
     uint64_t time = v3_get_guest_tsc(&info->time_state);
 
@@ -149,7 +149,7 @@ static int tsc_msr_read_hook(struct guest_info *info, uint_t msr_num,
 }
 
 
-static int tsc_msr_write_hook(struct guest_info *info, uint_t msr_num,
+static int tsc_msr_write_hook(struct v3_core_info *info, uint_t msr_num,
 			     struct v3_msr msr_val, void *priv) {
     struct vm_time * time_state = &(info->time_state);
     uint64_t guest_time, new_tsc;

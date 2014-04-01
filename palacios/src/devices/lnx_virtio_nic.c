@@ -188,7 +188,7 @@ static int virtio_init_state(struct virtio_net_state * virtio)
     return 0;
 }
 
-static int tx_one_pkt(struct guest_info * core, 
+static int tx_one_pkt(struct v3_core_info * core, 
 		      struct virtio_net_state * virtio, 
 		      struct vring_desc * buf_desc) 
 {
@@ -218,7 +218,7 @@ static int tx_one_pkt(struct guest_info * core,
 
 
 /*copy data into ring buffer */
-static inline int copy_data_to_desc(struct guest_info * core, 
+static inline int copy_data_to_desc(struct v3_core_info * core, 
 				    struct virtio_net_state * virtio_state, 
 				    struct vring_desc * desc, 
 				    uchar_t * buf, 
@@ -262,7 +262,7 @@ static inline void disable_cb(struct virtio_queue *queue) {
     }
 }
 
-static int handle_pkt_tx(struct guest_info * core, 
+static int handle_pkt_tx(struct v3_core_info * core, 
 			 struct virtio_net_state * virtio_state,
 			 int quote)
 {
@@ -342,7 +342,7 @@ static int handle_pkt_tx(struct guest_info * core,
 }
 
 
-static int virtio_setup_queue(struct guest_info *core, 
+static int virtio_setup_queue(struct v3_core_info *core, 
 			      struct virtio_net_state * virtio_state, 
 			      struct virtio_queue * queue, 
 			      addr_t pfn, addr_t page_addr) {
@@ -382,7 +382,7 @@ static int virtio_setup_queue(struct guest_info *core,
     return 0;
 }
 
-static int virtio_io_write(struct guest_info *core, 
+static int virtio_io_write(struct v3_core_info *core, 
 			   uint16_t port, void * src, 
 			   uint_t length, void * private_data) 
 {
@@ -483,7 +483,7 @@ static int virtio_io_write(struct guest_info *core,
     return length;
 }
 
-static int virtio_io_read(struct guest_info *core, 
+static int virtio_io_read(struct v3_core_info *core, 
 			  uint16_t port, void * dst, 
 			  uint_t length, void * private_data) 
 {
@@ -850,7 +850,7 @@ static int register_dev(struct virtio_dev_state * virtio,
 #define RATE_LOWER_THRESHOLD 1
 #define PROFILE_PERIOD 10000 /*us*/
 
-static void virtio_nic_timer(struct guest_info * core, 
+static void virtio_nic_timer(struct v3_core_info * core, 
 			     uint64_t cpu_cycles, uint64_t cpu_freq, 
 			     void * priv_data) {
     struct virtio_net_state * net_state = (struct virtio_net_state *)priv_data;

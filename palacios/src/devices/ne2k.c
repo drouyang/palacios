@@ -25,7 +25,7 @@
 #include <palacios/vmm_dev_mgr.h>
 #include <palacios/vmm_intr.h>
 #include <palacios/vmm_ethernet.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_sprintf.h>
 
 #ifndef V3_CONFIG_DEBUG_NE2K
@@ -581,7 +581,7 @@ static void dma_update( struct ne2k_state * nic_state, int len) {
     }
 }
 
-static int ne2k_data_read(struct guest_info * core, 
+static int ne2k_data_read(struct v3_core_info * core, 
 			  uint16_t port, 
 			  void * dst, 
 			  uint_t length, 
@@ -616,7 +616,7 @@ static int ne2k_data_read(struct guest_info * core,
     return length;
 }
 
-static int ne2k_data_write(struct guest_info * core, 
+static int ne2k_data_write(struct v3_core_info * core, 
 			   uint16_t port, 
 			   void * src, 
 			   uint_t length, 
@@ -681,7 +681,7 @@ static int reset_device(struct ne2k_state * nic_state) {
 }
 
 //for 0xc11f port
-static int ne2k_reset_port_read(struct guest_info * core, 
+static int ne2k_reset_port_read(struct v3_core_info * core, 
 				uint16_t port, 
 				void * dst, 
 				uint_t length, 
@@ -694,7 +694,7 @@ static int ne2k_reset_port_read(struct guest_info * core,
     return length;
 }
 
-static int ne2k_reset_port_write(struct guest_info * core, 
+static int ne2k_reset_port_write(struct v3_core_info * core, 
 				 uint16_t port, 
 				 void * src, 
 				 uint_t length, 
@@ -705,7 +705,7 @@ static int ne2k_reset_port_write(struct guest_info * core,
 
 
 
-static int ne2k_cmd_write(struct guest_info * core, 
+static int ne2k_cmd_write(struct v3_core_info * core, 
 			  uint16_t port, 
 			  void * src, 
 			  uint_t length, 
@@ -755,7 +755,7 @@ static int ne2k_cmd_write(struct guest_info * core,
     return length;
 }
 
-static int ne2k_cmd_read(struct guest_info * core, 
+static int ne2k_cmd_read(struct v3_core_info * core, 
 			 uint16_t port, 
 			 void * dst, 
 			 uint_t length, 
@@ -773,7 +773,7 @@ static int ne2k_cmd_read(struct guest_info * core,
     return length;
 }
 
-static int ne2k_std_write(struct guest_info * core, 
+static int ne2k_std_write(struct v3_core_info * core, 
 			  uint16_t port, 
 			  void * src, 
 			  uint_t length, 
@@ -897,7 +897,7 @@ static int ne2k_std_write(struct guest_info * core,
 	
 }
 
-static int ne2k_std_read(struct guest_info * core, 
+static int ne2k_std_read(struct v3_core_info * core, 
 			 uint16_t port, 
 			 void * dst, 
 			 uint_t length, 
@@ -1026,7 +1026,7 @@ static int ne2k_std_read(struct guest_info * core,
 
 
 
-static int ne2k_pci_write(struct guest_info * core, 
+static int ne2k_pci_write(struct v3_core_info * core, 
 			  uint16_t port, 
 			  void * src, 
 			  uint_t length, 
@@ -1056,7 +1056,7 @@ static int ne2k_pci_write(struct guest_info * core,
     return ret;
 }
 
-static int ne2k_pci_read(struct guest_info * core, 
+static int ne2k_pci_read(struct v3_core_info * core, 
 			 uint16_t port, 
 			 void * dst, 
 			 uint_t length, 

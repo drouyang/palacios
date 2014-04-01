@@ -264,7 +264,7 @@ static int pre_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * vm_cfg) {
     {
 	char * telemetry = v3_cfg_val(vm_cfg, "telemetry");
 
-	// This should go first, because other subsystems will depend on the guest_info flag    
+	// This should go first, because other subsystems will depend on the v3_core_info flag    
 	if ((telemetry) && (strcasecmp(telemetry, "enable") == 0)) {
 	    vm->enable_telemetry = 1;
 	} else {
@@ -293,10 +293,10 @@ static int pre_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * vm_cfg) {
 }
 
 
-static int determine_paging_mode(struct guest_info * info, v3_cfg_tree_t * core_cfg) {
+static int determine_paging_mode(struct v3_core_info * core, v3_cfg_tree_t * core_cfg) {
     extern v3_cpu_arch_t v3_mach_type;
 
-    v3_cfg_tree_t * vm_tree = info->vm_info->cfg_data->cfg;
+    v3_cfg_tree_t * vm_tree = core->vm_info->cfg_data->cfg;
     v3_cfg_tree_t * pg_tree = v3_cfg_subtree(vm_tree, "paging");
     char * pg_mode          = v3_cfg_val(pg_tree, "mode");
     
@@ -310,45 +310,45 @@ static int determine_paging_mode(struct guest_info * info, v3_cfg_tree_t * core_
 		(v3_mach_type == V3_VMX_EPT_UG_CPU)) {
 		
 		V3_Print("Setting paging mode to NESTED\n");
-	    	info->shdw_pg_mode = NESTED_PAGING;
+	    	core->shdw_pg_mode = NESTED_PAGING;
 	    } else {
 		PrintError("Nested paging not supported on this hardware. Defaulting to shadow paging\n");
-	    	info->shdw_pg_mode = SHADOW_PAGING;
+	    	core->shdw_pg_mode = SHADOW_PAGING;
 	    }
 	} else if ((strcasecmp(pg_mode, "shadow") == 0)) {
 	    V3_Print("Setting paging mode to SHADOW\n");
-	    info->shdw_pg_mode = SHADOW_PAGING;
+	    core->shdw_pg_mode = SHADOW_PAGING;
 	} else {
 	    PrintError("Invalid paging mode (%s) specified in configuration. Defaulting to shadow paging\n", pg_mode);
-	    info->shdw_pg_mode = SHADOW_PAGING;
+	    core->shdw_pg_mode = SHADOW_PAGING;
 	}
     } else {
 	V3_Print("No paging type specified in configuration. Defaulting to shadow paging\n");
-	info->shdw_pg_mode = SHADOW_PAGING;
+	core->shdw_pg_mode = SHADOW_PAGING;
     }
 
 
     if (v3_cfg_val(pg_tree, "large_pages") != NULL) {
 	if (strcasecmp(v3_cfg_val(pg_tree, "large_pages"), "true") == 0) {
-	    info->use_large_pages = 1;
+	    core->use_large_pages = 1;
 	    PrintDebug("Use of large pages in memory virtualization enabled.\n");
 	}
     }
     return 0;
 }
 
-static int pre_config_core(struct guest_info * info, v3_cfg_tree_t * core_cfg) {
-    if (determine_paging_mode(info, core_cfg) != 0) {
+static int pre_config_core(struct v3_core_info * core, v3_cfg_tree_t * core_cfg) {
+    if (determine_paging_mode(core, core_cfg) != 0) {
 	return -1;
     }
 
-    if (v3_init_core(info) == -1) {
+    if (v3_init_core(core) == -1) {
 	PrintError("Error Initializing Core\n");
 	return -1;
     }
 
-    if (info->vm_info->vm_class == V3_PC_VM) {
-	if (pre_config_pc_core(info, core_cfg) == -1) {
+    if (core->vm_info->vm_class == V3_PC_VM) {
+	if (pre_config_pc_core(core, core_cfg) == -1) {
 	    PrintError("PC Post configuration failure\n");
 	    return -1;
 	}
@@ -397,7 +397,7 @@ static int post_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     }
 
 
-    //    v3_print_io_map(info);
+    //    v3_print_io_map(core);
     v3_print_msr_map(vm);
 
 
@@ -419,16 +419,16 @@ static int post_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
 
 
-static int post_config_core(struct guest_info * info, v3_cfg_tree_t * cfg) {
+static int post_config_core(struct v3_core_info * core, v3_cfg_tree_t * cfg) {
 
  
-    if (v3_init_core_extensions(info) == -1) {
+    if (v3_init_core_extensions(core) == -1) {
         PrintError("Error intializing extension core states\n");
         return -1;
     }
 
-    if (info->vm_info->vm_class == V3_PC_VM) {
-	if (post_config_pc_core(info, cfg) == -1) {
+    if (core->vm_info->vm_class == V3_PC_VM) {
+	if (post_config_pc_core(core, cfg) == -1) {
 	    PrintError("PC Post configuration failure\n");
 	    return -1;
 	}
@@ -444,7 +444,7 @@ static int post_config_core(struct guest_info * info, v3_cfg_tree_t * cfg) {
 
 
 static struct v3_vm_info * allocate_guest(int num_cores) {
-    int guest_state_size = sizeof(struct v3_vm_info) + (sizeof(struct guest_info) * num_cores);
+    int guest_state_size = sizeof(struct v3_vm_info) + (sizeof(struct v3_core_info) * num_cores);
     struct v3_vm_info * vm = V3_Malloc(guest_state_size);
 
     if (!vm) {
@@ -528,13 +528,13 @@ struct v3_vm_info * v3_config_guest(void * cfg_blob, void * priv_data) {
 
     // per core configuration
     for (i = 0; i < vm->num_cores; i++) {
-	struct guest_info * info = &(vm->cores[i]);
+	struct v3_core_info * core = &(vm->cores[i]);
 
-	info->vcpu_id = i;
-	info->vm_info = vm;
-	info->core_cfg_data = per_core_cfg;
+	core->vcpu_id = i;
+	core->vm_info = vm;
+	core->core_cfg_data = per_core_cfg;
 
-	if (pre_config_core(info, per_core_cfg) == -1) {
+	if (pre_config_core(core, per_core_cfg) == -1) {
 	    PrintError("Error in core %d preconfiguration\n", i);
 	    return NULL;
 	}
@@ -556,9 +556,9 @@ struct v3_vm_info * v3_config_guest(void * cfg_blob, void * priv_data) {
 
     // per core configuration
     for (i = 0; i < vm->num_cores; i++) {
-	struct guest_info * info = &(vm->cores[i]);
+	struct v3_core_info * core = &(vm->cores[i]);
 
-	post_config_core(info, per_core_cfg);
+	post_config_core(core, per_core_cfg);
 
 	per_core_cfg = v3_cfg_next_branch(per_core_cfg);
     }

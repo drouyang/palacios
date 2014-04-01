@@ -22,7 +22,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_debug.h>
 #include <palacios/vmm_types.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 struct v3_keyed_stream_hooks * keyed_stream_hooks = 0;
 

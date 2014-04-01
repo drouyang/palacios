@@ -123,8 +123,8 @@ struct v3_device_ops {
 
 int v3_dev_hook_io(struct vm_device   * dev,
 		   uint16_t            port,
-		   int (*read)(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
-		   int (*write)(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data));
+		   int (*read)(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
+		   int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data));
 
 int v3_dev_unhook_io(struct vm_device   * dev,
 		     uint16_t            port);
@@ -132,8 +132,8 @@ int v3_dev_unhook_io(struct vm_device   * dev,
 
 int v3_dev_hook_msr(struct vm_device * dev, 
 		    uint32_t           msr,
-		    int (*read)(struct guest_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data), 
-		    int (*write)(struct guest_info * core, uint32_t msr, struct v3_msr src, void * priv_data));
+		    int (*read)(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data), 
+		    int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data));
 
 int v3_dev_unhook_msr(struct vm_device * dev, 
 		      uint32_t msr);

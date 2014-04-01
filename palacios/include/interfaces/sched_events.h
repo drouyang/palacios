@@ -21,13 +21,13 @@
 
 #ifdef __V3VEE__
 
-int v3_hook_core_preemptions(struct guest_info * core, 
-			     int (*sched_in)(struct guest_info * core, int cpu), 
-			     int (*sched_out)(struct guest_info * core, int cpu));
+int v3_hook_core_preemptions(struct v3_core_info * core, 
+			     int (*sched_in)(struct v3_core_info * core, int cpu), 
+			     int (*sched_out)(struct v3_core_info * core, int cpu));
 
-int v3_unhook_core_preemptions(struct guest_info * core, 
-			       int (*sched_in)(struct guest_info * core, int cpu), 
-			       int (*sched_out)(struct guest_info * core, int cpu));
+int v3_unhook_core_preemptions(struct v3_core_info * core, 
+			       int (*sched_in)(struct v3_core_info * core, int cpu), 
+			       int (*sched_out)(struct v3_core_info * core, int cpu));
 
 
 #endif

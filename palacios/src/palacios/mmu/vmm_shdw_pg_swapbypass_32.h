@@ -20,7 +20,7 @@
 
 
 
-static inline int activate_shadow_pt_32(struct guest_info * info) {
+static inline int activate_shadow_pt_32(struct v3_core_info * core) {
     struct cr3_32 * shadow_cr3 = (struct cr3_32 *)&(info->ctrl_regs.cr3);
     struct cr3_32 * guest_cr3 = (struct cr3_32 *)&(info->shdw_pg_state.guest_cr3);
     struct shadow_page_data * shdw_page = create_new_shadow_pt(info);
@@ -49,14 +49,14 @@ static inline int activate_shadow_pt_32(struct guest_info * info) {
  * *
  * *
  */
-static int handle_4MB_shadow_pagefault_32(struct guest_info * info,  addr_t fault_addr, pf_error_t error_code, 
+static int handle_4MB_shadow_pagefault_32(struct v3_core_info * core,  addr_t fault_addr, pf_error_t error_code, 
 					  pte32_t * shadow_pt, pde32_4MB_t * large_guest_pde);
 
-static int handle_pte_shadow_pagefault_32(struct guest_info * info, addr_t fault_addr, pf_error_t error_code,
+static int handle_pte_shadow_pagefault_32(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code,
 					  pte32_t * shadow_pt,  pte32_t * guest_pt);
 
 
-static inline int handle_shadow_pagefault_32(struct guest_info * info, addr_t fault_addr, pf_error_t error_code) {
+static inline int handle_shadow_pagefault_32(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
     pde32_t * guest_pd = NULL;
     pde32_t * shadow_pd = CR3_TO_PDE32_VA(info->ctrl_regs.cr3);
     addr_t guest_cr3 = CR3_TO_PDE32_PA(info->shdw_pg_state.guest_cr3);
@@ -196,7 +196,7 @@ static inline int handle_shadow_pagefault_32(struct guest_info * info, addr_t fa
 }
 
 
-static int handle_pte_shadow_pagefault_32(struct guest_info * info, addr_t fault_addr, pf_error_t error_code,
+static int handle_pte_shadow_pagefault_32(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code,
 					  pte32_t * shadow_pt, pte32_t * guest_pt) {
 
     pt_access_status_t guest_pte_access;
@@ -418,7 +418,7 @@ static int handle_pte_shadow_pagefault_32(struct guest_info * info, addr_t fault
 
 
 
-static int handle_4MB_shadow_pagefault_32(struct guest_info * info, 
+static int handle_4MB_shadow_pagefault_32(struct v3_core_info * core, 
 				     addr_t fault_addr, pf_error_t error_code, 
 				     pte32_t * shadow_pt, pde32_4MB_t * large_guest_pde) 
 {
@@ -517,7 +517,7 @@ static int handle_4MB_shadow_pagefault_32(struct guest_info * info,
 
 
 /* If we start to optimize we should look up the guest pages in the cache... */
-static inline int handle_shadow_invlpg_32(struct guest_info * info, addr_t vaddr) {
+static inline int handle_shadow_invlpg_32(struct v3_core_info * core, addr_t vaddr) {
     pde32_t * shadow_pd = (pde32_t *)CR3_TO_PDE32_VA(info->ctrl_regs.cr3);
     pde32_t * shadow_pde = (pde32_t *)&shadow_pd[PDE32_INDEX(vaddr)];
 

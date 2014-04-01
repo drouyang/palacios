@@ -148,8 +148,8 @@ typedef struct ept_pte {
     uint64_t ignore2         : 12;
 } __attribute__((packed)) ept_pte_t;
 
-int v3_init_ept(struct guest_info * core, struct vmx_hw_info * hw_info);
-int v3_handle_ept_fault(struct guest_info * core, addr_t fault_addr, struct ept_exit_qual * ept_qual);
+int v3_init_ept(struct v3_core_info * core, struct vmx_hw_info * hw_info);
+int v3_handle_ept_fault(struct v3_core_info * core, addr_t fault_addr, struct ept_exit_qual * ept_qual);
 
 
 #endif 

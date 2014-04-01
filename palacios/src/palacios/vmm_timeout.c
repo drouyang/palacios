@@ -19,13 +19,13 @@
 
 
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_timeout.h>
 
 
 
-int v3_add_core_timeout(struct guest_info * core, uint64_t cycles,
-			int (*callback)(struct guest_info * core, 
+int v3_add_core_timeout(struct v3_core_info * core, uint64_t cycles,
+			int (*callback)(struct v3_core_info * core, 
 					void * private_data),
 			void * private_data) {
     struct v3_core_timeouts * timeouts = &(core->timeouts);
@@ -45,7 +45,7 @@ int v3_add_core_timeout(struct guest_info * core, uint64_t cycles,
 
 
 
-int v3_handle_timeouts(struct guest_info * core, uint64_t guest_cycles) {
+int v3_handle_timeouts(struct v3_core_info * core, uint64_t guest_cycles) {
     struct v3_core_timeouts * timeouts = &(core->timeouts);
 
     /*

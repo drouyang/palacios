@@ -28,7 +28,7 @@
 #include <palacios/vmm_hashtable.h>
 #include <palacios/vmm_list.h>
 
-struct guest_info;
+struct v3_core_info;
 struct v3_vm_info;
 
 #ifdef V3_CONFIG_TELEMETRY
@@ -59,22 +59,22 @@ struct v3_core_telemetry {
 
 
 void v3_init_telemetry(struct v3_vm_info * vm);
-void v3_init_core_telemetry(struct guest_info * info);
+void v3_init_core_telemetry(struct v3_core_info * core);
 void v3_deinit_telemetry(struct v3_vm_info * vm);
-void v3_deinit_core_telemetry(struct guest_info * core);
+void v3_deinit_core_telemetry(struct v3_core_info * core);
 
-void v3_telemetry_start_exit(struct guest_info * info);
-void v3_telemetry_end_exit(struct guest_info * info, uint_t exit_code);
+void v3_telemetry_start_exit(struct v3_core_info * core);
+void v3_telemetry_end_exit(struct v3_core_info * core, uint_t exit_code);
 
-void v3_telemetry_reset(struct guest_info * core);
+void v3_telemetry_reset(struct v3_core_info * core);
 
-void v3_print_core_telemetry(struct guest_info * core);
+void v3_print_core_telemetry(struct v3_core_info * core);
 void v3_print_global_telemetry(struct v3_vm_info * vm);
-void v3_print_telemetry(struct v3_vm_info * vm, struct guest_info * core);
+void v3_print_telemetry(struct v3_vm_info * vm, struct v3_core_info * core);
 
 
-void v3_telemetry_inc_core_counter(struct guest_info * core, char * counter_name);
-void v3_telemetry_reset_core_counter(struct guest_info * core, char * counter_name);
+void v3_telemetry_inc_core_counter(struct v3_core_info * core, char * counter_name);
+void v3_telemetry_reset_core_counter(struct v3_core_info * core, char * counter_name);
 
 void v3_telemetry_inc_vm_counter(struct v3_vm_info * vm, char * counter_name);
 void v3_telemetry_reset_vm_counter(struct v3_vm_info * vm, char * counter_name);
@@ -88,7 +88,7 @@ void v3_add_telemetry_cb(struct v3_vm_info * vm,
 #else
 
 
-static void inline v3_telemetry_inc_core_counter(struct guest_info * core, char * counter_name) {
+static void inline v3_telemetry_inc_core_counter(struct v3_core_info * core, char * counter_name) {
     return;
 }
 

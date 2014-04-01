@@ -21,7 +21,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_dev_mgr.h>
 #include <devices/apic.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_lock.h>
 
 #ifndef V3_CONFIG_DEBUG_IO_APIC
@@ -129,7 +129,7 @@ struct redir_tbl_entry {
 
 struct ack_entry {
     uint32_t irq;
-    int (*ack)(struct guest_info * core, uint32_t irq, void * private_data);
+    int (*ack)(struct v3_core_info * core, uint32_t irq, void * private_data);
     void * private_data;    
 
     struct list_head node;
@@ -167,7 +167,7 @@ struct io_apic_state {
 };
 
 
-static int ioapic_eoi(struct guest_info * core, uint32_t irq, void * private_data);
+static int ioapic_eoi(struct v3_core_info * core, uint32_t irq, void * private_data);
 
 static void init_ioapic_state(struct io_apic_state * ioapic, uint32_t id) {
     int i = 0;
@@ -202,7 +202,7 @@ static void init_ioapic_state(struct io_apic_state * ioapic, uint32_t id) {
 }
 
 
-static int ioapic_read(struct guest_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data) {
+static int ioapic_read(struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data) {
     struct io_apic_state * ioapic = (struct io_apic_state *)(priv_data);
     uint32_t reg_tgt = guest_addr - ioapic->base_addr;
     uint32_t * op_val = (uint32_t *)dst;
@@ -292,7 +292,7 @@ static int ioapic_send_ipi(struct v3_vm_info * vm, struct io_apic_state * ioapic
 }
 
 
-static int ioapic_write(struct guest_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data) {
+static int ioapic_write(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data) {
     struct io_apic_state * ioapic = (struct io_apic_state *)(priv_data);
     uint32_t reg_tgt = guest_addr - ioapic->base_addr;
     uint32_t op_val = *(uint32_t *)src;
@@ -365,7 +365,7 @@ static int ioapic_write(struct guest_info * core, addr_t guest_addr, void * src,
 
 
 
-static int ioapic_eoi(struct guest_info * core, uint32_t irq, void * private_data) {
+static int ioapic_eoi(struct v3_core_info * core, uint32_t irq, void * private_data) {
     struct io_apic_state * ioapic = (struct io_apic_state *)(private_data);  
     struct redir_tbl_entry * irq_entry = NULL;
     unsigned int flags = 0;

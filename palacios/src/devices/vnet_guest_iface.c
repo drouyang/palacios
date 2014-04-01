@@ -57,7 +57,7 @@
 returns rax=negative on error. 0 if successful
 
 */
-static int handle_header_query_hcall(struct guest_info * info, uint_t hcall_id, void * priv_data) 
+static int handle_header_query_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) 
 {
     addr_t src_mac_gva;
     addr_t dest_mac_gva;

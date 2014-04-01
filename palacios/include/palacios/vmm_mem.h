@@ -31,7 +31,7 @@
 #include <palacios/vmm_rbtree.h>
 #include <palacios/vmm_list.h>
 
-struct guest_info;
+struct v3_core_info;
 struct v3_vm_info;
 
 
@@ -76,7 +76,7 @@ struct v3_mem_region {
 
     addr_t                  host_addr; // This either points to a host address mapping
 
-    int (*unhandled)(struct guest_info * info, addr_t guest_va, addr_t guest_pa, 
+    int (*unhandled)(struct v3_core_info * info, addr_t guest_va, addr_t guest_pa, 
 		     struct v3_mem_region * reg, pf_error_t access_info);
 
     void * priv_data;
@@ -126,14 +126,14 @@ struct v3_mem_region * v3_get_mem_region(struct v3_vm_info * vm, uint16_t core_i
 struct v3_mem_region * v3_get_base_region(struct v3_vm_info * vm, addr_t gpa);
 
 
-uint32_t v3_get_max_page_size(struct guest_info * core, addr_t fault_addr, v3_cpu_mode_t mode);
+uint32_t v3_get_max_page_size(struct v3_core_info * core, addr_t fault_addr, v3_cpu_mode_t mode);
 
 
 void v3_print_mem_map(struct v3_vm_info * vm);
 
 
-int v3_mem_write(struct guest_info * core, addr_t gpa, uint8_t * src, uint64_t len);
-int v3_mem_read(struct guest_info * core, addr_t gpa, uint8_t * src, uint64_t len);
+int v3_mem_write(struct v3_core_info * core, addr_t gpa, uint8_t * src, uint64_t len);
+int v3_mem_read(struct v3_core_info * core, addr_t gpa, uint8_t * src, uint64_t len);
 
 
 #endif /* ! __V3VEE__ */

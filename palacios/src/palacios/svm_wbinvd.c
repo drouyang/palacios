@@ -28,13 +28,13 @@
 // should raise #GP if CPL is not zero
 // Otherwise execute
 
-int v3_handle_svm_wbinvd(struct guest_info * info) {
+int v3_handle_svm_wbinvd(struct v3_core_info * core) {
 
-    if (info->cpl != 0) { 
+    if (core->cpl != 0) { 
 	PrintDebug("WBINVD: cpl != 0, injecting GPF\n");
-	v3_raise_exception(info, GPF_EXCEPTION);
+	v3_raise_exception(core, GPF_EXCEPTION);
     } else {
-	info->rip += 2;
+	core->rip += 2;
 	asm volatile ("wbinvd" ::: "memory");
     }
 

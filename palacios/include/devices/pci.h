@@ -61,7 +61,7 @@ typedef enum {PCI_STD_DEVICE, PCI_TO_PCI_BRIDGE, PCI_CARDBUS, PCI_MULTIFUNCTION,
 
 #define PCI_AUTO_DEV_NUM (-1)
 
-struct guest_info;
+struct v3_core_info;
 
 struct pci_device;
 
@@ -72,15 +72,15 @@ struct v3_pci_bar {
 	struct {
 	    int num_pages;
 	    addr_t default_base_addr;
-	    int (*mem_read)(struct guest_info * core, addr_t guest_addr, void * dst, uint_t length, void * private_data);
-	    int (*mem_write)(struct guest_info * core, addr_t guest_addr, void * src, uint_t length, void * private_data);
+	    int (*mem_read)(struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * private_data);
+	    int (*mem_write)(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * private_data);
 	};
 
 	struct {
 	    int num_ports;
 	    uint16_t default_base_port;
-	    int (*io_read)(struct guest_info * core, uint16_t port, void * src, uint_t length, void * private_data);
-	    int (*io_write)(struct guest_info * core, uint16_t port, void * src, uint_t length, void * private_data);
+	    int (*io_read)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * private_data);
+	    int (*io_write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * private_data);
 	};
 	
 	struct {

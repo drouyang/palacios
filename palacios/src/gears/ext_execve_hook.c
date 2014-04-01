@@ -22,7 +22,7 @@
 #include <palacios/vmm_hashtable.h>
 #include <palacios/vmm_extensions.h>
 #include <palacios/vmm_decoder.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vm_guest_mem.h>
 
 #include <gears/syscall_hijack.h>
@@ -56,7 +56,7 @@ static int init_exec_hooks (struct v3_vm_info * vm, v3_cfg_tree_t * cfg, void **
     return 0;
 }
 
-static int init_exec_hooks_core (struct guest_info * core, void * priv_data, void ** core_data) {
+static int init_exec_hooks_core (struct v3_core_info * core, void * priv_data, void ** core_data) {
     struct v3_exec_hooks * hooks = &exec_hooks;
     INIT_LIST_HEAD(&(hooks->hook_list));
 	hooks->bin_table = v3_create_htable(0, exec_hash_fn, exec_eq_fn);
@@ -76,7 +76,7 @@ static int init_exec_hooks_core (struct guest_info * core, void * priv_data, voi
     return 0;
 }
 
-static int deinit_exec_hooks_core (struct guest_info * core, void * priv_data, void * core_data) {
+static int deinit_exec_hooks_core (struct v3_core_info * core, void * priv_data, void * core_data) {
     struct v3_exec_hooks * hooks = &exec_hooks;
     struct exec_hook * hook = NULL;
     struct exec_hook * tmp = NULL;
@@ -93,7 +93,7 @@ static int deinit_exec_hooks_core (struct guest_info * core, void * priv_data, v
 
 int v3_hook_executable (struct v3_vm_info * vm, 
     const uchar_t * binfile,
-    int (*handler)(struct guest_info * core, void * priv_data),
+    int (*handler)(struct v3_core_info * core, void * priv_data),
     void * priv_data) 
 {
     struct exec_hook * hook = V3_Malloc(sizeof(struct exec_hook));
@@ -154,7 +154,7 @@ static struct v3_extension_impl execve_impl = {
 register_extension(&execve_impl);
 
 
-int v3_execve_handler (struct guest_info * core, uint_t syscall_nr, void * priv_data) {
+int v3_execve_handler (struct v3_core_info * core, uint_t syscall_nr, void * priv_data) {
     addr_t hva, key;
 	struct v3_exec_hooks * hooks = &exec_hooks;
     struct exec_hook * hook;

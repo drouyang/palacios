@@ -33,7 +33,7 @@
 #include <devices/pci.h>
 #include <devices/pci_types.h>
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vm_guest_mem.h>
 
 
@@ -733,7 +733,7 @@ int v3_pci_enable_capability(struct pci_device * pci, pci_cap_type_t cap_type) {
 
 
 
-static int addr_port_read(struct guest_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int addr_port_read(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
     struct pci_internal * pci_state = priv_data;
     int reg_offset = port & 0x3;
     uint8_t * reg_addr = ((uint8_t *)&(pci_state->addr_reg.val)) + reg_offset;
@@ -751,7 +751,7 @@ static int addr_port_read(struct guest_info * core, ushort_t port, void * dst, u
 }
 
 
-static int addr_port_write(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int addr_port_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct pci_internal * pci_state = priv_data;
     int reg_offset = port & 0x3; 
     uint8_t * reg_addr = ((uint8_t *)&(pci_state->addr_reg.val)) + reg_offset;
@@ -770,7 +770,7 @@ static int addr_port_write(struct guest_info * core, ushort_t port, void * src, 
 }
 
 
-static int data_port_read(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
+static int data_port_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
     struct pci_internal * pci_state =  priv_data;
     struct pci_device * pci_dev = NULL;
     uint_t reg_num =  (pci_state->addr_reg.hi_reg_num << 16) +(pci_state->addr_reg.reg_num << 2) + (port & 0x3);
@@ -945,7 +945,7 @@ static int bar_update(struct pci_device * pci_dev, uint32_t offset,
 }
 
 
-static int data_port_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int data_port_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct pci_internal * pci_state = priv_data;
     struct pci_device * pci_dev = NULL;
     uint_t reg_num = (pci_state->addr_reg.hi_reg_num << 16) +(pci_state->addr_reg.reg_num << 2) + (port & 0x3);

@@ -22,7 +22,7 @@
 #include <palacios/vmm_fw_cfg.h>
 #include <palacios/vmm_mem.h>
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 #define FW_CFG_CTL_PORT     0x510
@@ -142,12 +142,12 @@ fw_cfg_add_i64(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint64_t value)
 }
 
 static int 
-fw_cfg_ctl_read(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+fw_cfg_ctl_read(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     return length;
 }
 
 static int 
-fw_cfg_ctl_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
+fw_cfg_ctl_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
 {
     V3_ASSERT(length == 2);
 
@@ -170,7 +170,7 @@ fw_cfg_ctl_write(struct guest_info * core, uint16_t port, void * src, uint_t len
 
 
 static int 
-fw_cfg_data_read(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
+fw_cfg_data_read(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
 {
     V3_ASSERT(length == 1);
 
@@ -194,7 +194,7 @@ fw_cfg_data_read(struct guest_info * core, uint16_t port, void * src, uint_t len
 }
 
 static int 
-fw_cfg_data_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
+fw_cfg_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
 {
     V3_ASSERT(length == 1);
 

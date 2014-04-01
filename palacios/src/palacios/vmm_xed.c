@@ -21,7 +21,7 @@
 #include "vmm_decoder.h"
 #include "vmm_xed.h"
 #include <xed/xed-interface.h>
-#include "vm_guest.h"
+#include "vm.h"
 #include "test.h"
 
 #else
@@ -29,7 +29,7 @@
 #include <palacios/vmm_decoder.h>
 #include <palacios/vmm_xed.h>
 #include <xed/xed-interface.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm.h>
 #endif
 
@@ -98,10 +98,10 @@ struct memory_operand {
 
 static v3_op_type_t get_opcode(xed_iform_enum_t iform);
 
-static int xed_reg_to_v3_reg(struct guest_info * info, xed_reg_enum_t xed_reg, addr_t * v3_reg, uint_t * reg_len);
-static int get_memory_operand(struct guest_info * info,  xed_decoded_inst_t * xed_instr, uint_t index, struct x86_operand * operand);
+static int xed_reg_to_v3_reg(struct v3_core_info * core, xed_reg_enum_t xed_reg, addr_t * v3_reg, uint_t * reg_len);
+static int get_memory_operand(struct v3_core_info * core,  xed_decoded_inst_t * xed_instr, uint_t index, struct x86_operand * operand);
 
-static int set_decoder_mode(struct guest_info * info, xed_state_t * state) {
+static int set_decoder_mode(struct v3_core_info * core, xed_state_t * state) {
     switch (v3_get_vm_cpu_mode(info)) {
 	case REAL:
 	    if (state->mmode != XED_MACHINE_MODE_LEGACY_16) {
@@ -159,7 +159,7 @@ static int set_decoder_mode(struct guest_info * info, xed_state_t * state) {
   }
 */
 
-int v3_init_decoder(struct guest_info * info) {
+int v3_init_decoder(struct v3_core_info * core) {
     // Global library initialization, only do it once
     if (tables_inited == 0) {
 	xed_tables_init();
@@ -186,7 +186,7 @@ int v3_init_decoder(struct guest_info * info) {
 
 
 
-int v3_deinit_decoder(struct guest_info * core) {
+int v3_deinit_decoder(struct v3_core_info * core) {
     V3_Free(core->decoder_state);
 
     return 0;
@@ -195,7 +195,7 @@ int v3_deinit_decoder(struct guest_info * core) {
 
 
 
-static int decode_string_op(struct guest_info * info, 
+static int decode_string_op(struct v3_core_info * core, 
 			    xed_decoded_inst_t * xed_instr,  const xed_inst_t * xi,
 			    struct x86_instr * instr) {
 
@@ -266,7 +266,7 @@ static int decode_string_op(struct guest_info * info,
 
 
 
-int v3_disasm(struct guest_info * info, void *instr_ptr, addr_t * rip, int mark) {
+int v3_disasm(struct v3_core_info * core, void *instr_ptr, addr_t * rip, int mark) {
     char buffer[256];
     int i;
     unsigned length;
@@ -315,7 +315,7 @@ int v3_disasm(struct guest_info * info, void *instr_ptr, addr_t * rip, int mark)
 
 
 
-int v3_decode(struct guest_info * info, addr_t instr_ptr, struct x86_instr * instr) {
+int v3_decode(struct v3_core_info * core, addr_t instr_ptr, struct x86_instr * instr) {
     xed_decoded_inst_t xed_instr;
     xed_error_enum_t xed_error;
 
@@ -621,7 +621,7 @@ int v3_decode(struct guest_info * info, addr_t instr_ptr, struct x86_instr * ins
 }
 
 
-int v3_encode(struct guest_info * info, struct x86_instr * instr, uint8_t * instr_buf) {
+int v3_encode(struct v3_core_info * core, struct x86_instr * instr, uint8_t * instr_buf) {
 
     return -1;
 }
@@ -630,7 +630,7 @@ int v3_encode(struct guest_info * info, struct x86_instr * instr, uint8_t * inst
 
 
 
-static int get_memory_operand(struct guest_info * info,  xed_decoded_inst_t * xed_instr, uint_t op_index, struct x86_operand * operand) {
+static int get_memory_operand(struct v3_core_info * core,  xed_decoded_inst_t * xed_instr, uint_t op_index, struct x86_operand * operand) {
     struct memory_operand mem_op;
 
     addr_t seg;
@@ -740,7 +740,7 @@ static int get_memory_operand(struct guest_info * info,  xed_decoded_inst_t * xe
 }
 
 
-static int xed_reg_to_v3_reg(struct guest_info * info, xed_reg_enum_t xed_reg, 
+static int xed_reg_to_v3_reg(struct v3_core_info * core, xed_reg_enum_t xed_reg, 
 			     addr_t * v3_reg, uint_t * reg_len) {
 
     PrintDebug("Xed Register: %s\n", xed_reg_enum_t2str(xed_reg));

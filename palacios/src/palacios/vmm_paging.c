@@ -148,7 +148,7 @@ void v3_delete_pgtables_64(pml4e64_t * pml4) {
 
 
 
-static int translate_pt_32_cb(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
+static int translate_pt_32_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
     addr_t * paddr = (addr_t *)private_data;
 
     switch (type) {
@@ -167,7 +167,7 @@ static int translate_pt_32_cb(struct guest_info * info, page_type_t type, addr_t
     }
 }
 
-static int translate_pt_32pae_cb(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
+static int translate_pt_32pae_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
     addr_t * paddr = (addr_t *)private_data;
   
     switch (type) {
@@ -187,7 +187,7 @@ static int translate_pt_32pae_cb(struct guest_info * info, page_type_t type, add
     }
 }
 
-static int translate_pt_64_cb(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
+static int translate_pt_64_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
     addr_t * paddr = (addr_t *)private_data;
 
     switch (type) {
@@ -212,27 +212,27 @@ static int translate_pt_64_cb(struct guest_info * info, page_type_t type, addr_t
 }
 
 
-int v3_translate_host_pt_32(struct guest_info * info, v3_reg_t host_cr3, addr_t vaddr, addr_t * paddr) {
-    return v3_drill_host_pt_32(info, host_cr3, vaddr, translate_pt_32_cb, paddr);
+int v3_translate_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, addr_t * paddr) {
+    return v3_drill_host_pt_32(core, host_cr3, vaddr, translate_pt_32_cb, paddr);
 }
-int v3_translate_guest_pt_32(struct guest_info * info, v3_reg_t guest_cr3, addr_t vaddr, addr_t * paddr) {
-    return v3_drill_guest_pt_32(info, guest_cr3, vaddr, translate_pt_32_cb, paddr);
-}
-
-
-int v3_translate_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3, addr_t vaddr, addr_t * paddr) {
-    return v3_drill_host_pt_32pae(info, host_cr3, vaddr, translate_pt_32pae_cb, paddr);
-}
-int v3_translate_guest_pt_32pae(struct guest_info * info, v3_reg_t guest_cr3, addr_t vaddr, addr_t * paddr) {
-    return v3_drill_guest_pt_32pae(info, guest_cr3, vaddr, translate_pt_32pae_cb, paddr);
+int v3_translate_guest_pt_32(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, addr_t * paddr) {
+    return v3_drill_guest_pt_32(core, guest_cr3, vaddr, translate_pt_32_cb, paddr);
 }
 
 
-int v3_translate_host_pt_64(struct guest_info * info, v3_reg_t host_cr3, addr_t vaddr, addr_t * paddr) {
-    return v3_drill_host_pt_64(info, host_cr3, vaddr, translate_pt_64_cb, paddr);
+int v3_translate_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, addr_t * paddr) {
+    return v3_drill_host_pt_32pae(core, host_cr3, vaddr, translate_pt_32pae_cb, paddr);
 }
-int v3_translate_guest_pt_64(struct guest_info * info, v3_reg_t guest_cr3, addr_t vaddr, addr_t * paddr) {
-    return v3_drill_guest_pt_64(info, guest_cr3, vaddr, translate_pt_64_cb, paddr);
+int v3_translate_guest_pt_32pae(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, addr_t * paddr) {
+    return v3_drill_guest_pt_32pae(core, guest_cr3, vaddr, translate_pt_32pae_cb, paddr);
+}
+
+
+int v3_translate_host_pt_64(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, addr_t * paddr) {
+    return v3_drill_host_pt_64(core, host_cr3, vaddr, translate_pt_64_cb, paddr);
+}
+int v3_translate_guest_pt_64(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, addr_t * paddr) {
+    return v3_drill_guest_pt_64(core, guest_cr3, vaddr, translate_pt_64_cb, paddr);
 }
 
 
@@ -243,7 +243,7 @@ struct pt_find_data {
     addr_t * pt_page_pa;
 };
 
-static int find_pt_cb(struct guest_info * info, page_type_t type, addr_t vaddr, 
+static int find_pt_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, 
 		      addr_t page_ptr, addr_t page_pa, void * private_data) {
     struct pt_find_data * pt_data = (struct pt_find_data *)private_data;
 
@@ -261,7 +261,7 @@ static int find_pt_cb(struct guest_info * info, page_type_t type, addr_t vaddr,
 }
 
 
-int v3_find_host_pt_32_page(struct guest_info * info, v3_reg_t host_cr3, page_type_t type, addr_t vaddr, 
+int v3_find_host_pt_32_page(struct v3_core_info * core, v3_reg_t host_cr3, page_type_t type, addr_t vaddr, 
 			    addr_t * page_ptr, addr_t * page_pa) {
     struct pt_find_data data;
 
@@ -269,10 +269,10 @@ int v3_find_host_pt_32_page(struct guest_info * info, v3_reg_t host_cr3, page_ty
     data.pt_page_ptr = page_ptr;
     data.pt_page_pa = page_pa;
   
-    return v3_drill_host_pt_32(info, host_cr3, vaddr, find_pt_cb, &data);
+    return v3_drill_host_pt_32(core, host_cr3, vaddr, find_pt_cb, &data);
 }
 
-int v3_find_host_pt_32pae_page(struct guest_info * info, v3_reg_t host_cr3, page_type_t type, addr_t vaddr, 
+int v3_find_host_pt_32pae_page(struct v3_core_info * core, v3_reg_t host_cr3, page_type_t type, addr_t vaddr, 
 			       addr_t * page_ptr, addr_t * page_pa) {
     struct pt_find_data data;
 
@@ -280,10 +280,10 @@ int v3_find_host_pt_32pae_page(struct guest_info * info, v3_reg_t host_cr3, page
     data.pt_page_ptr = page_ptr;
     data.pt_page_pa = page_pa;  
 
-    return v3_drill_host_pt_32pae(info, host_cr3, vaddr, find_pt_cb, &data);
+    return v3_drill_host_pt_32pae(core, host_cr3, vaddr, find_pt_cb, &data);
 }
 
-int v3_find_host_pt_64_page(struct guest_info * info, v3_reg_t host_cr3, page_type_t type, addr_t vaddr, 
+int v3_find_host_pt_64_page(struct v3_core_info * core, v3_reg_t host_cr3, page_type_t type, addr_t vaddr, 
 			    addr_t * page_ptr, addr_t * page_pa) {
     struct pt_find_data data;
 
@@ -291,9 +291,9 @@ int v3_find_host_pt_64_page(struct guest_info * info, v3_reg_t host_cr3, page_ty
     data.pt_page_ptr = page_ptr;
     data.pt_page_pa = page_pa;
 
-    return v3_drill_host_pt_64(info, host_cr3, vaddr, find_pt_cb, &data);
+    return v3_drill_host_pt_64(core, host_cr3, vaddr, find_pt_cb, &data);
 }
-int v3_find_guest_pt_32_page(struct guest_info * info, v3_reg_t guest_cr3, page_type_t type, addr_t vaddr, 
+int v3_find_guest_pt_32_page(struct v3_core_info * core, v3_reg_t guest_cr3, page_type_t type, addr_t vaddr, 
 			     addr_t * page_ptr, addr_t * page_pa) {
     struct pt_find_data data;
 
@@ -301,10 +301,10 @@ int v3_find_guest_pt_32_page(struct guest_info * info, v3_reg_t guest_cr3, page_
     data.pt_page_ptr = page_ptr;
     data.pt_page_pa = page_pa;
   
-    return v3_drill_guest_pt_32(info, guest_cr3, vaddr, find_pt_cb, &data);
+    return v3_drill_guest_pt_32(core, guest_cr3, vaddr, find_pt_cb, &data);
 }
 
-int v3_find_guest_pt_32pae_page(struct guest_info * info, v3_reg_t guest_cr3, page_type_t type, addr_t vaddr, 
+int v3_find_guest_pt_32pae_page(struct v3_core_info * core, v3_reg_t guest_cr3, page_type_t type, addr_t vaddr, 
 				addr_t * page_ptr, addr_t * page_pa) {
     struct pt_find_data data;
 
@@ -312,10 +312,10 @@ int v3_find_guest_pt_32pae_page(struct guest_info * info, v3_reg_t guest_cr3, pa
     data.pt_page_ptr = page_ptr;
     data.pt_page_pa = page_pa;
   
-    return v3_drill_guest_pt_32pae(info, guest_cr3, vaddr, find_pt_cb, &data);
+    return v3_drill_guest_pt_32pae(core, guest_cr3, vaddr, find_pt_cb, &data);
 }
 
-int v3_find_guest_pt_64_page(struct guest_info * info, v3_reg_t guest_cr3, page_type_t type, addr_t vaddr, 
+int v3_find_guest_pt_64_page(struct v3_core_info * core, v3_reg_t guest_cr3, page_type_t type, addr_t vaddr, 
 			     addr_t * page_ptr, addr_t * page_pa) {
     struct pt_find_data data;
 
@@ -323,7 +323,7 @@ int v3_find_guest_pt_64_page(struct guest_info * info, v3_reg_t guest_cr3, page_
     data.pt_page_ptr = page_ptr;
     data.pt_page_pa = page_pa;
   
-    return v3_drill_guest_pt_64(info, guest_cr3, vaddr, find_pt_cb, &data);
+    return v3_drill_guest_pt_64(core, guest_cr3, vaddr, find_pt_cb, &data);
 }
 
 
@@ -339,7 +339,7 @@ struct pt_check_data {
     pt_access_status_t * access_status;
 };
 
-static int check_pt_32_cb(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
+static int check_pt_32_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
     struct pt_check_data * chk_data = (struct pt_check_data *)private_data;
 
     switch (type) {
@@ -365,7 +365,7 @@ static int check_pt_32_cb(struct guest_info * info, page_type_t type, addr_t vad
 }
 
 
-static int check_pt_32pae_cb(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
+static int check_pt_32pae_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
     struct pt_check_data * chk_data = (struct pt_check_data *)private_data;
 
     switch (type) {
@@ -394,7 +394,7 @@ static int check_pt_32pae_cb(struct guest_info * info, page_type_t type, addr_t 
 }
 
 
-static int check_pt_64_cb(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
+static int check_pt_64_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
     struct pt_check_data * chk_data = (struct pt_check_data *)private_data;
 
     switch (type) {
@@ -428,75 +428,75 @@ static int check_pt_64_cb(struct guest_info * info, page_type_t type, addr_t vad
 
 
 
-int v3_check_host_pt_32(struct guest_info * info, v3_reg_t host_cr3, addr_t vaddr, pf_error_t access_type, pt_access_status_t * access_status) {
+int v3_check_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, pf_error_t access_type, pt_access_status_t * access_status) {
     struct pt_check_data access_data;
 
     access_data.access_type = access_type;
     access_data.access_status = access_status;
 
-    return v3_drill_host_pt_32(info, host_cr3, vaddr, check_pt_32_cb, &access_data);
+    return v3_drill_host_pt_32(core, host_cr3, vaddr, check_pt_32_cb, &access_data);
 }
 
-int v3_check_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3, addr_t vaddr, pf_error_t access_type, pt_access_status_t * access_status) {
+int v3_check_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, pf_error_t access_type, pt_access_status_t * access_status) {
     struct pt_check_data access_data;
 
     access_data.access_type = access_type;
     access_data.access_status = access_status;
 
-    return v3_drill_host_pt_32pae(info, host_cr3, vaddr, check_pt_32pae_cb, &access_data);
+    return v3_drill_host_pt_32pae(core, host_cr3, vaddr, check_pt_32pae_cb, &access_data);
 }
 
 
 
-int v3_check_host_pt_64(struct guest_info * info, v3_reg_t host_cr3, addr_t vaddr, pf_error_t access_type, pt_access_status_t * access_status) {
+int v3_check_host_pt_64(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, pf_error_t access_type, pt_access_status_t * access_status) {
     struct pt_check_data access_data;
 
     access_data.access_type = access_type;
     access_data.access_status = access_status;
 
-    return v3_drill_host_pt_64(info, host_cr3, vaddr, check_pt_64_cb, &access_data);
+    return v3_drill_host_pt_64(core, host_cr3, vaddr, check_pt_64_cb, &access_data);
 }
 
 
 
-int v3_check_guest_pt_32(struct guest_info * info, v3_reg_t guest_cr3, addr_t vaddr, 
+int v3_check_guest_pt_32(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, 
 			 pf_error_t access_type, pt_access_status_t * access_status) {
     struct pt_check_data access_data;
 
     access_data.access_type = access_type;
     access_data.access_status = access_status;
 
-    return v3_drill_guest_pt_32(info, guest_cr3, vaddr, check_pt_32_cb, &access_data);
+    return v3_drill_guest_pt_32(core, guest_cr3, vaddr, check_pt_32_cb, &access_data);
 }
 
 
 
 
 
-int v3_check_guest_pt_32pae(struct guest_info * info, v3_reg_t guest_cr3, addr_t vaddr, 
+int v3_check_guest_pt_32pae(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, 
 			    pf_error_t access_type, pt_access_status_t * access_status) {
     struct pt_check_data access_data;
 
     access_data.access_type = access_type;
     access_data.access_status = access_status;
 
-    return v3_drill_guest_pt_32pae(info, guest_cr3, vaddr, check_pt_32pae_cb, &access_data);
+    return v3_drill_guest_pt_32pae(core, guest_cr3, vaddr, check_pt_32pae_cb, &access_data);
 }
 
 
 
-int v3_check_guest_pt_64(struct guest_info * info, v3_reg_t guest_cr3, addr_t vaddr, 
+int v3_check_guest_pt_64(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, 
 			 pf_error_t access_type, pt_access_status_t * access_status) {
     struct pt_check_data access_data;
 
     access_data.access_type = access_type;
     access_data.access_status = access_status;
 
-    return v3_drill_guest_pt_64(info, guest_cr3, vaddr, check_pt_64_cb, &access_data);
+    return v3_drill_guest_pt_64(core, guest_cr3, vaddr, check_pt_64_cb, &access_data);
 }
 
 
-static int get_data_page_type_cb(struct guest_info * info, page_type_t type, 
+static int get_data_page_type_cb(struct v3_core_info * core, page_type_t type, 
 				 addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
     switch (type) {
 	case PAGE_4KB:
@@ -511,23 +511,23 @@ static int get_data_page_type_cb(struct guest_info * info, page_type_t type,
 
 
 
-page_type_t v3_get_guest_data_page_type_32(struct guest_info * info, v3_reg_t cr3, addr_t vaddr) {
-    return v3_drill_guest_pt_32(info, cr3, vaddr, get_data_page_type_cb, NULL);
+page_type_t v3_get_guest_data_page_type_32(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+    return v3_drill_guest_pt_32(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
-page_type_t v3_get_guest_data_page_type_32pae(struct guest_info * info, v3_reg_t cr3, addr_t vaddr) {
-    return v3_drill_guest_pt_32pae(info, cr3, vaddr, get_data_page_type_cb, NULL);
+page_type_t v3_get_guest_data_page_type_32pae(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+    return v3_drill_guest_pt_32pae(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
-page_type_t v3_get_guest_data_page_type_64(struct guest_info * info, v3_reg_t cr3, addr_t vaddr) {
-    return v3_drill_guest_pt_64(info, cr3, vaddr, get_data_page_type_cb, NULL);
+page_type_t v3_get_guest_data_page_type_64(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+    return v3_drill_guest_pt_64(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
-page_type_t v3_get_host_data_page_type_32(struct guest_info * info, v3_reg_t cr3, addr_t vaddr) {
-    return v3_drill_host_pt_32(info, cr3, vaddr, get_data_page_type_cb, NULL);
+page_type_t v3_get_host_data_page_type_32(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+    return v3_drill_host_pt_32(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
-page_type_t v3_get_host_data_page_type_32pae(struct guest_info * info, v3_reg_t cr3, addr_t vaddr) {
-    return v3_drill_host_pt_32pae(info, cr3, vaddr, get_data_page_type_cb, NULL);
+page_type_t v3_get_host_data_page_type_32pae(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+    return v3_drill_host_pt_32pae(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
-page_type_t v3_get_host_data_page_type_64(struct guest_info * info, v3_reg_t cr3, addr_t vaddr) {
-    return v3_drill_host_pt_64(info, cr3, vaddr, get_data_page_type_cb, NULL);
+page_type_t v3_get_host_data_page_type_64(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+    return v3_drill_host_pt_64(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
 
 
@@ -775,8 +775,8 @@ pt_access_status_t inline v3_can_access_pte64(pte64_t * pte, addr_t addr, pf_err
 
 
 
-int v3_drill_host_pt_32(struct guest_info * info, v3_reg_t host_cr3, addr_t vaddr, 
-			int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_drill_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, 
+			int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 			void * private_data) {
     pde32_t * host_pde = (pde32_t *)CR3_TO_PDE32_VA(host_cr3);
     addr_t host_pde_pa = CR3_TO_PDE32_PA(host_cr3);
@@ -784,7 +784,7 @@ int v3_drill_host_pt_32(struct guest_info * info, v3_reg_t host_cr3, addr_t vadd
     addr_t page_pa = 0;
     int ret;
 
-    if ((ret = callback(info, PAGE_PD32, vaddr, (addr_t)host_pde, host_pde_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PD32, vaddr, (addr_t)host_pde, host_pde_pa, private_data)) != 0) {
 	return (ret == -1) ? -1 : PAGE_PD32;
     }
 
@@ -792,19 +792,19 @@ int v3_drill_host_pt_32(struct guest_info * info, v3_reg_t host_cr3, addr_t vadd
 	case PT_ENTRY_NOT_PRESENT:
 	    return -1;
 	case PT_ENTRY_LARGE_PAGE:
-	    if ((ret == callback(info, PAGE_4MB, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data)) != 0) {
+	    if ((ret == callback(core, PAGE_4MB, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data)) != 0) {
 		return (ret == -1) ? -1 : PAGE_4MB;
 	    }
 	    return 0;
 	case PT_ENTRY_PAGE:
-	    if ((ret = callback(info, PAGE_PT32, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data) != 0)) {
+	    if ((ret = callback(core, PAGE_PT32, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data) != 0)) {
 		return (ret == -1) ? -1 : PAGE_PT32;
 	    }
     
 	    if (pte32_lookup(V3_VAddr((void *)host_pte_pa), vaddr, &page_pa) == PT_ENTRY_NOT_PRESENT) {
 		return -1;
 	    } else {
-		if ((ret = callback(info, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)PAGE_BASE_ADDR(page_pa)), page_pa, private_data)) != 0) {
+		if ((ret = callback(core, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)PAGE_BASE_ADDR(page_pa)), page_pa, private_data)) != 0) {
 		    return (ret == -1) ? -1 : PAGE_4KB;
 		}
 		return 0;
@@ -815,8 +815,8 @@ int v3_drill_host_pt_32(struct guest_info * info, v3_reg_t host_cr3, addr_t vadd
 
 
 
-int v3_drill_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3, addr_t vaddr,
-			   int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_drill_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr,
+			   int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 			   void * private_data) {
     pdpe32pae_t * host_pdpe = (pdpe32pae_t *)CR3_TO_PDPE32PAE_VA(host_cr3);
     addr_t host_pdpe_pa = CR3_TO_PDPE32PAE_PA(host_cr3);
@@ -825,7 +825,7 @@ int v3_drill_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3, addr_t v
     addr_t page_pa = 0;
     int ret;
 
-    if ((ret = callback(info, PAGE_PDP32PAE, vaddr, (addr_t)host_pdpe, host_pdpe_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PDP32PAE, vaddr, (addr_t)host_pdpe, host_pdpe_pa, private_data)) != 0) {
 	return (ret == -1) ? -1 : PAGE_PDP32PAE;
     }
 
@@ -834,7 +834,7 @@ int v3_drill_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3, addr_t v
 	    return -1;
 	case PT_ENTRY_PAGE:
 
-	    if ((ret = callback(info, PAGE_PD32PAE, vaddr, (addr_t)V3_VAddr((void *)host_pde_pa), host_pde_pa, private_data) != 0)) {
+	    if ((ret = callback(core, PAGE_PD32PAE, vaddr, (addr_t)V3_VAddr((void *)host_pde_pa), host_pde_pa, private_data) != 0)) {
 		return (ret == -1) ? -1 : PAGE_PD32PAE;
 	    }
       
@@ -842,19 +842,19 @@ int v3_drill_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3, addr_t v
 		case PT_ENTRY_NOT_PRESENT:
 		    return -1;
 		case PT_ENTRY_LARGE_PAGE:
-		    if ((ret == callback(info, PAGE_2MB, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data)) != 0) {
+		    if ((ret == callback(core, PAGE_2MB, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data)) != 0) {
 			return (ret == -1) ? -1 : PAGE_2MB;
 		    }
 		    return 0;
 		case PT_ENTRY_PAGE:
-		    if ((ret = callback(info, PAGE_PT32PAE, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data) != 0)) {
+		    if ((ret = callback(core, PAGE_PT32PAE, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data) != 0)) {
 			return (ret == -1) ? -1 : PAGE_PT32PAE;
 		    }
 
 		    if (pte32pae_lookup(V3_VAddr((void *)host_pte_pa), vaddr, &page_pa) == PT_ENTRY_NOT_PRESENT) {
 			return -1;
 		    } else {
-			if ((ret = callback(info, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)PAGE_BASE_ADDR(page_pa)), page_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)PAGE_BASE_ADDR(page_pa)), page_pa, private_data)) != 0) {
 			    return (ret == -1) ? -1 : PAGE_4KB;
 			}
 			return 0;
@@ -869,8 +869,8 @@ int v3_drill_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3, addr_t v
 }
 
 
-int v3_drill_host_pt_64(struct guest_info * info, v3_reg_t host_cr3, addr_t vaddr,
-			int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_drill_host_pt_64(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr,
+			int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 			void * private_data) {
     pml4e64_t * host_pmle = (pml4e64_t *)CR3_TO_PML4E64_VA(host_cr3);
     addr_t host_pmle_pa = CR3_TO_PML4E64_PA(host_cr3);
@@ -880,7 +880,7 @@ int v3_drill_host_pt_64(struct guest_info * info, v3_reg_t host_cr3, addr_t vadd
     addr_t page_pa = 0;
     int ret;
 
-    if ((ret = callback(info, PAGE_PML464, vaddr, (addr_t)host_pmle, host_pmle_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PML464, vaddr, (addr_t)host_pmle, host_pmle_pa, private_data)) != 0) {
 	return (ret == -1) ? -1 : PAGE_PML464;
     }
 
@@ -889,7 +889,7 @@ int v3_drill_host_pt_64(struct guest_info * info, v3_reg_t host_cr3, addr_t vadd
 	    return -1;
 	case PT_ENTRY_PAGE:
 
-	    if ((ret = callback(info, PAGE_PDP64, vaddr, (addr_t)V3_VAddr((void *)host_pdpe_pa), host_pdpe_pa, private_data)) != 0) {
+	    if ((ret = callback(core, PAGE_PDP64, vaddr, (addr_t)V3_VAddr((void *)host_pdpe_pa), host_pdpe_pa, private_data)) != 0) {
 		return (ret == -1) ? -1 : PAGE_PDP64;
 	    }
 
@@ -897,14 +897,14 @@ int v3_drill_host_pt_64(struct guest_info * info, v3_reg_t host_cr3, addr_t vadd
 		case PT_ENTRY_NOT_PRESENT:
 		    return -1;
 		case PT_ENTRY_LARGE_PAGE:
-		    if ((ret == callback(info, PAGE_1GB, vaddr, (addr_t)V3_VAddr((void *)host_pde_pa), host_pde_pa, private_data)) != 0) {
+		    if ((ret == callback(core, PAGE_1GB, vaddr, (addr_t)V3_VAddr((void *)host_pde_pa), host_pde_pa, private_data)) != 0) {
 			return (ret == -1) ? -1 : PAGE_1GB;
 		    }
 		    PrintError("1 Gigabyte Pages not supported\n");
 		    return 0;
 		case PT_ENTRY_PAGE:
 
-		    if ((ret = callback(info, PAGE_PD64, vaddr, (addr_t)V3_VAddr((void *)host_pde_pa), host_pde_pa, private_data) != 0)) {
+		    if ((ret = callback(core, PAGE_PD64, vaddr, (addr_t)V3_VAddr((void *)host_pde_pa), host_pde_pa, private_data) != 0)) {
 			return (ret == -1) ? -1 : PAGE_PD64;
 		    }
 
@@ -912,20 +912,20 @@ int v3_drill_host_pt_64(struct guest_info * info, v3_reg_t host_cr3, addr_t vadd
 			case PT_ENTRY_NOT_PRESENT:
 			    return -1;
 			case PT_ENTRY_LARGE_PAGE:
-			    if ((ret == callback(info, PAGE_2MB, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data)) != 0) {
+			    if ((ret == callback(core, PAGE_2MB, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data)) != 0) {
 				return (ret == -1) ? -1 : PAGE_2MB;
 			    }
 			    return 0;
 			case PT_ENTRY_PAGE:
 
-			    if ((ret = callback(info, PAGE_PT64, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data) != 0)) {
+			    if ((ret = callback(core, PAGE_PT64, vaddr, (addr_t)V3_VAddr((void *)host_pte_pa), host_pte_pa, private_data) != 0)) {
 				return (ret == -1) ? -1 : PAGE_PT64;
 			    }
 
 			    if (pte64_lookup(V3_VAddr((void *)host_pte_pa), vaddr, &page_pa) == PT_ENTRY_NOT_PRESENT) {
 				return -1;
 			    } else {
-				if ((ret = callback(info, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)PAGE_BASE_ADDR(page_pa)), page_pa, private_data)) != 0) {
+				if ((ret = callback(core, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)PAGE_BASE_ADDR(page_pa)), page_pa, private_data)) != 0) {
 				    return (ret == -1) ? -1 : PAGE_4KB;
 				}
 				return 0;
@@ -945,8 +945,8 @@ int v3_drill_host_pt_64(struct guest_info * info, v3_reg_t host_cr3, addr_t vadd
 
 
 
-int v3_drill_guest_pt_32(struct guest_info * info, v3_reg_t guest_cr3, addr_t vaddr, 
-			 int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_drill_guest_pt_32(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, 
+			 int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 			 void * private_data) {
     addr_t guest_pde_pa = CR3_TO_PDE32_PA(guest_cr3);
     pde32_t * guest_pde = NULL;
@@ -954,13 +954,13 @@ int v3_drill_guest_pt_32(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
     int ret; 
   
 
-    if (v3_gpa_to_hva(info, guest_pde_pa, (addr_t *)&guest_pde) == -1) {
+    if (v3_gpa_to_hva(core, guest_pde_pa, (addr_t *)&guest_pde) == -1) {
 	PrintError("Could not get virtual address of Guest PDE32 (PA=%p)\n", 
 		   (void *)guest_pde_pa);
 	return -1;
     }
   
-    if ((ret = callback(info, PAGE_PD32, vaddr, (addr_t)guest_pde, guest_pde_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PD32, vaddr, (addr_t)guest_pde, guest_pde_pa, private_data)) != 0) {
 	return (ret == -1) ? -1 : PAGE_PD32;
     }
   
@@ -972,12 +972,12 @@ int v3_drill_guest_pt_32(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 		addr_t large_page_pa = (addr_t)guest_pte_pa;
 		addr_t large_page_va = 0;
       
-		if (v3_gpa_to_hva(info, large_page_pa, &large_page_va) == -1) {
+		if (v3_gpa_to_hva(core, large_page_pa, &large_page_va) == -1) {
 		    large_page_va = 0 ;
 		}
 
 
-		if ((ret == callback(info, PAGE_4MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
+		if ((ret == callback(core, PAGE_4MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
 		    return (ret == -1) ? -1 : PAGE_4MB;
 		}
 		return 0;
@@ -987,13 +987,13 @@ int v3_drill_guest_pt_32(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 		pte32_t * guest_pte = NULL;
 		addr_t page_pa;
 
-		if (v3_gpa_to_hva(info, guest_pte_pa, (addr_t*)&guest_pte) == -1) {
+		if (v3_gpa_to_hva(core, guest_pte_pa, (addr_t*)&guest_pte) == -1) {
 		    PrintError("Could not get virtual address of Guest PTE32 (PA=%p)\n", 
 			       (void *)guest_pte_pa);
 		    return -1;
 		}
 
-		if ((ret = callback(info, PAGE_PT32, vaddr, (addr_t)guest_pte, guest_pte_pa, private_data) != 0)) {
+		if ((ret = callback(core, PAGE_PT32, vaddr, (addr_t)guest_pte, guest_pte_pa, private_data) != 0)) {
 		    return (ret == -1) ? -1 : PAGE_PT32;
 		}
 
@@ -1002,11 +1002,11 @@ int v3_drill_guest_pt_32(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 		} else {
 		    addr_t page_va;
 
-		    if (v3_gpa_to_hva(info, page_pa, &page_va) == -1) {
+		    if (v3_gpa_to_hva(core, page_pa, &page_va) == -1) {
 			page_va = 0;
 		    }
 
-		    if ((ret = callback(info, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
+		    if ((ret = callback(core, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
 			return (ret == -1) ? -1 : PAGE_4KB;
 		    }
 		    return 0;
@@ -1021,21 +1021,21 @@ int v3_drill_guest_pt_32(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 
 
 
-int v3_drill_guest_pt_32pae(struct guest_info * info, v3_reg_t guest_cr3, addr_t vaddr,
-			    int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_drill_guest_pt_32pae(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr,
+			    int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 			    void * private_data) {			
     addr_t guest_pdpe_pa = CR3_TO_PDPE32PAE_PA(guest_cr3);
     pdpe32pae_t * guest_pdpe = 0;
     addr_t guest_pde_pa = 0;
     int ret = 0;
 
-    if (v3_gpa_to_hva(info, guest_pdpe_pa, (addr_t*)&guest_pdpe) == -1) {
+    if (v3_gpa_to_hva(core, guest_pdpe_pa, (addr_t*)&guest_pdpe) == -1) {
 	PrintError("Could not get virtual address of Guest PDPE32PAE (PA=%p)\n",
 		   (void *)guest_pdpe_pa);
 	return -1;
     }
 
-    if ((ret = callback(info, PAGE_PDP32PAE, vaddr, (addr_t)guest_pdpe, guest_pdpe_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PDP32PAE, vaddr, (addr_t)guest_pdpe, guest_pdpe_pa, private_data)) != 0) {
 	return (ret == -1) ? -1 : PAGE_PDP32PAE;
     }
 
@@ -1048,13 +1048,13 @@ int v3_drill_guest_pt_32pae(struct guest_info * info, v3_reg_t guest_cr3, addr_t
 		    pde32pae_t * guest_pde = NULL;
 		    addr_t guest_pte_pa = 0;
 	
-		    if (v3_gpa_to_hva(info, guest_pde_pa, (addr_t *)&guest_pde) == -1) {
+		    if (v3_gpa_to_hva(core, guest_pde_pa, (addr_t *)&guest_pde) == -1) {
 			PrintError("Could not get virtual Address of Guest PDE32PAE (PA=%p)\n", 
 				   (void *)guest_pde_pa);
 			return -1;
 		    }
 
-		    if ((ret = callback(info, PAGE_PD32PAE, vaddr, (addr_t)guest_pde, guest_pde_pa, private_data)) != 0) {
+		    if ((ret = callback(core, PAGE_PD32PAE, vaddr, (addr_t)guest_pde, guest_pde_pa, private_data)) != 0) {
 			return (ret == -1) ? -1 : PAGE_PD32PAE;
 		    }
 	
@@ -1067,11 +1067,11 @@ int v3_drill_guest_pt_32pae(struct guest_info * info, v3_reg_t guest_cr3, addr_t
 				    addr_t large_page_pa = (addr_t)guest_pte_pa;
 				    addr_t large_page_va = 0;
 	      
-				    if (v3_gpa_to_hva(info, large_page_pa, &large_page_va) == -1) {
+				    if (v3_gpa_to_hva(core, large_page_pa, &large_page_va) == -1) {
 					large_page_va = 0;
 				    }
 	      
-				    if ((ret == callback(info, PAGE_2MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
+				    if ((ret == callback(core, PAGE_2MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
 					return (ret == -1) ? -1 : PAGE_2MB;
 				    }
 				    return 0;
@@ -1081,13 +1081,13 @@ int v3_drill_guest_pt_32pae(struct guest_info * info, v3_reg_t guest_cr3, addr_t
 				    pte32pae_t * guest_pte = NULL;
 				    addr_t page_pa;
 
-				    if (v3_gpa_to_hva(info, guest_pte_pa, (addr_t *)&guest_pte) == -1) {
+				    if (v3_gpa_to_hva(core, guest_pte_pa, (addr_t *)&guest_pte) == -1) {
 					PrintError("Could not get virtual Address of Guest PTE32PAE (PA=%p)\n", 
 						   (void *)guest_pte_pa);
 					return -1;
 				    }
 
-				    if ((ret = callback(info, PAGE_PT32PAE, vaddr, (addr_t)guest_pte, guest_pte_pa, private_data) != 0)) {
+				    if ((ret = callback(core, PAGE_PT32PAE, vaddr, (addr_t)guest_pte, guest_pte_pa, private_data) != 0)) {
 					return (ret == -1) ? -1 : PAGE_PT32PAE;
 				    }
 
@@ -1096,11 +1096,11 @@ int v3_drill_guest_pt_32pae(struct guest_info * info, v3_reg_t guest_cr3, addr_t
 				    } else {
 					addr_t page_va;
 		
-					if (v3_gpa_to_hva(info, page_pa, &page_va) == -1) {
+					if (v3_gpa_to_hva(core, page_pa, &page_va) == -1) {
 					    page_va = 0;
 					}
 		
-					if ((ret = callback(info, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
+					if ((ret = callback(core, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
 					    return (ret == -1) ? -1 : PAGE_4KB;
 					}
 					return 0;
@@ -1118,21 +1118,21 @@ int v3_drill_guest_pt_32pae(struct guest_info * info, v3_reg_t guest_cr3, addr_t
     return -1;
 }
 
-int v3_drill_guest_pt_64(struct guest_info * info, v3_reg_t guest_cr3, addr_t vaddr, 
-			 int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_drill_guest_pt_64(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, 
+			 int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 			 void * private_data) {	
     addr_t guest_pml4_pa = CR3_TO_PML4E64_PA(guest_cr3);
     pml4e64_t * guest_pmle = 0;
     addr_t guest_pdpe_pa = 0;
     int ret = 0;
 
-    if (v3_gpa_to_hva(info, guest_pml4_pa, (addr_t*)&guest_pmle) == -1) {
+    if (v3_gpa_to_hva(core, guest_pml4_pa, (addr_t*)&guest_pmle) == -1) {
 	PrintError("Could not get virtual address of Guest PML4E64 (PA=%p)\n", 
 		   (void *)guest_pml4_pa);
 	return -1;
     }
   
-    if ((ret = callback(info, PAGE_PML464, vaddr, (addr_t)guest_pmle, guest_pml4_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PML464, vaddr, (addr_t)guest_pmle, guest_pml4_pa, private_data)) != 0) {
 	return (ret == -1) ? -1 : PAGE_PML464;
     }
 
@@ -1144,13 +1144,13 @@ int v3_drill_guest_pt_64(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 		pdpe64_t * guest_pdp = NULL;
 		addr_t guest_pde_pa = 0;
 
-		if (v3_gpa_to_hva(info, guest_pdpe_pa, (addr_t *)&guest_pdp) == -1) {
+		if (v3_gpa_to_hva(core, guest_pdpe_pa, (addr_t *)&guest_pdp) == -1) {
 		    PrintError("Could not get virtual address of Guest PDPE64 (PA=%p)\n", 
 			       (void *)guest_pdpe_pa);
 		    return -1;
 		}
 
-		if ((ret = callback(info, PAGE_PDP64, vaddr, (addr_t)guest_pdp, guest_pdpe_pa, private_data)) != 0) {
+		if ((ret = callback(core, PAGE_PDP64, vaddr, (addr_t)guest_pdp, guest_pdpe_pa, private_data)) != 0) {
 		    return (ret == -1) ? -1 : PAGE_PDP64;
 		}
 
@@ -1162,11 +1162,11 @@ int v3_drill_guest_pt_64(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 			    addr_t large_page_pa = (addr_t)guest_pde_pa;
 			    addr_t large_page_va = 0;
 	  
-			    if (v3_gpa_to_hva(info, large_page_pa, &large_page_va) == -1) {
+			    if (v3_gpa_to_hva(core, large_page_pa, &large_page_va) == -1) {
 				large_page_va = 0;
 			    }
 	  
-			    if ((ret == callback(info, PAGE_1GB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
+			    if ((ret == callback(core, PAGE_1GB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
 				return (ret == -1) ? -1 : PAGE_1GB;
 			    }
 			    PrintError("1 Gigabyte Pages not supported\n");
@@ -1177,13 +1177,13 @@ int v3_drill_guest_pt_64(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 			    pde64_t * guest_pde = NULL;
 			    addr_t guest_pte_pa = 0;
 
-			    if (v3_gpa_to_hva(info, guest_pde_pa, (addr_t *)&guest_pde) == -1) {
+			    if (v3_gpa_to_hva(core, guest_pde_pa, (addr_t *)&guest_pde) == -1) {
 				PrintError("Could not get virtual address of guest PDE64 (PA=%p)\n", 
 					   (void *)guest_pde_pa);
 				return -1;
 			    }
 	
-			    if ((ret = callback(info, PAGE_PD64, vaddr, (addr_t)guest_pde, guest_pde_pa, private_data)) != 0) {
+			    if ((ret = callback(core, PAGE_PD64, vaddr, (addr_t)guest_pde, guest_pde_pa, private_data)) != 0) {
 				return (ret == -1) ? -1 : PAGE_PD64;
 			    }
 
@@ -1195,11 +1195,11 @@ int v3_drill_guest_pt_64(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 					addr_t large_page_pa = (addr_t)guest_pte_pa;
 					addr_t large_page_va = 0;
 	      
-					if (v3_gpa_to_hva(info, large_page_pa, &large_page_va) == -1) {
+					if (v3_gpa_to_hva(core, large_page_pa, &large_page_va) == -1) {
 					    large_page_va = 0;
 					}
 	      
-					if ((ret == callback(info, PAGE_2MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
+					if ((ret == callback(core, PAGE_2MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
 					    return (ret == -1) ? -1 : PAGE_2MB;
 					}
 					return 0;
@@ -1209,13 +1209,13 @@ int v3_drill_guest_pt_64(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 					pte64_t * guest_pte = NULL;
 					addr_t page_pa;
 	      
-					if (v3_gpa_to_hva(info, guest_pte_pa, (addr_t *)&guest_pte) == -1) {
+					if (v3_gpa_to_hva(core, guest_pte_pa, (addr_t *)&guest_pte) == -1) {
 					    PrintError("Could not get virtual address of guest PTE64 (PA=%p)\n", 
 						       (void *)guest_pte_pa);
 					    return -1;
 					}
 
-					if ((ret = callback(info, PAGE_PT64, vaddr, (addr_t)guest_pte, guest_pte_pa, private_data) != 0)) {
+					if ((ret = callback(core, PAGE_PT64, vaddr, (addr_t)guest_pte, guest_pte_pa, private_data) != 0)) {
 					    return (ret == -1) ? -1 : PAGE_PT64;
 					}
 		
@@ -1224,11 +1224,11 @@ int v3_drill_guest_pt_64(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 					} else {
 					    addr_t page_va;
 		
-					    if (v3_gpa_to_hva(info, page_pa, &page_va) == -1) {
+					    if (v3_gpa_to_hva(core, page_pa, &page_va) == -1) {
 						page_va = 0;
 					    }
 		
-					    if ((ret = callback(info, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
+					    if ((ret = callback(core, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
 						return (ret == -1) ? -1 : PAGE_4KB;
 					    }
 
@@ -1251,8 +1251,8 @@ int v3_drill_guest_pt_64(struct guest_info * info, v3_reg_t guest_cr3, addr_t va
 
 
 
-int v3_walk_guest_pt_32(struct guest_info * info,  v3_reg_t guest_cr3,
-			int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_walk_guest_pt_32(struct v3_core_info * core,  v3_reg_t guest_cr3,
+			int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 			void * private_data) {
     addr_t guest_pde_pa = CR3_TO_PDE32_PA(guest_cr3);
     pde32_t * guest_pde = NULL;
@@ -1265,13 +1265,13 @@ int v3_walk_guest_pt_32(struct guest_info * info,  v3_reg_t guest_cr3,
 	return -1;
     }
 
-    if (v3_gpa_to_hva(info, guest_pde_pa, (addr_t *)&guest_pde) == -1) {
+    if (v3_gpa_to_hva(core, guest_pde_pa, (addr_t *)&guest_pde) == -1) {
 	PrintError("Could not get virtual address of Guest PDE32 (PA=%p)\n", 
 		   (void *)guest_pde_pa);
 	return -1;
     }
 
-    if ((ret = callback(info, PAGE_PD32, vaddr, (addr_t)guest_pde, guest_pde_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PD32, vaddr, (addr_t)guest_pde, guest_pde_pa, private_data)) != 0) {
 	return ret;
     }
 
@@ -1282,14 +1282,14 @@ int v3_walk_guest_pt_32(struct guest_info * info,  v3_reg_t guest_cr3,
 		addr_t large_page_pa = BASE_TO_PAGE_ADDR_4MB(large_pde->page_base_addr);
 		addr_t large_page_va = 0;
 
-		if (v3_gpa_to_hva(info, large_page_pa, &large_page_va) == -1) {
+		if (v3_gpa_to_hva(core, large_page_pa, &large_page_va) == -1) {
 		    PrintDebug("Could not get virtual address of Guest 4MB Page (PA=%p)\n", 
 			       (void *)large_page_pa);
 		    // We'll let it through for data pages because they may be unmapped or hooked
 		    large_page_va = 0;
 		}
 
-		if ((ret = callback(info, PAGE_4MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
+		if ((ret = callback(core, PAGE_4MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
 		    return ret;
 		}
 
@@ -1298,13 +1298,13 @@ int v3_walk_guest_pt_32(struct guest_info * info,  v3_reg_t guest_cr3,
 		addr_t pte_pa = BASE_TO_PAGE_ADDR(guest_pde[i].pt_base_addr);
 		pte32_t * tmp_pte = NULL;
 
-		if (v3_gpa_to_hva(info, pte_pa, (addr_t *)&tmp_pte) == -1) {
+		if (v3_gpa_to_hva(core, pte_pa, (addr_t *)&tmp_pte) == -1) {
 		    PrintError("Could not get virtual address of Guest PTE32 (PA=%p)\n", 
 			       (void *)pte_pa);
 		    return -1;
 		}
 
-		if ((ret = callback(info, PAGE_PT32, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
+		if ((ret = callback(core, PAGE_PT32, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
 		    return ret;
 		}
 
@@ -1313,14 +1313,14 @@ int v3_walk_guest_pt_32(struct guest_info * info,  v3_reg_t guest_cr3,
 			addr_t page_pa = BASE_TO_PAGE_ADDR(tmp_pte[j].page_base_addr);
 			addr_t page_va = 0;
 
-			if (v3_gpa_to_hva(info, page_pa, &page_va) == -1) {
+			if (v3_gpa_to_hva(core, page_pa, &page_va) == -1) {
 			    PrintDebug("Could not get virtual address of Guest 4KB Page (PA=%p)\n", 
 				       (void *)page_pa);
 			    // We'll let it through for data pages because they may be unmapped or hooked
 			    page_va = 0;
 			}
 	    
-			if ((ret = callback(info, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
 			    return ret;
 			}
 		    }
@@ -1336,8 +1336,8 @@ int v3_walk_guest_pt_32(struct guest_info * info,  v3_reg_t guest_cr3,
 }
 
 
-int v3_walk_guest_pt_32pae(struct guest_info * info,  v3_reg_t guest_cr3,
-			   int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_walk_guest_pt_32pae(struct v3_core_info * core,  v3_reg_t guest_cr3,
+			   int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 			   void * private_data) {
     addr_t guest_pdpe_pa = CR3_TO_PDPE32PAE_PA(guest_cr3);
     pdpe32pae_t * guest_pdpe = NULL;
@@ -1350,14 +1350,14 @@ int v3_walk_guest_pt_32pae(struct guest_info * info,  v3_reg_t guest_cr3,
 	return -1;
     }
 
-    if (v3_gpa_to_hva(info, guest_pdpe_pa, (addr_t *)&guest_pdpe) == -1) {
+    if (v3_gpa_to_hva(core, guest_pdpe_pa, (addr_t *)&guest_pdpe) == -1) {
 	PrintError("Could not get virtual address of Guest PDPE32PAE (PA=%p)\n", 
 		   (void *)guest_pdpe_pa);
 	return -1;
     }
 
   
-    if ((ret = callback(info, PAGE_PDP32PAE, vaddr, (addr_t)guest_pdpe, guest_pdpe_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PDP32PAE, vaddr, (addr_t)guest_pdpe, guest_pdpe_pa, private_data)) != 0) {
 	return ret;
     }
 
@@ -1366,13 +1366,13 @@ int v3_walk_guest_pt_32pae(struct guest_info * info,  v3_reg_t guest_cr3,
 	    addr_t pde_pa = BASE_TO_PAGE_ADDR(guest_pdpe[i].pd_base_addr);
 	    pde32pae_t * tmp_pde = NULL;
 
-	    if (v3_gpa_to_hva(info, pde_pa, (addr_t *)&tmp_pde) == -1) {
+	    if (v3_gpa_to_hva(core, pde_pa, (addr_t *)&tmp_pde) == -1) {
 		PrintError("Could not get virtual address of Guest PDE32PAE (PA=%p)\n", 
 			   (void *)pde_pa);
 		return -1;
 	    }
 
-	    if ((ret = callback(info, PAGE_PD32PAE, vaddr, (addr_t)tmp_pde, pde_pa, private_data)) != 0) {
+	    if ((ret = callback(core, PAGE_PD32PAE, vaddr, (addr_t)tmp_pde, pde_pa, private_data)) != 0) {
 		return ret;
 	    }
       
@@ -1383,14 +1383,14 @@ int v3_walk_guest_pt_32pae(struct guest_info * info,  v3_reg_t guest_cr3,
 			addr_t large_page_pa = BASE_TO_PAGE_ADDR_2MB(large_pde->page_base_addr);
 			addr_t large_page_va = 0;
 	    
-			if (v3_gpa_to_hva(info, large_page_pa, &large_page_va) == -1) {
+			if (v3_gpa_to_hva(core, large_page_pa, &large_page_va) == -1) {
 			    PrintDebug("Could not get virtual address of Guest 2MB Page (PA=%p)\n", 
 				       (void *)large_page_pa);
 			    // We'll let it through for data pages because they may be unmapped or hooked
 			    large_page_va = 0;
 			}
 	    
-			if ((ret = callback(info, PAGE_2MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_2MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
 			    return ret;
 			}
 
@@ -1399,13 +1399,13 @@ int v3_walk_guest_pt_32pae(struct guest_info * info,  v3_reg_t guest_cr3,
 			addr_t pte_pa = BASE_TO_PAGE_ADDR(tmp_pde[j].pt_base_addr);
 			pte32pae_t * tmp_pte = NULL;
 	    
-			if (v3_gpa_to_hva(info, pte_pa, (addr_t *)&tmp_pte) == -1) {
+			if (v3_gpa_to_hva(core, pte_pa, (addr_t *)&tmp_pte) == -1) {
 			    PrintError("Could not get virtual address of Guest PTE32PAE (PA=%p)\n", 
 				       (void *)pte_pa);
 			    return -1;
 			}
 	    
-			if ((ret = callback(info, PAGE_PT32PAE, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_PT32PAE, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
 			    return ret;
 			}
 	    
@@ -1414,14 +1414,14 @@ int v3_walk_guest_pt_32pae(struct guest_info * info,  v3_reg_t guest_cr3,
 				addr_t page_pa = BASE_TO_PAGE_ADDR(tmp_pte[k].page_base_addr);
 				addr_t page_va = 0;
 		
-				if (v3_gpa_to_hva(info, page_pa, &page_va) == -1) {
+				if (v3_gpa_to_hva(core, page_pa, &page_va) == -1) {
 				    PrintDebug("Could not get virtual address of Guest 4KB Page (PA=%p)\n", 
 					       (void *)page_pa);
 				    // We'll let it through for data pages because they may be unmapped or hooked
 				    page_va = 0;
 				}
 		
-				if ((ret = callback(info, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
+				if ((ret = callback(core, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
 				    return ret;
 				}
 			    }
@@ -1443,8 +1443,8 @@ int v3_walk_guest_pt_32pae(struct guest_info * info,  v3_reg_t guest_cr3,
 
 
 
-int v3_walk_guest_pt_64(struct guest_info * info,  v3_reg_t guest_cr3,
-			int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_walk_guest_pt_64(struct v3_core_info * core,  v3_reg_t guest_cr3,
+			int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 			void * private_data) {
     addr_t guest_pml_pa = CR3_TO_PML4E64_PA(guest_cr3);
     pml4e64_t * guest_pml = NULL;
@@ -1457,14 +1457,14 @@ int v3_walk_guest_pt_64(struct guest_info * info,  v3_reg_t guest_cr3,
 	return -1;
     }
 
-    if (v3_gpa_to_hva(info, guest_pml_pa, (addr_t *)&guest_pml) == -1) {
+    if (v3_gpa_to_hva(core, guest_pml_pa, (addr_t *)&guest_pml) == -1) {
 	PrintError("Could not get virtual address of Guest PML464 (PA=%p)\n", 
 		   (void *)guest_pml);
 	return -1;
     }
 
 
-    if ((ret = callback(info, PAGE_PML464, vaddr, (addr_t)guest_pml, guest_pml_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PML464, vaddr, (addr_t)guest_pml, guest_pml_pa, private_data)) != 0) {
 	return ret;
     }
 
@@ -1481,13 +1481,13 @@ int v3_walk_guest_pt_64(struct guest_info * info,  v3_reg_t guest_cr3,
 	    pdpe64_t * tmp_pdpe = NULL;
       
       
-	    if (v3_gpa_to_hva(info, pdpe_pa, (addr_t *)&tmp_pdpe) == -1) {
+	    if (v3_gpa_to_hva(core, pdpe_pa, (addr_t *)&tmp_pdpe) == -1) {
 		PrintError("Could not get virtual address of Guest PDPE64 (PA=%p)\n", 
 			   (void *)pdpe_pa);
 		return -1;
 	    }
       
-	    if ((ret = callback(info, PAGE_PDP64, vaddr, (addr_t)tmp_pdpe, pdpe_pa, private_data)) != 0) {
+	    if ((ret = callback(core, PAGE_PDP64, vaddr, (addr_t)tmp_pdpe, pdpe_pa, private_data)) != 0) {
 		return ret;
 	    }
       
@@ -1498,14 +1498,14 @@ int v3_walk_guest_pt_64(struct guest_info * info,  v3_reg_t guest_cr3,
 			addr_t large_page_pa = BASE_TO_PAGE_ADDR_1GB(large_pdpe->page_base_addr);
 			addr_t large_page_va = 0;
 
-			if (v3_gpa_to_hva(info, large_page_pa, &large_page_va) == -1) {
+			if (v3_gpa_to_hva(core, large_page_pa, &large_page_va) == -1) {
 			    PrintDebug("Could not get virtual address of Guest 1GB page (PA=%p)\n", 
 				       (void *)large_page_pa);
 			    // We'll let it through for data pages because they may be unmapped or hooked
 			    large_page_va = 0;
 			}
 
-			if ((ret = callback(info, PAGE_1GB, vaddr, (addr_t)large_page_va, large_page_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_1GB, vaddr, (addr_t)large_page_va, large_page_pa, private_data)) != 0) {
 			    return ret;
 			}
 
@@ -1514,13 +1514,13 @@ int v3_walk_guest_pt_64(struct guest_info * info,  v3_reg_t guest_cr3,
 			addr_t pde_pa = BASE_TO_PAGE_ADDR(tmp_pdpe[j].pd_base_addr);
 			pde64_t * tmp_pde = NULL;
 	    
-			if (v3_gpa_to_hva(info, pde_pa, (addr_t *)&tmp_pde) == -1) {
+			if (v3_gpa_to_hva(core, pde_pa, (addr_t *)&tmp_pde) == -1) {
 			    PrintError("Could not get virtual address of Guest PDE64 (PA=%p)\n", 
 				       (void *)pde_pa);
 			    return -1;
 			}
 	    
-			if ((ret = callback(info, PAGE_PD64, vaddr, (addr_t)tmp_pde, pde_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_PD64, vaddr, (addr_t)tmp_pde, pde_pa, private_data)) != 0) {
 			    return ret;
 			}
 	    
@@ -1531,14 +1531,14 @@ int v3_walk_guest_pt_64(struct guest_info * info,  v3_reg_t guest_cr3,
 				    addr_t large_page_pa = BASE_TO_PAGE_ADDR_2MB(large_pde->page_base_addr);
 				    addr_t large_page_va = 0;
 		  
-				    if (v3_gpa_to_hva(info, large_page_pa, &large_page_va) == -1) {
+				    if (v3_gpa_to_hva(core, large_page_pa, &large_page_va) == -1) {
 					PrintDebug("Could not get virtual address of Guest 2MB page (PA=%p)\n", 
 						   (void *)large_page_pa);
 					// We'll let it through for data pages because they may be unmapped or hooked
 					large_page_va = 0;
 				    }
 		  
-				    if ((ret = callback(info, PAGE_2MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
+				    if ((ret = callback(core, PAGE_2MB, vaddr, large_page_va, large_page_pa, private_data)) != 0) {
 					return ret;
 				    }
 
@@ -1547,13 +1547,13 @@ int v3_walk_guest_pt_64(struct guest_info * info,  v3_reg_t guest_cr3,
 				    addr_t pte_pa = BASE_TO_PAGE_ADDR(tmp_pde[k].pt_base_addr);
 				    pte64_t * tmp_pte = NULL;
 		  
-				    if (v3_gpa_to_hva(info, pte_pa, (addr_t *)&tmp_pte) == -1) {
+				    if (v3_gpa_to_hva(core, pte_pa, (addr_t *)&tmp_pte) == -1) {
 					PrintError("Could not get virtual address of Guest PTE64 (PA=%p)\n", 
 						   (void *)pte_pa);
 					return -1;
 				    }
 		  
-				    if ((ret = callback(info, PAGE_PT64, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
+				    if ((ret = callback(core, PAGE_PT64, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
 					return ret;
 				    }
 		  
@@ -1562,14 +1562,14 @@ int v3_walk_guest_pt_64(struct guest_info * info,  v3_reg_t guest_cr3,
 					    addr_t page_pa = BASE_TO_PAGE_ADDR(tmp_pte[m].page_base_addr);
 					    addr_t page_va = 0;
 		      
-					    if (v3_gpa_to_hva(info, page_pa, &page_va) == -1) {
+					    if (v3_gpa_to_hva(core, page_pa, &page_va) == -1) {
 						PrintDebug("Could not get virtual address of Guest 4KB Page (PA=%p)\n", 
 							   (void *)page_pa);
 						// We'll let it through for data pages because they may be unmapped or hooked
 						page_va = 0;
 					    }
 		      
-					    if ((ret = callback(info, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
+					    if ((ret = callback(core, PAGE_4KB, vaddr, page_va, page_pa, private_data)) != 0) {
 						return ret;
 					    }
 					}
@@ -1593,8 +1593,8 @@ int v3_walk_guest_pt_64(struct guest_info * info,  v3_reg_t guest_cr3,
     return 0;
 }
 
-int v3_walk_host_pt_32(struct guest_info * info, v3_reg_t host_cr3,
-		       int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_walk_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3,
+		       int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 		       void * private_data) {
     pde32_t * host_pde = (pde32_t *)CR3_TO_PDE32_VA(host_cr3);
     addr_t pde_pa = CR3_TO_PDE32_PA(host_cr3);
@@ -1607,7 +1607,7 @@ int v3_walk_host_pt_32(struct guest_info * info, v3_reg_t host_cr3,
 	return -1;
     }
 
-    if ((ret = callback(info, PAGE_PD32, vaddr, (addr_t)host_pde, pde_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PD32, vaddr, (addr_t)host_pde, pde_pa, private_data)) != 0) {
 	return ret;
     }
 
@@ -1617,7 +1617,7 @@ int v3_walk_host_pt_32(struct guest_info * info, v3_reg_t host_cr3,
 		pde32_4MB_t * large_pde = (pde32_4MB_t *)&(host_pde[i]);
 		addr_t large_page_pa = BASE_TO_PAGE_ADDR_4MB(large_pde->page_base_addr);
 
-		if ((ret = callback(info, PAGE_4MB, vaddr, (addr_t)V3_VAddr((void *)large_page_pa), large_page_pa, private_data)) != 0) {
+		if ((ret = callback(core, PAGE_4MB, vaddr, (addr_t)V3_VAddr((void *)large_page_pa), large_page_pa, private_data)) != 0) {
 		    return ret;
 		}
 
@@ -1626,14 +1626,14 @@ int v3_walk_host_pt_32(struct guest_info * info, v3_reg_t host_cr3,
 		addr_t pte_pa = BASE_TO_PAGE_ADDR(host_pde[i].pt_base_addr);
 		pte32_t * tmp_pte = (pte32_t *)V3_VAddr((void *)pte_pa);
 
-		if ((ret = callback(info, PAGE_PT32, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
+		if ((ret = callback(core, PAGE_PT32, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
 		    return ret;
 		}
 
 		for (j = 0; j < MAX_PTE32_ENTRIES; j++) {
 		    if (tmp_pte[j].present) {
 			addr_t page_pa = BASE_TO_PAGE_ADDR(tmp_pte[j].page_base_addr);
-			if ((ret = callback(info, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)page_pa), page_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)page_pa), page_pa, private_data)) != 0) {
 			    return ret;
 			}
 		    }
@@ -1652,8 +1652,8 @@ int v3_walk_host_pt_32(struct guest_info * info, v3_reg_t host_cr3,
 
 
 
-int v3_walk_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3,
-			  int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_walk_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3,
+			  int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 			  void * private_data) {
     pdpe32pae_t * host_pdpe = (pdpe32pae_t *)CR3_TO_PDPE32PAE_VA(host_cr3);
     addr_t pdpe_pa = CR3_TO_PDPE32PAE_PA(host_cr3);
@@ -1666,7 +1666,7 @@ int v3_walk_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3,
 	return -1;
     }
   
-    if ((ret = callback(info, PAGE_PDP32PAE, vaddr, (addr_t)host_pdpe, pdpe_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PDP32PAE, vaddr, (addr_t)host_pdpe, pdpe_pa, private_data)) != 0) {
 	return ret;
     }
   
@@ -1675,7 +1675,7 @@ int v3_walk_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3,
 	    addr_t pde_pa = BASE_TO_PAGE_ADDR(host_pdpe[i].pd_base_addr);
 	    pde32pae_t * tmp_pde = (pde32pae_t *)V3_VAddr((void *)pde_pa);
       
-	    if ((ret = callback(info, PAGE_PD32PAE, vaddr, (addr_t)tmp_pde, pde_pa, private_data)) != 0) {
+	    if ((ret = callback(core, PAGE_PD32PAE, vaddr, (addr_t)tmp_pde, pde_pa, private_data)) != 0) {
 		return ret;
 	    }
       
@@ -1686,7 +1686,7 @@ int v3_walk_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3,
 			pde32pae_2MB_t * large_pde = (pde32pae_2MB_t *)&(tmp_pde[j]);
 			addr_t large_page_pa = BASE_TO_PAGE_ADDR_2MB(large_pde->page_base_addr);
 
-			if ((ret = callback(info, PAGE_2MB, vaddr, (addr_t)V3_VAddr((void *)large_page_pa), large_page_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_2MB, vaddr, (addr_t)V3_VAddr((void *)large_page_pa), large_page_pa, private_data)) != 0) {
 			    return ret;
 			}
 
@@ -1695,14 +1695,14 @@ int v3_walk_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3,
 			addr_t pte_pa = BASE_TO_PAGE_ADDR(tmp_pde[j].pt_base_addr);
 			pte32pae_t * tmp_pte = (pte32pae_t *)V3_VAddr((void *)pte_pa);
 	    
-			if ((ret = callback(info, PAGE_PT32PAE, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_PT32PAE, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
 			    return ret;
 			}
 	    
 			for (k = 0; k < MAX_PTE32PAE_ENTRIES; k++) {
 			    if (tmp_pte[k].present) {
 				addr_t page_pa = BASE_TO_PAGE_ADDR(tmp_pte[k].page_base_addr);
-				if ((ret = callback(info, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)page_pa), page_pa, private_data)) != 0) {
+				if ((ret = callback(core, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)page_pa), page_pa, private_data)) != 0) {
 				    return ret;
 				}
 			    }
@@ -1722,8 +1722,8 @@ int v3_walk_host_pt_32pae(struct guest_info * info, v3_reg_t host_cr3,
 }
 			
 
-int v3_walk_host_pt_64(struct guest_info * info, v3_reg_t host_cr3,
-		       int (*callback)(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+int v3_walk_host_pt_64(struct v3_core_info * core, v3_reg_t host_cr3,
+		       int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
 		       void * private_data) {
     pml4e64_t * host_pml = (pml4e64_t *)CR3_TO_PML4E64_VA(host_cr3);
     addr_t pml_pa = CR3_TO_PML4E64_PA(host_cr3);
@@ -1736,7 +1736,7 @@ int v3_walk_host_pt_64(struct guest_info * info, v3_reg_t host_cr3,
 	return -1;
     }
 
-    if ((ret = callback(info, PAGE_PML464, vaddr, (addr_t)host_pml, pml_pa, private_data)) != 0) {
+    if ((ret = callback(core, PAGE_PML464, vaddr, (addr_t)host_pml, pml_pa, private_data)) != 0) {
 	return ret;
     }
 
@@ -1745,7 +1745,7 @@ int v3_walk_host_pt_64(struct guest_info * info, v3_reg_t host_cr3,
 	    addr_t pdpe_pa = BASE_TO_PAGE_ADDR(host_pml[i].pdp_base_addr);
 	    pdpe64_t * tmp_pdpe = (pdpe64_t *)V3_VAddr((void *)pdpe_pa);
 
-	    if ((ret = callback(info, PAGE_PDP64, vaddr, (addr_t)tmp_pdpe, pdpe_pa, private_data)) != 0) {
+	    if ((ret = callback(core, PAGE_PDP64, vaddr, (addr_t)tmp_pdpe, pdpe_pa, private_data)) != 0) {
 		return ret;
 	    }
 
@@ -1755,7 +1755,7 @@ int v3_walk_host_pt_64(struct guest_info * info, v3_reg_t host_cr3,
 			pdpe64_1GB_t * large_pdp = (pdpe64_1GB_t *)&(tmp_pdpe[j]);
 			addr_t large_page_pa = BASE_TO_PAGE_ADDR_1GB(large_pdp->page_base_addr);
 
-			if ((ret = callback(info, PAGE_1GB, vaddr, (addr_t)V3_VAddr((void *)large_page_pa), large_page_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_1GB, vaddr, (addr_t)V3_VAddr((void *)large_page_pa), large_page_pa, private_data)) != 0) {
 			    return ret;
 			}
 
@@ -1764,7 +1764,7 @@ int v3_walk_host_pt_64(struct guest_info * info, v3_reg_t host_cr3,
 			addr_t pde_pa = BASE_TO_PAGE_ADDR(tmp_pdpe[j].pd_base_addr);
 			pde64_t * tmp_pde = (pde64_t *)V3_VAddr((void *)pde_pa);
 
-			if ((ret = callback(info, PAGE_PD64, vaddr, (addr_t)tmp_pde, pde_pa, private_data)) != 0) {
+			if ((ret = callback(core, PAGE_PD64, vaddr, (addr_t)tmp_pde, pde_pa, private_data)) != 0) {
 			    return ret;
 			}
 
@@ -1774,7 +1774,7 @@ int v3_walk_host_pt_64(struct guest_info * info, v3_reg_t host_cr3,
 				    pde64_2MB_t * large_pde = (pde64_2MB_t *)&(tmp_pde[k]);
 				    addr_t large_page_pa = BASE_TO_PAGE_ADDR_2MB(large_pde->page_base_addr);
 		  
-				    if ((ret = callback(info, PAGE_2MB, vaddr, (addr_t)V3_VAddr((void *)large_page_pa), large_page_pa, private_data)) != 0) {
+				    if ((ret = callback(core, PAGE_2MB, vaddr, (addr_t)V3_VAddr((void *)large_page_pa), large_page_pa, private_data)) != 0) {
 					return ret;
 				    }
 		  
@@ -1783,14 +1783,14 @@ int v3_walk_host_pt_64(struct guest_info * info, v3_reg_t host_cr3,
 				    addr_t pte_pa = BASE_TO_PAGE_ADDR(tmp_pde[k].pt_base_addr);
 				    pte64_t * tmp_pte = (pte64_t *)V3_VAddr((void *)pte_pa);
 
-				    if ((ret = callback(info, PAGE_PT64, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
+				    if ((ret = callback(core, PAGE_PT64, vaddr, (addr_t)tmp_pte, pte_pa, private_data)) != 0) {
 					return ret;
 				    }
 
 				    for (m = 0; m < MAX_PTE64_ENTRIES; m++) {
 					if (tmp_pte[m].present) {
 					    addr_t page_pa = BASE_TO_PAGE_ADDR(tmp_pte[m].page_base_addr);
-					    if ((ret = callback(info, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)page_pa), page_pa, private_data)) != 0) {
+					    if ((ret = callback(core, PAGE_4KB, vaddr, (addr_t)V3_VAddr((void *)page_pa), page_pa, private_data)) != 0) {
 						return ret;
 					    }
 					}

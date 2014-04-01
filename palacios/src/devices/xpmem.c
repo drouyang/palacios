@@ -88,7 +88,7 @@ struct v3_xpmem_state {
     struct vm_device * pci_bus;
     struct pci_device * pci_dev;
 
-    struct guest_info * info;
+    struct v3_core_info * core;
 
     /* Handle to host state */
     xpmem_host_handle_t host_handle;
@@ -128,7 +128,7 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int irq_ack(struct guest_info * core, uint32_t irq, void * private_data) {
+static int irq_ack(struct v3_core_info * core, uint32_t irq, void * private_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)private_data;
     struct pci_device * pci_dev = state->pci_dev;
     struct vm_device * pci_bus = state->pci_bus;
@@ -159,7 +159,7 @@ static int xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem) {
     return 0;
 }
 
-static int copy_guest_regs(struct v3_xpmem_state * state, struct guest_info * info, struct xpmem_cmd_ex * cmd) {
+static int copy_guest_regs(struct v3_xpmem_state * state, struct v3_core_info * core, struct xpmem_cmd_ex * cmd) {
     unsigned long flags;
     int ret = 0;
 
@@ -167,47 +167,47 @@ static int copy_guest_regs(struct v3_xpmem_state * state, struct guest_info * in
 
     switch (cmd->type) {
         case XPMEM_MAKE:
-            cmd->make.segid = info->vm_regs.rbx;
+            cmd->make.segid = core->vm_regs.rbx;
             state->bar_state->interrupt_status &= ~INT_COMPLETE;
             break;
 
         case XPMEM_REMOVE:
-            cmd->remove.segid = info->vm_regs.rbx;
+            cmd->remove.segid = core->vm_regs.rbx;
             state->bar_state->interrupt_status &= ~INT_COMPLETE;
             break;
 
         case XPMEM_GET:
-            cmd->get.segid = info->vm_regs.rbx;
-            cmd->get.flags = info->vm_regs.rcx;
-            cmd->get.permit_type = info->vm_regs.rdx;
-            cmd->get.permit_value = info->vm_regs.rsi;
+            cmd->get.segid = core->vm_regs.rbx;
+            cmd->get.flags = core->vm_regs.rcx;
+            cmd->get.permit_type = core->vm_regs.rdx;
+            cmd->get.permit_value = core->vm_regs.rsi;
             state->bar_state->interrupt_status &= ~INT_COMPLETE;
             break;
 
         case XPMEM_RELEASE:
-            cmd->release.apid = info->vm_regs.rbx;
+            cmd->release.apid = core->vm_regs.rbx;
             state->bar_state->interrupt_status &= ~INT_COMPLETE;
             break;
 
         case XPMEM_ATTACH:
-            cmd->attach.apid = info->vm_regs.rbx;
-            cmd->attach.off = info->vm_regs.rcx;
-            cmd->attach.size = info->vm_regs.rdx;
+            cmd->attach.apid = core->vm_regs.rbx;
+            cmd->attach.off = core->vm_regs.rcx;
+            cmd->attach.size = core->vm_regs.rdx;
 
             /* Copy GVA and core into state */
-            state->local_pfn_gpa = info->vm_regs.rsi;
-            state->info = info;
+            state->local_pfn_gpa = core->vm_regs.rsi;
+            state->core = core;
 
             state->bar_state->interrupt_status &= ~INT_COMPLETE;
             break;
 
         case XPMEM_DETACH:
-            cmd->detach.vaddr = info->vm_regs.rbx;
+            cmd->detach.vaddr = core->vm_regs.rbx;
             state->bar_state->interrupt_status &= ~INT_COMPLETE;
             break;
 
         case XPMEM_GET_COMPLETE:
-            cmd->get.apid = info->vm_regs.rbx;
+            cmd->get.apid = core->vm_regs.rbx;
             break;
 
         case XPMEM_RELEASE_COMPLETE:
@@ -215,7 +215,7 @@ static int copy_guest_regs(struct v3_xpmem_state * state, struct guest_info * in
 
         case XPMEM_ATTACH_COMPLETE:
             /* Copy GVA and core into state */
-            state->remote_pfn_gpa = info->vm_regs.rbx;
+            state->remote_pfn_gpa = core->vm_regs.rbx;
             break;
 
         case XPMEM_DETACH_COMPLETE:
@@ -231,7 +231,7 @@ static int copy_guest_regs(struct v3_xpmem_state * state, struct guest_info * in
     return ret;
 }
 
-static int make_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
+static int make_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
@@ -243,7 +243,7 @@ static int make_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv
     memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_MAKE;
 
-    if (copy_guest_regs(state, info, cmd)) {
+    if (copy_guest_regs(state, core, cmd)) {
         PrintError("Failed to copy guest registers\n");
         return -1;
     }
@@ -251,7 +251,7 @@ static int make_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv
     return v3_xpmem_host_command(state->host_handle, cmd);
 }
 
-static int remove_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
+static int remove_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
@@ -263,7 +263,7 @@ static int remove_hcall(struct guest_info * info, hcall_id_t hcall_id, void * pr
     memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_REMOVE;
 
-    if (copy_guest_regs(state, info, cmd)) {
+    if (copy_guest_regs(state, core, cmd)) {
         PrintError("Failed to copy guest registers\n");
         return -1;
     }
@@ -271,7 +271,7 @@ static int remove_hcall(struct guest_info * info, hcall_id_t hcall_id, void * pr
     return v3_xpmem_host_command(state->host_handle, cmd);
 }
 
-static int get_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
+static int get_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
@@ -283,7 +283,7 @@ static int get_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_
     memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_GET;
 
-    if (copy_guest_regs(state, info, cmd)) {
+    if (copy_guest_regs(state, core, cmd)) {
         PrintError("Failed to copy guest registers\n");
         return -1;
     }
@@ -291,7 +291,7 @@ static int get_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_
     return v3_xpmem_host_command(state->host_handle, cmd);
 }
 
-static int release_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
+static int release_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
@@ -303,7 +303,7 @@ static int release_hcall(struct guest_info * info, hcall_id_t hcall_id, void * p
     memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_RELEASE;
 
-    if (copy_guest_regs(state, info, cmd)) {
+    if (copy_guest_regs(state, core, cmd)) {
         PrintError("Failed to copy guest registers\n");
         return -1;
     }
@@ -311,7 +311,7 @@ static int release_hcall(struct guest_info * info, hcall_id_t hcall_id, void * p
     return v3_xpmem_host_command(state->host_handle, cmd);
 }
 
-static int attach_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
+static int attach_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
@@ -323,7 +323,7 @@ static int attach_hcall(struct guest_info * info, hcall_id_t hcall_id, void * pr
     memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_ATTACH;
 
-    if (copy_guest_regs(state, info, cmd)) {
+    if (copy_guest_regs(state, core, cmd)) {
         PrintError("Failed to copy guest registers\n");
         return -1;
     }
@@ -331,7 +331,7 @@ static int attach_hcall(struct guest_info * info, hcall_id_t hcall_id, void * pr
     return v3_xpmem_host_command(state->host_handle, cmd);
 }
 
-static int detach_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
+static int detach_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
 
@@ -343,7 +343,7 @@ static int detach_hcall(struct guest_info * info, hcall_id_t hcall_id, void * pr
     memset(cmd, 0, sizeof(struct xpmem_cmd_ex));
     cmd->type = XPMEM_DETACH;
 
-    if (copy_guest_regs(state, info, cmd)) {
+    if (copy_guest_regs(state, core, cmd)) {
         PrintError("Failed to copy guest registers\n");
         return -1;
     }
@@ -375,7 +375,7 @@ static void set_complete(struct xpmem_cmd_ex * cmd) {
 }
 
 
-static int command_complete_hcall(struct guest_info * info, hcall_id_t hcall_id, void * priv_data) {
+static int command_complete_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
     struct xpmem_cmd_iter * iter = NULL;
@@ -392,7 +392,7 @@ static int command_complete_hcall(struct guest_info * info, hcall_id_t hcall_id,
      */
     set_complete(&(state->bar_state->request));
 
-    if (copy_guest_regs(state, info, &(state->bar_state->request))) {
+    if (copy_guest_regs(state, core, &(state->bar_state->request))) {
         PrintError("Failed to copy guest registers\n");
         return -1;
     }
@@ -409,7 +409,7 @@ static int command_complete_hcall(struct guest_info * info, hcall_id_t hcall_id,
         addr_t guest_buf_addr = state->remote_pfn_gpa;
         cmd->attach.num_pfns = cmd->attach.size / PAGE_SIZE;
 
-        if (v3_gpa_to_hva(info, guest_buf_addr, &(host_buf_addr))) {
+        if (v3_gpa_to_hva(core, guest_buf_addr, &(host_buf_addr))) {
             PrintError("Unable to convert GPA %p to HVA\n", (void *)guest_buf_addr);
             return -1;
         }
@@ -429,7 +429,7 @@ static int command_complete_hcall(struct guest_info * info, hcall_id_t hcall_id,
 
             guest_paddr = (addr_t)(guest_pfn << 12);
 
-            if (v3_gpa_to_hpa(info, guest_paddr, &(host_paddr))) {
+            if (v3_gpa_to_hpa(core, guest_paddr, &(host_paddr))) {
                 PrintError("Unable to convert GPA %p to HPA\n", (void *)guest_pfn);
                 return -1;
             }
@@ -785,7 +785,7 @@ static int xpmem_command_complete(struct v3_xpmem_state * v3_xpmem, struct xpmem
             addr_t host_buf_addr;
             addr_t guest_buf_addr = v3_xpmem->local_pfn_gpa;
 
-            if (v3_gpa_to_hva(v3_xpmem->info, guest_buf_addr, &(host_buf_addr))) {
+            if (v3_gpa_to_hva(v3_xpmem->core, guest_buf_addr, &(host_buf_addr))) {
                 PrintError("Unable to convert GPA %p to HVA\n", (void *)guest_buf_addr);
                 return -1;
             }

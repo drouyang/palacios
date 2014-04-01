@@ -82,15 +82,15 @@ struct v3_code_inject_info {
 
 struct v3_cont {
     addr_t check_addr;
-    int (*cont_func)(struct guest_info * core, struct v3_code_inject_info * inject,
+    int (*cont_func)(struct v3_core_info * core, struct v3_code_inject_info * inject,
                      addr_t check);
 };
 
 int v3_remove_code_inject(struct v3_vm_info * vm, struct v3_code_inject_info * inject);
-int v3_do_inject(struct guest_info * core, struct v3_code_inject_info * inject, int mmap_state);
-int v3_do_static_inject(struct guest_info * core, struct v3_code_inject_info * inject, 
+int v3_do_inject(struct v3_core_info * core, struct v3_code_inject_info * inject, int mmap_state);
+int v3_do_static_inject(struct v3_core_info * core, struct v3_code_inject_info * inject, 
                         int mmap_state, addr_t region_gva);
-int v3_handle_guest_inject(struct guest_info * core, void * priv_data);
+int v3_handle_guest_inject(struct v3_core_info * core, void * priv_data);
 
 #endif  /* ! __V3VEE__ */
 

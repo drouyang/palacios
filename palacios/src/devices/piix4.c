@@ -628,14 +628,14 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int smi_read_port(struct guest_info * core, uint16_t port, 
+static int smi_read_port(struct v3_core_info * core, uint16_t port, 
 			void * dst, uint32_t length, void * priv_data) {
     PrintError("PIIX4 SMI port read unsupported\n");
     return -1;
 }
 
 
-static int smi_write_port(struct guest_info * core, uint16_t port, 
+static int smi_write_port(struct v3_core_info * core, uint16_t port, 
 			 void * src, uint32_t length, void * priv_data) {
     struct v3_southbridge * southbridge = priv_data;
     struct piix4_internal * piix4 = container_of(southbridge, struct piix4_internal, southbridge);
@@ -665,7 +665,7 @@ static int smi_write_port(struct guest_info * core, uint16_t port,
 }
 
 
-static int pm_read_port(struct guest_info * core, uint16_t port, 
+static int pm_read_port(struct v3_core_info * core, uint16_t port, 
 			void * dst, uint32_t length, void * priv_data) {
     struct v3_southbridge * southbridge = priv_data;
     struct piix4_internal * piix4 = container_of(southbridge, struct piix4_internal, southbridge);
@@ -738,7 +738,7 @@ static int pm_read_port(struct guest_info * core, uint16_t port,
     return length;
 }
 
-static int pm_write_port(struct guest_info * core, uint16_t port, 
+static int pm_write_port(struct v3_core_info * core, uint16_t port, 
 			 void * src, uint32_t length, void * priv_data) {
     struct v3_southbridge * southbridge = priv_data;
     struct piix4_internal * piix4 = container_of(southbridge, struct piix4_internal, southbridge);

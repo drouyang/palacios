@@ -17,7 +17,7 @@
  * redistribute, and modify it as specified in the file "V3VEE_LICENSE".
  */
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_symcall.h>
 #include <palacios/vmm_symspy.h>
 #include <palacios/vmm_msr.h>
@@ -41,7 +41,7 @@
 #define SYMCALL_FS_MSR  0x540
 
 
-static int symcall_msr_read(struct guest_info * core, uint_t msr, 
+static int symcall_msr_read(struct v3_core_info * core, uint_t msr, 
 			    struct v3_msr * dst, void * priv_data) {
     struct v3_symcall_state * state = &(core->sym_core_state.symcall_state);
 
@@ -68,7 +68,7 @@ static int symcall_msr_read(struct guest_info * core, uint_t msr,
     return 0;
 }
 
-static int symcall_msr_write(struct guest_info * core, uint_t msr, struct v3_msr src, void * priv_data) {
+static int symcall_msr_write(struct v3_core_info * core, uint_t msr, struct v3_msr src, void * priv_data) {
     struct v3_symcall_state * state = &(core->sym_core_state.symcall_state);
 
     switch (msr) {
@@ -95,8 +95,8 @@ static int symcall_msr_write(struct guest_info * core, uint_t msr, struct v3_msr
 }
 
 
-static int sym_call_ret(struct guest_info * info, uint_t hcall_id, void * private_data);
-static int sym_call_err(struct guest_info * info, uint_t hcall_id, void * private_data);
+static int sym_call_ret(struct v3_core_info * core, uint_t hcall_id, void * private_data);
+static int sym_call_err(struct v3_core_info * core, uint_t hcall_id, void * private_data);
 
 
 
@@ -120,7 +120,7 @@ int v3_init_symcall_vm(struct v3_vm_info * vm) {
 
 
 
-static int sym_call_err(struct guest_info * core, uint_t hcall_id, void * private_data) {
+static int sym_call_err(struct v3_core_info * core, uint_t hcall_id, void * private_data) {
     struct v3_symcall_state * state = (struct v3_symcall_state *)&(core->sym_core_state.symcall_state);
 
     PrintError("sym call error\n");
@@ -136,7 +136,7 @@ static int sym_call_err(struct guest_info * core, uint_t hcall_id, void * privat
     return -1;
 }
 
-static int sym_call_ret(struct guest_info * core, uint_t hcall_id, void * private_data) {
+static int sym_call_ret(struct v3_core_info * core, uint_t hcall_id, void * private_data) {
     struct v3_symcall_state * state = (struct v3_symcall_state *)&(core->sym_core_state.symcall_state);
 
     //    PrintError("Return from sym call (ID=%x)\n", hcall_id);
@@ -147,7 +147,7 @@ static int sym_call_ret(struct guest_info * core, uint_t hcall_id, void * privat
     return 0;
 }
 
-static int execute_symcall(struct guest_info * core) {
+static int execute_symcall(struct v3_core_info * core) {
     struct v3_symcall_state * state = (struct v3_symcall_state *)&(core->sym_core_state.symcall_state);
 
     while (state->sym_call_returned == 0) {
@@ -164,7 +164,7 @@ static int execute_symcall(struct guest_info * core) {
 //
 // We don't handle those fancy 64 bit system segments...
 //
-static int translate_segment(struct guest_info * info, uint16_t selector, struct v3_segment * seg) {
+static int translate_segment(struct v3_core_info * core, uint16_t selector, struct v3_segment * seg) {
     struct v3_segment * gdt = &(info->segments.gdtr);
     addr_t gdt_addr = 0;
     uint16_t seg_offset = (selector & ~0x7);
@@ -219,7 +219,7 @@ static int translate_segment(struct guest_info * info, uint16_t selector, struct
 
 
 
-int v3_sym_call(struct guest_info * core, 
+int v3_sym_call(struct v3_core_info * core, 
 		uint64_t call_num, sym_arg_t * arg0, 
 		sym_arg_t * arg1, sym_arg_t * arg2,
 		sym_arg_t * arg3, sym_arg_t * arg4) {

@@ -1270,7 +1270,7 @@ static inline void rtl8139_isr_write(struct rtl8139_state * nic_state, uint32_t 
     rtl8139_update_irq(nic_state);
 }
 
-static int rtl8139_mmio_write(struct guest_info * core, 
+static int rtl8139_mmio_write(struct v3_core_info * core, 
 			      addr_t guest_addr, 
 			      void * src,
 			      uint_t length, 
@@ -1444,7 +1444,7 @@ static int rtl8139_mmio_write(struct guest_info * core,
     return length;
 }
 
-static int rtl8139_mmio_read(struct guest_info * core, 
+static int rtl8139_mmio_read(struct v3_core_info * core, 
 			     addr_t guest_addr, 
 			     void * dst, 
 			     uint_t length, 
@@ -1608,7 +1608,7 @@ static int rtl8139_mmio_read(struct guest_info * core,
 }
 
 
-static int rtl8139_ioport_write(struct guest_info * core,
+static int rtl8139_ioport_write(struct v3_core_info * core,
 				uint16_t port, 
 				void *src, 
 				uint_t length, 
@@ -1617,7 +1617,7 @@ static int rtl8139_ioport_write(struct guest_info * core,
 			      src, length, private_data);
 }
 
-static int rtl8139_ioport_read(struct guest_info * core, 
+static int rtl8139_ioport_read(struct v3_core_info * core, 
 			       uint16_t port, 
 			       void *dst, 
 			       uint_t length, 

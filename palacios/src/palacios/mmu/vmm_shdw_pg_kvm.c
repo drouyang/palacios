@@ -6,7 +6,7 @@
 #include <palacios/vmm_shadow_paging.h>
 #include <palacios/vmm_ctrl_regs.h>
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vm_guest_mem.h>
 
 #include <palacios/vmm_paging.h>
@@ -29,7 +29,7 @@ struct rmap {
     struct rmap * more;
 };
 
-static inline int activate_shadow_pt_32(struct guest_info * core);
+static inline int activate_shadow_pt_32(struct v3_core_info * core);
 static inline unsigned shadow_page_table_hashfn(addr_t guest_fn)
 {
     return guest_fn;
@@ -56,12 +56,12 @@ static void shadow_cache_free(struct shadow_cache *mc, void *obj)
     else V3_Free(obj);
 }
 
-static struct rmap *shadow_alloc_rmap(struct guest_info *core)
+static struct rmap *shadow_alloc_rmap(struct v3_core_info *core)
 {	
     return shadow_cache_alloc(&core->shadow_rmap_cache,sizeof(struct rmap));
 }
 
-static void shadow_free_rmap(struct guest_info *core,struct rmap *rd)
+static void shadow_free_rmap(struct v3_core_info *core,struct rmap *rd)
 {
     return shadow_cache_free(&core->shadow_rmap_cache,rd);
 }
@@ -83,7 +83,7 @@ int shadow_topup_cache(struct shadow_cache * cache, size_t objsize, int min) {
 		
 }
 
-static int shadow_topup_caches(struct guest_info * core) {
+static int shadow_topup_caches(struct v3_core_info * core) {
     int r;
 	
     r = shadow_topup_cache(&core->shadow_pde_chain_cache, 
@@ -98,13 +98,13 @@ out:
 	return r;
 }
 
-static struct pde_chain *shadow_alloc_pde_chain(struct guest_info *core)
+static struct pde_chain *shadow_alloc_pde_chain(struct v3_core_info *core)
 {
     return shadow_cache_alloc(&core->shadow_pde_chain_cache,
 		sizeof(struct pde_chain));
 }
 
-static void shadow_free_pde_chain(struct guest_info *core, struct pde_chain *pc)
+static void shadow_free_pde_chain(struct v3_core_info *core, struct pde_chain *pc)
 {
     PrintDebug("shdw_free_pdechain: start\n");
     shadow_cache_free(&core->shadow_pde_chain_cache, pc);
@@ -112,7 +112,7 @@ static void shadow_free_pde_chain(struct guest_info *core, struct pde_chain *pc)
 }
 
 
-static void shadow_free_page (struct guest_info * core, struct shadow_page_cache_data * page) 
+static void shadow_free_page (struct v3_core_info * core, struct shadow_page_cache_data * page) 
 {
     list_del(&page->link);
 
@@ -129,7 +129,7 @@ static void shadow_free_page (struct guest_info * core, struct shadow_page_cache
 	
 }
 
-static struct shadow_page_cache_data * shadow_alloc_page(struct guest_info * core, addr_t shadow_pde) {
+static struct shadow_page_cache_data * shadow_alloc_page(struct v3_core_info * core, addr_t shadow_pde) {
 
     struct shadow_page_cache_data * page;
 
@@ -153,9 +153,9 @@ static struct shadow_page_cache_data * shadow_alloc_page(struct guest_info * cor
 	
 }
 
-static void shadow_zap_page(struct guest_info * core, struct shadow_page_cache_data * page);
+static void shadow_zap_page(struct v3_core_info * core, struct shadow_page_cache_data * page);
 
-static void free_shadow_pages(struct guest_info * core)
+static void free_shadow_pages(struct v3_core_info * core)
 {
     struct shadow_page_cache_data *page;
 
@@ -173,7 +173,7 @@ static void free_shadow_pages(struct guest_info * core)
     }
 }
 
-static int alloc_shadow_pages(struct guest_info * core)
+static int alloc_shadow_pages(struct v3_core_info * core)
 {
     int i;
     struct shadow_page_cache_data * page_header = NULL;
@@ -202,7 +202,7 @@ error_1:
 
 }
 
-static void shadow_page_add_shadow_pde(struct guest_info * core, 
+static void shadow_page_add_shadow_pde(struct v3_core_info * core, 
 	struct shadow_page_cache_data * page, addr_t shadow_pde) 
 {
     struct pde_chain *pde_chain;
@@ -245,7 +245,7 @@ static void shadow_page_add_shadow_pde(struct guest_info * core,
 	
 }
 
-static void shadow_page_remove_shadow_pde(struct guest_info * core, 
+static void shadow_page_remove_shadow_pde(struct v3_core_info * core, 
 	struct shadow_page_cache_data * page, addr_t shadow_pde) 
 {
 
@@ -293,7 +293,7 @@ static void shadow_page_remove_shadow_pde(struct guest_info * core,
     PrintDebug("rm_shdw_pde: return\n");
 }
 
-static void shadow_page_search_shadow_pde (struct guest_info* core, addr_t shadow_pde, 
+static void shadow_page_search_shadow_pde (struct v3_core_info* core, addr_t shadow_pde, 
 	addr_t guest_pde, unsigned hlevel) {
 
     struct shadow_page_cache_data* shdw_page;
@@ -378,7 +378,7 @@ static void shadow_page_search_shadow_pde (struct guest_info* core, addr_t shado
 
 }
 
-static struct shadow_page_cache_data * shadow_page_lookup_page(struct guest_info *core, addr_t guest_fn, int opt) //purpose of this is write protection 
+static struct shadow_page_cache_data * shadow_page_lookup_page(struct v3_core_info *core, addr_t guest_fn, int opt) //purpose of this is write protection 
 {
     unsigned index;
     struct hlist_head * bucket;
@@ -406,10 +406,10 @@ static struct shadow_page_cache_data * shadow_page_lookup_page(struct guest_info
     return NULL;	
 }
 
-static void rmap_remove(struct guest_info * core, addr_t shadow_pte);
-static void rmap_write_protect(struct guest_info * core, addr_t guest_fn);
+static void rmap_remove(struct v3_core_info * core, addr_t shadow_pte);
+static void rmap_write_protect(struct v3_core_info * core, addr_t guest_fn);
 
-struct shadow_page_cache_data * shadow_page_get_page(struct guest_info *core, 
+struct shadow_page_cache_data * shadow_page_get_page(struct v3_core_info *core, 
 														addr_t guest_fn,
 														unsigned level, 
 														int metaphysical,
@@ -490,7 +490,7 @@ new_alloc:
 
 }
 
-static void shadow_page_unlink_children (struct guest_info * core, struct shadow_page_cache_data * page) {
+static void shadow_page_unlink_children (struct v3_core_info * core, struct shadow_page_cache_data * page) {
     unsigned i;
 
     uint32_t* shdw32_table;
@@ -598,7 +598,7 @@ static void shadow_page_unlink_children (struct guest_info * core, struct shadow
 
 }
 
-static void shadow_page_put_page(struct guest_info *core, struct shadow_page_cache_data * page, addr_t shadow_pde) { 
+static void shadow_page_put_page(struct v3_core_info *core, struct shadow_page_cache_data * page, addr_t shadow_pde) { 
 
 	PrintDebug("put_page: start\n");	
 	shadow_page_remove_shadow_pde(core, page, shadow_pde);
@@ -607,7 +607,7 @@ static void shadow_page_put_page(struct guest_info *core, struct shadow_page_cac
 
 } 
 
-static void shadow_zap_page(struct guest_info * core, struct shadow_page_cache_data * page) {
+static void shadow_zap_page(struct v3_core_info * core, struct shadow_page_cache_data * page) {
 
     addr_t shadow_pde;
     addr_t cr3_base_addr = 0;
@@ -659,7 +659,7 @@ static void shadow_zap_page(struct guest_info * core, struct shadow_page_cache_d
     return;
 }
 
-int shadow_zap_hierarchy_32(struct guest_info * core, struct shadow_page_cache_data * page) {
+int shadow_zap_hierarchy_32(struct v3_core_info * core, struct shadow_page_cache_data * page) {
 
     unsigned i;
     pde32_t *shadow_pde;
@@ -723,7 +723,7 @@ int shadow_zap_hierarchy_32(struct guest_info * core, struct shadow_page_cache_d
 }
 
 
-int shadow_unprotect_page(struct guest_info * core, addr_t guest_fn) {
+int shadow_unprotect_page(struct v3_core_info * core, addr_t guest_fn) {
 
     unsigned index;
     struct hlist_head * bucket;
@@ -756,7 +756,7 @@ if page_private bit zero is zero, then page->private points to the shadow page t
 if page_private bit zero is one, then page->private & ~1 points to a struct rmap containing more mappings
 */
 
-void rmap_add(struct guest_info *core, addr_t shadow_pte) {
+void rmap_add(struct v3_core_info *core, addr_t shadow_pte) {
     struct rmap *desc;
     addr_t page_private = 0;
     gen_pt_t * shadow_pte_gen;
@@ -823,7 +823,7 @@ void rmap_add(struct guest_info *core, addr_t shadow_pte) {
 		
 }
 
-static void rmap_desc_remove_entry(struct guest_info *core,
+static void rmap_desc_remove_entry(struct v3_core_info *core,
 				   addr_t * page_private,
 				   struct rmap *desc,
 				   int i,
@@ -855,7 +855,7 @@ static void rmap_desc_remove_entry(struct guest_info *core,
     shadow_free_rmap(core, desc);
 }
 
-static void rmap_remove(struct guest_info * core, addr_t shadow_pte) {
+static void rmap_remove(struct v3_core_info * core, addr_t shadow_pte) {
     struct rmap *desc;
     struct rmap *prev_desc;
     addr_t page_private = 0;
@@ -919,9 +919,9 @@ static void rmap_remove(struct guest_info * core, addr_t shadow_pte) {
     }
 }
 
-static inline int activate_shadow_pt_32(struct guest_info * core);
+static inline int activate_shadow_pt_32(struct v3_core_info * core);
 
-static void rmap_write_protect(struct guest_info * core, addr_t guest_fn) {
+static void rmap_write_protect(struct v3_core_info * core, addr_t guest_fn) {
     struct rmap * desc;
     //pte32_t * shadow_pte;
     addr_t shadow_pte;
@@ -971,7 +971,7 @@ static void rmap_write_protect(struct guest_info * core, addr_t guest_fn) {
 
 }
 
-void shadow_page_pre_write(struct guest_info * core, addr_t guest_pa, int bytes, int force) {
+void shadow_page_pre_write(struct v3_core_info * core, addr_t guest_pa, int bytes, int force) {
 //guest frame number is not guest physical address
     addr_t guest_fn = PAGE_BASE_ADDR(guest_pa);
     struct shadow_page_cache_data * page;
@@ -1068,11 +1068,11 @@ void shadow_page_pre_write(struct guest_info * core, addr_t guest_pa, int bytes,
 }
 
 //emulation for synchronization
-void shadow_page_post_write(struct guest_info * core, addr_t guest_pa)  {
+void shadow_page_post_write(struct v3_core_info * core, addr_t guest_pa)  {
 
 }
 
-int shadow_unprotect_page_virt(struct guest_info * core, addr_t guest_va) {
+int shadow_unprotect_page_virt(struct v3_core_info * core, addr_t guest_va) {
     addr_t guest_pa;
 
     if (guest_va_to_guest_pa(core, guest_va, &guest_pa) != 0) {
@@ -1084,7 +1084,7 @@ int shadow_unprotect_page_virt(struct guest_info * core, addr_t guest_va) {
     return shadow_unprotect_page(core, PAGE_BASE_ADDR(guest_pa));
 }
 
-void shadow_free_some_pages(struct guest_info * core) {
+void shadow_free_some_pages(struct v3_core_info * core) {
     while (core->n_free_shadow_pages < REFILE_PAGES) {
 	struct shadow_page_cache_data * page;
 	page = container_of(core->active_shadow_pages.prev,
@@ -1093,7 +1093,7 @@ void shadow_free_some_pages(struct guest_info * core) {
     }		
 }
 
-void shadow_free_all_pages(struct guest_info *core) {
+void shadow_free_all_pages(struct v3_core_info *core) {
 
     struct shadow_page_cache_data * sp, *node;
     list_for_each_entry_safe(sp, node, &core->active_shadow_pages, link) {
@@ -1102,7 +1102,7 @@ void shadow_free_all_pages(struct guest_info *core) {
 }
 
 
-static struct shadow_page_cache_data * create_new_shadow_pt(struct guest_info * core);
+static struct shadow_page_cache_data * create_new_shadow_pt(struct v3_core_info * core);
 
 
 #include "vmm_shdw_pg_cache_32.h"
@@ -1119,7 +1119,7 @@ static int vtlb_caching_deinit(struct v3_vm_info * vm) {
     return -1;
 }
 
-static int vtlb_caching_local_init(struct guest_info * core) {
+static int vtlb_caching_local_init(struct v3_core_info * core) {
 
     V3_Print("VTLB local initialization\n");
 
@@ -1136,7 +1136,7 @@ static int vtlb_caching_local_init(struct guest_info * core) {
 }
 
 
-static int vtlb_caching_activate_shdw_pt(struct guest_info * core) {
+static int vtlb_caching_activate_shdw_pt(struct v3_core_info * core) {
     switch (v3_get_vm_cpu_mode(core)) {
 
 	case PROTECTED:
@@ -1155,12 +1155,12 @@ static int vtlb_caching_activate_shdw_pt(struct guest_info * core) {
     return 0;
 }
 
-static int vtlb_caching_invalidate_shdw_pt(struct guest_info * core) {
+static int vtlb_caching_invalidate_shdw_pt(struct v3_core_info * core) {
     return vtlb_caching_activate_shdw_pt(core);
 }
 
 
-static int vtlb_caching_handle_pf(struct guest_info * core, addr_t fault_addr, pf_error_t error_code) {
+static int vtlb_caching_handle_pf(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
 
 	switch (v3_get_vm_cpu_mode(core)) {
 	    case PROTECTED:
@@ -1180,7 +1180,7 @@ static int vtlb_caching_handle_pf(struct guest_info * core, addr_t fault_addr, p
 }
 
 
-static int vtlb_caching_handle_invlpg(struct guest_info * core, addr_t vaddr) {
+static int vtlb_caching_handle_invlpg(struct v3_core_info * core, addr_t vaddr) {
 
     switch (v3_get_vm_cpu_mode(core)) {
 	case PROTECTED:

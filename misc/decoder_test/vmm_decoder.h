@@ -4,7 +4,7 @@
 #ifdef __V3VEE__
 
 #include "test.h"
-#include "vm_guest.h"
+#include "vm.h"
 
 
 typedef enum {INVALID_OPERAND, REG_OPERAND, MEM_OPERAND, IMM_OPERAND} operand_type_t;

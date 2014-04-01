@@ -19,7 +19,7 @@
  */
 #include <palacios/vmm.h>
 #include <palacios/vmm_time.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 
@@ -76,7 +76,7 @@ struct vtime_state {
 
 
 
-static int offset_time( struct guest_info * info, sint64_t offset )
+static int offset_time( struct v3_core_info * core, sint64_t offset )
 {
     struct vm_time * time_state = &(info->time_state);
 //    PrintDebug("Adding additional offset of %lld to guest time.\n", offset);
@@ -87,7 +87,7 @@ static int offset_time( struct guest_info * info, sint64_t offset )
 
 // Control guest time in relation to host time so that the two stay 
 // appropriately synchronized to the extent possible. 
-int v3_adjust_time(struct guest_info * info) {
+int v3_adjust_time(struct v3_core_info * core) {
     struct vm_time * time_state = &(info->time_state);
     uint64_t host_time, target_host_time;
     uint64_t guest_time, target_guest_time, old_guest_time;

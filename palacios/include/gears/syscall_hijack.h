@@ -69,13 +69,13 @@ struct v3_syscall_info {
     addr_t ssa;
 };
 
-int v3_hook_syscall (struct guest_info * core,
+int v3_hook_syscall (struct v3_core_info * core,
     uint_t syscall_nr,
-    int (*handler)(struct guest_info * core, uint_t syscall_nr, void * priv_data), 
+    int (*handler)(struct v3_core_info * core, uint_t syscall_nr, void * priv_data), 
     void * priv_data);
 
-int v3_hook_passthrough_syscall (struct guest_info * core, uint_t syscall_nr);
-int v3_syscall_handler (struct guest_info * core, uint8_t vector, void * priv_data);
+int v3_hook_passthrough_syscall (struct v3_core_info * core, uint_t syscall_nr);
+int v3_syscall_handler (struct v3_core_info * core, uint8_t vector, void * priv_data);
 
 #endif
 

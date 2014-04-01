@@ -8,7 +8,7 @@
 #include "test.h"
 #include "vmm_xed.h"
 #include "vmm_decoder.h"
-#include "vm_guest.h"
+#include "vm.h"
 
 
 /* Disgusting mask hack...

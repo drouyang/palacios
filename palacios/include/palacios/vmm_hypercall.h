@@ -27,7 +27,7 @@
 
 typedef struct rb_root v3_hypercall_map_t;
 
-struct guest_info;
+struct v3_core_info;
 struct v3_vm_info;
 
 
@@ -46,7 +46,7 @@ typedef enum {
     SYMMOD_SYMS_HCALL =    0x0600,         
     
     MEM_OFFSET_HCALL =     0x1000,         // RBX: base addr(out)
-    GUEST_INFO_HCALL =     0x3000,         // no args
+    VM_INFO_HCALL =     0x3000,         // no args
     TELEMETRY_HCALL =      0x3001,         // no args
     DEBUG_CMD_HCALL     =  0x3002,         // RBX: cmd
     BALLOON_START_HCALL =  0xba00,         // RAX: size
@@ -73,11 +73,11 @@ void v3_init_hypercall_map(struct v3_vm_info * vm);
 int v3_deinit_hypercall_map(struct v3_vm_info * vm);
 
 int v3_register_hypercall(struct v3_vm_info * vm, hcall_id_t hypercall_id, 
-			  int (*hypercall)(struct guest_info * info , hcall_id_t hcall_id, void * priv_data),
+			  int (*hypercall)(struct v3_core_info * core , hcall_id_t hcall_id, void * priv_data),
 			  void * priv_data);
 int v3_remove_hypercall(struct v3_vm_info * vm, hcall_id_t hypercall_id);
 
-int v3_handle_hypercall(struct guest_info * info);
+int v3_handle_hypercall(struct v3_core_info * core);
 
 
 

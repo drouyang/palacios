@@ -18,7 +18,7 @@
  */
 
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_mem_hook.h>
 #include <palacios/vmm_emulator.h>
 #include <palacios/vm_guest_mem.h>
@@ -38,18 +38,18 @@
 #define DEBUG_REGISTER   3
 
 // QUIX86 does not have to be initialised or deinitialised.
-int v3_init_decoder(struct guest_info * core) {
+int v3_init_decoder(struct v3_core_info * core) {
     return 0;
 }
-int v3_deinit_decoder(struct guest_info * core) {
+int v3_deinit_decoder(struct v3_core_info * core) {
     return 0;
 }
 
 static int get_opcode(qx86_insn *inst);
-static int qx86_register_to_v3_reg(struct guest_info * info, int qx86_reg,
+static int qx86_register_to_v3_reg(struct v3_core_info * core, int qx86_reg,
                  addr_t * v3_reg, uint_t * reg_len);
 
-static int decode_string_op(struct guest_info * core,
+static int decode_string_op(struct v3_core_info * core,
                 const qx86_insn * qx86_inst, struct x86_instr * instr)
 {
     int status = 0;
@@ -138,7 +138,7 @@ static int callback(void *data, int rindex, int subreg, unsigned char *value) {
     void* reg_addr = 0;
     uint_t reg_size;
 
-    struct guest_info *info = (struct guest_info*)data;
+    struct v3_core_info *info = (struct v3_core_info*)data;
     int v3_reg_type = qx86_register_to_v3_reg(info,
         rindex,
         (addr_t*)&reg_addr, &reg_size);
@@ -173,7 +173,7 @@ static int callback(void *data, int rindex, int subreg, unsigned char *value) {
     return 1;
 }
 
-static inline int qx86_op_to_v3_op(struct guest_info *info, qx86_insn *qx86_insn,
+static inline int qx86_op_to_v3_op(struct v3_core_info *info, qx86_insn *qx86_insn,
         int op_num, struct x86_operand * v3_op) {
     int status = 0;
     qx86_operand *qx86_op = &qx86_insn->operands[op_num];
@@ -228,7 +228,7 @@ static inline int qx86_op_to_v3_op(struct guest_info *info, qx86_insn *qx86_insn
     return 0;
 }
 
-int v3_decode(struct guest_info * info, addr_t instr_ptr, struct x86_instr * instr) {
+int v3_decode(struct v3_core_info * core, addr_t instr_ptr, struct x86_instr * instr) {
     int proc_mode;
     qx86_insn qx86_inst;
     uint8_t inst_buf[QX86_INSN_SIZE_MAX];
@@ -479,7 +479,7 @@ static int get_opcode(qx86_insn *inst) {
     }
 }
 
-static int qx86_register_to_v3_reg(struct guest_info * info, int qx86_reg,
+static int qx86_register_to_v3_reg(struct v3_core_info * core, int qx86_reg,
                  addr_t * v3_reg, uint_t * reg_len) {
     PrintDebug("qx86 Register: %s\n", qx86_rtab[qx86_reg].name);
 

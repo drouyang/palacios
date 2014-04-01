@@ -19,7 +19,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_symmod.h>
 #include <palacios/vmm_symbiotic.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_list.h>
 
 static struct hashtable * capsule_table = NULL;
@@ -159,7 +159,7 @@ struct v3_symbol {
 
 #include <palacios/vm_guest_mem.h>
 
-static int symbol_hcall_handler(struct guest_info * core, hcall_id_t hcall_id, void * priv_data) {
+static int symbol_hcall_handler(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) {
     struct v3_symmod_state * symmod_state = &(core->vm_info->sym_vm_state.symmod_state);
     addr_t sym_start_gva = core->vm_regs.rbx;
     uint32_t sym_size = core->vm_regs.rcx;

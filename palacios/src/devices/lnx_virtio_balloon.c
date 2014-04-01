@@ -114,7 +114,7 @@ static int get_desc_count(struct virtio_queue * q, int index) {
 }
 
 
-static int handle_kick(struct guest_info * core, struct virtio_balloon_state * virtio) {
+static int handle_kick(struct v3_core_info * core, struct virtio_balloon_state * virtio) {
     struct virtio_queue * q = virtio->cur_queue;
 
     PrintDebug("VIRTIO BALLOON KICK: cur_index=%d (mod=%d), avail_index=%d\n", 
@@ -179,7 +179,7 @@ static int handle_kick(struct guest_info * core, struct virtio_balloon_state * v
     return 0;
 }
 
-static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
+static int virtio_io_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
     struct virtio_balloon_state * virtio = (struct virtio_balloon_state *)private_data;
     int port_idx = port % virtio->io_range_size;
 
@@ -287,7 +287,7 @@ static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, 
 }
 
 
-static int virtio_io_read(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * private_data) {
+static int virtio_io_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * private_data) {
     struct virtio_balloon_state * virtio = (struct virtio_balloon_state *)private_data;
     int port_idx = port % virtio->io_range_size;
 
@@ -393,7 +393,7 @@ static int set_size(struct virtio_balloon_state * virtio, addr_t size) {
 }
 
 
-static int handle_hcall(struct guest_info * info, uint_t hcall_id, void * priv_data) {
+static int handle_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) {
     struct virtio_balloon_state * virtio = (struct virtio_balloon_state *)priv_data;
     int tgt_size = info->vm_regs.rcx;
 
@@ -403,7 +403,7 @@ static int handle_hcall(struct guest_info * info, uint_t hcall_id, void * priv_d
 
 
 
-static int handle_query_hcall(struct guest_info * info, uint_t hcall_id, void * priv_data) {
+static int handle_query_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) {
     struct virtio_balloon_state * virtio = (struct virtio_balloon_state *)priv_data;
     
     info->vm_regs.rcx = virtio->balloon_cfg.requested_pages;

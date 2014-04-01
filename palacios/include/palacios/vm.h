@@ -17,8 +17,8 @@
  * redistribute, and modify it as specified in the file "V3VEE_LICENSE".
  */
 
-#ifndef __VM_GUEST_H__
-#define __VM_GUEST_H__
+#ifndef __VM_H__
+#define __VM_H__
 
 #ifdef __V3VEE__
 
@@ -67,27 +67,26 @@ struct v3_sym_core_state;
 
 
 /* per-core state */
-struct guest_info {
+struct v3_core_info {
     char exec_name[256];
     
     uint64_t rip;
+    uint_t   cpl;
 
-    uint_t cpl;
-
-    struct vm_core_time time_state;
+    struct vm_core_time     time_state;
     struct v3_core_timeouts timeouts;
 
-    v3_paging_mode_t shdw_pg_mode;
+    v3_paging_mode_t        shdw_pg_mode;
     struct v3_shdw_pg_state shdw_pg_state;
-    addr_t direct_map_pt;
+    addr_t                  direct_map_pt;
     
 
     union {
 	uint32_t flags;
 	struct {
-	    uint8_t use_large_pages        : 1;    /* Enable virtual page tables to use large pages */
-	    uint8_t use_giant_pages        : 1;    /* Enable virtual page tables to use giant (1GB) pages */
-	    uint32_t rsvd                  : 30;
+	    uint8_t   use_large_pages        : 1;    /* Enable virtual page tables to use large pages */
+	    uint8_t   use_giant_pages        : 1;    /* Enable virtual page tables to use giant (1GB) pages */
+	    uint32_t  rsvd                   : 30;
 	} __attribute__((packed));
     } __attribute__((packed));
 
@@ -99,15 +98,15 @@ struct guest_info {
     struct v3_excp_state excp_state;
 
 
-    v3_cpu_mode_t cpu_mode;
-    v3_mem_mode_t mem_mode;
+    v3_cpu_mode_t            cpu_mode;
+    v3_mem_mode_t            mem_mode;
+    v3_core_operating_mode_t core_run_state;
 
-
-    struct v3_gprs vm_regs;
+    struct v3_gprs      vm_regs;
     struct v3_ctrl_regs ctrl_regs;
-    struct v3_dbg_regs dbg_regs;
-    struct v3_segments segments;
-    struct v3_msrs     msrs;
+    struct v3_dbg_regs  dbg_regs;
+    struct v3_segments  segments;
+    struct v3_msrs      msrs;
     struct v3_fpu_state fpu_state;
 
 
@@ -137,20 +136,14 @@ struct guest_info {
 
     struct v3_vm_info * vm_info;
 
-    v3_core_operating_mode_t core_run_state;
 
     /* thread struct for virtual core */
     /* Opaque to us, used by the host OS */
     void * core_thread; 
 
-    /* The physical cpu this core is currently running on*/
-    uint32_t pcpu_id;
-    
-    /* The virtual core number */
-    uint32_t vcpu_id;
-
-    /* The physical NUMA zone this core is assigned to */
-    uint32_t numa_id; 
+    uint32_t pcpu_id;      /* The physical cpu this core is currently running on*/
+    uint32_t vcpu_id;      /* The virtual core number */
+    uint32_t numa_id;      /* The physical NUMA zone this core is assigned to */
      
 };
 
@@ -160,43 +153,41 @@ struct guest_info {
 struct v3_vm_info {
     char name[128];
 
-    v3_vm_class_t vm_class;
+    v3_vm_class_t            vm_class;
+    struct v3_config       * cfg_data;
+    v3_vm_operating_mode_t   run_state;
 
-    struct v3_fw_cfg_state fw_cfg_state;
+
+    struct v3_fw_cfg_state   fw_cfg_state;
 
 
-    addr_t mem_size; /* In bytes for now */
-    uint32_t mem_align;
-    struct v3_mem_map mem_map;
-
+    addr_t              mem_size;     /* In bytes for now */
+    uint32_t            mem_align;
+    struct v3_mem_map   mem_map;
     struct v3_mem_hooks mem_hooks;
 
     struct v3_shdw_impl_state shdw_impl;
 
-    struct v3_io_map io_map;
-    struct v3_msr_map msr_map;
-    struct v3_cpuid_map cpuid_map;
+    struct v3_io_map     io_map;
+    struct v3_msr_map    msr_map;
+    struct v3_cpuid_map  cpuid_map;
+    v3_hypercall_map_t   hcall_map;
 
-    v3_hypercall_map_t hcall_map;
 
-
-    struct v3_intr_routers intr_routers;
 
     /* device_map */
-    struct vmm_dev_mgr  dev_mgr;
+    struct vmm_dev_mgr     dev_mgr;
+    struct v3_extensions   extensions;
 
-    struct v3_time time_state;
+    struct v3_time         time_state;
+    uint64_t               yield_cycle_period;  
 
-    struct v3_host_events host_event_hooks;
-
-    struct v3_config * cfg_data;
-
-    v3_vm_operating_mode_t run_state;
-
-    struct v3_barrier barrier;
+    struct v3_host_events  host_event_hooks;
+    struct v3_intr_routers intr_routers;
 
 
-    struct v3_extensions extensions;
+    struct v3_barrier      barrier;
+
 
 #ifdef V3_CONFIG_SYMBIOTIC
     /* Symbiotic state */
@@ -204,12 +195,9 @@ struct v3_vm_info {
 #endif
 
 #ifdef V3_CONFIG_TELEMETRY
-    uint_t enable_telemetry;
+    uint_t                    enable_telemetry;
     struct v3_telemetry_state telemetry;
 #endif
-
-
-    uint64_t yield_cycle_period;  
 
 
     void * host_priv_data;
@@ -217,22 +205,25 @@ struct v3_vm_info {
     int num_cores;
 
     // JRL: This MUST be the last entry...
-    struct guest_info cores[0];
+    struct v3_core_info cores[0];
 };
 
+
+
+
 int v3_init_vm(struct v3_vm_info * vm);
-int v3_init_core(struct guest_info * core);
+int v3_init_core(struct v3_core_info * core);
 
 int v3_free_vm_internal(struct v3_vm_info * vm);
-int v3_free_core(struct guest_info * core);
+int v3_free_core(struct v3_core_info * core);
 
 
-uint_t v3_get_addr_width(struct guest_info * info);
-v3_cpu_mode_t v3_get_vm_cpu_mode(struct guest_info * info);
-v3_mem_mode_t v3_get_vm_mem_mode(struct guest_info * info);
+uint_t v3_get_addr_width(struct v3_core_info * core);
+v3_cpu_mode_t v3_get_vm_cpu_mode(struct v3_core_info * core);
+v3_mem_mode_t v3_get_vm_mem_mode(struct v3_core_info * core);
 
 
-int v3_is_core_bsp(struct guest_info * core);
+int v3_is_core_bsp(struct v3_core_info * core);
 
 const uchar_t * v3_cpu_mode_to_str(v3_cpu_mode_t mode);
 const uchar_t * v3_mem_mode_to_str(v3_mem_mode_t mode);

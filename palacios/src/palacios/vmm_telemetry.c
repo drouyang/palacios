@@ -77,9 +77,9 @@ static int telem_eq_fn(addr_t key1, addr_t key2) {
 
 
 static int free_callback(struct v3_vm_info * vm, struct telemetry_cb * cb);
-static int free_exit(struct guest_info * core, struct exit_event * event);
+static int free_exit(struct v3_core_info * core, struct exit_event * event);
 
-static int telemetry_hcall(struct guest_info * core,
+static int telemetry_hcall(struct v3_core_info * core,
         hcall_id_t hcall_id, void * priv_data) {
     v3_print_core_telemetry(core);
     return 0;
@@ -108,7 +108,7 @@ void v3_deinit_telemetry(struct v3_vm_info * vm) {
 }
 
 
-void v3_init_core_telemetry(struct guest_info * core) {
+void v3_init_core_telemetry(struct v3_core_info * core) {
     struct v3_core_telemetry * telemetry = &(core->core_telem);
 
     telemetry->exit_cnt = 0;
@@ -121,7 +121,7 @@ void v3_init_core_telemetry(struct guest_info * core) {
     telemetry->counter_table = v3_create_htable(0, telem_hash_fn, telem_eq_fn);
 }
 
-void v3_deinit_core_telemetry(struct guest_info * core) {
+void v3_deinit_core_telemetry(struct v3_core_info * core) {
     struct v3_core_telemetry * telemetry = &(core->core_telem);    
     struct rb_node * node = v3_rb_first(&(telemetry->exit_root));
     struct exit_event * evt = NULL;
@@ -139,7 +139,7 @@ void v3_deinit_core_telemetry(struct guest_info * core) {
 
 
 
-void v3_telemetry_inc_core_counter(struct guest_info * core, char * counter_name) {
+void v3_telemetry_inc_core_counter(struct v3_core_info * core, char * counter_name) {
     struct v3_core_telemetry * telemetry = &(core->core_telem);
     struct telem_counter * counter = NULL;
 
@@ -163,7 +163,7 @@ void v3_telemetry_inc_core_counter(struct guest_info * core, char * counter_name
     return;
 }
 
-void v3_telemetry_reset_core_counter(struct guest_info * core, char * counter_name) {
+void v3_telemetry_reset_core_counter(struct v3_core_info * core, char * counter_name) {
     struct v3_core_telemetry * telemetry = &(core->core_telem);
     struct telem_counter * counter = NULL;
 
@@ -181,9 +181,9 @@ void v3_telemetry_reset_core_counter(struct guest_info * core, char * counter_na
 
 
 
-static inline struct exit_event * __insert_event(struct guest_info * info, 
+static inline struct exit_event * __insert_event(struct v3_core_info * core, 
 						 struct exit_event * evt) {
-    struct rb_node ** p = &(info->core_telem.exit_root.rb_node);
+    struct rb_node ** p = &(core->core_telem.exit_root.rb_node);
     struct rb_node * parent = NULL;
     struct exit_event * tmp_evt = NULL;
 
@@ -204,22 +204,22 @@ static inline struct exit_event * __insert_event(struct guest_info * info,
     return NULL;
 }
 
-static inline struct exit_event * insert_event(struct guest_info * info, 
+static inline struct exit_event * insert_event(struct v3_core_info * core, 
 					       struct exit_event * evt) {
     struct exit_event * ret;
 
-    if ((ret = __insert_event(info, evt))) {
+    if ((ret = __insert_event(core, evt))) {
 	return ret;
     }
 
-    v3_rb_insert_color(&(evt->tree_node), &(info->core_telem.exit_root));
+    v3_rb_insert_color(&(evt->tree_node), &(core->core_telem.exit_root));
 
     return NULL;
 }
 
 
-static struct exit_event * get_exit(struct guest_info * info, uint_t exit_code) {
-    struct rb_node * n = info->core_telem.exit_root.rb_node;
+static struct exit_event * get_exit(struct v3_core_info * core, uint_t exit_code) {
+    struct rb_node * n = core->core_telem.exit_root.rb_node;
     struct exit_event * evt = NULL;
 
     while (n) {
@@ -255,30 +255,30 @@ static inline struct exit_event * create_exit(uint_t exit_code) {
 
 
 
-static int free_exit(struct guest_info * core, struct exit_event * evt) {
+static int free_exit(struct v3_core_info * core, struct exit_event * evt) {
     v3_rb_erase(&(evt->tree_node), &(core->core_telem.exit_root));
     V3_Free(evt);
     return 0;
 }
 
 
-void v3_telemetry_start_exit(struct guest_info * info) {
-    rdtscll(info->core_telem.vmm_start_tsc);
+void v3_telemetry_start_exit(struct v3_core_info * core) {
+    rdtscll(core->core_telem.vmm_start_tsc);
 }
 
 
-void v3_telemetry_end_exit(struct guest_info * info, uint_t exit_code) {
-    struct v3_core_telemetry * telemetry = &(info->core_telem);
+void v3_telemetry_end_exit(struct v3_core_info * core, uint_t exit_code) {
+    struct v3_core_telemetry * telemetry = &(core->core_telem);
     struct exit_event * evt = NULL;
     uint64_t end_tsc = 0;
 
     rdtscll(end_tsc);
 
-    evt = get_exit(info, exit_code);
+    evt = get_exit(core, exit_code);
 
     if (evt == NULL) {
 	evt = create_exit(exit_code);
-	insert_event(info, evt);
+	insert_event(core, evt);
     }
 
     evt->handler_time += end_tsc - telemetry->vmm_start_tsc;
@@ -290,15 +290,15 @@ void v3_telemetry_end_exit(struct guest_info * info, uint_t exit_code) {
 
     // check if the exit count has expired
     if ((telemetry->exit_cnt % telemetry->vm_telem->granularity) == 0) {
-	if (info->vcpu_id == 0) {
-	    v3_print_telemetry(info->vm_info, info);
+	if (core->vcpu_id == 0) {
+	    v3_print_telemetry(core->vm_info, core);
 	}
     }
 }
 
 
 
-void v3_telemetry_reset(struct guest_info * core) {
+void v3_telemetry_reset(struct v3_core_info * core) {
     struct v3_core_telemetry * telemetry = &(core->core_telem);
 
 
@@ -360,7 +360,7 @@ static int free_callback(struct v3_vm_info * vm, struct telemetry_cb * cb) {
 }
 
 
-static void telemetry_header(struct v3_vm_info *vm, struct guest_info * core, char * hdr_buf, int len) {
+static void telemetry_header(struct v3_vm_info *vm, struct v3_core_info * core, char * hdr_buf, int len) {
     struct v3_telemetry_state * telemetry = &(vm->telemetry);
 
     if (!core) {
@@ -385,7 +385,7 @@ static void print_telemetry_end(struct v3_vm_info *vm, char *hdr_buf)
     V3_Print("%s Telemetry done\n", hdr_buf);
 }
 
-static void print_core_telemetry(struct guest_info * core, char *hdr_buf)
+static void print_core_telemetry(struct v3_core_info * core, char *hdr_buf)
 {
     struct exit_event * evt = NULL;
     struct v3_core_telemetry * telemetry = &(core->core_telem);
@@ -465,7 +465,7 @@ static void print_core_telemetry(struct guest_info * core, char *hdr_buf)
     return;
 }
 
-void v3_print_core_telemetry(struct guest_info * core ) {
+void v3_print_core_telemetry(struct v3_core_info * core ) {
     struct v3_vm_info * vm = core->vm_info;
     char hdr_buf[32];
     
@@ -503,7 +503,7 @@ void v3_print_global_telemetry(struct v3_vm_info * vm) {
     print_telemetry_end( vm, hdr_buf );
 }
 
-void v3_print_telemetry(struct v3_vm_info * vm, struct guest_info * core )
+void v3_print_telemetry(struct v3_vm_info * vm, struct v3_core_info * core )
 {
     struct v3_telemetry_state * telemetry = &(vm->telemetry);
     char hdr_buf[32];

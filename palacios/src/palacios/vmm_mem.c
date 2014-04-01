@@ -21,7 +21,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_util.h>
 #include <palacios/vmm_emulator.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_debug.h>
 #include <palacios/vmm_config.h>
 
@@ -51,19 +51,19 @@ struct v3_mem_region * v3_get_base_region(struct v3_vm_info * vm, addr_t gpa) {
 
 
 
-static int mem_offset_hypercall(struct guest_info * info, uint_t hcall_id, void * private_data) {
+static int mem_offset_hypercall(struct v3_core_info * core, uint_t hcall_id, void * private_data) {
 
     /*
       PrintDebug("V3Vee: Memory offset hypercall (offset=%p)\n", 
-      (void *)(info->vm_info->mem_map.base_region.host_addr));
+      (void *)(core->vm_info->mem_map.base_region.host_addr));
 
-      info->vm_regs.rbx = info->vm_info->mem_map.base_region.host_addr;
+      core->vm_regs.rbx = core->vm_info->mem_map.base_region.host_addr;
     */
 
     return 0;
 }
 
-static int unhandled_err(struct guest_info * core, addr_t guest_va, addr_t guest_pa, 
+static int unhandled_err(struct v3_core_info * core, addr_t guest_va, addr_t guest_pa, 
 			 struct v3_mem_region * reg, pf_error_t access_info) {
 
     PrintError("Unhandled memory access error (gpa=%p, gva=%p, error_code=%d)\n",
@@ -115,12 +115,12 @@ static int gpa_to_node_from_cfg(struct v3_vm_info * vm, addr_t gpa) {
 
 
 
-int v3_mem_write_gpa(struct guest_info * core, addr_t gpa, uint8_t * src, uint64_t len) {
+int v3_mem_write_gpa(struct v3_core_info * core, addr_t gpa, uint8_t * src, uint64_t len) {
 
     return -1;
 }
 
-int v3_mem_read_gpa(struct guest_info * core, addr_t gpa, uint8_t * dst, uint64_t len) {
+int v3_mem_read_gpa(struct v3_core_info * core, addr_t gpa, uint8_t * dst, uint64_t len) {
     return -1;
 }
 
@@ -147,7 +147,7 @@ int v3_init_mem_map(struct v3_vm_info * vm) {
 	int node_id = -1;
 
 	// There is an underlying region that contains all of the guest memory
-	// PrintDebug("Mapping %d pages of memory (%u bytes)\n", (int)mem_pages, (uint_t)info->mem_size);
+	// PrintDebug("Mapping %d pages of memory (%u bytes)\n", (int)mem_pages, (uint_t)core->mem_size);
 	
 	// 2MB page alignment needed for 2MB hardware nested paging
 	region->guest_start = MEM_BLOCK_SIZE_BYTES * i;
@@ -327,13 +327,13 @@ int v3_insert_mem_region(struct v3_vm_info * vm, struct v3_mem_region * region) 
 
 
     for (i = 0; i < vm->num_cores; i++) {
-	struct guest_info * info = &(vm->cores[i]);
+	struct v3_core_info * core = &(vm->cores[i]);
 
 	// flush virtual page tables 
 	// 3 cases shadow, shadow passthrough, and nested
 
-	if (info->shdw_pg_mode == SHADOW_PAGING) {
-	    v3_mem_mode_t mem_mode = v3_get_vm_mem_mode(info);
+	if (core->shdw_pg_mode == SHADOW_PAGING) {
+	    v3_mem_mode_t mem_mode = v3_get_vm_mem_mode(core);
 	    
 	    if (mem_mode == PHYSICAL_MEM) {
 		addr_t cur_addr;
@@ -341,20 +341,20 @@ int v3_insert_mem_region(struct v3_vm_info * vm, struct v3_mem_region * region) 
 		for (cur_addr = region->guest_start;
 		     cur_addr < region->guest_end;
 		     cur_addr += PAGE_SIZE_4KB) {
-		    v3_invalidate_passthrough_addr(info, cur_addr);
+		    v3_invalidate_passthrough_addr(core, cur_addr);
 		}
 	    } else {
-		v3_invalidate_shadow_pts(info);
+		v3_invalidate_shadow_pts(core);
 	    }
 	    
-	} else if (info->shdw_pg_mode == NESTED_PAGING) {
+	} else if (core->shdw_pg_mode == NESTED_PAGING) {
 	    addr_t cur_addr;
 	    
 	    for (cur_addr = region->guest_start;
 		 cur_addr < region->guest_end;
 		 cur_addr += PAGE_SIZE_4KB) {
 		
-		v3_invalidate_nested_addr(info, cur_addr);
+		v3_invalidate_nested_addr(core, cur_addr);
 	    }
 	}
     }
@@ -541,13 +541,13 @@ void v3_delete_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg) {
     }
 
     for (i = 0; i < vm->num_cores; i++) {
-	struct guest_info * info = &(vm->cores[i]);
+	struct v3_core_info * core = &(vm->cores[i]);
 
 	// flush virtual page tables 
 	// 3 cases shadow, shadow passthrough, and nested
 
-	if (info->shdw_pg_mode == SHADOW_PAGING) {
-	    v3_mem_mode_t mem_mode = v3_get_vm_mem_mode(info);
+	if (core->shdw_pg_mode == SHADOW_PAGING) {
+	    v3_mem_mode_t mem_mode = v3_get_vm_mem_mode(core);
 	    
 	    if (mem_mode == PHYSICAL_MEM) {
 		addr_t cur_addr;
@@ -555,20 +555,20 @@ void v3_delete_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg) {
 		for (cur_addr = reg->guest_start;
 		     cur_addr < reg->guest_end;
 		     cur_addr += PAGE_SIZE_4KB) {
-		    v3_invalidate_passthrough_addr(info, cur_addr);
+		    v3_invalidate_passthrough_addr(core, cur_addr);
 		}
 	    } else {
-		v3_invalidate_shadow_pts(info);
+		v3_invalidate_shadow_pts(core);
 	    }
 	    
-	} else if (info->shdw_pg_mode == NESTED_PAGING) {
+	} else if (core->shdw_pg_mode == NESTED_PAGING) {
 	    addr_t cur_addr;
 	    
 	    for (cur_addr = reg->guest_start;
 		 cur_addr < reg->guest_end;
 		 cur_addr += PAGE_SIZE_4KB) {
 		
-		v3_invalidate_nested_addr(info, cur_addr);
+		v3_invalidate_nested_addr(core, cur_addr);
 	    }
 	}
     }
@@ -581,7 +581,7 @@ void v3_delete_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg) {
 }
 
 // Determine if a given address can be handled by a large page of the requested size
-uint32_t v3_get_max_page_size(struct guest_info * core, addr_t page_addr, v3_cpu_mode_t mode) {
+uint32_t v3_get_max_page_size(struct v3_core_info * core, addr_t page_addr, v3_cpu_mode_t mode) {
     addr_t pg_start = 0;
     addr_t pg_end = 0; 
     uint32_t page_size = PAGE_SIZE_4KB;

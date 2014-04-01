@@ -135,9 +135,9 @@ typedef enum {
 } op_form_t;
 
 
-static int get_addr_width(struct guest_info * info, struct x86_instr * instr) {
+static int get_addr_width(struct v3_core_info * core, struct x86_instr * instr) {
 
-    switch (v3_get_vm_cpu_mode(info)) {
+    switch (v3_get_vm_cpu_mode(core)) {
 	case REAL:
 	    return (instr->prefixes.addr_size) ? 4 : 2;
 	case LONG:
@@ -145,18 +145,18 @@ static int get_addr_width(struct guest_info * info, struct x86_instr * instr) {
 	case PROTECTED:
 	case PROTECTED_PAE:
 	case LONG_32_COMPAT:
-		if (info->segments.cs.db) {
+		if (core->segments.cs.db) {
 			return (instr->prefixes.addr_size) ? 2 : 4;
 		} else {
 			return (instr->prefixes.addr_size) ? 4 : 2;
 		}			
 	default:
-	    PrintError("Unsupported CPU mode: %d\n", info->cpu_mode);
+	    PrintError("Unsupported CPU mode: %d\n", core->cpu_mode);
 	    return -1;
     }
 }
 
-static int get_operand_width(struct guest_info * info, struct x86_instr * instr, 
+static int get_operand_width(struct v3_core_info * core, struct x86_instr * instr, 
 			     op_form_t form) {
     switch (form) {
 
@@ -257,7 +257,7 @@ static int get_operand_width(struct guest_info * info, struct x86_instr * instr,
 	case SUB_IMM2SX_8:
 	case XOR_IMM2SX_8:
 	case MOV_IMM2:
-	    switch (v3_get_vm_cpu_mode(info)) {
+	    switch (v3_get_vm_cpu_mode(core)) {
 		case REAL:
 		    return (instr->prefixes.op_size) ? 4 : 2;
 		case LONG:
@@ -269,18 +269,18 @@ static int get_operand_width(struct guest_info * info, struct x86_instr * instr,
 		case PROTECTED:
 		case PROTECTED_PAE:
 		case LONG_32_COMPAT:
-		    if (info->segments.cs.db) {
+		    if (core->segments.cs.db) {
 			// default is 32
 			return (instr->prefixes.op_size) ? 2 : 4;
 		    } else {
 			return (instr->prefixes.op_size) ? 4 : 2;
 		    }
 		default:
-		    PrintError("Unsupported CPU mode: %d\n", info->cpu_mode);
+		    PrintError("Unsupported CPU mode: %d\n", core->cpu_mode);
 		    return -1;
 	    }
 	case INVLPG:
-	    switch (v3_get_vm_cpu_mode(info)) {
+	    switch (v3_get_vm_cpu_mode(core)) {
 		case REAL:
 		    PrintError("Invalid instruction given operating mode (%d)\n", form);
 		    return 0;
@@ -291,13 +291,13 @@ static int get_operand_width(struct guest_info * info, struct x86_instr * instr,
 		case LONG:
 			return 8;
 		default:
-		    PrintError("Unsupported CPU mode: %d\n", info->cpu_mode);
+		    PrintError("Unsupported CPU mode: %d\n", core->cpu_mode);
 		    return -1;
 	    }
 
 	case PUSHF:
 	case POPF:
-	    switch (v3_get_vm_cpu_mode(info)) {
+	    switch (v3_get_vm_cpu_mode(core)) {
 		case REAL:
 		    return 2;
 		case PROTECTED:
@@ -307,7 +307,7 @@ static int get_operand_width(struct guest_info * info, struct x86_instr * instr,
 		case LONG:
 			return 8;
 		default:
-		    PrintError("Unsupported CPU mode: %d\n", info->cpu_mode);
+		    PrintError("Unsupported CPU mode: %d\n", core->cpu_mode);
 		    return -1;
 	    }
 
@@ -316,7 +316,7 @@ static int get_operand_width(struct guest_info * info, struct x86_instr * instr,
 	case MOV_2DR:
 	case MOV_CR2:
 	case MOV_2CR:
-	    switch (v3_get_vm_cpu_mode(info)) {
+	    switch (v3_get_vm_cpu_mode(core)) {
 		case REAL:
 		case PROTECTED:
 		case PROTECTED_PAE:
@@ -326,7 +326,7 @@ static int get_operand_width(struct guest_info * info, struct x86_instr * instr,
 		case LONG:
 			return 8;
 		default:
-		    PrintError("Unsupported CPU mode: %d\n", info->cpu_mode);
+		    PrintError("Unsupported CPU mode: %d\n", core->cpu_mode);
 		    return -1;
 	    }
 
@@ -365,7 +365,7 @@ struct sib_byte {
 
 struct v3_gprs;
 
-static inline int decode_gpr(struct guest_info * core,
+static inline int decode_gpr(struct v3_core_info * core,
 			     struct x86_instr * instr, 
 			     uint8_t reg_code,
 			     struct x86_operand * reg) {
@@ -449,7 +449,7 @@ static inline int decode_gpr(struct guest_info * core,
 
 
 
-static inline int decode_cr(struct guest_info * core, 			
+static inline int decode_cr(struct v3_core_info * core, 			
 			     uint8_t reg_code,
 			     struct x86_operand * reg) {
 
@@ -479,7 +479,7 @@ static inline int decode_cr(struct guest_info * core,
     return 0;
 }
 
-static v3_seg_type_t get_instr_segment(struct guest_info * core, struct x86_instr * instr) {
+static v3_seg_type_t get_instr_segment(struct v3_core_info * core, struct x86_instr * instr) {
     v3_seg_type_t seg = V3_SEG_DS;
 
     if (instr->prefixes.cs_override) {
@@ -517,7 +517,7 @@ static v3_seg_type_t get_instr_segment(struct guest_info * core, struct x86_inst
 
 
 
-static  int decode_rm_operand16(struct guest_info * core,
+static  int decode_rm_operand16(struct v3_core_info * core,
 				uint8_t * modrm_instr, 
 				struct x86_instr * instr,
 				struct x86_operand * operand, 
@@ -614,7 +614,7 @@ static  int decode_rm_operand16(struct guest_info * core,
 
 
 // returns num_bytes parsed
-static int decode_rm_operand32(struct guest_info * core, 
+static int decode_rm_operand32(struct v3_core_info * core, 
 			       uint8_t * modrm_instr,  
 			       struct x86_instr * instr,
 			       struct x86_operand * operand, 
@@ -781,7 +781,7 @@ static int decode_rm_operand32(struct guest_info * core,
 
 
 
-int decode_rm_operand64(struct guest_info * core, uint8_t * modrm_instr, 
+int decode_rm_operand64(struct v3_core_info * core, uint8_t * modrm_instr, 
 			struct x86_instr * instr, struct x86_operand * operand, 
 			uint8_t * reg_code) {
     
@@ -1036,7 +1036,7 @@ int decode_rm_operand64(struct guest_info * core, uint8_t * modrm_instr,
 }
 
 
-static int decode_rm_operand(struct guest_info * core, 
+static int decode_rm_operand(struct v3_core_info * core, 
 			     uint8_t * instr_ptr,        // input
 			     op_form_t form, 
 			     struct x86_instr * instr,

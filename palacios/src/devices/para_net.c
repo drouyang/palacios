@@ -34,7 +34,7 @@ struct nic_state {
 
 
 
-static int tx_call(struct guest_info * info, uint_t call_no, void * priv_data) {
+static int tx_call(struct v3_core_info * core, uint_t call_no, void * priv_data) {
     //    struct nic_state * nic = (struct nic_state *)priv_data;
     addr_t pkt_gpa = info->vm_regs.rbx;
     int pkt_len = info->vm_regs.rcx;
@@ -56,7 +56,7 @@ static int tx_call(struct guest_info * info, uint_t call_no, void * priv_data) {
 }
 
 
-static int rx_call(struct guest_info * info, uint_t call_no, void * priv_data) {
+static int rx_call(struct v3_core_info * core, uint_t call_no, void * priv_data) {
     //    struct nic_state * nic = (struct nic_state *)priv_data;
     addr_t pkt_gpa = info->vm_regs.rbx;
     uint_t pkt_len = 0;
@@ -73,7 +73,7 @@ static int rx_call(struct guest_info * info, uint_t call_no, void * priv_data) {
 }
 
 
-static int macaddr_call(struct guest_info * info, uint_t call_no, void * priv_data) {
+static int macaddr_call(struct v3_core_info * core, uint_t call_no, void * priv_data) {
     struct nic_state * nic = (struct nic_state *)priv_data;
     addr_t mac_gpa = info->vm_regs.rbx;
 
@@ -105,7 +105,7 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int net_init(struct guest_info * vm, v3_cfg_tree_t * cfg) {
+static int net_init(struct v3_core_info * vm, v3_cfg_tree_t * cfg) {
     struct nic_state * state = NULL;
     char * dev_id = v3_cfg_val(cfg, "ID");
 

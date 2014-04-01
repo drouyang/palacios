@@ -21,7 +21,7 @@
 #include <palacios/vmm_swapbypass.h>
 #include <palacios/vmm_ctrl_regs.h>
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vmm_paging.h>
 #include <palacios/vmm_hashtable.h>
@@ -131,7 +131,7 @@ static inline int is_swapped_pte32(pte32_t * pte) {
 
 
 
-static struct shadow_page_data * create_new_shadow_pt(struct guest_info * core);
+static struct shadow_page_data * create_new_shadow_pt(struct v3_core_info * core);
 
 
 
@@ -156,7 +156,7 @@ static void telemetry_cb(struct v3_vm_info * vm, void * private_data, char * hdr
 
 
 
-static int get_vaddr_perms(struct guest_info * info, addr_t vaddr, pte32_t * guest_pte, pf_error_t * page_perms) {
+static int get_vaddr_perms(struct v3_core_info * core, addr_t vaddr, pte32_t * guest_pte, pf_error_t * page_perms) {
     uint64_t pte_val = (uint64_t)*(uint32_t *)guest_pte;
 
     // symcall to check if page is in cache or on swap disk
@@ -249,7 +249,7 @@ static addr_t map_swp_page(struct v3_vm_info * vm, pte32_t * shadow_pte, pte32_t
 #include "vmm_shdw_pg_swapbypass_64.h"
 
 
-static struct shadow_page_data * create_new_shadow_pt(struct guest_info * core) {
+static struct shadow_page_data * create_new_shadow_pt(struct v3_core_info * core) {
     struct v3_shdw_pg_state * state = &(core->shdw_pg_state);
     struct swapbypass_local_state * impl_state = (struct swapbypass_local_state *)(state->local_impl_data);
     v3_reg_t cur_cr3 = core->ctrl_regs.cr3;
@@ -428,7 +428,7 @@ static int sb_deinit(struct v3_vm_info * vm) {
     return -1;
 }
 
-static int sb_local_init(struct guest_info * core) {
+static int sb_local_init(struct v3_core_info * core) {
     struct v3_shdw_pg_state * state = &(core->shdw_pg_state);
     struct swapbypass_local_state * swapbypass_state = NULL;
 
@@ -450,7 +450,7 @@ static int sb_local_init(struct guest_info * core) {
 }
 
 
-static int sb_activate_shdw_pt(struct guest_info * core) {
+static int sb_activate_shdw_pt(struct v3_core_info * core) {
     switch (v3_get_vm_cpu_mode(core)) {
 
 	case PROTECTED:
@@ -469,12 +469,12 @@ static int sb_activate_shdw_pt(struct guest_info * core) {
     return 0;
 }
 
-static int sb_invalidate_shdw_pt(struct guest_info * core) {
+static int sb_invalidate_shdw_pt(struct v3_core_info * core) {
     return sb_activate_shdw_pt(core);
 }
 
 
-static int sb_handle_pf(struct guest_info * core, addr_t fault_addr, pf_error_t error_code) {
+static int sb_handle_pf(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
 
 	switch (v3_get_vm_cpu_mode(core)) {
 	    case PROTECTED:
@@ -494,7 +494,7 @@ static int sb_handle_pf(struct guest_info * core, addr_t fault_addr, pf_error_t 
 }
 
 
-static int sb_handle_invlpg(struct guest_info * core, addr_t vaddr) {
+static int sb_handle_invlpg(struct v3_core_info * core, addr_t vaddr) {
 
     switch (v3_get_vm_cpu_mode(core)) {
 	case PROTECTED:

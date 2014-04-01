@@ -27,13 +27,13 @@
 
 #define SW_INTR_SYSCALL_VEC 0x80
 
-int v3_handle_swintr (struct guest_info * core);
+int v3_handle_swintr (struct v3_core_info * core);
 
-int v3_hook_swintr (struct guest_info * core,
+int v3_hook_swintr (struct v3_core_info * core,
         uint8_t vector,
-        int (*handler)(struct guest_info * core, uint8_t vector, void * priv_data),
+        int (*handler)(struct v3_core_info * core, uint8_t vector, void * priv_data),
         void * priv_data);
-int v3_hook_passthrough_swintr (struct guest_info * core, uint8_t vector);
+int v3_hook_passthrough_swintr (struct v3_core_info * core, uint8_t vector);
 
 
 #endif

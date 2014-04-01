@@ -18,7 +18,7 @@
  */
 
 #include <palacios/vmm_dev_mgr.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm.h>
 #include <palacios/vmm_decoder.h>
 
@@ -398,13 +398,13 @@ static int free_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t 
 
 
 int v3_dev_hook_io(struct vm_device * dev, uint16_t port,
-		   int (*read)(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
-		   int (*write)(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data)) {
+		   int (*read)(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
+		   int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data)) {
     int ret = 0;
     
     ret = v3_hook_io_port(dev->vm, port, 
-			  (int (*)(struct guest_info * core, uint16_t, void *, uint_t, void *))read, 
-			  (int (*)(struct guest_info * core, uint16_t, void *, uint_t, void *))write, 
+			  (int (*)(struct v3_core_info * core, uint16_t, void *, uint_t, void *))read, 
+			  (int (*)(struct v3_core_info * core, uint16_t, void *, uint_t, void *))write, 
 			  (void *)dev->private_data);
 
     if (ret == -1) {
@@ -431,8 +431,8 @@ int v3_dev_unhook_io(struct vm_device * dev, uint16_t port) {
 
 
 int v3_dev_hook_msr(struct vm_device * dev, uint32_t msr,
-		    int (*read)(struct guest_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
-		    int (*write)(struct guest_info * core, uint32_t msr, struct v3_msr src, void * priv_data)) {
+		    int (*read)(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
+		    int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data)) {
     int ret = 0;
 
     ret = v3_hook_msr(dev->vm, msr, read, write, dev->private_data);

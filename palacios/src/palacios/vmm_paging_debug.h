@@ -215,7 +215,7 @@ static void PrintPTE64(addr_t vaddr, pte64_t * pte) {
 
 
 
-static int print_page_walk_cb(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
+static int print_page_walk_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
     int i = 0;
     addr_t tmp_vaddr = 0;
     switch (type) {
@@ -371,7 +371,7 @@ static int print_page_walk_cb(struct guest_info * info, page_type_t type, addr_t
 
 
 
-static int print_page_tree_cb(struct guest_info * info, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
+static int print_page_tree_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) {
     switch (type) {
 
 	/* 64 Bit */
@@ -446,89 +446,89 @@ static int print_page_tree_cb(struct guest_info * info, page_type_t type, addr_t
 
 
 
-void v3_print_pt_entry(struct guest_info * info, page_type_t type, addr_t vaddr, void * entry) {
-    print_page_tree_cb(info, type, vaddr, PAGE_ADDR_4KB((addr_t)entry), 0, NULL);
+void v3_print_pt_entry(struct v3_core_info * core, page_type_t type, addr_t vaddr, void * entry) {
+    print_page_tree_cb(core, type, vaddr, PAGE_ADDR_4KB((addr_t)entry), 0, NULL);
 }
 
 
-void v3_print_host_pgtables(struct guest_info * info, v3_cpu_mode_t cpu_mode, addr_t cr3) {
+void v3_print_host_pgtables(struct v3_core_info * core, v3_cpu_mode_t cpu_mode, addr_t cr3) {
     PrintDebug("CR3: %p\n", (void *)cr3);
     switch (cpu_mode) {
 	case PROTECTED:
-	    v3_walk_host_pt_32(info, cr3, print_page_walk_cb, NULL);
+	    v3_walk_host_pt_32(core, cr3, print_page_walk_cb, NULL);
 	    break;
 	case PROTECTED_PAE:
-	    v3_walk_host_pt_32pae(info, cr3, print_page_walk_cb, NULL);
+	    v3_walk_host_pt_32pae(core, cr3, print_page_walk_cb, NULL);
 	    break;
 	case LONG:
 	case LONG_32_COMPAT:
 	case LONG_16_COMPAT:
-	    v3_walk_host_pt_64(info, cr3, print_page_walk_cb, NULL);
+	    v3_walk_host_pt_64(core, cr3, print_page_walk_cb, NULL);
 	    break;
 	default:
-	    PrintError("Unsupported CPU MODE %s\n", v3_cpu_mode_to_str(info->cpu_mode));
+	    PrintError("Unsupported CPU MODE %s\n", v3_cpu_mode_to_str(core->cpu_mode));
 	    break;
     }
 }
 
 
-void v3_print_guest_pgtables(struct guest_info * info, addr_t cr3) {
+void v3_print_guest_pgtables(struct v3_core_info * core, addr_t cr3) {
     PrintDebug("Guest Page Tables -- CR3: %p\n", (void *)cr3);
-    switch (info->cpu_mode) {
+    switch (core->cpu_mode) {
 	case REAL:
 	case PROTECTED:
-	    v3_walk_guest_pt_32(info, cr3, print_page_walk_cb, NULL);
+	    v3_walk_guest_pt_32(core, cr3, print_page_walk_cb, NULL);
 	    break;
 	case PROTECTED_PAE:
-	    v3_walk_guest_pt_32pae(info, cr3, print_page_walk_cb, NULL);
+	    v3_walk_guest_pt_32pae(core, cr3, print_page_walk_cb, NULL);
 	    break;
 	case LONG:
 	case LONG_32_COMPAT:
 	case LONG_16_COMPAT:
-	    v3_walk_guest_pt_64(info, cr3, print_page_walk_cb, NULL);
+	    v3_walk_guest_pt_64(core, cr3, print_page_walk_cb, NULL);
 	    break;
 	default:
-	    PrintError("Unsupported CPU MODE %s\n", v3_cpu_mode_to_str(info->cpu_mode));
+	    PrintError("Unsupported CPU MODE %s\n", v3_cpu_mode_to_str(core->cpu_mode));
 	    break;
     }
 }
 
-void v3_print_host_pg_walk(struct guest_info * info,  addr_t virtual_addr, addr_t cr3) {
+void v3_print_host_pg_walk(struct v3_core_info * core,  addr_t virtual_addr, addr_t cr3) {
     PrintDebug("CR3: %p\n", (void *)cr3);
-    switch (info->cpu_mode) {
+    switch (core->cpu_mode) {
 	case PROTECTED:
-	    v3_drill_host_pt_32(info, cr3, virtual_addr, print_page_tree_cb, NULL);
+	    v3_drill_host_pt_32(core, cr3, virtual_addr, print_page_tree_cb, NULL);
 	    break;
 	case PROTECTED_PAE:
-	    v3_drill_host_pt_32pae(info, cr3, virtual_addr, print_page_tree_cb, NULL);
+	    v3_drill_host_pt_32pae(core, cr3, virtual_addr, print_page_tree_cb, NULL);
 	    break;
 	case LONG:
 	case LONG_32_COMPAT:
 	case LONG_16_COMPAT:
-	    v3_drill_host_pt_64(info, cr3, virtual_addr, print_page_tree_cb, NULL);
+	    v3_drill_host_pt_64(core, cr3, virtual_addr, print_page_tree_cb, NULL);
 	    break;
 	default:
-	    PrintError("Unsupported CPU MODE %s\n", v3_cpu_mode_to_str(info->cpu_mode));
+	    PrintError("Unsupported CPU MODE %s\n", v3_cpu_mode_to_str(core->cpu_mode));
 	    break;
     }
 }
 
-void v3_print_guest_pg_walk(struct guest_info * info, addr_t virtual_addr, addr_t cr3) {
+void v3_print_guest_pg_walk(struct v3_core_info * core, addr_t virtual_addr, addr_t cr3) {
     PrintDebug("CR3: %p\n", (void *)cr3);
-    switch (info->cpu_mode) {
+    switch (core->cpu_mode) {
 	case PROTECTED:
-	    v3_drill_guest_pt_32(info, cr3, virtual_addr, print_page_tree_cb, NULL);
+	    v3_drill_guest_pt_32(core, cr3, virtual_addr, print_page_tree_cb, NULL);
 	    break;
 	case PROTECTED_PAE:
-	    v3_drill_guest_pt_32pae(info, cr3, virtual_addr, print_page_tree_cb, NULL);
+	    v3_drill_guest_pt_32pae(core, cr3, virtual_addr, print_page_tree_cb, NULL);
 	    break;
 	case LONG:
 	case LONG_32_COMPAT:
 	case LONG_16_COMPAT:
-	    v3_drill_guest_pt_64(info, cr3, virtual_addr, print_page_tree_cb, NULL);
+	    v3_drill_guest_pt_64(core, cr3, virtual_addr, print_page_tree_cb, NULL);
 	    break;
 	default:
-	    PrintError("Unsupported CPU MODE %s\n", v3_cpu_mode_to_str(info->cpu_mode));
+	    PrintError("Unsupported CPU MODE %s\n", v3_cpu_mode_to_str(core->cpu_mode));
 	    break;
     }
 }

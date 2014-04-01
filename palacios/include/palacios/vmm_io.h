@@ -31,7 +31,7 @@
 
 
 struct v3_vm_info;
-struct guest_info;
+struct v3_core_info;
 
 void v3_init_io_map(struct v3_vm_info * vm);
 int v3_deinit_io_map(struct v3_vm_info * vm);
@@ -40,8 +40,8 @@ int v3_deinit_io_map(struct v3_vm_info * vm);
 
 /* External API */
 int v3_hook_io_port(struct v3_vm_info * vm, uint16_t port, 
-		    int (*read)(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
-		    int (*write)(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data), 
+		    int (*read)(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
+		    int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data), 
 		    void * priv_data);
 
 int v3_unhook_io_port(struct v3_vm_info * vm, uint16_t port);
@@ -54,10 +54,10 @@ struct v3_io_hook {
     uint16_t port;
 
     // Reads data into the IO port (IN, INS)
-    int (*read)(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data);
+    int (*read)(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data);
 
     // Writes data from the IO port (OUT, OUTS)
-    int (*write)(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data);
+    int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data);
 
     void * priv_data;
   

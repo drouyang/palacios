@@ -464,7 +464,7 @@ static char opsize_char(uint_t length) {
 }
 #endif
 
-static int video_write_mem(struct guest_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data) {
+static int video_write_mem(struct v3_core_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data) {
     struct vm_device * dev = (struct vm_device *)priv_data;
     struct video_internal * state = (struct video_internal *)dev->private_data;
     uint_t length_adjusted, screen_pos, x, y;
@@ -601,7 +601,7 @@ static int notimpl_port_write(struct video_internal * video_state, const char *f
 }
 
 /* general registers */
-static int misc_outp_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int misc_outp_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
 
     *(struct misc_outp_reg *) dest = video_state->misc_outp_reg;
@@ -610,7 +610,7 @@ static int misc_outp_read(struct guest_info * core, uint16_t port, void * dest, 
     return length;
 }
 
-static int misc_outp_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int misc_outp_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
@@ -621,11 +621,11 @@ static int misc_outp_write(struct guest_info * core, uint16_t port, void * src, 
     return length;
 }
 
-static int inp_status0_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int inp_status0_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     return notimpl_port_read(priv_data, __FUNCTION__, port, dest, length);
 }
 
-static int inp_status1_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int inp_status1_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
 
     /* next write to attrc selects the index rather than data */
@@ -636,24 +636,24 @@ static int inp_status1_read(struct guest_info * core, uint16_t port, void * dest
     return length;
 }
 
-static int feat_ctrl_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int feat_ctrl_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     return notimpl_port_read(priv_data, __FUNCTION__, port, dest, length);
 }
 
-static int feat_ctrl_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int feat_ctrl_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     return notimpl_port_write(priv_data, __FUNCTION__, port, src, length);
 }
 
-static int video_enable_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int video_enable_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     return notimpl_port_read(priv_data, __FUNCTION__, port, dest, length);
 }
 
-static int video_enable_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int video_enable_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     return notimpl_port_write(priv_data, __FUNCTION__, port, src, length);
 }
 
 /* sequencer registers */
-static int seq_data_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int seq_data_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     int index = video_state->seq_index_reg;
 
@@ -668,7 +668,7 @@ static int seq_data_read(struct guest_info * core, uint16_t port, void * dest, u
     return length;    
 }
 
-static int seq_data_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int seq_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     int index = video_state->seq_index_reg;
     uint8_t val = *(uint8_t *) src;
@@ -685,7 +685,7 @@ static int seq_data_write(struct guest_info * core, uint16_t port, void * src, u
     return length;    
 }
 
-static int seq_index_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int seq_index_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->seq_index_reg;
@@ -694,7 +694,7 @@ static int seq_index_read(struct guest_info * core, uint16_t port, void * dest, 
     return length;
 }
 
-static int seq_index_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int seq_index_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     handle_port_write(video_state, __FUNCTION__, port, src, length, 2);
 
@@ -710,7 +710,7 @@ static int seq_index_write(struct guest_info * core, uint16_t port, void * src, 
 }
 
 /* CRT controller registers */
-static int crtc_data_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int crtc_data_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->crtc_index_reg;
@@ -719,7 +719,7 @@ static int crtc_data_read(struct guest_info * core, uint16_t port, void * dest, 
     return length;
 }
 
-static int crtc_data_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int crtc_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     uint8_t val = *(uint8_t *)src;
     uint_t index = video_state->crtc_index_reg;
@@ -808,7 +808,7 @@ static int crtc_data_write(struct guest_info * core, uint16_t port, void * src, 
     return length;
 }
 
-static int crtc_index_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int crtc_index_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->crtc_index_reg;
@@ -817,7 +817,7 @@ static int crtc_index_read(struct guest_info * core, uint16_t port, void * dest,
     return length;
 }
 
-static int crtc_index_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int crtc_index_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
 
     handle_port_write(video_state, __FUNCTION__, port, src, length, 2);
@@ -845,7 +845,7 @@ static int crtc_index_write(struct guest_info * core, uint16_t port, void * src,
 }
 
 /* graphics controller registers */
-static int graphc_data_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int graphc_data_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     int index = video_state->graphc_index_reg;
 
@@ -860,7 +860,7 @@ static int graphc_data_read(struct guest_info * core, uint16_t port, void * dest
     return length;    
 }
 
-static int graphc_data_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int graphc_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     int index = video_state->graphc_index_reg;
     uint8_t val = *(uint8_t *) src;
@@ -877,7 +877,7 @@ static int graphc_data_write(struct guest_info * core, uint16_t port, void * src
     return length;    
 }
 
-static int graphc_index_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int graphc_index_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->graphc_index_reg;
@@ -886,7 +886,7 @@ static int graphc_index_read(struct guest_info * core, uint16_t port, void * des
     return length;
 }
 
-static int graphc_index_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int graphc_index_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     handle_port_write(video_state, __FUNCTION__, port, src, length, 2);
 
@@ -902,7 +902,7 @@ static int graphc_index_write(struct guest_info * core, uint16_t port, void * sr
 }
 
 /* attribute controller registers */
-static int attrc_data_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int attrc_data_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     int index = video_state->attrc_index_reg;
 
@@ -917,7 +917,7 @@ static int attrc_data_read(struct guest_info * core, uint16_t port, void * dest,
     return length;    
 }
 
-static int attrc_data_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int attrc_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     int index = video_state->attrc_index_reg;
     uint8_t val = *(uint8_t *) src;
@@ -933,7 +933,7 @@ static int attrc_data_write(struct guest_info * core, uint16_t port, void * src,
     return length;    
 }
 
-static int attrc_index_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int attrc_index_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->attrc_index_reg;
@@ -948,7 +948,7 @@ static int attrc_index_read(struct guest_info * core, uint16_t port, void * dest
     return length;
 }
 
-static int attrc_index_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int attrc_index_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
@@ -957,7 +957,7 @@ static int attrc_index_write(struct guest_info * core, uint16_t port, void * src
     return length;    
 }
 
-static int attrc_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int attrc_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
 
     /* two registers in one, written in an alternating fashion */
@@ -971,7 +971,7 @@ static int attrc_write(struct guest_info * core, uint16_t port, void * src, uint
 }
 
 /* video DAC palette registers */
-static int dac_indexw_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int dac_indexw_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->dac_indexw_reg;
@@ -980,7 +980,7 @@ static int dac_indexw_read(struct guest_info * core, uint16_t port, void * dest,
     return length;
 }
 
-static int dac_indexw_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int dac_indexw_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
@@ -990,7 +990,7 @@ static int dac_indexw_write(struct guest_info * core, uint16_t port, void * src,
     return length;  
 }
 
-static int dac_indexr_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int dac_indexr_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
@@ -1000,7 +1000,7 @@ static int dac_indexr_write(struct guest_info * core, uint16_t port, void * src,
     return length;  
 }
 
-static int dac_data_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int dac_data_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     unsigned index;
 
@@ -1020,7 +1020,7 @@ static int dac_data_read(struct guest_info * core, uint16_t port, void * dest, u
     return length;
 }
 
-static int dac_data_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int dac_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct video_internal * video_state = priv_data;
     unsigned index;
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
@@ -1040,11 +1040,11 @@ static int dac_data_write(struct guest_info * core, uint16_t port, void * src, u
     return length;
 }
 
-static int dac_pelmask_read(struct guest_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int dac_pelmask_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
     return notimpl_port_read(priv_data, __FUNCTION__, port, dest, length);
 }
 
-static int dac_pelmask_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int dac_pelmask_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     return notimpl_port_write(priv_data, __FUNCTION__, port, src, length);
 }
 

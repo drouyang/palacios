@@ -19,7 +19,7 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vmcb.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vmm_decoder.h>
 #include <palacios/vmm_extensions.h>
@@ -38,7 +38,7 @@
 
 
 struct v3_swintr_hook {
-    int (*handler)(struct guest_info * core, uint8_t vector, void * priv_data);
+    int (*handler)(struct v3_core_info * core, uint8_t vector, void * priv_data);
     void * priv_data;
 };
 
@@ -63,7 +63,7 @@ static int deinit_swintr_intercept (struct v3_vm_info * vm, void * priv_data) {
 }
 
 
-static int init_swintr_core_svm (struct guest_info * core, void * priv_data) {
+static int init_swintr_core_svm (struct v3_core_info * core, void * priv_data) {
     vmcb_t * vmcb = (vmcb_t*)core->vmm_data;
     vmcb_ctrl_t * ctrl_area = GET_VMCB_CTRL_AREA(vmcb);
 
@@ -72,13 +72,13 @@ static int init_swintr_core_svm (struct guest_info * core, void * priv_data) {
 }
 
 
-static int init_swintr_core_vmx (struct guest_info * core, void * priv_data) {
+static int init_swintr_core_vmx (struct v3_core_info * core, void * priv_data) {
     PrintError("Not implemented!\n");
     return -1;
 }
 
 
-static int init_swintr_intercept_core (struct guest_info * core, void * priv_data, void ** core_data) {
+static int init_swintr_intercept_core (struct v3_core_info * core, void * priv_data, void ** core_data) {
     v3_cpu_arch_t cpu_type = v3_get_cpu_type(V3_Get_CPU());
 
     switch (cpu_type) {
@@ -107,7 +107,7 @@ static int init_swintr_intercept_core (struct guest_info * core, void * priv_dat
 }
 
 
-static inline struct v3_swintr_hook * get_swintr_hook (struct guest_info * core, uint8_t vector) {
+static inline struct v3_swintr_hook * get_swintr_hook (struct v3_core_info * core, uint8_t vector) {
     return swintr_hooks[vector];
 }
 
@@ -126,7 +126,7 @@ static struct v3_extension_impl swintr_impl = {
 register_extension(&swintr_impl);
 
 
-int v3_handle_swintr (struct guest_info * core) {
+int v3_handle_swintr (struct v3_core_info * core) {
 
     int ret = 0;
     void * instr_ptr = NULL;
@@ -187,9 +187,9 @@ int v3_handle_swintr (struct guest_info * core) {
 
 
 
-int v3_hook_swintr (struct guest_info * core,
+int v3_hook_swintr (struct v3_core_info * core,
         uint8_t vector,
-        int (*handler)(struct guest_info * core, uint8_t vector, void * priv_data),
+        int (*handler)(struct v3_core_info * core, uint8_t vector, void * priv_data),
         void * priv_data)
 {
     struct v3_swintr_hook * hook = (struct v3_swintr_hook*)V3_Malloc(sizeof(struct v3_swintr_hook));
@@ -215,14 +215,14 @@ int v3_hook_swintr (struct guest_info * core,
 }
     
 
-static int passthrough_swintr_handler (struct guest_info * core, uint8_t vector, void * priv_data) {
+static int passthrough_swintr_handler (struct v3_core_info * core, uint8_t vector, void * priv_data) {
     PrintDebug("[passthrough_swint_handler] INT vector=%d (guest=0x%p)\n",
         vector, (void*)core);
     return 0;
 }
 
 
-int v3_hook_passthrough_swintr (struct guest_info * core, uint8_t vector) {
+int v3_hook_passthrough_swintr (struct v3_core_info * core, uint8_t vector) {
     
     int rc = v3_hook_swintr(core, vector, passthrough_swintr_handler, NULL);
     

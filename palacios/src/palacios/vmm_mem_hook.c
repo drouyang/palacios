@@ -18,7 +18,7 @@
  */
 
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_mem_hook.h>
 #include <palacios/vmm_emulator.h>
 #include <palacios/vm_guest_mem.h>
@@ -28,11 +28,11 @@
 struct mem_hook {
   
     // Called when data is read from a memory page
-    int (*read)(struct guest_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data);
+    int (*read)(struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data);
     // Called when data is written to a memory page
-    int (*write)(struct guest_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data);
+    int (*write)(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data);
     // Called when memory page is accessed
-    int (*access)(struct guest_info *core, addr_t guest_va, addr_t guest_pa, struct v3_mem_region *region, pf_error_t access_info, void *priv_data);
+    int (*access)(struct v3_core_info *core, addr_t guest_va, addr_t guest_pa, struct v3_mem_region *region, pf_error_t access_info, void *priv_data);
 
     void * priv_data;
     struct v3_mem_region * region;
@@ -128,7 +128,7 @@ static inline int get_op_length(struct x86_instr * instr, struct x86_operand * o
 
 
 
-static int handle_mem_hook(struct guest_info * core, addr_t guest_va, addr_t guest_pa, 
+static int handle_mem_hook(struct v3_core_info * core, addr_t guest_va, addr_t guest_pa, 
 			   struct v3_mem_region * reg, pf_error_t access_info) {
     struct v3_mem_hooks * hooks = &(core->vm_info->mem_hooks);
     struct x86_instr instr;
@@ -340,7 +340,7 @@ static int handle_mem_hook(struct guest_info * core, addr_t guest_va, addr_t gue
 
 int v3_hook_write_mem(struct v3_vm_info * vm, uint16_t core_id,
 		      addr_t guest_addr_start, addr_t guest_addr_end, addr_t host_addr,
-		      int (*write)(struct guest_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data),
+		      int (*write)(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data),
 		      void * priv_data) {
     struct v3_mem_region * entry = NULL;
     struct mem_hook * hook = V3_Malloc(sizeof(struct mem_hook));
@@ -389,8 +389,8 @@ int v3_hook_write_mem(struct v3_vm_info * vm, uint16_t core_id,
 
 int v3_hook_full_mem(struct v3_vm_info * vm, uint16_t core_id, 
 		     addr_t guest_addr_start, addr_t guest_addr_end,
-		     int (*read)(struct guest_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data),
-		     int (*write)(struct guest_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data),
+		     int (*read)(struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data),
+		     int (*write)(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data),
 		     void * priv_data) {
   
     struct v3_mem_region * entry = NULL;
@@ -438,7 +438,7 @@ int v3_hook_full_mem(struct v3_vm_info * vm, uint16_t core_id,
 
 int v3_hook_access_mem(struct v3_vm_info * vm, uint16_t core_id, 
 		       addr_t guest_addr_start, addr_t guest_addr_end,
-		       int (*access)(struct guest_info * core, 
+		       int (*access)(struct v3_core_info * core, 
 				     addr_t guest_va, 
 				     addr_t guest_pa, 
 				     struct v3_mem_region *reg, 

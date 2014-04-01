@@ -32,19 +32,19 @@
 #include <palacios/vmm_config.h>
 
 
-struct guest_info;
+struct v3_core_info;
 
 
 struct v3_shdw_pg_impl {
     char * name;
     int (*init)(struct v3_vm_info * vm, v3_cfg_tree_t * cfg);
     int (*deinit)(struct v3_vm_info * vm);
-    int (*local_init)(struct guest_info * core);
-    int (*local_deinit)(struct guest_info * core);
-    int (*handle_pagefault)(struct guest_info * core, addr_t fault_addr, pf_error_t error_code);
-    int (*handle_invlpg)(struct guest_info * core, addr_t vaddr);
-    int (*activate_shdw_pt)(struct guest_info * core);
-    int (*invalidate_shdw_pt)(struct guest_info * core);
+    int (*local_init)(struct v3_core_info * core);
+    int (*local_deinit)(struct v3_core_info * core);
+    int (*handle_pagefault)(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code);
+    int (*handle_invlpg)(struct v3_core_info * core, addr_t vaddr);
+    int (*activate_shdw_pt)(struct v3_core_info * core);
+    int (*invalidate_shdw_pt)(struct v3_core_info * core);
 };
 
 
@@ -86,32 +86,32 @@ struct v3_shdw_pg_event {
 int v3_init_shdw_impl(struct v3_vm_info * vm);
 int v3_deinit_shdw_impl(struct v3_vm_info * vm);
 
-int v3_init_shdw_pg_state(struct guest_info * core);
-int v3_deinit_shdw_pg_state(struct guest_info * core);
+int v3_init_shdw_pg_state(struct v3_core_info * core);
+int v3_deinit_shdw_pg_state(struct v3_core_info * core);
 
 
 /* Handler implementations */
-int v3_handle_shadow_pagefault(struct guest_info * info, addr_t fault_addr, pf_error_t error_code);
-int v3_handle_shadow_invlpg(struct guest_info * info);
+int v3_handle_shadow_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code);
+int v3_handle_shadow_invlpg(struct v3_core_info * core);
 
 /* Actions.. */
-int v3_activate_shadow_pt(struct guest_info * info);
-int v3_invalidate_shadow_pts(struct guest_info * info);
+int v3_activate_shadow_pt(struct v3_core_info * core);
+int v3_invalidate_shadow_pts(struct v3_core_info * core);
 
 
 /* Utility functions for shadow paging implementations */
-int v3_inject_guest_pf(struct guest_info * info, addr_t fault_addr, pf_error_t error_code);
+int v3_inject_guest_pf(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code);
 int v3_is_guest_pf(pt_access_status_t guest_access, pt_access_status_t shadow_access);
 
 
 int v3_register_shadow_paging_event_callback(struct v3_vm_info *vm,
-					  int (*callback)(struct guest_info *core, 
+					  int (*callback)(struct v3_core_info *core, 
 							  struct v3_shdw_pg_event *event,
 							  void      *priv_data),
 					  void *priv_data);
 
 int v3_unregister_shadow_paging_event_callback(struct v3_vm_info *vm,
-					       int (*callback)(struct guest_info *core, 
+					       int (*callback)(struct v3_core_info *core, 
 							       struct v3_shdw_pg_event *event,
 							       void      *priv_data),
 					       void *priv_data);

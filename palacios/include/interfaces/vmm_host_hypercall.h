@@ -33,7 +33,7 @@ typedef void * palacios_core_t;
 // Notice that host implementation is itself
 // palacios-specific at this point.  It must be
 // include the palacios-headers needed to understand
-// a guest_info, etc.
+// a v3_core_info, etc.
 //
 // The idea here is to make it possible to create something
 // like a linux kernel module, that is compiled against

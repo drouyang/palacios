@@ -25,7 +25,7 @@
 #include <palacios/vmm_lock.h>
 #include <palacios/vmm_intr.h>
 #include <palacios/vmm_host_events.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_debug.h>
 
 
@@ -362,7 +362,7 @@ static int key_event_handler(struct v3_vm_info * vm,
     } 
 #ifdef V3_CONFIG_SYMCALL
     else if (evt->scan_code == 0x43) { // F9 Sym test
-	struct guest_info * core = &(vm->cores[0]);
+	struct v3_core_info * core = &(vm->cores[0]);
 	PrintDebug("Testing sym call\n");
 	sym_arg_t a0 = 0x1111;
 	sym_arg_t a1 = 0x2222;
@@ -580,7 +580,7 @@ static int mouse_write_output(struct keyboard_internal * kbd, uint8_t data) {
 
 
 #if KEYBOARD_DEBUG_80H
-static int keyboard_write_delay(struct guest_info *core, ushort_t port, void * src,  uint_t length, void * priv_data) {
+static int keyboard_write_delay(struct v3_core_info *core, ushort_t port, void * src,  uint_t length, void * priv_data) {
 
     if (length == 1) { 
 	PrintDebug("keyboard: write of 0x%x to 80h\n", *((uint8_t*)src));
@@ -591,7 +591,7 @@ static int keyboard_write_delay(struct guest_info *core, ushort_t port, void * s
     }
 }
 
-static int keyboard_read_delay(struct guest_info * core, ushort_t port, void * dest, uint_t length, void * priv_data) {
+static int keyboard_read_delay(struct v3_core_info * core, ushort_t port, void * dest, uint_t length, void * priv_data) {
 
     if (length == 1) { 
 	*(uint8_t *)dest = v3_inb(port);
@@ -611,7 +611,7 @@ static int keyboard_read_delay(struct guest_info * core, ushort_t port, void * d
 
 
 
-static int keyboard_write_command(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int keyboard_write_command(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct keyboard_internal * kbd = priv_data;
     uint8_t cmd = *(uint8_t *)src;
 
@@ -784,7 +784,7 @@ static int keyboard_write_command(struct guest_info * core, ushort_t port, void 
     return length;
 }
 
-static int keyboard_read_status(struct guest_info * core, ushort_t port, void * dest, uint_t length, void * priv_data) {
+static int keyboard_read_status(struct v3_core_info * core, ushort_t port, void * dest, uint_t length, void * priv_data) {
     struct keyboard_internal * kbd = priv_data;
 
     if (length != 1) { 
@@ -805,7 +805,7 @@ static int keyboard_read_status(struct guest_info * core, ushort_t port, void * 
     return length;
 }
 
-static int keyboard_write_output(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int keyboard_write_output(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct keyboard_internal * kbd = priv_data;
     int ret = length;
 
@@ -992,7 +992,7 @@ static int keyboard_write_output(struct guest_info * core, ushort_t port, void *
     return ret;
 }
 
-static int keyboard_read_input(struct guest_info * core, ushort_t port, void * dest, uint_t length, void * priv_data) {
+static int keyboard_read_input(struct v3_core_info * core, ushort_t port, void * dest, uint_t length, void * priv_data) {
     struct keyboard_internal * kbd = priv_data;
 
     if (length != 1) {

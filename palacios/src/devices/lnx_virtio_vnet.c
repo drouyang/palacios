@@ -122,7 +122,7 @@ static int get_desc_count(struct virtio_queue * q, int index) {
 }
 
 
-static int handle_cmd_kick(struct guest_info * core, 
+static int handle_cmd_kick(struct v3_core_info * core, 
 			   struct virtio_vnet_state * vnet_state) {
     struct virtio_queue * q = &(vnet_state->queue[0]);
     
@@ -272,7 +272,7 @@ exit:
     return ret_val;
 }
 
-static int do_tx_pkts(struct guest_info * core, 
+static int do_tx_pkts(struct v3_core_info * core, 
 			   struct virtio_vnet_state * vnet_state) 
 {
     struct virtio_queue * q = &(vnet_state->queue[XMIT_QUEUE]);
@@ -337,13 +337,13 @@ static void vnet_virtio_poll(struct v3_vm_info * vm, void * private_data){
     }
 }
 
-static int handle_rx_queue_kick(struct guest_info *core, 
+static int handle_rx_queue_kick(struct v3_core_info *core, 
 			  struct virtio_vnet_state * vnet_state) 
 {	
     return 0;
 }
 
-static int vnet_virtio_io_write(struct guest_info * core, 
+static int vnet_virtio_io_write(struct v3_core_info * core, 
 				uint16_t port, void * src, 
 				uint_t length, void * private_data) {
     struct virtio_vnet_state * vnet_state = (struct virtio_vnet_state *)private_data;
@@ -479,7 +479,7 @@ static int vnet_virtio_io_write(struct guest_info * core,
 }
 
 
-static int vnet_virtio_io_read(struct guest_info * core, 
+static int vnet_virtio_io_read(struct v3_core_info * core, 
 			       uint16_t port, void * dst, 
 			       uint_t length, void * private_data) {
 

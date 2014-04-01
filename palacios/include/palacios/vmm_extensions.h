@@ -28,7 +28,7 @@
 
 
 struct v3_vm_info;
-struct guest_info;
+struct v3_core_info;
 
 struct v3_extensions {
     struct list_head extensions;
@@ -41,10 +41,10 @@ struct v3_extension_impl {
     char * name;
     int (*init)(struct v3_vm_info * vm, v3_cfg_tree_t * cfg, void ** priv_data);
     int (*deinit)(struct v3_vm_info * vm, void * priv_data);
-    int (*core_init)(struct guest_info * core, void * priv_data, void ** core_data);
-    int (*core_deinit)(struct guest_info * core, void * priv_data, void * core_data);
-    int (*on_entry)(struct guest_info * core, void * priv_data);
-    int (*on_exit)(struct guest_info * core, void * priv_data);
+    int (*core_init)(struct v3_core_info * core, void * priv_data, void ** core_data);
+    int (*core_deinit)(struct v3_core_info * core, void * priv_data, void * core_data);
+    int (*on_entry)(struct v3_core_info * core, void * priv_data);
+    int (*on_exit)(struct v3_core_info * core, void * priv_data);
 };
 
 struct v3_extension {
@@ -68,11 +68,11 @@ int V3_deinit_extensions();
 int v3_init_ext_manager(struct v3_vm_info * vm);
 int v3_deinit_ext_manager(struct v3_vm_info * vm);
 int v3_add_extension(struct v3_vm_info * vm, const char * name, v3_cfg_tree_t * cfg);
-int v3_init_core_extensions(struct guest_info * core);
-int v3_deinit_core_extensions(struct guest_info * core);
+int v3_init_core_extensions(struct v3_core_info * core);
+int v3_deinit_core_extensions(struct v3_core_info * core);
 
 void * v3_get_extension_state(struct v3_vm_info * vm, const char * name);
-void * v3_get_ext_core_state (struct guest_info * core, const char * name);
+void * v3_get_ext_core_state (struct v3_core_info * core, const char * name);
 
 
 #define register_extension(ext)					\

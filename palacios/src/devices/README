@@ -20,7 +20,7 @@ The control flow goes like this:
  * The arguments are device specific, and the pointer is returned to the VMM. No instance 
 	specific initialization should be done here
 
-3. The VMM then calls attach_device(struct guest_info * vm, struct vm_device * dev) to associate the 
+3. The VMM then calls attach_device(struct v3_core_info * vm, struct vm_device * dev) to associate the 
 	device with a virtual machine
 
 4. attach_device then calls the ops->init() function found in the (struct vm_device *)

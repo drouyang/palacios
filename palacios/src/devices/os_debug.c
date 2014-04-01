@@ -35,7 +35,7 @@ struct debug_state {
 };
 
 
-static int handle_gen_write(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int handle_gen_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct debug_state * state = priv_data;
 
     state->debug_buf[state->debug_offset++] = *(char*)src;
@@ -49,7 +49,7 @@ static int handle_gen_write(struct guest_info * core, ushort_t port, void * src,
     return length;
 }
 
-static int handle_hb_write(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int handle_hb_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     uint32_t val = 0;
 
     if (length == 1) {
@@ -65,12 +65,12 @@ static int handle_hb_write(struct guest_info * core, ushort_t port, void * src, 
     return length;
 }
 
-static int handle_hcall(struct guest_info * info, uint_t hcall_id, void * priv_data) {
+static int handle_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) {
     struct debug_state * state = (struct debug_state *)priv_data;
 
-    int msg_len = info->vm_regs.rcx;
-    addr_t msg_gpa = info->vm_regs.rbx;
-    int buf_is_va = info->vm_regs.rdx;
+    int msg_len = core->vm_regs.rcx;
+    addr_t msg_gpa = core->vm_regs.rbx;
+    int buf_is_va = core->vm_regs.rdx;
 
     if (msg_len >= BUF_SIZE) {
 	PrintError("Console message too large for buffer (len=%d)\n", msg_len);
@@ -78,12 +78,12 @@ static int handle_hcall(struct guest_info * info, uint_t hcall_id, void * priv_d
     }
 
     if (buf_is_va == 1) {
-	if (v3_read_gva_memory(info, msg_gpa, msg_len, (uchar_t *)state->debug_buf) != msg_len) {
+	if (v3_read_gva_memory(core, msg_gpa, msg_len, (uchar_t *)state->debug_buf) != msg_len) {
 	    PrintError("Could not read debug message\n");
 	    return -1;
 	}
     } else {
-	if (v3_read_gpa_memory(info, msg_gpa, msg_len, (uchar_t *)state->debug_buf) != msg_len) {
+	if (v3_read_gpa_memory(core, msg_gpa, msg_len, (uchar_t *)state->debug_buf) != msg_len) {
 	    PrintError("Could not read debug message\n");
 	    return -1;
 	}

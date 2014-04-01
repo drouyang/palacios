@@ -80,7 +80,7 @@ typedef uint64_t sym_arg_t;
 #define SYMCALL_MEM_LOOKUP 10
 /* ** */
 
-int v3_sym_call(struct guest_info * info, 
+int v3_sym_call(struct v3_core_info * core, 
 		uint64_t call_num, sym_arg_t * arg0, 
 		sym_arg_t * arg1, sym_arg_t * arg2,
 		sym_arg_t * arg3, sym_arg_t * arg4);

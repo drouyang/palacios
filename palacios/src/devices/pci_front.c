@@ -48,7 +48,7 @@
 #include <palacios/vmm_dev_mgr.h>
 #include <palacios/vmm_sprintf.h>
 #include <palacios/vmm_lowlevel.h>
-#include <palacios/vm_guest.h> 
+#include <palacios/vm.h> 
 #include <palacios/vmm_symspy.h>
 
 #include <devices/pci.h>
@@ -159,7 +159,7 @@ static int pull_config(struct pci_front_internal *state, uint8_t *config)
 }
 
 
-static int pci_front_read_mem(struct guest_info * core, 
+static int pci_front_read_mem(struct v3_core_info * core, 
 			      addr_t              gpa,
 			      void              * dst,
 			      uint_t              len,
@@ -186,7 +186,7 @@ static int pci_front_read_mem(struct guest_info * core,
     return rc;
 }
 
-static int pci_front_write_mem(struct guest_info * core, 
+static int pci_front_write_mem(struct v3_core_info * core, 
 			       addr_t              gpa,
 			       void              * src,
 			       uint_t              len,
@@ -212,7 +212,7 @@ static int pci_front_write_mem(struct guest_info * core,
 }
 
 
-static int pci_front_read_port(struct guest_info * core, 
+static int pci_front_read_port(struct v3_core_info * core, 
 			       uint16_t            port, 
 			       void              * dst, 
 			       uint_t              len, 
@@ -238,7 +238,7 @@ static int pci_front_read_port(struct guest_info * core,
     
 }
 
-static int pci_front_write_port(struct guest_info * core, 
+static int pci_front_write_port(struct v3_core_info * core, 
 				uint16_t            port, 
 				void              * src, 
 				uint_t              len, 

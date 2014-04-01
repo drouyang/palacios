@@ -26,19 +26,19 @@
 #include <palacios/vmm_mem.h>
 #include <palacios/vmm_paging.h>
 
-int v3_init_passthrough_pts(struct guest_info * guest_info);
-int v3_free_passthrough_pts(struct guest_info * core);
-int v3_free_nested_pts(struct guest_info * core);
+int v3_init_passthrough_pts(struct v3_core_info * core);
+int v3_free_passthrough_pts(struct v3_core_info * core);
+int v3_free_nested_pts(struct v3_core_info * core);
 
-int v3_reset_passthrough_pts(struct guest_info * guest_info);
+int v3_reset_passthrough_pts(struct v3_core_info * core);
 
-int v3_handle_passthrough_pagefault(struct guest_info * info, addr_t fault_addr, pf_error_t error_code);
-int v3_handle_nested_pagefault(struct guest_info * info, addr_t fault_addr, pf_error_t error_code);
+int v3_handle_passthrough_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code);
+int v3_handle_nested_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code);
 
-int v3_activate_passthrough_pt(struct guest_info * info);
+int v3_activate_passthrough_pt(struct v3_core_info * core);
 
-int v3_invalidate_passthrough_addr(struct guest_info * info, addr_t inv_addr);
-int v3_invalidate_nested_addr(struct guest_info * info, addr_t inv_addr);
+int v3_invalidate_passthrough_addr(struct v3_core_info * core, addr_t inv_addr);
+int v3_invalidate_nested_addr(struct v3_core_info * core, addr_t inv_addr);
 
 #endif // ! __V3VEE__
 

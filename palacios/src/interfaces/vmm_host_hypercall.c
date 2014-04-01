@@ -20,7 +20,7 @@
  */
 
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vmm_hypercall.h>
 #include <palacios/vmm_types.h>
@@ -29,12 +29,12 @@
 
 
 #define GET_SET_GPR_IMPL(R) \
-  static uint64_t get_##R(palacios_core_t core) { return ((struct guest_info *)core)->vm_regs.R;} \
-  static void set_##R(palacios_core_t core, uint64_t val) { ((struct guest_info *)core)->vm_regs.R = val; } 
+  static uint64_t get_##R(palacios_core_t core) { return ((struct v3_core_info *)core)->vm_regs.R;} \
+  static void set_##R(palacios_core_t core, uint64_t val) { ((struct v3_core_info *)core)->vm_regs.R = val; } 
 
 #define GET_SET_CR_IMPL(R) \
-  static uint64_t get_##R(palacios_core_t core) { return ((struct guest_info *)core)->ctrl_regs.R;} \
-  static void set_##R(palacios_core_t core, uint64_t val) { ((struct guest_info *)core)->ctrl_regs.R = val; } 
+  static uint64_t get_##R(palacios_core_t core) { return ((struct v3_core_info *)core)->ctrl_regs.R;} \
+  static void set_##R(palacios_core_t core, uint64_t val) { ((struct v3_core_info *)core)->ctrl_regs.R = val; } 
 
 #define DECL_IT(R) .get_##R = get_##R, .set_##R = set_##R, 
 
@@ -55,9 +55,9 @@ GET_SET_GPR_IMPL(r13)
 GET_SET_GPR_IMPL(r14)
 GET_SET_GPR_IMPL(r15)
 
-static uint64_t get_rip(palacios_core_t core) { return ((struct guest_info *)core)->rip;} 
+static uint64_t get_rip(palacios_core_t core) { return ((struct v3_core_info *)core)->rip;} 
 
-static void set_rip(palacios_core_t core, uint64_t val) { ((struct guest_info *)core)->rip = val; } 
+static void set_rip(palacios_core_t core, uint64_t val) { ((struct v3_core_info *)core)->rip = val; } 
 
 
 GET_SET_CR_IMPL(cr0)
@@ -120,7 +120,7 @@ struct bounce_data {
   void *priv_data;
 };
 
-static int bounce(struct guest_info *core,
+static int bounce(struct v3_core_info *core,
 		  unsigned int hcall_id,
 		  void *priv_data)
 {

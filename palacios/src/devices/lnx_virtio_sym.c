@@ -91,7 +91,7 @@ static int get_desc_count(struct virtio_queue * q, int index) {
 }
 
 
-static int handle_kick(struct guest_info * core, struct virtio_sym_state * sym_state) {
+static int handle_kick(struct v3_core_info * core, struct virtio_sym_state * sym_state) {
     struct virtio_queue * q = sym_state->cur_queue;
 
     return -1;
@@ -155,7 +155,7 @@ static int handle_kick(struct guest_info * core, struct virtio_sym_state * sym_s
 }
 
 
-static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
+static int virtio_io_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
     struct virtio_sym_state * sym_state = (struct virtio_sym_state *)private_data;
     int port_idx = port % sym_state->io_range_size;
 
@@ -264,7 +264,7 @@ static int virtio_io_write(struct guest_info * core, uint16_t port, void * src, 
 }
 
 
-static int virtio_io_read(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * private_data) {
+static int virtio_io_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * private_data) {
 
     struct virtio_sym_state * sym_state = (struct virtio_sym_state *)private_data;
     int port_idx = port % sym_state->io_range_size;

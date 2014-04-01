@@ -25,11 +25,11 @@
 #include <palacios/vmm_paging.h>
 #include <palacios/vmm.h>
 #include <palacios/vm_guest_mem.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 // Reference: AMD Software Developer Manual Vol.2 Ch.5 "Page Translation and Protection"
 
-static inline int handle_passthrough_pagefault_64(struct guest_info * core, addr_t fault_addr, pf_error_t error_code) {
+static inline int handle_passthrough_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
     pml4e64_t * pml      = NULL;
     pdpe64_t * pdpe      = NULL;
     pde64_t * pde        = NULL;
@@ -205,7 +205,7 @@ static inline int handle_passthrough_pagefault_64(struct guest_info * core, addr
     return 0;
 }
 
-static inline int invalidate_addr_64(struct guest_info * core, addr_t inv_addr) {
+static inline int invalidate_addr_64(struct v3_core_info * core, addr_t inv_addr) {
     pml4e64_t * pml = NULL;
     pdpe64_t * pdpe = NULL;
     pde64_t * pde = NULL;

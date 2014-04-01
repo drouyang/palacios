@@ -19,15 +19,15 @@
 
 #include <palacios/vmm_hypercall.h>
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
-static int hcall_test(struct guest_info * info, hcall_id_t hcall_id, void * private_data) {
-    info->vm_regs.rbx = 0x1111;
-    info->vm_regs.rcx = 0x2222;
-    info->vm_regs.rdx = 0x3333;
-    info->vm_regs.rsi = 0x4444;
-    info->vm_regs.rdi = 0x5555;
+static int hcall_test(struct v3_core_info * core, hcall_id_t hcall_id, void * private_data) {
+    core->vm_regs.rbx = 0x1111;
+    core->vm_regs.rcx = 0x2222;
+    core->vm_regs.rdx = 0x3333;
+    core->vm_regs.rsi = 0x4444;
+    core->vm_regs.rdi = 0x5555;
     return 0;
 }
 
@@ -35,7 +35,7 @@ static int hcall_test(struct guest_info * info, hcall_id_t hcall_id, void * priv
 struct hypercall {
     uint_t id;
   
-    int (*hcall_fn)(struct guest_info * info, hcall_id_t hcall_id, void * priv_data);
+    int (*hcall_fn)(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data);
     void * priv_data;
   
     struct rb_node tree_node;
@@ -131,7 +131,7 @@ static struct hypercall * get_hypercall(struct v3_vm_info * vm, hcall_id_t id) {
 
 
 int v3_register_hypercall(struct v3_vm_info * vm, hcall_id_t hypercall_id, 
-			  int (*hypercall)(struct guest_info * info, hcall_id_t hcall_id, void * priv_data), 
+			  int (*hypercall)(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data), 
 			  void * priv_data) {
 
     struct hypercall * hcall = (struct hypercall *)V3_Malloc(sizeof(struct hypercall));
@@ -179,9 +179,9 @@ int v3_remove_hypercall(struct v3_vm_info * vm, hcall_id_t hypercall_id) {
 }
 
 
-int v3_handle_hypercall(struct guest_info * info) {
-    hcall_id_t hypercall_id = *(uint_t *)&info->vm_regs.rax;
-    struct hypercall * hcall = get_hypercall(info->vm_info, hypercall_id);
+int v3_handle_hypercall(struct v3_core_info * core) {
+    hcall_id_t hypercall_id = *(uint_t *)&core->vm_regs.rax;
+    struct hypercall * hcall = get_hypercall(core->vm_info, hypercall_id);
 
     if (!hcall) {
 	PrintError("Invalid Hypercall (%d(0x%x) not registered)\n", 
@@ -189,7 +189,7 @@ int v3_handle_hypercall(struct guest_info * info) {
 	return -1;
     }
 
-    if (hcall->hcall_fn(info, hypercall_id, hcall->priv_data) != 0) {
+    if (hcall->hcall_fn(core, hypercall_id, hcall->priv_data) != 0) {
 	PrintError("Error handling hypercall\n");
 	return -1;
     }

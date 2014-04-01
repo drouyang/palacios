@@ -20,7 +20,7 @@
 #include <palacios/vmm.h>
 
 #include <palacios/vmm_extensions.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_hashtable.h>
 
 
@@ -177,7 +177,7 @@ int v3_add_extension(struct v3_vm_info * vm, const char * name, v3_cfg_tree_t * 
     return 0;
 }
 
-int v3_init_core_extensions(struct guest_info * core) {
+int v3_init_core_extensions(struct v3_core_info * core) {
     struct v3_extension * ext = NULL;
     uint32_t cpuid = core->vcpu_id;
 
@@ -195,7 +195,7 @@ int v3_init_core_extensions(struct guest_info * core) {
 }
 
 
-int v3_deinit_core_extensions (struct guest_info * core) {
+int v3_deinit_core_extensions (struct v3_core_info * core) {
         struct v3_extension * ext = NULL;
         struct v3_extension * tmp = NULL;
         struct v3_vm_info * vm = core->vm_info;
@@ -229,7 +229,7 @@ void * v3_get_extension_state(struct v3_vm_info * vm, const char * name) {
 }
 
 
-void * v3_get_ext_core_state (struct guest_info * core, const char * name) {
+void * v3_get_ext_core_state (struct v3_core_info * core, const char * name) {
     struct v3_extension * ext = NULL;
     struct v3_vm_info * vm = core->vm_info;
     uint32_t cpuid = core->vcpu_id;

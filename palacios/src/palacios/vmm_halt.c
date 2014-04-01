@@ -35,36 +35,36 @@
 // This should trigger a #GP if cpl != 0, otherwise, yield to host
 //
 
-int v3_handle_halt(struct guest_info * info) {
+int v3_handle_halt(struct v3_core_info * core) {
 
-    if (info->cpl != 0) { 
-	v3_raise_exception(info, GPF_EXCEPTION);
+    if (core->cpl != 0) { 
+	v3_raise_exception(core, GPF_EXCEPTION);
     } else {
 	PrintDebug("CPU Yield\n");
 
-	while (!v3_intr_pending(info) && (info->vm_info->run_state == VM_RUNNING)) {
+	while (!v3_intr_pending(core) && (core->vm_info->run_state == VM_RUNNING)) {
             uint64_t t, cycles;
 	    /* Yield, allowing time to pass while yielded */
-	    t = v3_get_host_time(&info->time_state);
-	    v3_yield(info,YIELD_TIME_USEC);
-	    cycles = v3_get_host_time(&info->time_state) - t;
-	    v3_advance_time(info, &cycles);
+	    t = v3_get_host_time(&core->time_state);
+	    v3_yield(core,YIELD_TIME_USEC);
+	    cycles = v3_get_host_time(&core->time_state) - t;
+	    v3_advance_time(core, &cycles);
 
-	    v3_update_timers(info);
+	    v3_update_timers(core);
     	    
 	    /* At this point, we either have some combination of 
 	       interrupts, including perhaps a timer interrupt, or 
 	       no interrupt.
 	    */
-	    if (!v3_intr_pending(info)) {
+	    if (!v3_intr_pending(core)) {
 		/* if no interrupt, then we do halt */
 		/* asm("hlt"); */
 	    }
 
 	    // This is needed to ensure that an idled CPU can be reawoken via IPI
-	    v3_wait_at_barrier(info);
+	    v3_wait_at_barrier(core);
 
-	    if (info->core_run_state == CORE_STOPPED) {
+	    if (core->core_run_state == CORE_STOPPED) {
 		// We have been initted and reset, bail out to catch the restart
 		break;
 	    }
@@ -73,7 +73,7 @@ int v3_handle_halt(struct guest_info * info) {
 
 	/* V3_Print("palacios: done with halt\n"); */
 	
-	info->rip += 1;
+	core->rip += 1;
     }
 
     return 0;

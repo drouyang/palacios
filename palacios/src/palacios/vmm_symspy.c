@@ -20,14 +20,14 @@
 #include <palacios/vmm_symspy.h>
 #include <palacios/vmm.h>
 #include <palacios/vmm_msr.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_sprintf.h>
 
 #define SYMSPY_GLOBAL_MSR 0x534
 #define SYMSPY_LOCAL_MSR 0x535
 
 
-static int symspy_msr_read(struct guest_info * core, uint_t msr, 
+static int symspy_msr_read(struct v3_core_info * core, uint_t msr, 
 		    struct v3_msr * dst, void * priv_data) {
     struct v3_symspy_global_state * global_state = &(core->vm_info->sym_vm_state.symspy_state);
     struct v3_symspy_local_state * local_state = &(core->sym_core_state.symspy_state);
@@ -47,7 +47,7 @@ static int symspy_msr_read(struct guest_info * core, uint_t msr,
 }
 
 
-static int symspy_msr_write(struct guest_info * core, uint_t msr, struct v3_msr src, void * priv_data) {
+static int symspy_msr_write(struct v3_core_info * core, uint_t msr, struct v3_msr src, void * priv_data) {
 
     if (msr == SYMSPY_GLOBAL_MSR) {
 	struct v3_symspy_global_state * global_state = &(core->vm_info->sym_vm_state.symspy_state);
@@ -136,7 +136,7 @@ int v3_init_symspy_vm(struct v3_vm_info * vm, struct v3_symspy_global_state * st
 
 
 
-int v3_init_symspy_core(struct guest_info * core, struct v3_symspy_local_state * state) {
+int v3_init_symspy_core(struct v3_core_info * core, struct v3_symspy_local_state * state) {
     state->local_page_pa = (addr_t)V3_AllocPages(1);
 
     if (!state->local_page_pa) { 
@@ -196,6 +196,6 @@ struct v3_symspy_global_page * v3_sym_get_symspy_vm(struct v3_vm_info * vm) {
     return vm->sym_vm_state.symspy_state.sym_page;
 }
 
-struct v3_symspy_local_page * v3_sym_get_symspy_core(struct guest_info * core) {
+struct v3_symspy_local_page * v3_sym_get_symspy_core(struct v3_core_info * core) {
     return core->sym_core_state.symspy_state.local_page;
 }

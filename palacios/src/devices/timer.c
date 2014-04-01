@@ -53,7 +53,7 @@ static struct v3_device_ops dev_ops = {
 };
 
 
-static int timer_init(struct guest_info * vm, void * cfg_data) {
+static int timer_init(struct v3_core_info * vm, void * cfg_data) {
     struct timer_state * timer = NULL;
     timer = (struct timer_state *)V3_Malloc( sizeof(struct timer_state));
 

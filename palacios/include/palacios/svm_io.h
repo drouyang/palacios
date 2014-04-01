@@ -22,7 +22,7 @@
 
 #ifdef __V3VEE__
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmcb.h>
 #include <palacios/vmm.h>
 
@@ -46,10 +46,10 @@ struct svm_io_info {
 int v3_init_svm_io_map(struct v3_vm_info * vm);
 int v3_deinit_svm_io_map(struct v3_vm_info * vm);
 
-int v3_handle_svm_io_in(struct guest_info * info, struct svm_io_info * io_info);
-int v3_handle_svm_io_ins(struct guest_info * info, struct svm_io_info * io_info);
-int v3_handle_svm_io_out(struct guest_info * info, struct svm_io_info * io_info);
-int v3_handle_svm_io_outs(struct guest_info * info, struct svm_io_info * io_info);
+int v3_handle_svm_io_in(struct v3_core_info * core, struct svm_io_info * io_info);
+int v3_handle_svm_io_ins(struct v3_core_info * core, struct svm_io_info * io_info);
+int v3_handle_svm_io_out(struct v3_core_info * core, struct svm_io_info * io_info);
+int v3_handle_svm_io_outs(struct v3_core_info * core, struct svm_io_info * io_info);
 
 #endif // !__V3VEE__
 

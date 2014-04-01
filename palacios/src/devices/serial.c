@@ -26,7 +26,7 @@
 #include <palacios/vmm_ringbuffer.h>
 #include <palacios/vmm_lock.h>
 #include <palacios/vmm_intr.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 #include <devices/serial.h>
 
@@ -451,7 +451,7 @@ static int dequeue_data(struct v3_vm_info * vm, struct serial_port * com,
     return 0;
 }
 
-static int write_data_port(struct guest_info * core, uint16_t port, 
+static int write_data_port(struct v3_core_info * core, uint16_t port, 
 			   void * src, uint_t length, void * priv_data) {
     struct serial_state * state = priv_data;
     uint8_t * val = (uint8_t *)src;
@@ -498,7 +498,7 @@ static int write_data_port(struct guest_info * core, uint16_t port,
 
 
 
-static int read_data_port(struct guest_info * core, uint16_t port, 
+static int read_data_port(struct v3_core_info * core, uint16_t port, 
 			  void * dst, uint_t length, void * priv_data) {
     struct serial_state * state = priv_data;
     uint8_t * val = (uint8_t *)dst;
@@ -581,7 +581,7 @@ static int handle_fcr_write(struct serial_port * com, uint8_t value) {
 
 
 
-static int write_ctrl_port(struct guest_info * core, uint16_t port, void * src, 
+static int write_ctrl_port(struct v3_core_info * core, uint16_t port, void * src, 
 			   uint_t length, void * priv_data) {
     struct serial_state * state = priv_data;
     uint8_t val = *(uint8_t *)src;
@@ -665,7 +665,7 @@ static int write_ctrl_port(struct guest_info * core, uint16_t port, void * src,
 
 
 
-static int read_ctrl_port(struct guest_info * core, uint16_t port, void * dst, 
+static int read_ctrl_port(struct v3_core_info * core, uint16_t port, void * dst, 
 			  uint_t length, void * priv_data) {
     struct serial_state * state = priv_data;
     uint8_t * val = (uint8_t *)dst;
@@ -742,7 +742,7 @@ static int read_ctrl_port(struct guest_info * core, uint16_t port, void * dst,
 }
 
 
-static int write_status_port(struct guest_info * core, uint16_t port, void * src, 
+static int write_status_port(struct v3_core_info * core, uint16_t port, void * src, 
 			     uint_t length, void * priv_data) {
     struct serial_state * state = priv_data;
     uint8_t val = *(uint8_t *)src;
@@ -787,7 +787,7 @@ static int write_status_port(struct guest_info * core, uint16_t port, void * src
     return length;
 }
 
-static int read_status_port(struct guest_info * core, uint16_t port, void * dst, 
+static int read_status_port(struct v3_core_info * core, uint16_t port, void * dst, 
 			    uint_t length, void * priv_data) {
     struct serial_state * state = priv_data;
     uint8_t * val = (uint8_t *)dst;

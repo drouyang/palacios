@@ -136,7 +136,7 @@
 
 .align 8
 .globl v3_vmx_resume
-// vm_regs = %rdi, guest_info * = %rsi, ctrl_regs = %rdx
+// vm_regs = %rdi, v3_core_info * = %rsi, ctrl_regs = %rdx
 v3_vmx_resume:
 
     PRE_LAUNCH($vmx_resume_ret);
@@ -151,7 +151,7 @@ vmx_resume_ret:
 
 .align 8
 .globl v3_vmx_launch
-// vm_regs = %rdi, guest_info * = %rsi, ctrl_regs = %rdx
+// vm_regs = %rdi, v3_core_info * = %rsi, ctrl_regs = %rdx
 v3_vmx_launch:
 
     PRE_LAUNCH($vmx_launch_ret);

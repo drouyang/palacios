@@ -102,16 +102,16 @@ struct v3_fpu_state {
 
 };
 
-int v3_fpu_init(struct guest_info * core);
+int v3_fpu_init(struct v3_core_info * core);
 
-int v3_fpu_on_entry(struct guest_info * core);
-
-
-int v3_fpu_activate(struct guest_info * core);
-int v3_fpu_deactivate(struct guest_info * core);
+int v3_fpu_on_entry(struct v3_core_info * core);
 
 
-int v3_fpu_handle_xsetbv(struct guest_info * core);
+int v3_fpu_activate(struct v3_core_info * core);
+int v3_fpu_deactivate(struct v3_core_info * core);
+
+
+int v3_fpu_handle_xsetbv(struct v3_core_info * core);
 
 #endif
 

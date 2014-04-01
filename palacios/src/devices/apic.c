@@ -24,7 +24,7 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_msr.h>
 #include <palacios/vmm_sprintf.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_types.h>
 #include <palacios/vmm_telemetry.h>
 
@@ -179,7 +179,7 @@ struct irq_queue_entry {
     uint32_t vector;
     uint8_t trigger_mode; 
 
-    int (*ack)(struct guest_info * core, uint32_t irq, void * private_data);
+    int (*ack)(struct v3_core_info * core, uint32_t irq, void * private_data);
     void * private_data;
 
     struct list_head list_node;
@@ -245,11 +245,11 @@ struct apic_state {
     uint8_t trig_mode_reg[32];
 
     struct {
-	int (*ack)(struct guest_info * core, uint32_t irq, void * private_data);
+	int (*ack)(struct v3_core_info * core, uint32_t irq, void * private_data);
 	void * private_data;
     } irq_ack_cbs[256];
 
-    struct guest_info * core;
+    struct v3_core_info * core;
 
     void * controller_handle;
 
@@ -282,8 +282,8 @@ struct apic_dev_state {
 
 
 
-static int apic_read(struct guest_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data);
-static int apic_write(struct guest_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data);
+static int apic_read(struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data);
+static int apic_write(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data);
 
 
 static int is_apic_bsp(struct apic_state * apic) {
@@ -291,7 +291,7 @@ static int is_apic_bsp(struct apic_state * apic) {
 }
 
 
-int v3_apic_is_bsp(struct guest_info * core, void * dev_data) {
+int v3_apic_is_bsp(struct v3_core_info * core, void * dev_data) {
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)
 	(((struct vm_device *)dev_data)->private_data);
    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]);
@@ -395,7 +395,7 @@ static int init_apic_state(struct apic_state * apic, uint32_t id) {
 
 
 
-static int read_apic_msr(struct guest_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int read_apic_msr(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)priv_data;
     struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]);
 
@@ -407,7 +407,7 @@ static int read_apic_msr(struct guest_info * core, uint_t msr, v3_msr_t * dst, v
 }
 
 
-static int write_apic_msr(struct guest_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int write_apic_msr(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)priv_data;
     struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]);
     struct v3_mem_region * old_reg = v3_get_mem_region(core->vm_info, core->vcpu_id, apic->base_addr);
@@ -487,7 +487,7 @@ static int activate_apic_irq(struct apic_state * apic, struct  irq_queue_entry *
 
 /* trigger: level=1, edge=0 */
 static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num, uint8_t trigger, 
-			      int (*ack)(struct guest_info * core, uint32_t irq, void * private_data),
+			      int (*ack)(struct v3_core_info * core, uint32_t irq, void * private_data),
 			      void * private_data) {
     unsigned int flags = 0;
     struct irq_queue_entry * entry = NULL;
@@ -601,7 +601,7 @@ static int get_highest_irr(struct apic_state * apic) {
 
 
 
-static int apic_do_eoi(struct guest_info * core, struct apic_state * apic) {
+static int apic_do_eoi(struct v3_core_info * core, struct apic_state * apic) {
     int isr_irq = get_highest_isr(apic);
 
     if (isr_irq != -1) {
@@ -704,7 +704,7 @@ static int activate_internal_irq(struct apic_state * apic, apic_irq_type_t int_t
 
 
 static inline int should_deliver_cluster_ipi(struct apic_dev_state * apic_dev,
-					     struct guest_info * dst_core, 
+					     struct v3_core_info * dst_core, 
 					     struct apic_state * dst_apic, uint8_t mda) {
 
     int ret = 0;
@@ -733,7 +733,7 @@ static inline int should_deliver_cluster_ipi(struct apic_dev_state * apic_dev,
 }
 
 static inline int should_deliver_flat_ipi(struct apic_dev_state * apic_dev,
-					  struct guest_info * dst_core,
+					  struct v3_core_info * dst_core,
 					  struct apic_state * dst_apic, uint8_t mda) {
 
     int ret = 0;
@@ -763,7 +763,7 @@ static inline int should_deliver_flat_ipi(struct apic_dev_state * apic_dev,
 
 
 static int should_deliver_ipi(struct apic_dev_state * apic_dev, 
-			      struct guest_info * dst_core, 
+			      struct v3_core_info * dst_core, 
 			      struct apic_state * dst_apic, uint8_t mda) {
     addr_t flags = 0;
     int ret = 0;
@@ -811,7 +811,7 @@ static int deliver_ipi(struct apic_state * src_apic,
 		       struct v3_gen_ipi * ipi) {
 
 
-    struct guest_info * dst_core = dst_apic->core;
+    struct v3_core_info * dst_core = dst_apic->core;
     //   struct apic_dev_state * dev_state = src_apic->dev_state;
 
 
@@ -1117,7 +1117,7 @@ static int route_ipi(struct apic_dev_state * apic_dev,
 
 
 // External function, expected to acquire lock on apic
-static int apic_read(struct guest_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data) {
+static int apic_read(struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data) {
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(priv_data);
     struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]);
     addr_t reg_addr  = guest_addr - apic->base_addr;
@@ -1380,7 +1380,7 @@ static int apic_read(struct guest_info * core, addr_t guest_addr, void * dst, ui
 /**
  *
  */
-static int apic_write(struct guest_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data) {
+static int apic_write(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data) {
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(priv_data);
     struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
     addr_t reg_addr  = guest_addr - apic->base_addr;
@@ -1608,7 +1608,7 @@ static int apic_write(struct guest_info * core, addr_t guest_addr, void * src, u
 /* Interrupt Controller Functions */
 
 
-static int apic_intr_pending(struct guest_info * core, void * private_data) {
+static int apic_intr_pending(struct v3_core_info * core, void * private_data) {
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(private_data);
     struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
     int req_irq = 0;    
@@ -1633,7 +1633,7 @@ static int apic_intr_pending(struct guest_info * core, void * private_data) {
 
 
 
-static int apic_get_intr_number(struct guest_info * core, void * private_data) {
+static int apic_get_intr_number(struct v3_core_info * core, void * private_data) {
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(private_data);
     struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
     int req_irq = get_highest_irr(apic);
@@ -1660,7 +1660,7 @@ int v3_apic_send_ipi(struct v3_vm_info * vm, struct v3_gen_ipi * ipi, void * dev
 
 
 
-static int apic_begin_irq(struct guest_info * core, void * private_data, int irq) {
+static int apic_begin_irq(struct v3_core_info * core, void * private_data, int irq) {
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(private_data);
     struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
     int major_offset = (irq & ~0x00000007) >> 3;
@@ -1686,7 +1686,7 @@ static int apic_begin_irq(struct guest_info * core, void * private_data, int irq
 
 /* Timer Functions */
 
-static void apic_inject_timer_intr(struct guest_info *core,
+static void apic_inject_timer_intr(struct v3_core_info *core,
 			           void * priv_data) {
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(priv_data);
     struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
@@ -1714,7 +1714,7 @@ static void apic_inject_timer_intr(struct guest_info *core,
 
 
 
-static void apic_update_time(struct guest_info * core, 
+static void apic_update_time(struct v3_core_info * core, 
 			     uint64_t cpu_cycles, uint64_t cpu_freq, 
 			     void * priv_data) {
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(priv_data);
@@ -1823,7 +1823,7 @@ static int apic_free(struct apic_dev_state * apic_dev) {
 
     for (i = 0; i < apic_dev->num_apics; i++) {
 	struct apic_state * apic = &(apic_dev->apics[i]);
-	struct guest_info * core = apic->core;
+	struct v3_core_info * core = apic->core;
 	
 	vm = core->vm_info;
 
@@ -1980,7 +1980,7 @@ static int apic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     
     for (i = 0; i < vm->num_cores; i++) {
 	struct apic_state * apic = &(apic_dev->apics[i]);
-	struct guest_info * core = &(vm->cores[i]);
+	struct v3_core_info * core = &(vm->cores[i]);
 
 	apic->core = core;
 	apic->dev_state = apic_dev;

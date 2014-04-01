@@ -21,7 +21,7 @@
 #include <palacios/vmm_dev_mgr.h>
 
 #include <interfaces/vmm_file.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 #ifndef V3_CONFIG_DEBUG_FILEDISK
 #undef PrintDebug

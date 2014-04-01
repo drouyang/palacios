@@ -29,7 +29,7 @@
 #include <palacios/vmm_msr.h>
 #include <palacios/vmm_util.h>
 
-struct guest_info;
+struct v3_core_info;
 
 
 /* Per-VM time information */
@@ -79,8 +79,8 @@ struct vm_core_time {
 #define VM_TIME_TRAP_RDTSC (1 << 2)
 
 struct v3_timer_ops {
-    void (*update_timer)(struct guest_info * info, ullong_t cpu_cycles, ullong_t cpu_freq, void * priv_data);
-    void (*advance_timer)(struct guest_info * info, void * private_data);
+    void (*update_timer)(struct v3_core_info * core, ullong_t cpu_cycles, ullong_t cpu_freq, void * priv_data);
+    void (*advance_timer)(struct v3_core_info * core, void * private_data);
 };
 
 struct v3_timer {
@@ -95,21 +95,21 @@ struct v3_timer {
 
 
 // Basic functions for handling passage of time in palacios
-void v3_init_time_core(struct guest_info * core);
+void v3_init_time_core(struct v3_core_info * core);
 int v3_init_time_vm(struct v3_vm_info * vm);
 
-void v3_deinit_time_core(struct guest_info * core);
+void v3_deinit_time_core(struct v3_core_info * core);
 void v3_deinit_time_vm(struct v3_vm_info * vm);
 
-int v3_start_time(struct guest_info * core);
+int v3_start_time(struct v3_core_info * core);
 
-int v3_advance_time(struct guest_info * core, uint64_t * guest_cycles);
+int v3_advance_time(struct v3_core_info * core, uint64_t * guest_cycles);
 
 // Basic functions for attaching timers to the passage of time - these timers 
 // should eventually specify their accuracy and resolution.
-struct v3_timer * v3_add_timer(struct guest_info * info, struct v3_timer_ops * ops, void * private_data);
-int v3_remove_timer(struct guest_info * info, struct v3_timer * timer);
-void v3_update_timers(struct guest_info * info);
+struct v3_timer * v3_add_timer(struct v3_core_info * core, struct v3_timer_ops * ops, void * private_data);
+int v3_remove_timer(struct v3_core_info * core, struct v3_timer * timer);
+void v3_update_timers(struct v3_core_info * core);
 
 // Functions to return the different notions of time in Palacios.
 static inline uint64_t v3_get_host_time(struct vm_core_time *t) {
@@ -138,8 +138,8 @@ static inline sint64_t v3_tsc_host_offset(struct vm_core_time *time_state) {
 #define TSC_MSR     0x10
 #define TSC_AUX_MSR 0xC0000103
 
-int v3_handle_rdtscp(struct guest_info *info);
-int v3_handle_rdtsc(struct guest_info *info);
+int v3_handle_rdtscp(struct v3_core_info *info);
+int v3_handle_rdtsc(struct v3_core_info *info);
 
 
 

@@ -22,7 +22,7 @@
 
 #ifdef __V3VEE__
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmx.h>
 
 
@@ -32,8 +32,8 @@
 #define VMXASSIST_1to1_PT 0xde000 // We'll shove this at the end, and pray to god VMXASSIST doesn't mess with it
 
 
-int v3_vmxassist_ctx_switch(struct guest_info * info);
-int v3_vmxassist_init(struct guest_info * core, struct vmx_data * vmx_state);
+int v3_vmxassist_ctx_switch(struct v3_core_info * core);
+int v3_vmxassist_init(struct v3_core_info * core, struct vmx_data * vmx_state);
 
 #endif
 

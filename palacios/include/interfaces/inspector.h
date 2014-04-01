@@ -38,7 +38,7 @@ typedef void v3_inspect_node_t;
 
 
 int v3_init_inspector(struct v3_vm_info * vm);
-int v3_init_inspector_core(struct guest_info * core);
+int v3_init_inspector_core(struct v3_core_info * core);
 
 
 int v3_inspect_8(v3_inspect_node_t * node, char * name, uint8_t * val);

@@ -25,10 +25,10 @@
 #include <palacios/vmm_paging.h>
 #include <palacios/vmm.h>
 #include <palacios/vm_guest_mem.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
-static inline int handle_passthrough_pagefault_32(struct guest_info * info, 
+static inline int handle_passthrough_pagefault_32(struct v3_core_info * core, 
 						  addr_t fault_addr, 
 						  pf_error_t error_code) {
     // Check to see if pde and pte exist (create them if not)
@@ -39,7 +39,7 @@ static inline int handle_passthrough_pagefault_32(struct guest_info * info,
     int pde_index = PDE32_INDEX(fault_addr);
     int pte_index = PTE32_INDEX(fault_addr);
     
-    struct v3_mem_region * region = v3_get_mem_region(info->vm_info, info->vcpu_id, fault_addr);
+    struct v3_mem_region * region = v3_get_mem_region(core->vm_info, core->vcpu_id, fault_addr);
 
     if (region == NULL) {
 	PrintError("Invalid region in passthrough page fault 32, addr=%p\n", 
@@ -48,10 +48,10 @@ static inline int handle_passthrough_pagefault_32(struct guest_info * info,
     }
     
     // Lookup the correct PDE address based on the PAGING MODE
-    if (info->shdw_pg_mode == SHADOW_PAGING) {
-	pde = CR3_TO_PDE32_VA(info->ctrl_regs.cr3);
+    if (core->shdw_pg_mode == SHADOW_PAGING) {
+	pde = CR3_TO_PDE32_VA(core->ctrl_regs.cr3);
     } else {
-	pde = CR3_TO_PDE32_VA(info->direct_map_pt);
+	pde = CR3_TO_PDE32_VA(core->direct_map_pt);
     }
 
 
@@ -97,7 +97,7 @@ static inline int handle_passthrough_pagefault_32(struct guest_info * info,
 	    }
 
 
-    	    if (v3_gpa_to_hpa(info, fault_addr, &host_addr) == -1) {
+    	    if (v3_gpa_to_hpa(core, fault_addr, &host_addr) == -1) {
 		PrintError("Could not translate fault address (%p)\n", (void *)fault_addr);
 		return -1;
     	    }
@@ -111,12 +111,12 @@ static inline int handle_passthrough_pagefault_32(struct guest_info * info,
 
 	    pte[pte_index].page_base_addr = PAGE_BASE_ADDR(host_addr);
 	} else {
-	    return region->unhandled(info, fault_addr, fault_addr, region, error_code);
+	    return region->unhandled(core, fault_addr, fault_addr, region, error_code);
 	}
     } else {
 	// We fix all permissions on the first pass, 
 	// so we only get here if its an unhandled exception
-	return region->unhandled(info, fault_addr, fault_addr, region, error_code);	    
+	return region->unhandled(core, fault_addr, fault_addr, region, error_code);	    
     }
 
     return 0;
@@ -125,7 +125,7 @@ static inline int handle_passthrough_pagefault_32(struct guest_info * info,
 
 
 
-static inline int invalidate_addr_32(struct guest_info * info, addr_t inv_addr) {
+static inline int invalidate_addr_32(struct v3_core_info * core, addr_t inv_addr) {
     pde32_t * pde = NULL;
     pte32_t * pte = NULL;
 
@@ -138,10 +138,10 @@ static inline int invalidate_addr_32(struct guest_info * info, addr_t inv_addr) 
 
     
     // Lookup the correct PDE address based on the PAGING MODE
-    if (info->shdw_pg_mode == SHADOW_PAGING) {
-	pde = CR3_TO_PDE32_VA(info->ctrl_regs.cr3);
+    if (core->shdw_pg_mode == SHADOW_PAGING) {
+	pde = CR3_TO_PDE32_VA(core->ctrl_regs.cr3);
     } else {
-	pde = CR3_TO_PDE32_VA(info->direct_map_pt);
+	pde = CR3_TO_PDE32_VA(core->direct_map_pt);
     }    
 
     if (pde[pde_index].present == 0) {

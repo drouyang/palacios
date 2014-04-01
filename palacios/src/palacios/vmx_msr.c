@@ -18,7 +18,7 @@
  */
 
 #include <palacios/vmm.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_msr.h>
 
 #define LOW_MSR_START   0x00000000

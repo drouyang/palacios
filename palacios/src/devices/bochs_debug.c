@@ -44,7 +44,7 @@ struct debug_state {
     uint_t cons_offset;
 };
 
-static int handle_info_write(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int handle_info_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct debug_state * state = (struct debug_state *)priv_data;
 
     state->info_buf[state->info_offset++] = *(char*)src;
@@ -59,7 +59,7 @@ static int handle_info_write(struct guest_info * core, ushort_t port, void * src
 }
 
 
-static int handle_debug_write(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int handle_debug_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct debug_state * state = (struct debug_state *)priv_data;
 
     state->debug_buf[state->debug_offset++] = *(char*)src;
@@ -74,7 +74,7 @@ static int handle_debug_write(struct guest_info * core, ushort_t port, void * sr
 }
 
 
-static int handle_console_write(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int handle_console_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct debug_state * state = (struct debug_state *)priv_data;
 
     state->cons_buf[state->cons_offset++] = *(char *)src;
@@ -89,7 +89,7 @@ static int handle_console_write(struct guest_info * core, ushort_t port, void * 
 }
 
 
-static int handle_gen_write(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data)  {
+static int handle_gen_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data)  {
     
     switch (length) {
 	case 1:

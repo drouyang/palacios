@@ -26,7 +26,7 @@
 
 
 
-//#include <palacios/vm_guest.h>
+//#include <palacios/vm.h>
 
 #include <palacios/vmm_xml.h>
 #include <palacios/vmm_list.h>

@@ -21,13 +21,13 @@
 #define __VMM_H__
 
 
-/*#include <palacios/vm_guest.h>*/
+/*#include <palacios/vm.h>*/
 
-struct guest_info;
+struct v3_core_info;
 
 
 #ifdef __V3VEE__
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 
 
@@ -48,7 +48,7 @@ struct guest_info;
 
 #define V3_Print(fmt, args...)						\
     do {								\
-	extern struct guest_info * v3_cores_current[];			\
+	extern struct v3_core_info * v3_cores_current[];			\
 	extern struct v3_os_hooks * os_hooks;				\
 									\
 	if ((os_hooks) && (os_hooks)->print) {				\
@@ -62,7 +62,7 @@ struct guest_info;
 
 #define PrintDebug(fmt, args...)						\
     do {								\
-	extern struct guest_info * v3_cores_current[];			\
+	extern struct v3_core_info * v3_cores_current[];			\
 	extern struct v3_os_hooks * os_hooks;				\
 									\
 	if ((os_hooks) && (os_hooks)->print) {				\
@@ -78,7 +78,7 @@ struct guest_info;
 
 #define PrintError(fmt, args...)					\
     do {								\
-	extern struct guest_info * v3_cores_current[];			\
+	extern struct v3_core_info * v3_cores_current[];			\
 	extern struct v3_os_hooks * os_hooks;				\
 									\
 	if ((os_hooks) && (os_hooks)->print) {				\
@@ -331,8 +331,8 @@ typedef enum v3_cpu_arch {V3_INVALID_CPU, V3_SVM_CPU, V3_SVM_REV3_CPU, V3_VMX_CP
 
 v3_cpu_mode_t v3_get_host_cpu_mode();
 
-void v3_yield(struct guest_info * info, int usec);
-void v3_yield_cond(struct guest_info * info, int usec);
+void v3_yield(struct v3_core_info * core, int usec);
+void v3_yield_cond(struct v3_core_info * core, int usec);
 void v3_print_cond(const char * fmt, ...);
 
 void v3_interrupt_cpu(struct v3_vm_info * vm, int logical_cpu, int vector);
@@ -342,8 +342,8 @@ void v3_interrupt_cpu(struct v3_vm_info * vm, int logical_cpu, int vector);
 v3_cpu_arch_t v3_get_cpu_type(int cpu_id);
 
 
-int v3_vm_enter(struct guest_info * info);
-int v3_reset_vm_core(struct guest_info * core, addr_t rip);
+int v3_vm_enter(struct v3_core_info * core);
+int v3_reset_vm_core(struct v3_core_info * core, addr_t rip);
 
 
 #endif /*!__V3VEE__ */

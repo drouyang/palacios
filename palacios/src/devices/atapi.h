@@ -166,7 +166,7 @@ static int atapi_update_data_buf(struct ide_internal * ide, struct ide_channel *
     return 0;
 }
 
-static int atapi_read10(struct guest_info * core, 
+static int atapi_read10(struct v3_core_info * core, 
 			struct ide_internal * ide,
 			struct ide_channel * channel) {
     struct ide_drive * drive = get_selected_drive(channel);
@@ -533,7 +533,7 @@ static int atapi_cmd_is_data_op(uint8_t cmd) {
 }
 
 
-static int atapi_handle_packet(struct guest_info * core, struct ide_internal * ide, struct ide_channel * channel) {
+static int atapi_handle_packet(struct v3_core_info * core, struct ide_internal * ide, struct ide_channel * channel) {
    struct ide_drive * drive = get_selected_drive(channel);
    uint8_t cmd = drive->data_buf[0];
 

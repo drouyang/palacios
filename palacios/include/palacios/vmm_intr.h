@@ -30,7 +30,7 @@
 
 typedef enum {V3_INVALID_INTR, V3_EXTERNAL_IRQ, V3_VIRTUAL_IRQ, V3_NMI, V3_SOFTWARE_INTR} v3_intr_type_t;
 
-struct guest_info;
+struct v3_core_info;
 struct v3_vm_info;
 struct v3_interrupt;
 
@@ -38,7 +38,7 @@ struct v3_interrupt;
 struct v3_irq {
     uint32_t irq;
 
-    int (*ack)(struct guest_info * core, uint32_t irq, void * private_data);
+    int (*ack)(struct v3_core_info * core, uint32_t irq, void * private_data);
     void * private_data;
 };
 
@@ -78,14 +78,14 @@ struct v3_intr_core_state {
 
 
 
-void v3_init_intr_controllers(struct guest_info * core);
+void v3_init_intr_controllers(struct v3_core_info * core);
 void v3_init_intr_routers(struct v3_vm_info * vm);
 
-void v3_deinit_intr_controllers(struct guest_info * core);
+void v3_deinit_intr_controllers(struct v3_core_info * core);
 void v3_deinit_intr_routers(struct v3_vm_info * vm);
 
-int v3_raise_virq(struct guest_info * info, int irq);
-int v3_lower_virq(struct guest_info * info, int irq);
+int v3_raise_virq(struct v3_core_info * core, int irq);
+int v3_lower_virq(struct v3_core_info * core, int irq);
 
 int v3_raise_irq(struct v3_vm_info * vm, int irq);
 int v3_lower_irq(struct v3_vm_info * vm, int irq);
@@ -97,13 +97,13 @@ int v3_raise_acked_irq(struct v3_vm_info * vm, struct v3_irq irq);
 int v3_lower_acked_irq(struct v3_vm_info * vm, struct v3_irq irq);
 
 
-int v3_raise_swintr(struct guest_info * core, uint8_t vector);
+int v3_raise_swintr(struct v3_core_info * core, uint8_t vector);
 
 
 struct intr_ctrl_ops {
-    int (*intr_pending)(struct guest_info * info, void * private_data);
-    int (*get_intr_number)(struct guest_info * info, void * private_data);
-    int (*begin_irq)(struct guest_info * info, void * private_data, int irq);
+    int (*intr_pending)(struct v3_core_info * core, void * private_data);
+    int (*get_intr_number)(struct v3_core_info * core, void * private_data);
+    int (*begin_irq)(struct v3_core_info * core, void * private_data, int irq);
 };
 
 struct intr_router_ops {
@@ -111,18 +111,18 @@ struct intr_router_ops {
     int (*lower_intr)(struct v3_vm_info * vm, void * private_data, struct v3_irq * irq);
 };
 
-void v3_clear_pending_intr(struct guest_info * core);
+void v3_clear_pending_intr(struct v3_core_info * core);
 
 
-void * v3_register_intr_controller(struct guest_info * info, struct intr_ctrl_ops * ops, void * priv_data);
+void * v3_register_intr_controller(struct v3_core_info * core, struct intr_ctrl_ops * ops, void * priv_data);
 void * v3_register_intr_router(struct v3_vm_info * vm, struct intr_router_ops * ops, void * priv_data);
 
-void v3_remove_intr_controller(struct guest_info * core, void * handle);
+void v3_remove_intr_controller(struct v3_core_info * core, void * handle);
 void v3_remove_intr_router(struct v3_vm_info * vm, void * handle);
 
-v3_intr_type_t v3_intr_pending(struct guest_info * info);
-uint32_t v3_get_intr(struct guest_info * info);
-int v3_injecting_intr(struct guest_info * info, uint_t intr_num, v3_intr_type_t type);
+v3_intr_type_t v3_intr_pending(struct v3_core_info * core);
+uint32_t v3_get_intr(struct v3_core_info * core);
+int v3_injecting_intr(struct v3_core_info * core, uint_t intr_num, v3_intr_type_t type);
 
 
 

@@ -253,9 +253,9 @@ static int handle_crystal_tics(struct pit * pit, struct channel * ch, uint_t osc
 }
 				
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
-static void pit_update_timer(struct guest_info * info, ullong_t cpu_cycles, ullong_t cpu_freq, void * private_data) {
+static void pit_update_timer(struct v3_core_info * core, ullong_t cpu_cycles, ullong_t cpu_freq, void * private_data) {
     struct pit * state = (struct pit *)private_data;
     //  ullong_t tmp_ctr = state->pit_counter;
     ullong_t tmp_cycles;
@@ -321,7 +321,7 @@ static void pit_update_timer(struct guest_info * info, ullong_t cpu_cycles, ullo
 	        // raise interrupt
 	        PrintDebug("8254 PIT: Injecting Timer interrupt to guest (run_state = %d)\n",
 			   state->ch_0.run_state);
-	        v3_raise_irq(info->vm_info, 0);
+	        v3_raise_irq(core->vm_info, 0);
 	    }
 
 	    //handle_crystal_tics(state, &(state->ch_1), oscillations);
@@ -504,7 +504,7 @@ static int handle_channel_cmd(struct channel * ch, struct pit_cmd_word cmd) {
 
 
 
-static int pit_read_channel(struct guest_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int pit_read_channel(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
     struct pit * state = (struct pit *)priv_data;
     char * val = (char *)dst;
 
@@ -550,7 +550,7 @@ static int pit_read_channel(struct guest_info * core, ushort_t port, void * dst,
 
 
 
-static int pit_write_channel(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int pit_write_channel(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct pit * state = (struct pit *)priv_data;
     char val = *(char *)src;
 
@@ -598,7 +598,7 @@ static int pit_write_channel(struct guest_info * core, ushort_t port, void * src
 
 
 
-static int pit_write_command(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int pit_write_command(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     struct pit * state = (struct pit *)priv_data;
     struct pit_cmd_word * cmd = (struct pit_cmd_word *)src;
 
@@ -672,11 +672,11 @@ static void init_channel(struct channel * ch) {
 
 static int pit_free(void * private_data) {
     struct pit * state = (struct pit *)private_data;
-    struct guest_info * info = &(state->vm->cores[0]);
+    struct v3_core_info * core = &(state->vm->cores[0]);
 
 
     if (state->timer) {
-	v3_remove_timer(info, state->timer);
+	v3_remove_timer(core, state->timer);
     }
  
     V3_Free(state);
@@ -719,7 +719,7 @@ static struct v3_device_ops dev_ops = {
 #endif
 };
 
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
 static int pit_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     struct pit * pit_state = NULL;
@@ -729,9 +729,9 @@ static int pit_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
     // PIT is only usable in non-multicore environments
     // just hardcode the core context
-    struct guest_info * info = &(vm->cores[0]);
+    struct v3_core_info * core = &(vm->cores[0]);
 
-    uint_t cpu_khz = info->time_state.guest_cpu_freq;
+    uint_t cpu_khz = core->time_state.guest_cpu_freq;
     uint64_t reload_val = (uint64_t)cpu_khz * 1000;
 
     pit_state = (struct pit *)V3_Malloc(sizeof(struct pit));
@@ -772,7 +772,7 @@ static int pit_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
     
 
-    pit_state->timer = v3_add_timer(info, &timer_ops, pit_state);
+    pit_state->timer = v3_add_timer(core, &timer_ops, pit_state);
 
     if (pit_state->timer == NULL) {
 	v3_remove_device(dev);

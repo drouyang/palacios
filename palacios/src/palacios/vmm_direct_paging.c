@@ -22,7 +22,7 @@
 #include <palacios/vmm_paging.h>
 #include <palacios/vmm.h>
 #include <palacios/vm_guest_mem.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_telemetry.h>
 
 #ifndef V3_CONFIG_DEBUG_NESTED_PAGING
@@ -52,13 +52,13 @@ static addr_t create_generic_pt_page() {
 #include "vmm_direct_paging_32pae.h"
 #include "vmm_direct_paging_64.h"
 
-int v3_init_passthrough_pts(struct guest_info * core) {
+int v3_init_passthrough_pts(struct v3_core_info * core) {
     core->direct_map_pt = (addr_t)V3_PAddr((void *)create_generic_pt_page());
     return 0;
 }
 
 
-int v3_free_passthrough_pts(struct guest_info * core) {
+int v3_free_passthrough_pts(struct v3_core_info * core) {
     v3_cpu_mode_t mode = v3_get_vm_cpu_mode(core);
 
     // Delete the old direct map page tables
@@ -84,7 +84,7 @@ int v3_free_passthrough_pts(struct guest_info * core) {
 
 
 
-int v3_free_nested_pts(struct guest_info * core) {
+int v3_free_nested_pts(struct v3_core_info * core) {
     v3_cpu_mode_t mode = v3_get_host_cpu_mode(core);
 
     // Delete the old direct map page tables
@@ -109,7 +109,7 @@ int v3_free_nested_pts(struct guest_info * core) {
 
 
 
-int v3_reset_passthrough_pts(struct guest_info * core) {
+int v3_reset_passthrough_pts(struct v3_core_info * core) {
 
     v3_free_passthrough_pts(core);
 
@@ -121,30 +121,30 @@ int v3_reset_passthrough_pts(struct guest_info * core) {
 
 
 
-int v3_activate_passthrough_pt(struct guest_info * info) {
+int v3_activate_passthrough_pt(struct v3_core_info * core) {
     // For now... But we need to change this....
     // As soon as shadow paging becomes active the passthrough tables are hosed
     // So this will cause chaos if it is called at that time
 
-    info->ctrl_regs.cr3 = *(addr_t*)&(info->direct_map_pt);
+    core->ctrl_regs.cr3 = *(addr_t*)&(core->direct_map_pt);
     //PrintError("Activate Passthrough Page tables not implemented\n");
     return 0;
 }
 
 
-int v3_handle_passthrough_pagefault(struct guest_info * info, addr_t fault_addr, pf_error_t error_code) {
-    v3_cpu_mode_t mode = v3_get_vm_cpu_mode(info);
+int v3_handle_passthrough_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
+    v3_cpu_mode_t mode = v3_get_vm_cpu_mode(core);
 
     switch(mode) {
 	case REAL:
 	case PROTECTED:
-	    return handle_passthrough_pagefault_32(info, fault_addr, error_code);
+	    return handle_passthrough_pagefault_32(core, fault_addr, error_code);
 
 	case PROTECTED_PAE:
 	case LONG:
 	case LONG_32_COMPAT:
 	    // Long mode will only use 32PAE page tables...
-	    return handle_passthrough_pagefault_32pae(info, fault_addr, error_code);
+	    return handle_passthrough_pagefault_32pae(core, fault_addr, error_code);
 
 	default:
 	    PrintError("Unknown CPU Mode\n");
@@ -155,7 +155,7 @@ int v3_handle_passthrough_pagefault(struct guest_info * info, addr_t fault_addr,
 
 
 
-int v3_handle_nested_pagefault(struct guest_info * info, addr_t fault_addr, pf_error_t error_code) {
+int v3_handle_nested_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
     v3_cpu_mode_t mode = v3_get_host_cpu_mode();
 
 
@@ -164,14 +164,14 @@ int v3_handle_nested_pagefault(struct guest_info * info, addr_t fault_addr, pf_e
     switch(mode) {
 	case REAL:
 	case PROTECTED:
-	    return handle_passthrough_pagefault_32(info, fault_addr, error_code);
+	    return handle_passthrough_pagefault_32(core, fault_addr, error_code);
 
 	case PROTECTED_PAE:
-	    return handle_passthrough_pagefault_32pae(info, fault_addr, error_code);
+	    return handle_passthrough_pagefault_32pae(core, fault_addr, error_code);
 
 	case LONG:
 	case LONG_32_COMPAT:
-	    return handle_passthrough_pagefault_64(info, fault_addr, error_code);	    
+	    return handle_passthrough_pagefault_64(core, fault_addr, error_code);	    
 	
 	default:
 	    PrintError("Unknown CPU Mode\n");
@@ -180,19 +180,19 @@ int v3_handle_nested_pagefault(struct guest_info * info, addr_t fault_addr, pf_e
     return -1;
 }
 
-int v3_invalidate_passthrough_addr(struct guest_info * info, addr_t inv_addr) {
-    v3_cpu_mode_t mode = v3_get_vm_cpu_mode(info);
+int v3_invalidate_passthrough_addr(struct v3_core_info * core, addr_t inv_addr) {
+    v3_cpu_mode_t mode = v3_get_vm_cpu_mode(core);
 
     switch(mode) {
 	case REAL:
 	case PROTECTED:
-	    return invalidate_addr_32(info, inv_addr);
+	    return invalidate_addr_32(core, inv_addr);
 
 	case PROTECTED_PAE:
 	case LONG:
 	case LONG_32_COMPAT:
 	    // Long mode will only use 32PAE page tables...
-	    return invalidate_addr_32pae(info, inv_addr);
+	    return invalidate_addr_32pae(core, inv_addr);
 
 	default:
 	    PrintError("Unknown CPU Mode\n");
@@ -202,7 +202,7 @@ int v3_invalidate_passthrough_addr(struct guest_info * info, addr_t inv_addr) {
 }
 
 
-int v3_invalidate_nested_addr(struct guest_info * info, addr_t inv_addr) {
+int v3_invalidate_nested_addr(struct v3_core_info * core, addr_t inv_addr) {
 
 #ifdef __V3_64BIT__
     v3_cpu_mode_t mode = LONG;
@@ -213,14 +213,14 @@ int v3_invalidate_nested_addr(struct guest_info * info, addr_t inv_addr) {
     switch(mode) {
 	case REAL:
 	case PROTECTED:
-	    return invalidate_addr_32(info, inv_addr);
+	    return invalidate_addr_32(core, inv_addr);
 
 	case PROTECTED_PAE:
-	    return invalidate_addr_32pae(info, inv_addr);
+	    return invalidate_addr_32pae(core, inv_addr);
 
 	case LONG:
 	case LONG_32_COMPAT:
-	    return invalidate_addr_64(info, inv_addr);	    
+	    return invalidate_addr_64(core, inv_addr);	    
 	
 	default:
 	    PrintError("Unknown CPU Mode\n");

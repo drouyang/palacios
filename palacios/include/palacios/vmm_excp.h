@@ -46,7 +46,7 @@
 #define SX_EXCEPTION          0x1e
 
 
-struct guest_info;
+struct v3_core_info;
 
 struct v3_excp_state {
 
@@ -59,15 +59,15 @@ struct v3_excp_state {
 };
 
 
-void v3_init_exception_state(struct guest_info * info);
+void v3_init_exception_state(struct v3_core_info * core);
 
 
-int v3_raise_exception(struct guest_info * info, uint_t excp);
-int v3_raise_exception_with_error(struct guest_info * info, uint_t excp, uint_t error_code);
+int v3_raise_exception(struct v3_core_info * core, uint_t excp);
+int v3_raise_exception_with_error(struct v3_core_info * core, uint_t excp, uint_t error_code);
 
-int v3_excp_pending(struct guest_info * info);
-int v3_get_excp_number(struct guest_info * info);
-int v3_injecting_excp(struct guest_info * info, uint_t excp);
+int v3_excp_pending(struct v3_core_info * core);
+int v3_get_excp_number(struct v3_core_info * core);
+int v3_injecting_excp(struct v3_core_info * core, uint_t excp);
 
 #endif 
 

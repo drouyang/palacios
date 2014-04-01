@@ -31,12 +31,12 @@ struct i440_state {
 };
 
 
-static int io_read(struct guest_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int io_read(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
     PrintError("Unhandled read on port %x\n", port);
     return -1;
 }
 
-static int io_write(struct guest_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int io_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
     PrintError("Unhandled write on port %x\n", port);
     return -1;
 }

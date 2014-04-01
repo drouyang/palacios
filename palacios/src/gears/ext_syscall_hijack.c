@@ -19,7 +19,7 @@
 
 #include <palacios/vmm.h>
 #include <palacios/vm_guest_mem.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 #include <palacios/vmm_intr.h>
 #include <palacios/vmm_decoder.h>
 #include <palacios/vmm_string.h>
@@ -47,7 +47,7 @@ extern struct v3_code_injects code_injects;
 
 
 struct v3_syscall_hook {
-    int (*handler)(struct guest_info * core, uint_t syscall_nr, void * priv_data);
+    int (*handler)(struct v3_core_info * core, uint_t syscall_nr, void * priv_data);
     void * priv_data;
 };
 
@@ -57,7 +57,7 @@ static struct v3_syscall_hook * syscall_hooks[512];
 static struct v3_syscall_info syscall_info;
 #endif
 
-static void print_arg (struct  guest_info * core, v3_reg_t reg, uint8_t argnum) {
+static void print_arg (struct  v3_core_info * core, v3_reg_t reg, uint8_t argnum) {
 
     addr_t hva;
     int ret = 0;
@@ -86,7 +86,7 @@ static void print_arg (struct  guest_info * core, v3_reg_t reg, uint8_t argnum) 
 }
 
 
-static void print_syscall (uint8_t is64, struct guest_info * core) {
+static void print_syscall (uint8_t is64, struct v3_core_info * core) {
 
     if (is64) {
         PrintDebug("Syscall #%ld: \"%s\"\n", (long)core->vm_regs.rax, get_linux_syscall_name64(core->vm_regs.rax));
@@ -100,7 +100,7 @@ static void print_syscall (uint8_t is64, struct guest_info * core) {
 }
 
 
-int v3_syscall_handler (struct guest_info * core, uint8_t vector, void * priv_data) {
+int v3_syscall_handler (struct v3_core_info * core, uint8_t vector, void * priv_data) {
  
     uint_t syscall_nr = (uint_t) core->vm_regs.rax;
     int err = 0, ret = 0;
@@ -176,7 +176,7 @@ int v3_syscall_handler (struct guest_info * core, uint8_t vector, void * priv_da
 
 
 #ifdef V3_CONFIG_EXT_SELECTIVE_SYSCALL_EXIT
-static int v3_handle_lstar_write (struct guest_info * core, uint_t msr, struct v3_msr src, void * priv_data) {
+static int v3_handle_lstar_write (struct v3_core_info * core, uint_t msr, struct v3_msr src, void * priv_data) {
     syscall_info.target_addr = (uint64_t) ((((uint64_t)src.hi) << 32) | src.lo);
     
     PrintDebug("LSTAR Write: %p\n", (void*)syscall_info.target_addr); 
@@ -186,14 +186,14 @@ static int v3_handle_lstar_write (struct guest_info * core, uint_t msr, struct v
 
 
 // virtualize the lstar
-static int v3_handle_lstar_read (struct guest_info * core, uint_t msr, struct v3_msr * dst, void * priv_data) {
+static int v3_handle_lstar_read (struct v3_core_info * core, uint_t msr, struct v3_msr * dst, void * priv_data) {
     PrintDebug("LSTAR Read\n");
     dst->value = syscall_info.target_addr;
     return 0;
 }
 
 
-static int syscall_setup (struct guest_info * core, unsigned int hcall_id, void * priv_data) {
+static int syscall_setup (struct v3_core_info * core, unsigned int hcall_id, void * priv_data) {
 	addr_t syscall_stub, syscall_map_gva, syscall_map_hva, ssa_gva, ssa_hva;
 
 	syscall_stub = (addr_t)core->vm_regs.rbx;
@@ -234,7 +234,7 @@ static int syscall_setup (struct guest_info * core, unsigned int hcall_id, void 
 }
 
 
-static int syscall_cleanup (struct guest_info * core, unsigned int hcall_id, void * priv_data) {
+static int syscall_cleanup (struct v3_core_info * core, unsigned int hcall_id, void * priv_data) {
 
     core->msrs.lstar = syscall_info.target_addr;
     PrintDebug("original syscall entry point restored\n");
@@ -242,7 +242,7 @@ static int syscall_cleanup (struct guest_info * core, unsigned int hcall_id, voi
 }
 
 
-static int sel_syscall_handle (struct guest_info * core, unsigned int hcall_id, void * priv_data) {
+static int sel_syscall_handle (struct v3_core_info * core, unsigned int hcall_id, void * priv_data) {
 	struct v3_gprs regs;
 	
 	PrintDebug("caught a selectively exited syscall\n");
@@ -296,7 +296,7 @@ static int init_syscall_hijack (struct v3_vm_info * vm, v3_cfg_tree_t * cfg, voi
 
 
 #ifdef V3_CONFIG_EXT_SYSCALL_INSTR
-static int v3_handle_lstar_write (struct guest_info * core, uint_t msr, struct v3_msr src, void * priv_data) {
+static int v3_handle_lstar_write (struct v3_core_info * core, uint_t msr, struct v3_msr src, void * priv_data) {
     PrintDebug("KCH: LSTAR Write\n");
     //PrintDebug("\tvalue: 0x%x%x\n", src.hi, src.lo);
     syscall_info.target_addr = (uint64_t) ((((uint64_t)src.hi) << 32) | src.lo);
@@ -307,7 +307,7 @@ static int v3_handle_lstar_write (struct guest_info * core, uint_t msr, struct v
     return 0;
 }
 
-static int v3_handle_lstar_read (struct guest_info * core, uint_t msr, struct v3_msr * dst, void * priv_data) {
+static int v3_handle_lstar_read (struct v3_core_info * core, uint_t msr, struct v3_msr * dst, void * priv_data) {
     PrintDebug("KCH: LSTAR Read\n");
     dst->value = syscall_info.target_addr;
     return 0;
@@ -315,7 +315,7 @@ static int v3_handle_lstar_read (struct guest_info * core, uint_t msr, struct v3
 #endif
 
 
-static int init_syscall_hijack_core (struct guest_info * core, void * priv_data, void ** core_data) {
+static int init_syscall_hijack_core (struct v3_core_info * core, void * priv_data, void ** core_data) {
 
 #ifdef V3_CONFIG_EXT_SW_INTERRUPTS
     v3_hook_swintr(core, SYSCALL_INT_VECTOR, v3_syscall_handler, NULL);
@@ -349,14 +349,14 @@ static struct v3_extension_impl syscall_impl = {
 register_extension(&syscall_impl);
 
 
-static inline struct v3_syscall_hook * get_syscall_hook (struct guest_info * core, uint_t syscall_nr) {
+static inline struct v3_syscall_hook * get_syscall_hook (struct v3_core_info * core, uint_t syscall_nr) {
     return syscall_hooks[syscall_nr];
 } 
 
 
-int v3_hook_syscall (struct guest_info * core,
+int v3_hook_syscall (struct v3_core_info * core,
     uint_t syscall_nr,
-    int (*handler)(struct guest_info * core, uint_t syscall_nr, void * priv_data),
+    int (*handler)(struct v3_core_info * core, uint_t syscall_nr, void * priv_data),
     void * priv_data) 
 {
     struct v3_syscall_hook * hook = (struct v3_syscall_hook *)V3_Malloc(sizeof(struct v3_syscall_hook));
@@ -383,13 +383,13 @@ int v3_hook_syscall (struct guest_info * core,
 }
 
 
-static int passthrough_syscall_handler (struct guest_info * core, uint_t syscall_nr, void * priv_data) {
+static int passthrough_syscall_handler (struct v3_core_info * core, uint_t syscall_nr, void * priv_data) {
     print_syscall(core->cpu_mode == LONG, core);
     return 0;
 }
 
 
-int v3_hook_passthrough_syscall (struct guest_info * core, uint_t syscall_nr) {
+int v3_hook_passthrough_syscall (struct v3_core_info * core, uint_t syscall_nr) {
     
     int rc = v3_hook_syscall(core, syscall_nr, passthrough_syscall_handler, NULL);
 

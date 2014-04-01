@@ -48,8 +48,8 @@
 #include <palacios/vmm_telemetry.h>
 #endif
 
-/* At this point the GPRs are already copied into the guest_info state */
-int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_info) {
+/* At this point the GPRs are already copied into the v3_core_info state */
+int v3_handle_vmx_exit(struct v3_core_info * core, struct vmx_exit_info * exit_info) {
     struct vmx_basic_exit_info * basic_info = (struct vmx_basic_exit_info *)&(exit_info->exit_reason);
 
     /*
@@ -83,8 +83,8 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 
 
 #ifdef V3_CONFIG_TELEMETRY
-    if (info->vm_info->enable_telemetry) {
-	v3_telemetry_start_exit(info);
+    if (core->vm_info->enable_telemetry) {
+	v3_telemetry_start_exit(core);
     }
 #endif
 
@@ -99,8 +99,8 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
                 PrintDebug("Page Fault at %p error_code=%x\n", (void *)exit_info->exit_qual, *(uint32_t *)&error_code);
 #endif
 
-                if (info->shdw_pg_mode == SHADOW_PAGING) {
-                    if (v3_handle_shadow_pagefault(info, (addr_t)exit_info->exit_qual, error_code) == -1) {
+                if (core->shdw_pg_mode == SHADOW_PAGING) {
+                    if (v3_handle_shadow_pagefault(core, (addr_t)exit_info->exit_qual, error_code) == -1) {
                         PrintError("Error handling shadow page fault\n");
                         return -1;
                     }
@@ -117,41 +117,41 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 		    addr_t linear_addr = 0;
 		    addr_t host_addr = 0;
 
-		    v3_print_guest_state(info);
+		    v3_print_guest_state(core);
 
-		    V3_Print("VMX core %u\n", info->vcpu_id); 
+		    V3_Print("VMX core %u\n", core->vcpu_id); 
 		
-		    linear_addr = get_addr_linear(info, info->rip, V3_SEG_CS);
+		    linear_addr = get_addr_linear(core, core->rip, V3_SEG_CS);
 		
-		    if (info->mem_mode == PHYSICAL_MEM) {
-			v3_gpa_to_hva(info, linear_addr, &host_addr);
-		    } else if (info->mem_mode == VIRTUAL_MEM) {
-			v3_gva_to_hva(info, linear_addr, &host_addr);
+		    if (core->mem_mode == PHYSICAL_MEM) {
+			v3_gpa_to_hva(core, linear_addr, &host_addr);
+		    } else if (core->mem_mode == VIRTUAL_MEM) {
+			v3_gva_to_hva(core, linear_addr, &host_addr);
 		    }
 		
-		    V3_Print("VMX core %u: Host Address of rip = 0x%p\n", info->vcpu_id, (void *)host_addr);
+		    V3_Print("VMX core %u: Host Address of rip = 0x%p\n", core->vcpu_id, (void *)host_addr);
 		
-		    V3_Print("VMX core %u: Instr (15 bytes) at %p:\n", info->vcpu_id, (void *)host_addr);
+		    V3_Print("VMX core %u: Instr (15 bytes) at %p:\n", core->vcpu_id, (void *)host_addr);
 		    v3_dump_mem((uint8_t *)host_addr, 15);
 		
 		    V3_Print("Stack Trace:\n");
-		    v3_print_stack(info);
+		    v3_print_stack(core);
 		
 		    V3_Print("Guest Kernel Backtrace\n");
-		    v3_print_backtrace(info);
+		    v3_print_backtrace(core);
 		}
 
 
-		v3_raise_exception(info, UD_EXCEPTION);
+		v3_raise_exception(core, UD_EXCEPTION);
 
 	    } else if ((uint8_t)exit_info->int_info == 7) {
 		/* FPU accessed. */
 
-		v3_fpu_activate(info);
+		v3_fpu_activate(core);
 	   
             } else {
                 PrintError("Unknown exception: 0x%x\n", (uint8_t)exit_info->int_info);
-                v3_print_GPRs(info);
+                v3_print_GPRs(core);
                 return -1;
             }
             break;
@@ -160,7 +160,7 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 	case VMX_EXIT_EPT_VIOLATION: {
 	    struct ept_exit_qual * ept_qual = (struct ept_exit_qual *)&(exit_info->exit_qual);
 
-	    if (v3_handle_ept_fault(info, exit_info->ept_fault_addr, ept_qual) == -1) {
+	    if (v3_handle_ept_fault(core, exit_info->ept_fault_addr, ept_qual) == -1) {
 		PrintError("Error handling EPT fault\n");
 		return -1;
 	    }
@@ -168,8 +168,8 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 	    break;
 	}
         case VMX_EXIT_INVLPG:
-            if (info->shdw_pg_mode == SHADOW_PAGING) {
-                if (v3_handle_shadow_invlpg(info) == -1) {
+            if (core->shdw_pg_mode == SHADOW_PAGING) {
+                if (v3_handle_shadow_invlpg(core) == -1) {
 		    PrintError("Error handling INVLPG\n");
                     return -1;
                 }
@@ -181,7 +181,7 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 #ifdef V3_CONFIG_DEBUG_TIME
 	    PrintDebug("RDTSC\n");
 #endif 
-	    if (v3_handle_rdtsc(info) == -1) {
+	    if (v3_handle_rdtsc(core) == -1) {
 		PrintError("Error Handling RDTSC instruction\n");
 		return -1;
 	    }
@@ -189,21 +189,21 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 	    break;
 
         case VMX_EXIT_CPUID:
-	    if (v3_handle_cpuid(info) == -1) {
+	    if (v3_handle_cpuid(core) == -1) {
 		PrintError("Error Handling CPUID instruction\n");
 		return -1;
 	    }
 
             break;
         case VMX_EXIT_RDMSR: 
-            if (v3_handle_msr_read(info) == -1) {
+            if (v3_handle_msr_read(core) == -1) {
 		PrintError("Error handling MSR Read\n");
                 return -1;
 	    }
 
             break;
         case VMX_EXIT_WRMSR:
-            if (v3_handle_msr_write(info) == -1) {
+            if (v3_handle_msr_write(core) == -1) {
 		PrintError("Error handling MSR Write\n");
                 return -1;
 	    }
@@ -216,9 +216,9 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 
 	    // VMCALL is a 3 byte op
 	    // We do this early because some hypercalls can change the rip...
-	    info->rip += 3;	    
+	    core->rip += 3;	    
 
-	    if (v3_handle_hypercall(info) == -1) {
+	    if (v3_handle_hypercall(core) == -1) {
 		return -1;
 	    }
 	    break;
@@ -227,24 +227,24 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 
             if (io_qual->dir == 0) {
                 if (io_qual->string) {
-                    if (v3_handle_vmx_io_outs(info, exit_info) == -1) {
+                    if (v3_handle_vmx_io_outs(core, exit_info) == -1) {
                         PrintError("Error in outs IO handler\n");
                         return -1;
                     }
                 } else {
-                    if (v3_handle_vmx_io_out(info, exit_info) == -1) {
+                    if (v3_handle_vmx_io_out(core, exit_info) == -1) {
                         PrintError("Error in out IO handler\n");
                         return -1;
                     }
                 }
             } else {
                 if (io_qual->string) {
-                    if(v3_handle_vmx_io_ins(info, exit_info) == -1) {
+                    if(v3_handle_vmx_io_ins(core, exit_info) == -1) {
                         PrintError("Error in ins IO handler\n");
                         return -1;
                     }
                 } else {
-                    if (v3_handle_vmx_io_in(info, exit_info) == -1) {
+                    if (v3_handle_vmx_io_in(core, exit_info) == -1) {
                         PrintError("Error in in IO handler\n");
                         return -1;
                     }
@@ -259,21 +259,21 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 	    switch(cr_qual->cr_id) {
 		case 0:
 		    //PrintDebug("Handling CR0 Access\n");
-		    if (v3_vmx_handle_cr0_access(info, cr_qual, exit_info) == -1) {
+		    if (v3_vmx_handle_cr0_access(core, cr_qual, exit_info) == -1) {
 			PrintError("Error in CR0 access handler\n");
 			return -1;
 		    }
 		    break;
 		case 3:
 		    //PrintDebug("Handling CR3 Access\n");
-		    if (v3_vmx_handle_cr3_access(info, cr_qual) == -1) {
+		    if (v3_vmx_handle_cr3_access(core, cr_qual) == -1) {
 			PrintError("Error in CR3 access handler\n");
 			return -1;
 		    }
 		    break;
 		case 4:
 		    //PrintDebug("Handling CR4 Access\n");
-		    if (v3_vmx_handle_cr4_access(info, cr_qual) == -1) {
+		    if (v3_vmx_handle_cr4_access(core, cr_qual) == -1) {
 			PrintError("Error in CR4 access handler\n");
 			return -1;
 		    }
@@ -286,14 +286,14 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 	    // TODO: move RIP increment into all of the above individual CR
 	    //       handlers, not just v3_vmx_handle_cr4_access()
 	    if (cr_qual->cr_id != 4)
-		info->rip += exit_info->instr_len;
+		core->rip += exit_info->instr_len;
 
 	    break;
 	}
         case VMX_EXIT_HLT:
             PrintDebug("Guest halted\n");
 
-            if (v3_handle_halt(info) == -1) {
+            if (v3_handle_halt(core) == -1) {
 		PrintError("Error handling halt instruction\n");
                 return -1;
             }
@@ -303,7 +303,7 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
         case VMX_EXIT_MONITOR:
             PrintDebug("Guest Executing monitor\n");
 
-            if (v3_handle_monitor(info) == -1) {
+            if (v3_handle_monitor(core) == -1) {
 		PrintError("Error handling monitor instruction\n");
                 return -1;
             }
@@ -313,7 +313,7 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
         case VMX_EXIT_MWAIT:
             PrintDebug("Guest Executing mwait\n");
 
-            if (v3_handle_mwait(info) == -1) {
+            if (v3_handle_mwait(core) == -1) {
 		PrintError("Error handling mwait instruction\n");
                 return -1;
             }
@@ -323,7 +323,7 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 
         case VMX_EXIT_PAUSE:
             // Handled as NOP
-            info->rip += 2;
+            core->rip += 2;
 
             break;
         case VMX_EXIT_EXTERNAL_INTR:
@@ -341,7 +341,7 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 	case VMX_EXIT_XSETBV:
 	    V3_Print("XSETBV\n");
 	    
-	    v3_fpu_handle_xsetbv(info);
+	    v3_fpu_handle_xsetbv(core);
 
 	    break;
         default:
@@ -354,8 +354,8 @@ int v3_handle_vmx_exit(struct guest_info * info, struct vmx_exit_info * exit_inf
 
 
 #ifdef V3_CONFIG_TELEMETRY
-    if (info->vm_info->enable_telemetry) {
-        v3_telemetry_end_exit(info, exit_info->exit_reason);
+    if (core->vm_info->enable_telemetry) {
+        v3_telemetry_end_exit(core, exit_info->exit_reason);
     }
 #endif
 

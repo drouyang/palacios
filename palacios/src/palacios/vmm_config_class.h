@@ -20,26 +20,26 @@
 #include <palacios/vm_guest_mem.h>
 
 
-static int pre_config_pc_core(struct guest_info * info, v3_cfg_tree_t * cfg) { 
+static int pre_config_pc_core(struct v3_core_info * core, v3_cfg_tree_t * cfg) { 
 
-    info->mem_mode = PHYSICAL_MEM;
+    core->mem_mode = PHYSICAL_MEM;
 
 
-    info->vm_regs.rdi = 0;
-    info->vm_regs.rsi = 0;
-    info->vm_regs.rbp = 0;
-    info->vm_regs.rsp = 0;
-    info->vm_regs.rbx = 0;
-    info->vm_regs.rdx = 0;
-    info->vm_regs.rcx = 0;
-    info->vm_regs.rax = 0;
+    core->vm_regs.rdi = 0;
+    core->vm_regs.rsi = 0;
+    core->vm_regs.rbp = 0;
+    core->vm_regs.rsp = 0;
+    core->vm_regs.rbx = 0;
+    core->vm_regs.rdx = 0;
+    core->vm_regs.rcx = 0;
+    core->vm_regs.rax = 0;
 
     return 0;
 }
 
-static int post_config_pc_core(struct guest_info * info, v3_cfg_tree_t * cfg) { 
+static int post_config_pc_core(struct v3_core_info * core, v3_cfg_tree_t * cfg) { 
 
-    v3_print_mem_map(info->vm_info);
+    v3_print_mem_map(core->vm_info);
     return 0;
 }
 

@@ -28,11 +28,11 @@
 //
 // Currently we disallow mwait in the CPUID field, so we need to raise an exception
 //
-int v3_handle_mwait(struct guest_info * info) 
+int v3_handle_mwait(struct v3_core_info * core) 
 {
     PrintDebug("Raising undefined opcode due to mwait instruction\n");
 
-    v3_raise_exception(info, UD_EXCEPTION );
+    v3_raise_exception(core, UD_EXCEPTION );
 
     return 0;
 }
@@ -40,11 +40,11 @@ int v3_handle_mwait(struct guest_info * info)
 //
 // Currently we disallow mwait in the CPUID field, so we need to raise an exception
 //
-int v3_handle_monitor(struct guest_info * info) 
+int v3_handle_monitor(struct v3_core_info * core) 
 {
     PrintDebug("Raising undefined opcode due to monitor instruction\n");
 
-    v3_raise_exception(info, UD_EXCEPTION );
+    v3_raise_exception(core, UD_EXCEPTION );
 
     return 0;
 }

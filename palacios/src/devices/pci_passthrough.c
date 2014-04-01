@@ -35,7 +35,7 @@
 #include <palacios/vmm_dev_mgr.h>
 #include <palacios/vmm_sprintf.h>
 #include <palacios/vmm_lowlevel.h>
-#include <palacios/vm_guest.h> // must include this to avoid dependency issue
+#include <palacios/vm.h> // must include this to avoid dependency issue
 #include <palacios/vmm_symspy.h>
 
 #include <devices/pci.h>
@@ -401,7 +401,7 @@ static int pci_bar_init(int bar_num, uint32_t * dst, void * private_data) {
     return 0;
 }
 
-static int pt_io_read(struct guest_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
+static int pt_io_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
     struct pt_bar * pbar = (struct pt_bar *)priv_data;
     int port_offset = port % pbar->size;
 
@@ -420,7 +420,7 @@ static int pt_io_read(struct guest_info * core, uint16_t port, void * dst, uint_
 }
 
 
-static int pt_io_write(struct guest_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int pt_io_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct pt_bar * pbar = (struct pt_bar *)priv_data;
     int port_offset = port % pbar->size;
     

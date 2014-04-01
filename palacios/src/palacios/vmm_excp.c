@@ -20,19 +20,19 @@
 #include <palacios/vmm_excp.h>
 #include <palacios/vmm.h>
 #include <palacios/vmm_types.h>
-#include <palacios/vm_guest.h>
+#include <palacios/vm.h>
 
-void v3_init_exception_state(struct guest_info * info) {
-    info->excp_state.excp_pending = 0;
-    info->excp_state.excp_num = 0;
-    info->excp_state.excp_error_code = 0;
+void v3_init_exception_state(struct v3_core_info * core) {
+    core->excp_state.excp_pending = 0;
+    core->excp_state.excp_num = 0;
+    core->excp_state.excp_error_code = 0;
 
 }
 
 
 
-int v3_raise_exception_with_error(struct guest_info * info, uint_t excp, uint_t error_code) {
-    struct v3_excp_state * excp_state = &(info->excp_state);
+int v3_raise_exception_with_error(struct v3_core_info * core, uint_t excp, uint_t error_code) {
+    struct v3_excp_state * excp_state = &(core->excp_state);
 
     if (excp_state->excp_pending == 0) {
 	excp_state->excp_pending = 1;
@@ -49,8 +49,8 @@ int v3_raise_exception_with_error(struct guest_info * info, uint_t excp, uint_t 
     return 0;
 }
 
-int v3_raise_exception(struct guest_info * info, uint_t excp) {
-    struct v3_excp_state * excp_state = &(info->excp_state);
+int v3_raise_exception(struct v3_core_info * core, uint_t excp) {
+    struct v3_excp_state * excp_state = &(core->excp_state);
     //PrintDebug("[v3_raise_exception]\n");
     if (excp_state->excp_pending == 0) {
 	excp_state->excp_pending = 1;
@@ -67,8 +67,8 @@ int v3_raise_exception(struct guest_info * info, uint_t excp) {
 }
 
 
-int v3_excp_pending(struct guest_info * info) {
-    struct v3_excp_state * excp_state = &(info->excp_state);
+int v3_excp_pending(struct v3_core_info * core) {
+    struct v3_excp_state * excp_state = &(core->excp_state);
     
     if (excp_state->excp_pending == 1) {
 	return 1;
@@ -78,8 +78,8 @@ int v3_excp_pending(struct guest_info * info) {
 }
 
 
-int v3_get_excp_number(struct guest_info * info) {
-    struct v3_excp_state * excp_state = &(info->excp_state);
+int v3_get_excp_number(struct v3_core_info * core) {
+    struct v3_excp_state * excp_state = &(core->excp_state);
 
     if (excp_state->excp_pending == 1) {
 	return excp_state->excp_num;
@@ -89,8 +89,8 @@ int v3_get_excp_number(struct guest_info * info) {
 }
 
 
-int v3_injecting_excp(struct guest_info * info, uint_t excp) {
-    struct v3_excp_state * excp_state = &(info->excp_state);
+int v3_injecting_excp(struct v3_core_info * core, uint_t excp) {
+    struct v3_excp_state * excp_state = &(core->excp_state);
     
     excp_state->excp_pending = 0;
     excp_state->excp_num = 0;
