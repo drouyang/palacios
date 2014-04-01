@@ -30,9 +30,11 @@
 #endif
 
 
-static int run_op(struct v3_core_info * core, v3_op_type_t op_type, 
-		  addr_t src_addr, addr_t dst_addr, 
-		  int src_op_size, int dst_op_size) {
+static int 
+run_op(struct v3_core_info * core, v3_op_type_t op_type, 
+       addr_t src_addr, addr_t dst_addr, 
+       int src_op_size, int dst_op_size) 
+{
 
     if (src_op_size == 1) {
 	PrintDebug("Executing 8 bit instruction\n");
@@ -305,12 +307,14 @@ static int run_op(struct v3_core_info * core, v3_op_type_t op_type,
 
 
 /* Returns the number of bytes written, or -1 if there is an error */
-static int run_str_op(struct v3_core_info * core, struct x86_instr * instr, 
-		      addr_t src_addr, addr_t dst_addr, 
-		      int op_size, int rep_cnt) {
+static int 
+run_str_op(struct v3_core_info * core, struct x86_instr * instr, 
+	   addr_t src_addr, addr_t dst_addr, 
+	   int op_size, int rep_cnt) 
+{
 
-    addr_t tmp_rcx = rep_cnt;
-    int emulation_length = op_size * rep_cnt;
+    addr_t tmp_rcx            = rep_cnt;
+    int    emulation_length   = op_size * rep_cnt;
     struct rflags * flags_reg = (struct rflags *)&(core->ctrl_regs.rflags);
 
 
@@ -319,7 +323,7 @@ static int run_str_op(struct v3_core_info * core, struct x86_instr * instr,
 
     if (instr->op_type == V3_OP_MOVS) {
 	if (op_size== 1) {
-	    movs8((addr_t *)&dst_addr, &src_addr, &tmp_rcx, (addr_t *)&(core->ctrl_regs.rflags));
+	    movs8((addr_t *)&dst_addr,  &src_addr, &tmp_rcx, (addr_t *)&(core->ctrl_regs.rflags));
 	} else if (op_size == 2) {
 	    movs16((addr_t *)&dst_addr, &src_addr, &tmp_rcx, (addr_t *)&(core->ctrl_regs.rflags));
 	} else if (op_size == 4) {
@@ -348,7 +352,7 @@ static int run_str_op(struct v3_core_info * core, struct x86_instr * instr,
 
      } else if (instr->op_type == V3_OP_STOS) {
 	if (op_size == 1) {
-	    stos8((addr_t *)&dst_addr, (addr_t  *)&(core->vm_regs.rax), &tmp_rcx, (addr_t *)&(core->ctrl_regs.rflags));
+	    stos8((addr_t *)&dst_addr,  (addr_t  *)&(core->vm_regs.rax), &tmp_rcx, (addr_t *)&(core->ctrl_regs.rflags));
 	} else if (op_size == 2) {
 	    stos16((addr_t *)&dst_addr, (addr_t  *)&(core->vm_regs.rax), &tmp_rcx, (addr_t *)&(core->ctrl_regs.rflags));
 	} else if (op_size == 4) {
@@ -384,8 +388,10 @@ static int run_str_op(struct v3_core_info * core, struct x86_instr * instr,
 
 
 
-int v3_emulate(struct v3_core_info * core, struct x86_instr * instr, 
-	       int mem_op_size, addr_t mem_hva_src, addr_t mem_hva_dst) {
+int 
+v3_emulate(struct v3_core_info * core, struct x86_instr * instr, 
+	   int mem_op_size, addr_t mem_hva_src, addr_t mem_hva_dst) 
+{
 
     addr_t src_hva = 0;
     addr_t dst_hva = 0;

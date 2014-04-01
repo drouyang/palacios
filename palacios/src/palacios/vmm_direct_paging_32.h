@@ -28,13 +28,15 @@
 #include <palacios/vm.h>
 
 
-static inline int handle_passthrough_pagefault_32(struct v3_core_info * core, 
-						  addr_t fault_addr, 
-						  pf_error_t error_code) {
+static inline int 
+handle_passthrough_pagefault_32(struct v3_core_info * core, 
+				addr_t                fault_addr, 
+				pf_error_t            error_code) 
+{
     // Check to see if pde and pte exist (create them if not)
     pde32_t * pde = NULL;
     pte32_t * pte = NULL;
-    addr_t host_addr = 0;
+    addr_t    host_addr = 0;
     
     int pde_index = PDE32_INDEX(fault_addr);
     int pte_index = PTE32_INDEX(fault_addr);
@@ -65,9 +67,9 @@ static inline int handle_passthrough_pagefault_32(struct v3_core_info * core,
 	    return -1;
 	}
 
-	pde[pde_index].present = 1;
-	pde[pde_index].writable = 1;
-	pde[pde_index].user_page = 1;
+	pde[pde_index].present      = 1;
+	pde[pde_index].writable     = 1;
+	pde[pde_index].user_page    = 1;
 	pde[pde_index].pt_base_addr = PAGE_BASE_ADDR((addr_t)V3_PAddr(pte));
 	
     } else {
@@ -82,8 +84,7 @@ static inline int handle_passthrough_pagefault_32(struct v3_core_info * core,
 	    (region->flags.read == 1)) {
 
 	    pte[pte_index].user_page = 1;
-
-	    pte[pte_index].present = 1;
+	    pte[pte_index].present   = 1;
 
 	    if (region->flags.write == 1) {
 		pte[pte_index].writable = 1;
@@ -125,7 +126,9 @@ static inline int handle_passthrough_pagefault_32(struct v3_core_info * core,
 
 
 
-static inline int invalidate_addr_32(struct v3_core_info * core, addr_t inv_addr) {
+static inline int 
+invalidate_addr_32(struct v3_core_info * core, addr_t inv_addr) 
+{
     pde32_t * pde = NULL;
     pte32_t * pte = NULL;
 
@@ -147,16 +150,16 @@ static inline int invalidate_addr_32(struct v3_core_info * core, addr_t inv_addr
     if (pde[pde_index].present == 0) {
 	return 0;
     } else if (pde[pde_index].large_page) {
-	pde[pde_index].present = 0;
-	pde[pde_index].writable = 0;
+	pde[pde_index].present   = 0;
+	pde[pde_index].writable  = 0;
 	pde[pde_index].user_page = 0;
 	return 0;
     }
 
     pte = V3_VAddr((void*)BASE_TO_PAGE_ADDR(pde[pde_index].pt_base_addr));
 
-    pte[pte_index].present = 0;
-    pte[pte_index].writable = 0;
+    pte[pte_index].present   = 0;
+    pte[pte_index].writable  = 0;
     pte[pte_index].user_page = 0;
 
     return 0;

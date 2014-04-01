@@ -95,7 +95,9 @@ static inline void xsetbv(uint64_t value) {
 #define CR0_TS 0x00000008
 #define CR0_MP 0x00000002
 
-static int vmx_disable_fpu_exits(struct v3_core_info * core) {
+static int 
+vmx_disable_fpu_exits(struct v3_core_info * core) 
+{
     struct vmx_data * vmx_state  = (struct vmx_data *)core->vmm_data;
     struct cr0_32   * cr0        = (struct cr0_32 *)&(core->ctrl_regs.cr0);
     struct cr0_32   * guest_cr0  = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
@@ -115,7 +117,9 @@ static int vmx_disable_fpu_exits(struct v3_core_info * core) {
     return vmx_ret;
 }
 
-static int vmx_enable_fpu_exits(struct v3_core_info * core) {
+static int 
+vmx_enable_fpu_exits(struct v3_core_info * core) 
+{
     struct vmx_data * vmx_state  = (struct vmx_data *)core->vmm_data;
     struct cr0_32   * cr0        = (struct cr0_32 *)&(core->ctrl_regs.cr0);
     addr_t            cr0_mask   = 0;
@@ -139,7 +143,9 @@ static int vmx_enable_fpu_exits(struct v3_core_info * core) {
 #include <palacios/svm.h>
 #include <palacios/vmcb.h>
 
-static int svm_disable_fpu_exits(struct v3_core_info * core) {
+static int 
+svm_disable_fpu_exits(struct v3_core_info * core) 
+{
     struct cr0_32 * cr0       = (struct cr0_32 *)&(core->ctrl_regs.cr0);
     struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
     vmcb_ctrl_t   * ctrl_area = GET_VMCB_CTRL_AREA((vmcb_t *)(core->vmm_data));
@@ -165,7 +171,9 @@ static int svm_disable_fpu_exits(struct v3_core_info * core) {
 
 }
 
-static int svm_enable_fpu_exits(struct v3_core_info * core) {
+static int 
+svm_enable_fpu_exits(struct v3_core_info * core) 
+{
     struct cr0_32 * cr0       = (struct cr0_32 *)&(core->ctrl_regs.cr0);
     struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
     vmcb_ctrl_t   * ctrl_area = GET_VMCB_CTRL_AREA((vmcb_t *)(core->vmm_data));
@@ -194,7 +202,9 @@ static int svm_enable_fpu_exits(struct v3_core_info * core) {
  */
 
 
-int v3_fpu_init(struct v3_core_info * core) {
+int 
+v3_fpu_init(struct v3_core_info * core) 
+{
     
     struct v3_fpu_state * fpu          = &(core->fpu_state);
     struct v3_fpu_arch  * arch_state   = &(fpu->arch_state);
@@ -256,7 +266,9 @@ int v3_fpu_init(struct v3_core_info * core) {
 
 
 /* Executes atomically as part of the core entry procedure */
-int v3_fpu_on_entry(struct v3_core_info * core) {
+int 
+v3_fpu_on_entry(struct v3_core_info * core) 
+{
     struct v3_fpu_state * fpu = &(core->fpu_state);
     struct cr0_32       * cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
 
@@ -321,7 +333,9 @@ int v3_fpu_on_entry(struct v3_core_info * core) {
 
 
 
-int v3_fpu_deactivate(struct v3_core_info * core) {
+int 
+v3_fpu_deactivate(struct v3_core_info * core) 
+{
     struct v3_fpu_state * fpu = &(core->fpu_state);
 
 
@@ -376,7 +390,9 @@ int v3_fpu_deactivate(struct v3_core_info * core) {
 
 
 
-int v3_fpu_activate(struct v3_core_info * core) {
+int 
+v3_fpu_activate(struct v3_core_info * core) 
+{
     struct v3_fpu_state * fpu = &(core->fpu_state);
 
     // save host state
@@ -425,7 +441,9 @@ int v3_fpu_activate(struct v3_core_info * core) {
 
 
 
-int v3_fpu_handle_xsetbv(struct v3_core_info * core) {
+int 
+v3_fpu_handle_xsetbv(struct v3_core_info * core)
+{
     struct v3_fpu_state * fpu   = &(core->fpu_state);
     uint32_t              index = core->vm_regs.rcx;
 

@@ -35,7 +35,9 @@
 // This should trigger a #GP if cpl != 0, otherwise, yield to host
 //
 
-int v3_handle_halt(struct v3_core_info * core) {
+int 
+v3_handle_halt(struct v3_core_info * core) 
+{
 
     if (core->cpl != 0) { 
 	v3_raise_exception(core, GPF_EXCEPTION);
@@ -43,11 +45,14 @@ int v3_handle_halt(struct v3_core_info * core) {
 	PrintDebug("CPU Yield\n");
 
 	while (!v3_intr_pending(core) && (core->vm_info->run_state == VM_RUNNING)) {
-            uint64_t t, cycles;
+	    uint64_t cycles = 0;
+            uint64_t t      = 0;
+
 	    /* Yield, allowing time to pass while yielded */
-	    t = v3_get_host_time(&core->time_state);
-	    v3_yield(core,YIELD_TIME_USEC);
+	    t      = v3_get_host_time(&core->time_state);
+	    v3_yield(core, YIELD_TIME_USEC);
 	    cycles = v3_get_host_time(&core->time_state) - t;
+
 	    v3_advance_time(core, &cycles);
 
 	    v3_update_timers(core);

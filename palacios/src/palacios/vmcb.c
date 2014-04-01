@@ -115,7 +115,6 @@ v3_print_vmcb(vmcb_t * vmcb)
 {
     vmcb_ctrl_t        * ctrl_area  = GET_VMCB_CTRL_AREA(vmcb);
     vmcb_saved_state_t * guest_area = GET_VMCB_SAVE_STATE_AREA(vmcb);
-    reg_ex_t tmp_reg;
 
     V3_Print("VMCB (0x%p)\n", (void *)vmcb);
 
@@ -258,7 +257,7 @@ v3_print_vmcb(vmcb_t * vmcb)
 
 
 
-    V3_Print("LBR_VIRTUALIZATION_ENABLE: %d\n",   ctrl_area->LBR_VIRTUALIZATION_ENABLE);
+    V3_Print("LBR_VIRTUALIZATION_ENABLE: %llu\n", ctrl_area->LBR_VIRTUALIZATION_ENABLE);
     V3_Print("NP_ENABLE:                 %llu\n", ctrl_area->NP_ENABLE);
     V3_Print("N_CR3:                     %p\n",   (void *)ctrl_area->N_CR3);
 

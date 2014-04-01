@@ -22,23 +22,29 @@
 #include <palacios/vmm_types.h>
 #include <palacios/vm.h>
 
-void v3_init_exception_state(struct v3_core_info * core) {
-    core->excp_state.excp_pending = 0;
-    core->excp_state.excp_num = 0;
+void 
+v3_init_exception_state(struct v3_core_info * core) 
+{
+    core->excp_state.excp_pending    = 0;
+    core->excp_state.excp_num        = 0;
     core->excp_state.excp_error_code = 0;
 
 }
 
 
 
-int v3_raise_exception_with_error(struct v3_core_info * core, uint_t excp, uint_t error_code) {
+int 
+v3_raise_exception_with_error(struct v3_core_info * core, uint_t excp, uint_t error_code) 
+{
     struct v3_excp_state * excp_state = &(core->excp_state);
 
     if (excp_state->excp_pending == 0) {
-	excp_state->excp_pending = 1;
-	excp_state->excp_num = excp;
-	excp_state->excp_error_code = error_code;
+
+	excp_state->excp_pending          = 1;
+	excp_state->excp_num              = excp;
+	excp_state->excp_error_code       = error_code;
 	excp_state->excp_error_code_valid = 1;
+
 	//	PrintDebug("[v3_raise_exception_with_error] error code: %x\n", error_code);
     } else {
 	PrintError("Error injecting exception_w_error (excp=%d) (error=%d) -- Exception (%d) (error=%d) already pending\n",
@@ -49,14 +55,19 @@ int v3_raise_exception_with_error(struct v3_core_info * core, uint_t excp, uint_
     return 0;
 }
 
-int v3_raise_exception(struct v3_core_info * core, uint_t excp) {
+int 
+v3_raise_exception(struct v3_core_info * core, uint_t excp) 
+{
     struct v3_excp_state * excp_state = &(core->excp_state);
     //PrintDebug("[v3_raise_exception]\n");
+
     if (excp_state->excp_pending == 0) {
-	excp_state->excp_pending = 1;
-	excp_state->excp_num = excp;
-	excp_state->excp_error_code = 0;
+
+	excp_state->excp_pending          = 1;
+	excp_state->excp_num              = excp;
+	excp_state->excp_error_code       = 0;
 	excp_state->excp_error_code_valid = 0;
+
     } else {
 	PrintError("Error injecting exception (excp=%d) -- Exception (%d) (error=%d) already pending\n",
 		   excp, excp_state->excp_num, excp_state->excp_error_code);
@@ -67,7 +78,9 @@ int v3_raise_exception(struct v3_core_info * core, uint_t excp) {
 }
 
 
-int v3_excp_pending(struct v3_core_info * core) {
+int 
+v3_excp_pending(struct v3_core_info * core) 
+{
     struct v3_excp_state * excp_state = &(core->excp_state);
     
     if (excp_state->excp_pending == 1) {
@@ -78,7 +91,9 @@ int v3_excp_pending(struct v3_core_info * core) {
 }
 
 
-int v3_get_excp_number(struct v3_core_info * core) {
+int 
+v3_get_excp_number(struct v3_core_info * core) 
+{
     struct v3_excp_state * excp_state = &(core->excp_state);
 
     if (excp_state->excp_pending == 1) {
@@ -89,12 +104,14 @@ int v3_get_excp_number(struct v3_core_info * core) {
 }
 
 
-int v3_injecting_excp(struct v3_core_info * core, uint_t excp) {
+int 
+v3_injecting_excp(struct v3_core_info * core, uint_t excp) 
+{
     struct v3_excp_state * excp_state = &(core->excp_state);
     
-    excp_state->excp_pending = 0;
-    excp_state->excp_num = 0;
-    excp_state->excp_error_code = 0;
+    excp_state->excp_pending          = 0;
+    excp_state->excp_num              = 0;
+    excp_state->excp_error_code       = 0;
     excp_state->excp_error_code_valid = 0;
     
     return 0;

@@ -46,14 +46,16 @@ v3_cpu_arch_t v3_mach_type = V3_INVALID_CPU;
 
 struct v3_core_info * v3_cores_current[V3_CONFIG_MAX_CPUS];
 
-struct v3_os_hooks * os_hooks = NULL;
-int v3_dbg_enable             = 0;
+struct v3_os_hooks  * os_hooks = NULL;
+int v3_dbg_enable              = 0;
 
 #ifdef V3_CONFIG_KITTEN
 extern void lapic_set_timer_freq(unsigned int hz);
 #endif
 
-static void init_cpu(void * arg) {
+static void 
+init_cpu(void * arg) 
+{
     uint32_t cpu_id = (uint32_t)(addr_t)arg;
 
 #ifdef V3_CONFIG_KITTEN
@@ -80,7 +82,9 @@ static void init_cpu(void * arg) {
 }
 
 
-static void deinit_cpu(void * arg) {
+static void 
+deinit_cpu(void * arg) 
+{
     uint32_t cpu_id = (uint32_t)(addr_t)arg;
 
 
@@ -107,7 +111,9 @@ static void deinit_cpu(void * arg) {
     }
 }
 
-int v3_add_cpu(int cpu_id) {
+int 
+v3_add_cpu(int cpu_id) 
+{
     if (os_hooks == NULL) {
 	PrintError("Error Tried to add a CPU to unitialized VMM\n");
 	return -1;
@@ -119,10 +125,12 @@ int v3_add_cpu(int cpu_id) {
 }
 
 
-void Init_V3(struct v3_os_hooks * hooks, char * cpu_mask, int num_cpus, char * options) {
-    int i = 0;
+void 
+Init_V3(struct v3_os_hooks * hooks, char * cpu_mask, int num_cpus, char * options) 
+{
     int minor = 0;
     int major = 0;
+    int i = 0;
 
     V3_Print("V3 Print statement to fix a Kitten page fault bug\n");
 
@@ -133,7 +141,7 @@ void Init_V3(struct v3_os_hooks * hooks, char * cpu_mask, int num_cpus, char * o
     v3_mach_type = V3_INVALID_CPU;
 
     for (i = 0; i < V3_CONFIG_MAX_CPUS; i++) {
-	v3_cpu_types[i] = V3_INVALID_CPU;
+	v3_cpu_types[i]     = V3_INVALID_CPU;
 	v3_cores_current[i] = NULL;
     }
 
@@ -182,7 +190,9 @@ void Init_V3(struct v3_os_hooks * hooks, char * cpu_mask, int num_cpus, char * o
 
 
 
-void Shutdown_V3() {
+void 
+Shutdown_V3() 
+{
     int i;
 
     V3_deinit_devices();
@@ -211,12 +221,16 @@ void Shutdown_V3() {
 }
 
 
-v3_cpu_arch_t v3_get_cpu_type(int cpu_id) {
+v3_cpu_arch_t 
+v3_get_cpu_type(int cpu_id) 
+{
     return v3_cpu_types[cpu_id];
 }
 
 
-struct v3_vm_info * v3_create_vm(void * cfg, void * priv_data, char * name) {
+struct v3_vm_info * 
+v3_create_vm(void * cfg, void * priv_data, char * name) 
+{
     struct v3_vm_info * vm = v3_config_guest(cfg, priv_data);
 
     if (vm == NULL) {
@@ -232,7 +246,7 @@ struct v3_vm_info * v3_create_vm(void * cfg, void * priv_data, char * name) {
 	PrintError("VM name is too long. Will be truncated to 128 chars.\n");
     }
 
-    memset(vm->name, 0, 128);
+    memset (vm->name, 0,    128);
     strncpy(vm->name, name, 127);
 
     return vm;
@@ -241,13 +255,17 @@ struct v3_vm_info * v3_create_vm(void * cfg, void * priv_data, char * name) {
 
 #ifdef V3_CONFIG_HOST_SCHED_EVENTS
 #include <interfaces/sched_events.h>
-static int core_sched_in(struct v3_core_info * core, int cpu) {
+static int 
+core_sched_in(struct v3_core_info * core, int cpu) 
+{
     v3_cores_current[cpu] = core;
     v3_telemetry_inc_core_counter(core, "CORE_SCHED_IN");
     return 0;
 }
 
-static int core_sched_out(struct v3_core_info * core, int cpu) {
+static int 
+core_sched_out(struct v3_core_info * core, int cpu) 
+{
     v3_telemetry_inc_core_counter(core, "CORE_SCHED_OUT");
 
     v3_fpu_deactivate(core);
@@ -259,7 +277,8 @@ static int core_sched_out(struct v3_core_info * core, int cpu) {
 #endif
 
 
-static int start_core(void * p)
+static int 
+start_core(void * p)
 {
     struct v3_core_info * core = (struct v3_core_info *)p;
     int ret = 0;
@@ -306,7 +325,9 @@ static int start_core(void * p)
 #define MAX_CORES 32
 
 
-int v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask) {
+int 
+v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask)
+{
     uint8_t * core_mask   = (uint8_t *)&cpu_mask; // This is to make future expansion easier
     uint32_t  avail_cores = 0;
     int       vcore_id    = 0;
@@ -351,8 +372,8 @@ int v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask) {
     // We work backwards, so that core 0 is always started last.
     for (i = 0, vcore_id = vm->num_cores - 1; (i < MAX_CORES) && (vcore_id >= 0); i++) {
 	struct v3_core_info * core            = &(vm->cores[vcore_id]);
-	char              * specified_cpu   = v3_cfg_val(core->core_cfg_data, "target_cpu");
-	uint32_t            core_idx        = 0;
+	char                * specified_cpu   = v3_cfg_val(core->core_cfg_data, "target_cpu");
+	uint32_t              core_idx        = 0;
 	int major = 0;
  	int minor = 0;
 
@@ -393,8 +414,8 @@ int v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask) {
 		   core_idx, start_core, core, core->exec_name);
 
 	core->core_run_state = CORE_STOPPED;  // core zero will turn itself on
-	core->pcpu_id = core_idx;
-	core->core_thread = V3_CREATE_THREAD_ON_CPU(core_idx, start_core, core, core->exec_name);
+	core->pcpu_id        = core_idx;
+	core->core_thread    = V3_CREATE_THREAD_ON_CPU(core_idx, start_core, core, core->exec_name);
 
 	if (core->core_thread == NULL) {
 	    PrintError("Thread launch failed\n");
@@ -417,7 +438,9 @@ int v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask) {
 }
 
 
-int v3_reset_vm_core(struct v3_core_info * core, addr_t rip) {
+int 
+v3_reset_vm_core(struct v3_core_info * core, addr_t rip) 
+{
     
     switch (v3_cpu_types[core->pcpu_id]) {
 #ifdef V3_CONFIG_SVM
@@ -445,7 +468,9 @@ int v3_reset_vm_core(struct v3_core_info * core, addr_t rip) {
 
 
 /* move a virtual core to different physical core */
-int v3_move_vm_core(struct v3_vm_info * vm, int vcore_id, int target_cpu) {
+int 
+v3_move_vm_core(struct v3_vm_info * vm, int vcore_id, int target_cpu) 
+{
     struct v3_core_info * core = NULL;
 
     if ((vcore_id < 0) || (vcore_id >= vm->num_cores)) {
@@ -502,8 +527,7 @@ int v3_move_vm_core(struct v3_vm_info * vm, int vcore_id, int target_cpu) {
 	   core->pcpu_id will be set to the target core before its fully "migrated"
 	   However the core will NEVER run on the old core again, its just in flight to the new core
 	*/
-	core->pcpu_id = target_cpu;
-
+	core->pcpu_id                  = target_cpu;
 	v3_cores_current[V3_Get_CPU()] = core;
 
 	V3_Print("core now at %d\n", core->pcpu_id);	
@@ -516,7 +540,9 @@ int v3_move_vm_core(struct v3_vm_info * vm, int vcore_id, int target_cpu) {
 
 
 
-int v3_stop_vm(struct v3_vm_info * vm) {
+int 
+v3_stop_vm(struct v3_vm_info * vm) 
+{
 
     if ((vm->run_state != VM_RUNNING) && 
 	(vm->run_state != VM_SIMULATING)) {
@@ -556,7 +582,9 @@ int v3_stop_vm(struct v3_vm_info * vm) {
 }
 
 
-int v3_pause_vm(struct v3_vm_info * vm) {
+int 
+v3_pause_vm(struct v3_vm_info * vm) 
+{
 
     if (vm->run_state != VM_RUNNING) {
 	PrintError("Tried to pause a VM that was not running\n");
@@ -571,7 +599,9 @@ int v3_pause_vm(struct v3_vm_info * vm) {
 }
 
 
-int v3_continue_vm(struct v3_vm_info * vm) {
+int 
+v3_continue_vm(struct v3_vm_info * vm) 
+{
 
     if (vm->run_state != VM_PAUSED) {
 	PrintError("Tried to continue a VM that was not paused\n");
@@ -587,7 +617,9 @@ int v3_continue_vm(struct v3_vm_info * vm) {
 
 
 
-static int sim_callback(struct v3_core_info * core, void * private_data) {
+static int 
+sim_callback(struct v3_core_info * core, void * private_data) 
+{
     struct v3_bitmap * timeout_map = private_data;
 
     v3_bitmap_set(timeout_map, core->vcpu_id);
@@ -604,11 +636,13 @@ static int sim_callback(struct v3_core_info * core, void * private_data) {
 
 
 
-int v3_simulate_vm(struct v3_vm_info * vm, unsigned int msecs) {
+int 
+v3_simulate_vm(struct v3_vm_info * vm, unsigned int msecs) 
+{
     struct v3_bitmap timeout_map;
-    int all_blocked   = 0;
-    uint64_t cycles   = 0;
-    uint64_t cpu_khz  = V3_CPU_KHZ();
+    int              all_blocked = 0;
+    uint64_t         cycles      = 0;
+    uint64_t         cpu_khz     = V3_CPU_KHZ();
     int i = 0;
 
     if (vm->run_state != VM_PAUSED) {
@@ -689,22 +723,30 @@ int v3_simulate_vm(struct v3_vm_info * vm, unsigned int msecs) {
 #ifdef V3_CONFIG_CHECKPOINT
 #include <palacios/vmm_checkpoint.h>
 
-int v3_save_vm(struct v3_vm_info * vm, char * store, char * url) {
+int 
+v3_save_vm(struct v3_vm_info * vm, char * store, char * url) 
+{
     return v3_chkpt_save_vm(vm, store, url);
 }
 
 
-int v3_load_vm(struct v3_vm_info * vm, char * store, char * url) {
+int 
+v3_load_vm(struct v3_vm_info * vm, char * store, char * url) 
+{
     return v3_chkpt_load_vm(vm, store, url);
 }
 
 #ifdef V3_CONFIG_LIVE_MIGRATION
-int v3_send_vm(struct v3_vm_info * vm, char * store, char * url) {
+int 
+v3_send_vm(struct v3_vm_info * vm, char * store, char * url) 
+{
     return v3_chkpt_send_vm(vm, store, url);
 }
 
 
-int v3_receive_vm(struct v3_vm_info * vm, char * store, char * url) {
+int 
+v3_receive_vm(struct v3_vm_info * vm, char * store, char * url) 
+{
     return v3_chkpt_receive_vm(vm, store, url);
 }
 #endif
@@ -712,7 +754,9 @@ int v3_receive_vm(struct v3_vm_info * vm, char * store, char * url) {
 #endif
 
 
-int v3_free_vm(struct v3_vm_info * vm) {
+int 
+v3_free_vm(struct v3_vm_info * vm) 
+{
     int i = 0;
     // deinitialize guest (free memory, etc...)
 
@@ -736,8 +780,10 @@ int v3_free_vm(struct v3_vm_info * vm) {
 
 #ifdef __V3_32BIT__
 
-v3_cpu_mode_t v3_get_host_cpu_mode() {
-    uint32_t cr4_val;
+v3_cpu_mode_t 
+v3_get_host_cpu_mode() 
+{
+    uint32_t        cr4_val;
     struct cr4_32 * cr4;
 
     __asm__ (
@@ -757,7 +803,9 @@ v3_cpu_mode_t v3_get_host_cpu_mode() {
 
 #elif __V3_64BIT__
 
-v3_cpu_mode_t v3_get_host_cpu_mode() {
+v3_cpu_mode_t 
+v3_get_host_cpu_mode() 
+{
     return LONG;
 }
 
@@ -767,7 +815,9 @@ v3_cpu_mode_t v3_get_host_cpu_mode() {
 
 
 
-void v3_yield_cond(struct v3_core_info * core, int usec) {
+void 
+v3_yield_cond(struct v3_core_info * core, int usec) 
+{
     uint64_t cur_cycle = 0;
 
 
@@ -806,7 +856,9 @@ void v3_yield_cond(struct v3_core_info * core, int usec) {
  * usec <0  => the non-timed yield is used
  * usec >=0 => the timed yield is used, which also usually implies interruptible
  */ 
-void v3_yield(struct v3_core_info * core, int usec) {
+void 
+v3_yield(struct v3_core_info * core, int usec) 
+{
     
 
     if (usec < 0) { 
@@ -824,9 +876,11 @@ void v3_yield(struct v3_core_info * core, int usec) {
 
 
 
-void v3_print_cond(const char * fmt, ...) {
+void 
+v3_print_cond(const char * fmt, ...) 
+{
     if (v3_dbg_enable == 1) {
-	char buf[2048];
+	char    buf[2048];
 	va_list ap;
 
 	va_start(ap, fmt);
@@ -839,7 +893,9 @@ void v3_print_cond(const char * fmt, ...) {
 
 
 
-void v3_interrupt_cpu(struct v3_vm_info * vm, int logical_cpu, int vector) {
+void 
+v3_interrupt_cpu(struct v3_vm_info * vm, int logical_cpu, int vector) 
+{
     extern struct v3_os_hooks * os_hooks;
 
     if ((os_hooks) && (os_hooks)->interrupt_cpu) {
@@ -849,7 +905,9 @@ void v3_interrupt_cpu(struct v3_vm_info * vm, int logical_cpu, int vector) {
 
 
 
-int v3_vm_enter(struct v3_core_info * core) {
+int 
+v3_vm_enter(struct v3_core_info * core) 
+{
     switch (v3_mach_type) {
 #ifdef V3_CONFIG_SVM
 	case V3_SVM_CPU:

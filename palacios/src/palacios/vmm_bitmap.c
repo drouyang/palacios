@@ -21,12 +21,14 @@
 #include <palacios/vmm.h>
 
 
-int v3_bitmap_init(struct v3_bitmap * bitmap, int num_bits) {
+int 
+v3_bitmap_init(struct v3_bitmap * bitmap, int num_bits) 
+{
     int num_bytes = (num_bits / 8) + ((num_bits % 8) > 0);
 
     v3_spinlock_init(&(bitmap->lock));
     bitmap->num_bits = num_bits;
-    bitmap->bits = V3_Malloc(num_bytes);
+    bitmap->bits     = V3_Malloc(num_bytes);
 
 
     if (bitmap->bits == NULL) {
@@ -40,13 +42,17 @@ int v3_bitmap_init(struct v3_bitmap * bitmap, int num_bits) {
 }
 
 
-void v3_bitmap_deinit(struct v3_bitmap * bitmap) {
+void 
+v3_bitmap_deinit(struct v3_bitmap * bitmap)
+{
     v3_spinlock_deinit(&(bitmap->lock));
     V3_Free(bitmap->bits);
 }
 
 
-int v3_bitmap_reset(struct v3_bitmap * bitmap) {
+int 
+v3_bitmap_reset(struct v3_bitmap * bitmap) 
+{
     int num_bytes = (bitmap->num_bits / 8) + ((bitmap->num_bits % 8) > 0);
 
     memset(bitmap->bits, 0, num_bytes);
@@ -54,11 +60,13 @@ int v3_bitmap_reset(struct v3_bitmap * bitmap) {
     return 0;
 }
 
-int v3_bitmap_set(struct v3_bitmap * bitmap, int index) {
-    int major = index / 8;
-    int minor = index % 8;
+int 
+v3_bitmap_set(struct v3_bitmap * bitmap, int index) 
+{
+    int major   = index / 8;
+    int minor   = index % 8;
     int old_val = 0;
-    uint32_t flags = 0;
+    uint32_t flags   = 0;
 
     if (index > (bitmap->num_bits - 1)) {
 	PrintError("Index out of bitmap range: (pos = %d) (num_bits = %d)\n", 
@@ -78,9 +86,11 @@ int v3_bitmap_set(struct v3_bitmap * bitmap, int index) {
 }
 
 
-int v3_bitmap_clear(struct v3_bitmap * bitmap, int index) {
-    int major = index / 8;
-    int minor = index % 8;
+int 
+v3_bitmap_clear(struct v3_bitmap * bitmap, int index) 
+{
+    int major   = index / 8;
+    int minor   = index % 8;
     int old_val = 0;
     uint32_t flags = 0;
 
@@ -100,7 +110,9 @@ int v3_bitmap_clear(struct v3_bitmap * bitmap, int index) {
     return old_val;
 }
 
-int v3_bitmap_check(struct v3_bitmap * bitmap, int index) {
+int 
+v3_bitmap_check(struct v3_bitmap * bitmap, int index) 
+{
     int major = index / 8;
     int minor = index % 8;
 
@@ -114,26 +126,31 @@ int v3_bitmap_check(struct v3_bitmap * bitmap, int index) {
 }
 
 
-int v3_bitmap_count(struct v3_bitmap * bitmap) {
+int 
+v3_bitmap_count(struct v3_bitmap * bitmap) 
+{
+    uint8_t * bytes     = bitmap->bits;
+    int       num_bytes = (bitmap->num_bits / 8) + ((bitmap->num_bits % 8) > 0);
+    int       cnt       = 0;
+    uint8_t   x         = 0;
+    int i = 0;
 
-    int cnt = 0;
-    int i;
-    uint8_t x;
-    uint8_t * bytes = bitmap->bits;
-    int num_bytes = (bitmap->num_bits / 8) + ((bitmap->num_bits % 8) > 0);
 
-    for (i=0; i < num_bytes; i++) {
+    for (i = 0; i < num_bytes; i++) {
         x = bytes[i];
+
         while (x) { 
-	    cnt += (x & 0x1);
-	    x>>=1;
+	    cnt +=  (x & 0x1);
+	    x   >>= 1;
 	}
     }     
     
     return cnt;
 }
 
-int v3_bitmap_copy(struct v3_bitmap * dst, struct v3_bitmap * src) {
+int 
+v3_bitmap_copy(struct v3_bitmap * dst, struct v3_bitmap * src) 
+{
     
     if (src->num_bits != dst->num_bits) {
         PrintError("src and dst must be the same size.\n");

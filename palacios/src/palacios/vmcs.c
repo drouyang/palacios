@@ -28,39 +28,41 @@
 
 
 
-typedef enum { ES = 0, 
-	       CS = 2,
- 	       SS = 4,
-	       DS = 6, 
-	       FS = 8, 
-	       GS = 10, 
+typedef enum { ES   = 0, 
+	       CS   = 2,
+ 	       SS   = 4,
+	       DS   = 6, 
+	       FS   = 8, 
+	       GS   = 10, 
 	       LDTR = 12, 
-	       TR = 14, 
+	       TR   = 14, 
 	       GDTR = 16, 
 	       IDTR = 18} vmcs_seg_offsets_t;
 
-typedef enum {BASE = VMCS_GUEST_ES_BASE,
-	      LIMIT = VMCS_GUEST_ES_LIMIT, 
-	      ACCESS = VMCS_GUEST_ES_ACCESS, 
+typedef enum {BASE     = VMCS_GUEST_ES_BASE,
+	      LIMIT    = VMCS_GUEST_ES_LIMIT, 
+	      ACCESS   = VMCS_GUEST_ES_ACCESS, 
 	      SELECTOR = VMCS_GUEST_ES_SELECTOR } vmcs_seg_bases_t;
  
 
 
-static int v3_read_vmcs_segment(struct v3_segment * seg, vmcs_seg_offsets_t seg_type) {
+static int 
+v3_read_vmcs_segment(struct v3_segment * seg, vmcs_seg_offsets_t seg_type) 
+{
     vmcs_field_t selector = VMCS_GUEST_ES_SELECTOR + seg_type;
-    vmcs_field_t base = VMCS_GUEST_ES_BASE + seg_type;
-    vmcs_field_t limit = VMCS_GUEST_ES_LIMIT + seg_type;
-    vmcs_field_t access = VMCS_GUEST_ES_ACCESS + seg_type;
+    vmcs_field_t base     = VMCS_GUEST_ES_BASE     + seg_type;
+    vmcs_field_t limit    = VMCS_GUEST_ES_LIMIT    + seg_type;
+    vmcs_field_t access   = VMCS_GUEST_ES_ACCESS   + seg_type;
     struct vmcs_segment vmcs_seg;
 
     memset(&vmcs_seg, 0, sizeof(struct vmcs_segment));
 
     check_vmcs_read(limit, &(vmcs_seg.limit));
-    check_vmcs_read(base, &(vmcs_seg.base));
+    check_vmcs_read(base,  &(vmcs_seg.base));
 
     if ((seg_type != GDTR) && (seg_type != IDTR)) {
 	check_vmcs_read(selector, &(vmcs_seg.selector));
-	check_vmcs_read(access, &(vmcs_seg.access.val)); 
+	check_vmcs_read(access,   &(vmcs_seg.access.val)); 
     }
 
     v3_vmxseg_to_seg(&vmcs_seg, seg);
@@ -68,109 +70,121 @@ static int v3_read_vmcs_segment(struct v3_segment * seg, vmcs_seg_offsets_t seg_
     return 0;
 }
 
-static int v3_write_vmcs_segment(struct v3_segment * seg, vmcs_seg_offsets_t seg_type) {
+static int 
+v3_write_vmcs_segment(struct v3_segment * seg, vmcs_seg_offsets_t seg_type) 
+{
     vmcs_field_t selector = VMCS_GUEST_ES_SELECTOR + seg_type;
-    vmcs_field_t base = VMCS_GUEST_ES_BASE + seg_type;
-    vmcs_field_t limit = VMCS_GUEST_ES_LIMIT + seg_type;
-    vmcs_field_t access = VMCS_GUEST_ES_ACCESS + seg_type;
+    vmcs_field_t base     = VMCS_GUEST_ES_BASE     + seg_type;
+    vmcs_field_t limit    = VMCS_GUEST_ES_LIMIT    + seg_type;
+    vmcs_field_t access   = VMCS_GUEST_ES_ACCESS   + seg_type;
     struct vmcs_segment vmcs_seg;
 
     v3_seg_to_vmxseg(seg, &vmcs_seg);
 
     check_vmcs_write(limit, vmcs_seg.limit);
-    check_vmcs_write(base, vmcs_seg.base);
+    check_vmcs_write(base,  vmcs_seg.base);
 
     if ((seg_type != GDTR) && (seg_type != IDTR)) {
-	check_vmcs_write(access, vmcs_seg.access.val); 
+	check_vmcs_write(access,   vmcs_seg.access.val); 
 	check_vmcs_write(selector, vmcs_seg.selector);
     }
 
     return 0;
 }
 
-int v3_read_vmcs_segments(struct v3_segments * segs) {
-    v3_read_vmcs_segment(&(segs->cs), CS);
-    v3_read_vmcs_segment(&(segs->ds), DS);
-    v3_read_vmcs_segment(&(segs->es), ES);
-    v3_read_vmcs_segment(&(segs->fs), FS);
-    v3_read_vmcs_segment(&(segs->gs), GS);
-    v3_read_vmcs_segment(&(segs->ss), SS);
+int 
+v3_read_vmcs_segments(struct v3_segments * segs) 
+{
+    v3_read_vmcs_segment(&(segs->cs),   CS);
+    v3_read_vmcs_segment(&(segs->ds),   DS);
+    v3_read_vmcs_segment(&(segs->es),   ES);
+    v3_read_vmcs_segment(&(segs->fs),   FS);
+    v3_read_vmcs_segment(&(segs->gs),   GS);
+    v3_read_vmcs_segment(&(segs->ss),   SS);
     v3_read_vmcs_segment(&(segs->ldtr), LDTR);
     v3_read_vmcs_segment(&(segs->gdtr), GDTR);
     v3_read_vmcs_segment(&(segs->idtr), IDTR);
-    v3_read_vmcs_segment(&(segs->tr), TR);
+    v3_read_vmcs_segment(&(segs->tr),   TR);
 
     return 0;
 }
 
-int v3_write_vmcs_segments(struct v3_segments * segs) {
-    v3_write_vmcs_segment(&(segs->cs), CS);
-    v3_write_vmcs_segment(&(segs->ds), DS);
-    v3_write_vmcs_segment(&(segs->es), ES);
-    v3_write_vmcs_segment(&(segs->fs), FS);
-    v3_write_vmcs_segment(&(segs->gs), GS);
-    v3_write_vmcs_segment(&(segs->ss), SS);
+int 
+v3_write_vmcs_segments(struct v3_segments * segs) 
+{
+    v3_write_vmcs_segment(&(segs->cs),   CS);
+    v3_write_vmcs_segment(&(segs->ds),   DS);
+    v3_write_vmcs_segment(&(segs->es),   ES);
+    v3_write_vmcs_segment(&(segs->fs),   FS);
+    v3_write_vmcs_segment(&(segs->gs),   GS);
+    v3_write_vmcs_segment(&(segs->ss),   SS);
     v3_write_vmcs_segment(&(segs->ldtr), LDTR);
     v3_write_vmcs_segment(&(segs->gdtr), GDTR);
     v3_write_vmcs_segment(&(segs->idtr), IDTR);
-    v3_write_vmcs_segment(&(segs->tr), TR);
+    v3_write_vmcs_segment(&(segs->tr),   TR);
 
     return 0;
 }
 
 
-void v3_vmxseg_to_seg(struct vmcs_segment * vmcs_seg, struct v3_segment * seg) {
+void 
+v3_vmxseg_to_seg(struct vmcs_segment * vmcs_seg, struct v3_segment * seg) 
+{
     memset(seg, 0, sizeof(struct v3_segment));
 
-    seg->selector = vmcs_seg->selector;
-    seg->limit = vmcs_seg->limit;
-    seg->base = vmcs_seg->base;
+    seg->selector    = vmcs_seg->selector;
+    seg->limit       = vmcs_seg->limit;
+    seg->base        = vmcs_seg->base;
 
-    seg->type = vmcs_seg->access.type;
-    seg->system = vmcs_seg->access.desc_type;
-    seg->dpl = vmcs_seg->access.dpl;
-    seg->present = vmcs_seg->access.present;
-    seg->avail = vmcs_seg->access.avail;
-    seg->long_mode = vmcs_seg->access.long_mode;
-    seg->db = vmcs_seg->access.db;
+    seg->type        = vmcs_seg->access.type;
+    seg->system      = vmcs_seg->access.desc_type;
+    seg->dpl         = vmcs_seg->access.dpl;
+    seg->present     = vmcs_seg->access.present;
+    seg->avail       = vmcs_seg->access.avail;
+    seg->long_mode   = vmcs_seg->access.long_mode;
+    seg->db          = vmcs_seg->access.db;
     seg->granularity = vmcs_seg->access.granularity;
-    seg->unusable = vmcs_seg->access.unusable;
+    seg->unusable    = vmcs_seg->access.unusable;
 
 }
 
-void v3_seg_to_vmxseg(struct v3_segment * seg, struct vmcs_segment * vmcs_seg) {
+void 
+v3_seg_to_vmxseg(struct v3_segment * seg, struct vmcs_segment * vmcs_seg) 
+{
     memset(vmcs_seg, 0, sizeof(struct vmcs_segment));
 
-    vmcs_seg->selector = seg->selector;
-    vmcs_seg->limit = seg->limit;
-    vmcs_seg->base = seg->base;
+    vmcs_seg->selector           = seg->selector;
+    vmcs_seg->limit              = seg->limit;
+    vmcs_seg->base               = seg->base;
 
-    vmcs_seg->access.type = seg->type;
-    vmcs_seg->access.desc_type = seg->system;
-    vmcs_seg->access.dpl = seg->dpl;
-    vmcs_seg->access.present = seg->present;
-    vmcs_seg->access.avail = seg->avail;
-    vmcs_seg->access.long_mode = seg->long_mode;
-    vmcs_seg->access.db = seg->db;
+    vmcs_seg->access.type        = seg->type;
+    vmcs_seg->access.desc_type   = seg->system;
+    vmcs_seg->access.dpl         = seg->dpl;
+    vmcs_seg->access.present     = seg->present;
+    vmcs_seg->access.avail       = seg->avail;
+    vmcs_seg->access.long_mode   = seg->long_mode;
+    vmcs_seg->access.db          = seg->db;
     vmcs_seg->access.granularity = seg->granularity;
-    vmcs_seg->access.unusable = seg->unusable;
+    vmcs_seg->access.unusable    = seg->unusable;
 }
 
 
 
 
-int v3_update_vmcs_ctrl_fields(struct v3_core_info * core) {
-    int vmx_ret = 0;
+int
+v3_update_vmcs_ctrl_fields(struct v3_core_info * core) 
+{
     struct vmx_data * arch_data = (struct vmx_data *)(core->vmm_data);
-
-    vmx_ret |= check_vmcs_write(VMCS_PIN_CTRLS, arch_data->pin_ctrls.value);
-    vmx_ret |= check_vmcs_write(VMCS_PROC_CTRLS, arch_data->pri_proc_ctrls.value);
+    int vmx_ret = 0;
+ 
+    vmx_ret |= check_vmcs_write(VMCS_PIN_CTRLS,   arch_data->pin_ctrls.value);
+    vmx_ret |= check_vmcs_write(VMCS_PROC_CTRLS,  arch_data->pri_proc_ctrls.value);
 
     if (arch_data->pri_proc_ctrls.sec_ctrls) {
         vmx_ret |= check_vmcs_write(VMCS_SEC_PROC_CTRLS, arch_data->sec_proc_ctrls.value);
     }
 
-    vmx_ret |= check_vmcs_write(VMCS_EXIT_CTRLS, arch_data->exit_ctrls.value);
+    vmx_ret |= check_vmcs_write(VMCS_EXIT_CTRLS,  arch_data->exit_ctrls.value);
     vmx_ret |= check_vmcs_write(VMCS_ENTRY_CTRLS, arch_data->entry_ctrls.value);
     vmx_ret |= check_vmcs_write(VMCS_EXCP_BITMAP, arch_data->excp_bmap.value);
 
@@ -186,42 +200,44 @@ int v3_update_vmcs_ctrl_fields(struct v3_core_info * core) {
 
 
 
-int v3_vmx_save_vmcs(struct v3_core_info * core, struct vmx_hw_info * hw_info) {
+int 
+v3_vmx_save_vmcs(struct v3_core_info * core, struct vmx_hw_info * hw_info) 
+{
     struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
     int error = 0;
 
-    check_vmcs_read(VMCS_GUEST_RIP, &(core->rip));
-    check_vmcs_read(VMCS_GUEST_RSP, &(core->vm_regs.rsp));
+    check_vmcs_read(VMCS_GUEST_RIP,     &(core->rip));
+    check_vmcs_read(VMCS_GUEST_RSP,     &(core->vm_regs.rsp));
 
-    check_vmcs_read(VMCS_GUEST_CR0, &(core->ctrl_regs.cr0));
+    check_vmcs_read(VMCS_GUEST_CR0,     &(core->ctrl_regs.cr0));
     check_vmcs_read(VMCS_CR0_READ_SHDW, &(core->shdw_pg_state.guest_cr0));
-    check_vmcs_read(VMCS_GUEST_CR3, &(core->ctrl_regs.cr3));
-    check_vmcs_read(VMCS_GUEST_CR4, &(core->ctrl_regs.cr4));
+    check_vmcs_read(VMCS_GUEST_CR3,     &(core->ctrl_regs.cr3));
+    check_vmcs_read(VMCS_GUEST_CR4,     &(core->ctrl_regs.cr4));
     check_vmcs_read(VMCS_CR4_READ_SHDW, &(vmx_info->guest_cr4));
-    check_vmcs_read(VMCS_GUEST_DR7, &(core->dbg_regs.dr7));
+    check_vmcs_read(VMCS_GUEST_DR7,     &(core->dbg_regs.dr7));
 
-    check_vmcs_read(VMCS_GUEST_RFLAGS, &(core->ctrl_regs.rflags));
+    check_vmcs_read(VMCS_GUEST_RFLAGS,  &(core->ctrl_regs.rflags));
 
 #ifdef __V3_64BIT__
-    check_vmcs_read(VMCS_GUEST_EFER, &(core->ctrl_regs.efer));
-    check_vmcs_read(VMCS_ENTRY_CTRLS, &(vmx_info->entry_ctrls.value));
+    check_vmcs_read(VMCS_GUEST_EFER,    &(core->ctrl_regs.efer));
+    check_vmcs_read(VMCS_ENTRY_CTRLS,   &(vmx_info->entry_ctrls.value));
 #endif
     
     error =  v3_read_vmcs_segments(&(core->segments));
 
     /* Save MSRs from MSR SAVE Area (whereever that is...)*/
 
-    core->msrs.star = vmx_info->msr_area->guest_star.hi;
-    core->msrs.star <<= 32;
-    core->msrs.star |= vmx_info->msr_area->guest_star.lo;
+    core->msrs.star         = vmx_info->msr_area->guest_star.hi;
+    core->msrs.star         <<= 32;
+    core->msrs.star         |= vmx_info->msr_area->guest_star.lo;
 
-    core->msrs.lstar = vmx_info->msr_area->guest_lstar.hi;
-    core->msrs.lstar <<= 32;
-    core->msrs.lstar |= vmx_info->msr_area->guest_lstar.lo;
+    core->msrs.lstar        = vmx_info->msr_area->guest_lstar.hi;
+    core->msrs.lstar        <<= 32;
+    core->msrs.lstar        |= vmx_info->msr_area->guest_lstar.lo;
 
-    core->msrs.sfmask = vmx_info->msr_area->guest_fmask.hi;
-    core->msrs.sfmask <<= 32;
-    core->msrs.sfmask |= vmx_info->msr_area->guest_fmask.lo;
+    core->msrs.sfmask       = vmx_info->msr_area->guest_fmask.hi;
+    core->msrs.sfmask       <<= 32;
+    core->msrs.sfmask       |= vmx_info->msr_area->guest_fmask.lo;
 
     core->msrs.kern_gs_base = vmx_info->msr_area->guest_kern_gs.hi;
     core->msrs.kern_gs_base <<= 32;
@@ -232,42 +248,44 @@ int v3_vmx_save_vmcs(struct v3_core_info * core, struct vmx_hw_info * hw_info) {
 }
 
 
-int v3_vmx_restore_vmcs(struct v3_core_info * core, struct vmx_hw_info * hw_info) {
+int 
+v3_vmx_restore_vmcs(struct v3_core_info * core, struct vmx_hw_info * hw_info) 
+{
     struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
     int error = 0;
 
-    check_vmcs_write(VMCS_GUEST_RIP, core->rip);
-    check_vmcs_write(VMCS_GUEST_RSP, core->vm_regs.rsp);
+    check_vmcs_write(VMCS_GUEST_RIP,      core->rip);
+    check_vmcs_write(VMCS_GUEST_RSP,      core->vm_regs.rsp);
 
-    check_vmcs_write(VMCS_GUEST_CR0, core->ctrl_regs.cr0);
-    check_vmcs_write(VMCS_CR0_READ_SHDW, core->shdw_pg_state.guest_cr0);
-    check_vmcs_write(VMCS_GUEST_CR3, core->ctrl_regs.cr3);
-    check_vmcs_write(VMCS_GUEST_CR4, core->ctrl_regs.cr4);
-    check_vmcs_write(VMCS_CR4_READ_SHDW, vmx_info->guest_cr4);
-    check_vmcs_write(VMCS_GUEST_DR7, core->dbg_regs.dr7);
+    check_vmcs_write(VMCS_GUEST_CR0,      core->ctrl_regs.cr0);
+    check_vmcs_write(VMCS_CR0_READ_SHDW,  core->shdw_pg_state.guest_cr0);
+    check_vmcs_write(VMCS_GUEST_CR3,      core->ctrl_regs.cr3);
+    check_vmcs_write(VMCS_GUEST_CR4,      core->ctrl_regs.cr4);
+    check_vmcs_write(VMCS_CR4_READ_SHDW,  vmx_info->guest_cr4);
+    check_vmcs_write(VMCS_GUEST_DR7,      core->dbg_regs.dr7);
 
-    check_vmcs_write(VMCS_GUEST_RFLAGS, core->ctrl_regs.rflags);
+    check_vmcs_write(VMCS_GUEST_RFLAGS,   core->ctrl_regs.rflags);
 
 #ifdef __V3_64BIT__
     if (hw_info->caps.virt_efer) {
 	check_vmcs_write(VMCS_GUEST_EFER, core->ctrl_regs.efer);
     }
 
-    check_vmcs_write(VMCS_ENTRY_CTRLS, vmx_info->entry_ctrls.value);
+    check_vmcs_write(VMCS_ENTRY_CTRLS,    vmx_info->entry_ctrls.value);
 #endif
 
     error = v3_write_vmcs_segments(&(core->segments));
 
     /* Restore MSRs from MSR SAVE Area (whereever that is...)*/
 
-    vmx_info->msr_area->guest_star.hi = (core->msrs.star >> 32);
-    vmx_info->msr_area->guest_star.lo = (core->msrs.star & 0xffffffff);
+    vmx_info->msr_area->guest_star.hi    = (core->msrs.star >> 32);
+    vmx_info->msr_area->guest_star.lo    = (core->msrs.star & 0xffffffff);
 
-    vmx_info->msr_area->guest_lstar.hi = (core->msrs.lstar >> 32);
-    vmx_info->msr_area->guest_lstar.lo = (core->msrs.lstar & 0xffffffff);
+    vmx_info->msr_area->guest_lstar.hi   = (core->msrs.lstar >> 32);
+    vmx_info->msr_area->guest_lstar.lo   = (core->msrs.lstar & 0xffffffff);
 
-    vmx_info->msr_area->guest_fmask.hi = (core->msrs.sfmask >> 32);
-    vmx_info->msr_area->guest_fmask.lo = (core->msrs.sfmask & 0xffffffff);
+    vmx_info->msr_area->guest_fmask.hi   = (core->msrs.sfmask >> 32);
+    vmx_info->msr_area->guest_fmask.lo   = (core->msrs.sfmask & 0xffffffff);
 
     vmx_info->msr_area->guest_kern_gs.hi = (core->msrs.kern_gs_base >> 32);
     vmx_info->msr_area->guest_kern_gs.lo = (core->msrs.kern_gs_base & 0xffffffff);
@@ -278,15 +296,20 @@ int v3_vmx_restore_vmcs(struct v3_core_info * core, struct vmx_hw_info * hw_info
 
 
 
-int v3_update_vmcs_host_state(struct v3_core_info * core, struct vmx_hw_info * hw_info) {
-    int vmx_ret = 0;
-    addr_t tmp;
-    struct v3_msr tmp_msr;
-    addr_t gdtr_base;
+int 
+v3_update_vmcs_host_state(struct v3_core_info * core, struct vmx_hw_info * hw_info) 
+{
+
+    addr_t         tmp       = 0;
+    addr_t         gdtr_base = 0;
+    int            vmx_ret   = 0;
+    struct v3_msr  tmp_msr;
+
     struct {
         uint16_t selector;
         addr_t   base;
     } __attribute__((packed)) tmp_seg;
+
 
 #ifdef __V3_64BIT__
     __asm__ __volatile__ ( "movq    %%cr0, %0; "		
@@ -453,17 +476,17 @@ int v3_update_vmcs_host_state(struct v3_core_info * core, struct vmx_hw_info * h
     vmx_ret |= check_vmcs_write(VMCS_HOST_GS_SELECTOR, tmp);
 
 
-#define SYSENTER_CS_MSR 0x00000174
+#define SYSENTER_CS_MSR  0x00000174
 #define SYSENTER_ESP_MSR 0x00000175
 #define SYSENTER_EIP_MSR 0x00000176
-#define FS_BASE_MSR 0xc0000100
-#define GS_BASE_MSR 0xc0000101
-#define EFER_MSR 0xc0000080
+#define FS_BASE_MSR      0xc0000100
+#define GS_BASE_MSR      0xc0000101
+#define EFER_MSR         0xc0000080
 
 
     // SYSENTER CS MSR
     v3_get_msr(SYSENTER_CS_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
-    vmx_ret |= check_vmcs_write(VMCS_HOST_SYSENTER_CS, tmp_msr.lo);
+    vmx_ret |= check_vmcs_write(VMCS_HOST_SYSENTER_CS,  tmp_msr.lo);
 
     // SYSENTER_ESP MSR
     v3_get_msr(SYSENTER_ESP_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
@@ -476,17 +499,17 @@ int v3_update_vmcs_host_state(struct v3_core_info * core, struct vmx_hw_info * h
 
     // FS.BASE MSR
     v3_get_msr(FS_BASE_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
-    vmx_ret |= check_vmcs_write(VMCS_HOST_FS_BASE, tmp_msr.value);    
+    vmx_ret |= check_vmcs_write(VMCS_HOST_FS_BASE,      tmp_msr.value);    
 
     // GS.BASE MSR
     v3_get_msr(GS_BASE_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
-    vmx_ret |= check_vmcs_write(VMCS_HOST_GS_BASE, tmp_msr.value);    
+    vmx_ret |= check_vmcs_write(VMCS_HOST_GS_BASE,      tmp_msr.value);    
 
 
     // EFER
     if (hw_info->caps.virt_efer) {
 	v3_get_msr(EFER_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
-	vmx_ret |= check_vmcs_write(VMCS_HOST_EFER, tmp_msr.value);
+	vmx_ret |= check_vmcs_write(VMCS_HOST_EFER,     tmp_msr.value);
     }
     // PERF GLOBAL CONTROL
 
@@ -494,18 +517,18 @@ int v3_update_vmcs_host_state(struct v3_core_info * core, struct vmx_hw_info * h
 
     if (hw_info->caps.virt_pat) {
 	v3_get_msr(IA32_PAT_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
-	vmx_ret |= check_vmcs_write(VMCS_HOST_PAT, tmp_msr.value);  
+	vmx_ret |= check_vmcs_write(VMCS_HOST_PAT,      tmp_msr.value);  
     }
 
     // save STAR, LSTAR, FMASK, KERNEL_GS_BASE MSRs in MSR load/store area
     {
-	struct vmx_data * vmx_state = (struct vmx_data *)core->vmm_data;
+	struct vmx_data           * vmx_state   = (struct vmx_data *)core->vmm_data;
 	struct vmcs_msr_save_area * msr_entries = vmx_state->msr_area;
 
     
-	v3_get_msr(IA32_STAR_MSR, &(msr_entries->host_star.hi), &(msr_entries->host_star.lo));
-	v3_get_msr(IA32_LSTAR_MSR, &(msr_entries->host_lstar.hi), &(msr_entries->host_lstar.lo));
-	v3_get_msr(IA32_FMASK_MSR, &(msr_entries->host_fmask.hi), &(msr_entries->host_fmask.lo));
+	v3_get_msr(IA32_STAR_MSR,         &(msr_entries->host_star.hi),    &(msr_entries->host_star.lo));
+	v3_get_msr(IA32_LSTAR_MSR,        &(msr_entries->host_lstar.hi),   &(msr_entries->host_lstar.lo));
+	v3_get_msr(IA32_FMASK_MSR,        &(msr_entries->host_fmask.hi),   &(msr_entries->host_fmask.lo));
 	v3_get_msr(IA32_KERN_GS_BASE_MSR, &(msr_entries->host_kern_gs.hi), &(msr_entries->host_kern_gs.lo));
     }
 
@@ -521,8 +544,10 @@ int v3_update_vmcs_host_state(struct v3_core_info * core, struct vmx_hw_info * h
 
 
 
-static inline void print_vmcs_field(vmcs_field_t vmcs_index) {
-    int len = v3_vmcs_get_field_len(vmcs_index);
+static inline void 
+print_vmcs_field(vmcs_field_t vmcs_index) 
+{
+    int    len = v3_vmcs_get_field_len(vmcs_index);
     addr_t val;
     
     if (vmcs_read(vmcs_index, &val) != VMX_SUCCESS) {
@@ -535,12 +560,14 @@ static inline void print_vmcs_field(vmcs_field_t vmcs_index) {
     } else if (len == 4) {
 	PrintDebug("\t%s: 0x%.8x\n", v3_vmcs_field_to_str(vmcs_index), (uint32_t)val);
     } else if (len == 8) {
-	PrintDebug("\t%s: 0x%p\n", v3_vmcs_field_to_str(vmcs_index), (void *)(addr_t)val);
+	PrintDebug("\t%s: 0x%p\n",   v3_vmcs_field_to_str(vmcs_index), (void *)(addr_t)val);
     }
 }
 
 
-static void print_vmcs_segments() {
+static void 
+print_vmcs_segments() 
+{
     struct v3_segments segs; 
 
     v3_read_vmcs_segments(&segs);
@@ -609,7 +636,8 @@ static void print_vmcs_segments() {
 
 
 
-static void print_guest_state()
+static void 
+print_guest_state()
 {
     PrintDebug("VMCS_GUEST_STATE\n");
     print_vmcs_field(VMCS_GUEST_RIP);
@@ -670,7 +698,8 @@ static void print_guest_state()
 
 }
        
-static void print_host_state()
+static void 
+print_host_state()
 {
     PrintDebug("VMCS_HOST_STATE\n");
 
@@ -725,7 +754,9 @@ static void print_host_state()
 }
 
 
-static void print_exec_ctrls() {
+static void 
+print_exec_ctrls() 
+{
     PrintDebug("VMCS_EXEC_CTRL_FIELDS\n");
     print_vmcs_field(VMCS_PIN_CTRLS);
     print_vmcs_field(VMCS_PROC_CTRLS);
@@ -800,7 +831,9 @@ static void print_exec_ctrls() {
 
 }
 
-static void print_ept_state() {
+static void 
+print_ept_state() 
+{
     V3_Print("VMCS EPT INFO\n");
 
     // if enable vpid
@@ -843,7 +876,9 @@ static void print_ept_state() {
 }
 
 
-static void print_exit_ctrls() {
+static void 
+print_exit_ctrls() 
+{
     PrintDebug("VMCS_EXIT_CTRLS\n");
 
     print_vmcs_field(VMCS_EXIT_CTRLS);
@@ -869,7 +904,9 @@ static void print_exit_ctrls() {
 }
 
 
-static void print_entry_ctrls() {
+static void 
+print_entry_ctrls() 
+{
     PrintDebug("VMCS_ENTRY_CTRLS\n");
     
     print_vmcs_field(VMCS_ENTRY_CTRLS);
@@ -888,7 +925,9 @@ static void print_entry_ctrls() {
 }
 
 
-static void print_exit_info() {
+static void 
+print_exit_info() 
+{
     PrintDebug("VMCS_EXIT_INFO\n");
 
     print_vmcs_field(VMCS_EXIT_REASON);
@@ -914,7 +953,9 @@ static void print_exit_info() {
     print_vmcs_field(VMCS_INSTR_ERR);
 }
 
-void v3_print_vmcs() {
+void 
+v3_print_vmcs()
+{
 
     print_vmcs_field(VMCS_LINK_PTR);
 #ifdef __V3_32BIT__
@@ -938,7 +979,9 @@ void v3_print_vmcs() {
  * Returns the field length in bytes
  *   It doesn't get much uglier than this... Thanks Intel
  */
-int v3_vmcs_get_field_len(vmcs_field_t field) {
+int 
+v3_vmcs_get_field_len(vmcs_field_t field) 
+{
     struct vmcs_field_encoding * enc = (struct vmcs_field_encoding *)&field;
 
     switch (enc->width)  {
@@ -971,170 +1014,172 @@ int v3_vmcs_get_field_len(vmcs_field_t field) {
 
 
 
-static const char VMCS_VPID_STR[] = "VPID";
-static const char VMCS_GUEST_ES_SELECTOR_STR[] = "GUEST_ES_SELECTOR";
-static const char VMCS_GUEST_CS_SELECTOR_STR[] = "GUEST_CS_SELECTOR";
-static const char VMCS_GUEST_SS_SELECTOR_STR[] = "GUEST_SS_SELECTOR";
-static const char VMCS_GUEST_DS_SELECTOR_STR[] = "GUEST_DS_SELECTOR";
-static const char VMCS_GUEST_FS_SELECTOR_STR[] = "GUEST_FS_SELECTOR";
-static const char VMCS_GUEST_GS_SELECTOR_STR[] = "GUEST_GS_SELECTOR";
-static const char VMCS_GUEST_LDTR_SELECTOR_STR[] = "GUEST_LDTR_SELECTOR";
-static const char VMCS_GUEST_TR_SELECTOR_STR[] = "GUEST_TR_SELECTOR";
-static const char VMCS_HOST_ES_SELECTOR_STR[] = "HOST_ES_SELECTOR";
-static const char VMCS_HOST_CS_SELECTOR_STR[] = "HOST_CS_SELECTOR";
-static const char VMCS_HOST_SS_SELECTOR_STR[] = "HOST_SS_SELECTOR";
-static const char VMCS_HOST_DS_SELECTOR_STR[] = "HOST_DS_SELECTOR";
-static const char VMCS_HOST_FS_SELECTOR_STR[] = "HOST_FS_SELECTOR";
-static const char VMCS_HOST_GS_SELECTOR_STR[] = "HOST_GS_SELECTOR";
-static const char VMCS_HOST_TR_SELECTOR_STR[] = "HOST_TR_SELECTOR";
-static const char VMCS_IO_BITMAP_A_ADDR_STR[] = "IO_BITMAP_A_ADDR";
-static const char VMCS_IO_BITMAP_A_ADDR_HIGH_STR[] = "IO_BITMAP_A_ADDR_HIGH";
-static const char VMCS_IO_BITMAP_B_ADDR_STR[] = "IO_BITMAP_B_ADDR";
-static const char VMCS_IO_BITMAP_B_ADDR_HIGH_STR[] = "IO_BITMAP_B_ADDR_HIGH";
-static const char VMCS_MSR_BITMAP_STR[] = "MSR_BITMAPS";
-static const char VMCS_MSR_BITMAP_HIGH_STR[] = "MSR_BITMAPS_HIGH";
-static const char VMCS_EXIT_MSR_STORE_ADDR_STR[] = "EXIT_MSR_STORE_ADDR";
-static const char VMCS_EXIT_MSR_STORE_ADDR_HIGH_STR[] = "EXIT_MSR_STORE_ADDR_HIGH";
-static const char VMCS_EXIT_MSR_LOAD_ADDR_STR[] = "EXIT_MSR_LOAD_ADDR";
-static const char VMCS_EXIT_MSR_LOAD_ADDR_HIGH_STR[] = "EXIT_MSR_LOAD_ADDR_HIGH";
-static const char VMCS_ENTRY_MSR_LOAD_ADDR_STR[] = "ENTRY_MSR_LOAD_ADDR";
-static const char VMCS_ENTRY_MSR_LOAD_ADDR_HIGH_STR[] = "ENTRY_MSR_LOAD_ADDR_HIGH";
-static const char VMCS_EXEC_PTR_STR[] = "VMCS_EXEC_PTR";
-static const char VMCS_EXEC_PTR_HIGH_STR[] = "VMCS_EXEC_PTR_HIGH";
-static const char VMCS_TSC_OFFSET_STR[] = "TSC_OFFSET";
-static const char VMCS_TSC_OFFSET_HIGH_STR[] = "TSC_OFFSET_HIGH";
-static const char VMCS_VAPIC_ADDR_STR[] = "VAPIC_PAGE_ADDR";
-static const char VMCS_VAPIC_ADDR_HIGH_STR[] = "VAPIC_PAGE_ADDR_HIGH";
-static const char VMCS_APIC_ACCESS_ADDR_STR[] = "APIC_ACCESS_ADDR";
-static const char VMCS_APIC_ACCESS_ADDR_HIGH_STR[] = "APIC_ACCESS_ADDR_HIGH";
-static const char VMCS_EPT_PTR_STR[] = "VMCS_EPT_PTR";
-static const char VMCS_EPT_PTR_HIGH_STR[] = "VMCS_EPT_PTR_HIGH";
-static const char VMCS_GUEST_PHYS_ADDR_STR[] = "VMCS_GUEST_PHYS_ADDR";
-static const char VMCS_GUEST_PHYS_ADDR_HIGH_STR[] = "VMCS_GUEST_PHYS_ADDR_HIGH";
-static const char VMCS_LINK_PTR_STR[] = "VMCS_LINK_PTR";
-static const char VMCS_LINK_PTR_HIGH_STR[] = "VMCS_LINK_PTR_HIGH";
-static const char VMCS_GUEST_DBG_CTL_STR[] = "GUEST_DEBUG_CTL";
-static const char VMCS_GUEST_DBG_CTL_HIGH_STR[] = "GUEST_DEBUG_CTL_HIGH";
-static const char VMCS_GUEST_PAT_STR[] = "GUEST_PAT";
-static const char VMCS_GUEST_PAT_HIGH_STR[] = "GUEST_PAT_HIGH";
-static const char VMCS_GUEST_EFER_STR[] = "GUEST_EFER";
-static const char VMCS_GUEST_EFER_HIGH_STR[] = "GUEST_EFER_HIGH";
-static const char VMCS_GUEST_PERF_GLOBAL_CTRL_STR[] = "GUEST_PERF_GLOBAL_CTRL";
+static const char VMCS_VPID_STR[]                        = "VPID";
+static const char VMCS_GUEST_ES_SELECTOR_STR[]           = "GUEST_ES_SELECTOR";
+static const char VMCS_GUEST_CS_SELECTOR_STR[]           = "GUEST_CS_SELECTOR";
+static const char VMCS_GUEST_SS_SELECTOR_STR[]           = "GUEST_SS_SELECTOR";
+static const char VMCS_GUEST_DS_SELECTOR_STR[]           = "GUEST_DS_SELECTOR";
+static const char VMCS_GUEST_FS_SELECTOR_STR[]           = "GUEST_FS_SELECTOR";
+static const char VMCS_GUEST_GS_SELECTOR_STR[]           = "GUEST_GS_SELECTOR";
+static const char VMCS_GUEST_LDTR_SELECTOR_STR[]         = "GUEST_LDTR_SELECTOR";
+static const char VMCS_GUEST_TR_SELECTOR_STR[]           = "GUEST_TR_SELECTOR";
+static const char VMCS_HOST_ES_SELECTOR_STR[]            = "HOST_ES_SELECTOR";
+static const char VMCS_HOST_CS_SELECTOR_STR[]            = "HOST_CS_SELECTOR";
+static const char VMCS_HOST_SS_SELECTOR_STR[]            = "HOST_SS_SELECTOR";
+static const char VMCS_HOST_DS_SELECTOR_STR[]            = "HOST_DS_SELECTOR";
+static const char VMCS_HOST_FS_SELECTOR_STR[]            = "HOST_FS_SELECTOR";
+static const char VMCS_HOST_GS_SELECTOR_STR[]            = "HOST_GS_SELECTOR";
+static const char VMCS_HOST_TR_SELECTOR_STR[]            = "HOST_TR_SELECTOR";
+static const char VMCS_IO_BITMAP_A_ADDR_STR[]            = "IO_BITMAP_A_ADDR";
+static const char VMCS_IO_BITMAP_A_ADDR_HIGH_STR[]       = "IO_BITMAP_A_ADDR_HIGH";
+static const char VMCS_IO_BITMAP_B_ADDR_STR[]            = "IO_BITMAP_B_ADDR";
+static const char VMCS_IO_BITMAP_B_ADDR_HIGH_STR[]       = "IO_BITMAP_B_ADDR_HIGH";
+static const char VMCS_MSR_BITMAP_STR[]                  = "MSR_BITMAPS";
+static const char VMCS_MSR_BITMAP_HIGH_STR[]             = "MSR_BITMAPS_HIGH";
+static const char VMCS_EXIT_MSR_STORE_ADDR_STR[]         = "EXIT_MSR_STORE_ADDR";
+static const char VMCS_EXIT_MSR_STORE_ADDR_HIGH_STR[]    = "EXIT_MSR_STORE_ADDR_HIGH";
+static const char VMCS_EXIT_MSR_LOAD_ADDR_STR[]          = "EXIT_MSR_LOAD_ADDR";
+static const char VMCS_EXIT_MSR_LOAD_ADDR_HIGH_STR[]     = "EXIT_MSR_LOAD_ADDR_HIGH";
+static const char VMCS_ENTRY_MSR_LOAD_ADDR_STR[]         = "ENTRY_MSR_LOAD_ADDR";
+static const char VMCS_ENTRY_MSR_LOAD_ADDR_HIGH_STR[]    = "ENTRY_MSR_LOAD_ADDR_HIGH";
+static const char VMCS_EXEC_PTR_STR[]                    = "VMCS_EXEC_PTR";
+static const char VMCS_EXEC_PTR_HIGH_STR[]               = "VMCS_EXEC_PTR_HIGH";
+static const char VMCS_TSC_OFFSET_STR[]                  = "TSC_OFFSET";
+static const char VMCS_TSC_OFFSET_HIGH_STR[]             = "TSC_OFFSET_HIGH";
+static const char VMCS_VAPIC_ADDR_STR[]                  = "VAPIC_PAGE_ADDR";
+static const char VMCS_VAPIC_ADDR_HIGH_STR[]             = "VAPIC_PAGE_ADDR_HIGH";
+static const char VMCS_APIC_ACCESS_ADDR_STR[]            = "APIC_ACCESS_ADDR";
+static const char VMCS_APIC_ACCESS_ADDR_HIGH_STR[]       = "APIC_ACCESS_ADDR_HIGH";
+static const char VMCS_EPT_PTR_STR[]                     = "VMCS_EPT_PTR";
+static const char VMCS_EPT_PTR_HIGH_STR[]                = "VMCS_EPT_PTR_HIGH";
+static const char VMCS_GUEST_PHYS_ADDR_STR[]             = "VMCS_GUEST_PHYS_ADDR";
+static const char VMCS_GUEST_PHYS_ADDR_HIGH_STR[]        = "VMCS_GUEST_PHYS_ADDR_HIGH";
+static const char VMCS_LINK_PTR_STR[]                    = "VMCS_LINK_PTR";
+static const char VMCS_LINK_PTR_HIGH_STR[]               = "VMCS_LINK_PTR_HIGH";
+static const char VMCS_GUEST_DBG_CTL_STR[]               = "GUEST_DEBUG_CTL";
+static const char VMCS_GUEST_DBG_CTL_HIGH_STR[]          = "GUEST_DEBUG_CTL_HIGH";
+static const char VMCS_GUEST_PAT_STR[]                   = "GUEST_PAT";
+static const char VMCS_GUEST_PAT_HIGH_STR[]              = "GUEST_PAT_HIGH";
+static const char VMCS_GUEST_EFER_STR[]                  = "GUEST_EFER";
+static const char VMCS_GUEST_EFER_HIGH_STR[]             = "GUEST_EFER_HIGH";
+static const char VMCS_GUEST_PERF_GLOBAL_CTRL_STR[]      = "GUEST_PERF_GLOBAL_CTRL";
 static const char VMCS_GUEST_PERF_GLOBAL_CTRL_HIGH_STR[] = "GUEST_PERF_GLOBAL_CTRL_HIGH";
-static const char VMCS_GUEST_PDPTE0_STR[] = "GUEST_PDPTE0";
-static const char VMCS_GUEST_PDPTE0_HIGH_STR[] = "GUEST_PDPTE0_HIGH";
-static const char VMCS_GUEST_PDPTE1_STR[] = "GUEST_PDPTE1";
-static const char VMCS_GUEST_PDPTE1_HIGH_STR[] = "GUEST_PDPTE1_HIGH";
-static const char VMCS_GUEST_PDPTE2_STR[] = "GUEST_PDPTE2";
-static const char VMCS_GUEST_PDPTE2_HIGH_STR[] = "GUEST_PDPTE2_HIGH";
-static const char VMCS_GUEST_PDPTE3_STR[] = "GUEST_PDPTE3";
-static const char VMCS_GUEST_PDPTE3_HIGH_STR[] = "GUEST_PDPTE3_HIGH";
-static const char VMCS_HOST_PAT_STR[] = "HOST_PAT";
-static const char VMCS_HOST_PAT_HIGH_STR[] = "HOST_PAT_HIGH";
-static const char VMCS_HOST_EFER_STR[] = "VMCS_HOST_EFER";
-static const char VMCS_HOST_EFER_HIGH_STR[] = "VMCS_HOST_EFER_HIGH";
-static const char VMCS_HOST_PERF_GLOBAL_CTRL_STR[] = "HOST_PERF_GLOBAL_CTRL";
-static const char VMCS_HOST_PERF_GLOBAL_CTRL_HIGH_STR[] = "HOST_PERF_GLOBAL_CTRL_HIGH";
-static const char VMCS_PIN_CTRLS_STR[] = "PIN_VM_EXEC_CTRLS";
-static const char VMCS_PROC_CTRLS_STR[] = "PROC_VM_EXEC_CTRLS";
-static const char VMCS_EXCP_BITMAP_STR[] = "EXCEPTION_BITMAP";
-static const char VMCS_PG_FAULT_ERR_MASK_STR[] = "PAGE_FAULT_ERROR_MASK";
-static const char VMCS_PG_FAULT_ERR_MATCH_STR[] = "PAGE_FAULT_ERROR_MATCH";
-static const char VMCS_CR3_TGT_CNT_STR[] = "CR3_TARGET_COUNT";
-static const char VMCS_EXIT_CTRLS_STR[] = "VM_EXIT_CTRLS";
-static const char VMCS_EXIT_MSR_STORE_CNT_STR[] = "VM_EXIT_MSR_STORE_COUNT";
-static const char VMCS_EXIT_MSR_LOAD_CNT_STR[] = "VM_EXIT_MSR_LOAD_COUNT";
-static const char VMCS_ENTRY_CTRLS_STR[] = "VM_ENTRY_CTRLS";
-static const char VMCS_ENTRY_MSR_LOAD_CNT_STR[] = "VM_ENTRY_MSR_LOAD_COUNT";
-static const char VMCS_ENTRY_INT_INFO_STR[] = "VM_ENTRY_INT_INFO_FIELD";
-static const char VMCS_ENTRY_EXCP_ERR_STR[] = "VM_ENTRY_EXCEPTION_ERROR";
-static const char VMCS_ENTRY_INSTR_LEN_STR[] = "VM_ENTRY_INSTR_LENGTH";
-static const char VMCS_TPR_THRESHOLD_STR[] = "TPR_THRESHOLD";
-static const char VMCS_SEC_PROC_CTRLS_STR[] = "VMCS_SEC_PROC_CTRLS";
-static const char VMCS_PLE_GAP_STR[] = "PLE_GAP";
-static const char VMCS_PLE_WINDOW_STR[] = "PLE_WINDOW";
-static const char VMCS_INSTR_ERR_STR[] = "VM_INSTR_ERROR";
-static const char VMCS_EXIT_REASON_STR[] = "EXIT_REASON";
-static const char VMCS_EXIT_INT_INFO_STR[] = "VM_EXIT_INT_INFO";
-static const char VMCS_EXIT_INT_ERR_STR[] = "VM_EXIT_INT_ERROR";
-static const char VMCS_IDT_VECTOR_INFO_STR[] = "IDT_VECTOR_INFO";
-static const char VMCS_IDT_VECTOR_ERR_STR[] = "IDT_VECTOR_ERROR";
-static const char VMCS_EXIT_INSTR_LEN_STR[] = "VM_EXIT_INSTR_LENGTH";
-static const char VMCS_EXIT_INSTR_INFO_STR[] = "VMX_INSTR_INFO";
-static const char VMCS_GUEST_ES_LIMIT_STR[] = "GUEST_ES_LIMIT";
-static const char VMCS_GUEST_CS_LIMIT_STR[] = "GUEST_CS_LIMIT";
-static const char VMCS_GUEST_SS_LIMIT_STR[] = "GUEST_SS_LIMIT";
-static const char VMCS_GUEST_DS_LIMIT_STR[] = "GUEST_DS_LIMIT";
-static const char VMCS_GUEST_FS_LIMIT_STR[] = "GUEST_FS_LIMIT";
-static const char VMCS_GUEST_GS_LIMIT_STR[] = "GUEST_GS_LIMIT";
-static const char VMCS_GUEST_LDTR_LIMIT_STR[] = "GUEST_LDTR_LIMIT";
-static const char VMCS_GUEST_TR_LIMIT_STR[] = "GUEST_TR_LIMIT";
-static const char VMCS_GUEST_GDTR_LIMIT_STR[] = "GUEST_GDTR_LIMIT";
-static const char VMCS_GUEST_IDTR_LIMIT_STR[] = "GUEST_IDTR_LIMIT";
-static const char VMCS_GUEST_ES_ACCESS_STR[] = "GUEST_ES_ACCESS";
-static const char VMCS_GUEST_CS_ACCESS_STR[] = "GUEST_CS_ACCESS";
-static const char VMCS_GUEST_SS_ACCESS_STR[] = "GUEST_SS_ACCESS";
-static const char VMCS_GUEST_DS_ACCESS_STR[] = "GUEST_DS_ACCESS";
-static const char VMCS_GUEST_FS_ACCESS_STR[] = "GUEST_FS_ACCESS";
-static const char VMCS_GUEST_GS_ACCESS_STR[] = "GUEST_GS_ACCESS";
-static const char VMCS_GUEST_LDTR_ACCESS_STR[] = "GUEST_LDTR_ACCESS";
-static const char VMCS_GUEST_TR_ACCESS_STR[] = "GUEST_TR_ACCESS";
-static const char VMCS_GUEST_INT_STATE_STR[] = "GUEST_INT_STATE";
-static const char VMCS_GUEST_ACTIVITY_STATE_STR[] = "GUEST_ACTIVITY_STATE";
-static const char VMCS_GUEST_SMBASE_STR[] = "GUEST_SMBASE";
-static const char VMCS_GUEST_SYSENTER_CS_STR[] = "GUEST_SYSENTER_CS";
-static const char VMCS_PREEMPT_TIMER_STR[] = "PREEMPT_TIMER";
-static const char VMCS_HOST_SYSENTER_CS_STR[] = "HOST_SYSENTER_CS";
-static const char VMCS_CR0_MASK_STR[] = "CR0_GUEST_HOST_MASK";
-static const char VMCS_CR4_MASK_STR[] = "CR4_GUEST_HOST_MASK";
-static const char VMCS_CR0_READ_SHDW_STR[] = "CR0_READ_SHADOW";
-static const char VMCS_CR4_READ_SHDW_STR[] = "CR4_READ_SHADOW";
-static const char VMCS_CR3_TGT_VAL_0_STR[] = "CR3_TARGET_VALUE_0";
-static const char VMCS_CR3_TGT_VAL_1_STR[] = "CR3_TARGET_VALUE_1";
-static const char VMCS_CR3_TGT_VAL_2_STR[] = "CR3_TARGET_VALUE_2";
-static const char VMCS_CR3_TGT_VAL_3_STR[] = "CR3_TARGET_VALUE_3";
-static const char VMCS_EXIT_QUAL_STR[] = "EXIT_QUALIFICATION";
-static const char VMCS_IO_RCX_STR[] = "IO_RCX";
-static const char VMCS_IO_RSI_STR[] = "IO_RSI";
-static const char VMCS_IO_RDI_STR[] = "IO_RDI";
-static const char VMCS_IO_RIP_STR[] = "IO_RIP";
-static const char VMCS_GUEST_LINEAR_ADDR_STR[] = "GUEST_LINEAR_ADDR";
-static const char VMCS_GUEST_CR0_STR[] = "GUEST_CR0";
-static const char VMCS_GUEST_CR3_STR[] = "GUEST_CR3";
-static const char VMCS_GUEST_CR4_STR[] = "GUEST_CR4";
-static const char VMCS_GUEST_ES_BASE_STR[] = "GUEST_ES_BASE";
-static const char VMCS_GUEST_CS_BASE_STR[] = "GUEST_CS_BASE";
-static const char VMCS_GUEST_SS_BASE_STR[] = "GUEST_SS_BASE";
-static const char VMCS_GUEST_DS_BASE_STR[] = "GUEST_DS_BASE";
-static const char VMCS_GUEST_FS_BASE_STR[] = "GUEST_FS_BASE";
-static const char VMCS_GUEST_GS_BASE_STR[] = "GUEST_GS_BASE";
-static const char VMCS_GUEST_LDTR_BASE_STR[] = "GUEST_LDTR_BASE";
-static const char VMCS_GUEST_TR_BASE_STR[] = "GUEST_TR_BASE";
-static const char VMCS_GUEST_GDTR_BASE_STR[] = "GUEST_GDTR_BASE";
-static const char VMCS_GUEST_IDTR_BASE_STR[] = "GUEST_IDTR_BASE";
-static const char VMCS_GUEST_DR7_STR[] = "GUEST_DR7";
-static const char VMCS_GUEST_RSP_STR[] = "GUEST_RSP";
-static const char VMCS_GUEST_RIP_STR[] = "GUEST_RIP";
-static const char VMCS_GUEST_RFLAGS_STR[] = "GUEST_RFLAGS";
-static const char VMCS_GUEST_PENDING_DBG_EXCP_STR[] = "GUEST_PENDING_DEBUG_EXCS";
-static const char VMCS_GUEST_SYSENTER_ESP_STR[] = "GUEST_SYSENTER_ESP";
-static const char VMCS_GUEST_SYSENTER_EIP_STR[] = "GUEST_SYSENTER_EIP";
-static const char VMCS_HOST_CR0_STR[] = "HOST_CR0";
-static const char VMCS_HOST_CR3_STR[] = "HOST_CR3";
-static const char VMCS_HOST_CR4_STR[] = "HOST_CR4";
-static const char VMCS_HOST_FS_BASE_STR[] = "HOST_FS_BASE";
-static const char VMCS_HOST_GS_BASE_STR[] = "HOST_GS_BASE";
-static const char VMCS_HOST_TR_BASE_STR[] = "HOST_TR_BASE";
-static const char VMCS_HOST_GDTR_BASE_STR[] = "HOST_GDTR_BASE";
-static const char VMCS_HOST_IDTR_BASE_STR[] = "HOST_IDTR_BASE";
-static const char VMCS_HOST_SYSENTER_ESP_STR[] = "HOST_SYSENTER_ESP";
-static const char VMCS_HOST_SYSENTER_EIP_STR[] = "HOST_SYSENTER_EIP";
-static const char VMCS_HOST_RSP_STR[] = "HOST_RSP";
-static const char VMCS_HOST_RIP_STR[] = "HOST_RIP";
+static const char VMCS_GUEST_PDPTE0_STR[]                = "GUEST_PDPTE0";
+static const char VMCS_GUEST_PDPTE0_HIGH_STR[]           = "GUEST_PDPTE0_HIGH";
+static const char VMCS_GUEST_PDPTE1_STR[]                = "GUEST_PDPTE1";
+static const char VMCS_GUEST_PDPTE1_HIGH_STR[]           = "GUEST_PDPTE1_HIGH";
+static const char VMCS_GUEST_PDPTE2_STR[]                = "GUEST_PDPTE2";
+static const char VMCS_GUEST_PDPTE2_HIGH_STR[]           = "GUEST_PDPTE2_HIGH";
+static const char VMCS_GUEST_PDPTE3_STR[]                = "GUEST_PDPTE3";
+static const char VMCS_GUEST_PDPTE3_HIGH_STR[]           = "GUEST_PDPTE3_HIGH";
+static const char VMCS_HOST_PAT_STR[]                    = "HOST_PAT";
+static const char VMCS_HOST_PAT_HIGH_STR[]               = "HOST_PAT_HIGH";
+static const char VMCS_HOST_EFER_STR[]                   = "VMCS_HOST_EFER";
+static const char VMCS_HOST_EFER_HIGH_STR[]              = "VMCS_HOST_EFER_HIGH";
+static const char VMCS_HOST_PERF_GLOBAL_CTRL_STR[]       = "HOST_PERF_GLOBAL_CTRL";
+static const char VMCS_HOST_PERF_GLOBAL_CTRL_HIGH_STR[]  = "HOST_PERF_GLOBAL_CTRL_HIGH";
+static const char VMCS_PIN_CTRLS_STR[]                   = "PIN_VM_EXEC_CTRLS";
+static const char VMCS_PROC_CTRLS_STR[]                  = "PROC_VM_EXEC_CTRLS";
+static const char VMCS_EXCP_BITMAP_STR[]                 = "EXCEPTION_BITMAP";
+static const char VMCS_PG_FAULT_ERR_MASK_STR[]           = "PAGE_FAULT_ERROR_MASK";
+static const char VMCS_PG_FAULT_ERR_MATCH_STR[]          = "PAGE_FAULT_ERROR_MATCH";
+static const char VMCS_CR3_TGT_CNT_STR[]                 = "CR3_TARGET_COUNT";
+static const char VMCS_EXIT_CTRLS_STR[]                  = "VM_EXIT_CTRLS";
+static const char VMCS_EXIT_MSR_STORE_CNT_STR[]          = "VM_EXIT_MSR_STORE_COUNT";
+static const char VMCS_EXIT_MSR_LOAD_CNT_STR[]           = "VM_EXIT_MSR_LOAD_COUNT";
+static const char VMCS_ENTRY_CTRLS_STR[]                 = "VM_ENTRY_CTRLS";
+static const char VMCS_ENTRY_MSR_LOAD_CNT_STR[]          = "VM_ENTRY_MSR_LOAD_COUNT";
+static const char VMCS_ENTRY_INT_INFO_STR[]              = "VM_ENTRY_INT_INFO_FIELD";
+static const char VMCS_ENTRY_EXCP_ERR_STR[]              = "VM_ENTRY_EXCEPTION_ERROR";
+static const char VMCS_ENTRY_INSTR_LEN_STR[]             = "VM_ENTRY_INSTR_LENGTH";
+static const char VMCS_TPR_THRESHOLD_STR[]               = "TPR_THRESHOLD";
+static const char VMCS_SEC_PROC_CTRLS_STR[]              = "VMCS_SEC_PROC_CTRLS";
+static const char VMCS_PLE_GAP_STR[]                     = "PLE_GAP";
+static const char VMCS_PLE_WINDOW_STR[]                  = "PLE_WINDOW";
+static const char VMCS_INSTR_ERR_STR[]                   = "VM_INSTR_ERROR";
+static const char VMCS_EXIT_REASON_STR[]                 = "EXIT_REASON";
+static const char VMCS_EXIT_INT_INFO_STR[]               = "VM_EXIT_INT_INFO";
+static const char VMCS_EXIT_INT_ERR_STR[]                = "VM_EXIT_INT_ERROR";
+static const char VMCS_IDT_VECTOR_INFO_STR[]             = "IDT_VECTOR_INFO";
+static const char VMCS_IDT_VECTOR_ERR_STR[]              = "IDT_VECTOR_ERROR";
+static const char VMCS_EXIT_INSTR_LEN_STR[]              = "VM_EXIT_INSTR_LENGTH";
+static const char VMCS_EXIT_INSTR_INFO_STR[]             = "VMX_INSTR_INFO";
+static const char VMCS_GUEST_ES_LIMIT_STR[]              = "GUEST_ES_LIMIT";
+static const char VMCS_GUEST_CS_LIMIT_STR[]              = "GUEST_CS_LIMIT";
+static const char VMCS_GUEST_SS_LIMIT_STR[]              = "GUEST_SS_LIMIT";
+static const char VMCS_GUEST_DS_LIMIT_STR[]              = "GUEST_DS_LIMIT";
+static const char VMCS_GUEST_FS_LIMIT_STR[]              = "GUEST_FS_LIMIT";
+static const char VMCS_GUEST_GS_LIMIT_STR[]              = "GUEST_GS_LIMIT";
+static const char VMCS_GUEST_LDTR_LIMIT_STR[]            = "GUEST_LDTR_LIMIT";
+static const char VMCS_GUEST_TR_LIMIT_STR[]              = "GUEST_TR_LIMIT";
+static const char VMCS_GUEST_GDTR_LIMIT_STR[]            = "GUEST_GDTR_LIMIT";
+static const char VMCS_GUEST_IDTR_LIMIT_STR[]            = "GUEST_IDTR_LIMIT";
+static const char VMCS_GUEST_ES_ACCESS_STR[]             = "GUEST_ES_ACCESS";
+static const char VMCS_GUEST_CS_ACCESS_STR[]             = "GUEST_CS_ACCESS";
+static const char VMCS_GUEST_SS_ACCESS_STR[]             = "GUEST_SS_ACCESS";
+static const char VMCS_GUEST_DS_ACCESS_STR[]             = "GUEST_DS_ACCESS";
+static const char VMCS_GUEST_FS_ACCESS_STR[]             = "GUEST_FS_ACCESS";
+static const char VMCS_GUEST_GS_ACCESS_STR[]             = "GUEST_GS_ACCESS";
+static const char VMCS_GUEST_LDTR_ACCESS_STR[]           = "GUEST_LDTR_ACCESS";
+static const char VMCS_GUEST_TR_ACCESS_STR[]             = "GUEST_TR_ACCESS";
+static const char VMCS_GUEST_INT_STATE_STR[]             = "GUEST_INT_STATE";
+static const char VMCS_GUEST_ACTIVITY_STATE_STR[]        = "GUEST_ACTIVITY_STATE";
+static const char VMCS_GUEST_SMBASE_STR[]                = "GUEST_SMBASE";
+static const char VMCS_GUEST_SYSENTER_CS_STR[]           = "GUEST_SYSENTER_CS";
+static const char VMCS_PREEMPT_TIMER_STR[]               = "PREEMPT_TIMER";
+static const char VMCS_HOST_SYSENTER_CS_STR[]            = "HOST_SYSENTER_CS";
+static const char VMCS_CR0_MASK_STR[]                    = "CR0_GUEST_HOST_MASK";
+static const char VMCS_CR4_MASK_STR[]                    = "CR4_GUEST_HOST_MASK";
+static const char VMCS_CR0_READ_SHDW_STR[]               = "CR0_READ_SHADOW";
+static const char VMCS_CR4_READ_SHDW_STR[]               = "CR4_READ_SHADOW";
+static const char VMCS_CR3_TGT_VAL_0_STR[]               = "CR3_TARGET_VALUE_0";
+static const char VMCS_CR3_TGT_VAL_1_STR[]               = "CR3_TARGET_VALUE_1";
+static const char VMCS_CR3_TGT_VAL_2_STR[]               = "CR3_TARGET_VALUE_2";
+static const char VMCS_CR3_TGT_VAL_3_STR[]               = "CR3_TARGET_VALUE_3";
+static const char VMCS_EXIT_QUAL_STR[]                   = "EXIT_QUALIFICATION";
+static const char VMCS_IO_RCX_STR[]                      = "IO_RCX";
+static const char VMCS_IO_RSI_STR[]                      = "IO_RSI";
+static const char VMCS_IO_RDI_STR[]                      = "IO_RDI";
+static const char VMCS_IO_RIP_STR[]                      = "IO_RIP";
+static const char VMCS_GUEST_LINEAR_ADDR_STR[]           = "GUEST_LINEAR_ADDR";
+static const char VMCS_GUEST_CR0_STR[]                   = "GUEST_CR0";
+static const char VMCS_GUEST_CR3_STR[]                   = "GUEST_CR3";
+static const char VMCS_GUEST_CR4_STR[]                   = "GUEST_CR4";
+static const char VMCS_GUEST_ES_BASE_STR[]               = "GUEST_ES_BASE";
+static const char VMCS_GUEST_CS_BASE_STR[]               = "GUEST_CS_BASE";
+static const char VMCS_GUEST_SS_BASE_STR[]               = "GUEST_SS_BASE";
+static const char VMCS_GUEST_DS_BASE_STR[]               = "GUEST_DS_BASE";
+static const char VMCS_GUEST_FS_BASE_STR[]               = "GUEST_FS_BASE";
+static const char VMCS_GUEST_GS_BASE_STR[]               = "GUEST_GS_BASE";
+static const char VMCS_GUEST_LDTR_BASE_STR[]             = "GUEST_LDTR_BASE";
+static const char VMCS_GUEST_TR_BASE_STR[]               = "GUEST_TR_BASE";
+static const char VMCS_GUEST_GDTR_BASE_STR[]             = "GUEST_GDTR_BASE";
+static const char VMCS_GUEST_IDTR_BASE_STR[]             = "GUEST_IDTR_BASE";
+static const char VMCS_GUEST_DR7_STR[]                   = "GUEST_DR7";
+static const char VMCS_GUEST_RSP_STR[]                   = "GUEST_RSP";
+static const char VMCS_GUEST_RIP_STR[]                   = "GUEST_RIP";
+static const char VMCS_GUEST_RFLAGS_STR[]                = "GUEST_RFLAGS";
+static const char VMCS_GUEST_PENDING_DBG_EXCP_STR[]      = "GUEST_PENDING_DEBUG_EXCS";
+static const char VMCS_GUEST_SYSENTER_ESP_STR[]          = "GUEST_SYSENTER_ESP";
+static const char VMCS_GUEST_SYSENTER_EIP_STR[]          = "GUEST_SYSENTER_EIP";
+static const char VMCS_HOST_CR0_STR[]                    = "HOST_CR0";
+static const char VMCS_HOST_CR3_STR[]                    = "HOST_CR3";
+static const char VMCS_HOST_CR4_STR[]                    = "HOST_CR4";
+static const char VMCS_HOST_FS_BASE_STR[]                = "HOST_FS_BASE";
+static const char VMCS_HOST_GS_BASE_STR[]                = "HOST_GS_BASE";
+static const char VMCS_HOST_TR_BASE_STR[]                = "HOST_TR_BASE";
+static const char VMCS_HOST_GDTR_BASE_STR[]              = "HOST_GDTR_BASE";
+static const char VMCS_HOST_IDTR_BASE_STR[]              = "HOST_IDTR_BASE";
+static const char VMCS_HOST_SYSENTER_ESP_STR[]           = "HOST_SYSENTER_ESP";
+static const char VMCS_HOST_SYSENTER_EIP_STR[]           = "HOST_SYSENTER_EIP";
+static const char VMCS_HOST_RSP_STR[]                    = "HOST_RSP";
+static const char VMCS_HOST_RIP_STR[]                    = "HOST_RIP";
 
 
 
-const char * v3_vmcs_field_to_str(vmcs_field_t field) {   
+const char * 
+v3_vmcs_field_to_str(vmcs_field_t field) 
+{   
     switch (field) {
 	case VMCS_VPID:
 	    return VMCS_VPID_STR;

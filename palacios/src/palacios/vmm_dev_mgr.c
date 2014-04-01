@@ -38,12 +38,16 @@
 
 static struct hashtable * master_dev_table = NULL;
 
-static uint_t dev_hash_fn(addr_t key) {
+static uint_t 
+dev_hash_fn(addr_t key) 
+{
     char * name = (char *)key;
     return v3_hash_buffer((uchar_t *)name, strlen(name));
 }
 
-static int dev_eq_fn(addr_t key1, addr_t key2) {
+static int 
+dev_eq_fn(addr_t key1, addr_t key2) 
+{
     char * name1 = (char *)key1;
     char * name2 = (char *)key2;
     
@@ -51,10 +55,12 @@ static int dev_eq_fn(addr_t key1, addr_t key2) {
 }
 
 
-int V3_init_devices() {
-    extern struct v3_device_info __start__v3_devices[];
-    extern struct v3_device_info __stop__v3_devices[];
-    struct v3_device_info * tmp_dev =  __start__v3_devices;
+int 
+V3_init_devices() 
+{
+    extern struct v3_device_info   __start__v3_devices[];
+    extern struct v3_device_info   __stop__v3_devices[];
+    struct        v3_device_info * tmp_dev =  __start__v3_devices;
     int i = 0;
 
 #ifdef V3_CONFIG_DEBUG_DEV_MGR
@@ -93,13 +99,17 @@ int V3_init_devices() {
 }
 
 
-int V3_deinit_devices() {    
+int 
+V3_deinit_devices() 
+{    
     v3_free_htable(master_dev_table, 0, 0);
     return 0;
 }
 
 
-int v3_init_dev_mgr(struct v3_vm_info * vm) {
+int 
+v3_init_dev_mgr(struct v3_vm_info * vm) 
+{
     struct vmm_dev_mgr * mgr = &(vm->dev_mgr);
 
     INIT_LIST_HEAD(&(mgr->dev_list));
@@ -112,8 +122,8 @@ int v3_init_dev_mgr(struct v3_vm_info * vm) {
     INIT_LIST_HEAD(&(mgr->char_list));
     INIT_LIST_HEAD(&(mgr->cons_list));
 
-    mgr->blk_table = v3_create_htable(0, dev_hash_fn, dev_eq_fn);
-    mgr->net_table = v3_create_htable(0, dev_hash_fn, dev_eq_fn);
+    mgr->blk_table  = v3_create_htable(0, dev_hash_fn, dev_eq_fn);
+    mgr->net_table  = v3_create_htable(0, dev_hash_fn, dev_eq_fn);
     mgr->char_table = v3_create_htable(0, dev_hash_fn, dev_eq_fn);
     mgr->cons_table = v3_create_htable(0, dev_hash_fn, dev_eq_fn);
     
@@ -121,10 +131,12 @@ int v3_init_dev_mgr(struct v3_vm_info * vm) {
 }
 
 
-int v3_free_vm_devices(struct v3_vm_info * vm) {
+int 
+v3_free_vm_devices(struct v3_vm_info * vm) 
+{
     struct vmm_dev_mgr * mgr = &(vm->dev_mgr);
-    struct vm_device * dev;
-    struct vm_device * tmp;
+    struct vm_device   * dev = NULL;
+    struct vm_device   * tmp = NULL;
 
     list_for_each_entry_safe(dev, tmp, &(mgr->dev_list), dev_link) {
 	v3_remove_device(dev);
@@ -135,15 +147,17 @@ int v3_free_vm_devices(struct v3_vm_info * vm) {
 
 #ifdef V3_CONFIG_CHECKPOINT
 
-int v3_save_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
-    struct vmm_dev_mgr * mgr = &(vm->dev_mgr);
-    struct vm_device * dev;
+int 
+v3_save_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt) 
+{
+    struct vmm_dev_mgr  * mgr         = &(vm->dev_mgr);
+    struct vm_device    * dev         = NULL;
     struct v3_chkpt_ctx * dev_mgr_ctx = NULL;
 
-    uint32_t num_saved_devs = 0;
-    uint32_t table_len = mgr->num_devs * V3_MAX_DEVICE_NAME;
-    char * name_table = NULL;
-    uint32_t tbl_offset = 0;
+    uint32_t   num_saved_devs = 0;
+    uint32_t   table_len      = mgr->num_devs * V3_MAX_DEVICE_NAME;
+    char     * name_table     = NULL;
+    uint32_t   tbl_offset     = 0;
     
     name_table = V3_Malloc(table_len);
 
@@ -221,11 +235,13 @@ int v3_save_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
 }
 
 
-int v3_load_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
-    struct vm_device * dev;
+int 
+v3_load_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt) 
+{
+    struct vm_device    * dev         = NULL;
     struct v3_chkpt_ctx * dev_mgr_ctx = NULL;
-    uint32_t num_devs = 0;
-    char * name_table = NULL;
+    uint32_t              num_devs    = 0;
+    char                * name_table  = NULL;
     int i = 0;
 
     dev_mgr_ctx = v3_chkpt_open_ctx(chkpt, NULL, "devices");
@@ -260,8 +276,9 @@ int v3_load_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
     v3_chkpt_close_ctx(dev_mgr_ctx);
 
     for (i = 0; i < num_devs; i++) {
-	char * name = &(name_table[i * V3_MAX_DEVICE_NAME]);
+	char                * name    = &(name_table[i * V3_MAX_DEVICE_NAME]);
 	struct v3_chkpt_ctx * dev_ctx = NULL;
+
 	dev = v3_find_dev(vm, name);
 
 	if (!dev) {
@@ -299,7 +316,9 @@ int v3_load_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
 
 static int free_frontends(struct v3_vm_info * vm, struct vmm_dev_mgr * mgr);
 
-int v3_deinit_dev_mgr(struct v3_vm_info * vm) {
+int 
+v3_deinit_dev_mgr(struct v3_vm_info * vm) 
+{
     struct vmm_dev_mgr * mgr = &(vm->dev_mgr);
     
     // clear frontend lists
@@ -313,7 +332,9 @@ int v3_deinit_dev_mgr(struct v3_vm_info * vm) {
 
 
 
-int v3_create_device(struct v3_vm_info * vm, const char * dev_name, v3_cfg_tree_t * cfg) {
+int 
+v3_create_device(struct v3_vm_info * vm, const char * dev_name, v3_cfg_tree_t * cfg) 
+{
     int (*dev_init)(struct v3_vm_info * vm, void * cfg_data);
 
     dev_init = (void *)v3_htable_search(master_dev_table, (addr_t)dev_name);
@@ -335,7 +356,9 @@ int v3_create_device(struct v3_vm_info * vm, const char * dev_name, v3_cfg_tree_
 
 
 
-struct vm_device * v3_find_dev(struct v3_vm_info * vm, const char * dev_name) {
+struct vm_device * 
+v3_find_dev(struct v3_vm_info * vm, const char * dev_name) 
+{
     struct vmm_dev_mgr * mgr = &(vm->dev_mgr);
 
     if (!dev_name) {
@@ -361,7 +384,9 @@ struct dev_rsrc {
 
 
 
-static int add_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t rsrc_id) {
+static int 
+add_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t rsrc_id) 
+{
     struct dev_rsrc * resource = NULL;
 
     resource = V3_Malloc(sizeof(struct dev_rsrc));
@@ -378,7 +403,9 @@ static int add_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t r
     return 0;
 }
 
-static int free_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t rsrc_id) {
+static int 
+free_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t rsrc_id) 
+{
     struct dev_rsrc * resource = NULL;
     struct dev_rsrc * tmp;
 
@@ -397,9 +424,11 @@ static int free_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t 
 }
 
 
-int v3_dev_hook_io(struct vm_device * dev, uint16_t port,
-		   int (*read)(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
-		   int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data)) {
+int 
+v3_dev_hook_io(struct vm_device * dev, uint16_t port,
+	       int (*read) (struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
+	       int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data)) 
+{
     int ret = 0;
     
     ret = v3_hook_io_port(dev->vm, port, 
@@ -421,18 +450,22 @@ int v3_dev_hook_io(struct vm_device * dev, uint16_t port,
 }
 
 
-int v3_dev_unhook_io(struct vm_device * dev, uint16_t port) {
+int 
+v3_dev_unhook_io(struct vm_device * dev, uint16_t port) 
+{
     if (free_resource(dev, DEV_IO_HOOK, port) == 0) {
 	return v3_unhook_io_port(dev->vm, port);	   
     } 
-
+    
     return -1;
 }
 
 
-int v3_dev_hook_msr(struct vm_device * dev, uint32_t msr,
-		    int (*read)(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
-		    int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data)) {
+int 
+v3_dev_hook_msr(struct vm_device * dev, uint32_t msr,
+		int (*read) (struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
+		int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr   src, void * priv_data)) 
+{
     int ret = 0;
 
     ret = v3_hook_msr(dev->vm, msr, read, write, dev->private_data);
@@ -449,7 +482,9 @@ int v3_dev_hook_msr(struct vm_device * dev, uint32_t msr,
     return 0;
 }
 		  
-int v3_dev_unhook_msr(struct vm_device * dev, uint32_t msr) {
+int 
+v3_dev_unhook_msr(struct vm_device * dev, uint32_t msr) 
+{
     if (free_resource(dev, DEV_MSR_HOOK, msr) == 0) {
 	return v3_unhook_msr(dev->vm, msr);
     }
@@ -460,10 +495,12 @@ int v3_dev_unhook_msr(struct vm_device * dev, uint32_t msr) {
 
 
 
-int v3_remove_device(struct vm_device * dev) {
-    struct vmm_dev_mgr * mgr = &(dev->vm->dev_mgr);
-    struct dev_rsrc * resource = NULL;
-    struct dev_rsrc * tmp;
+int 
+v3_remove_device(struct vm_device * dev) 
+{
+    struct vmm_dev_mgr * mgr      = &(dev->vm->dev_mgr);
+    struct dev_rsrc    * resource = NULL;
+    struct dev_rsrc    * tmp      = NULL;
 
     list_for_each_entry_safe(resource, tmp, &(dev->res_hooks), node) {
 	if (resource->type == DEV_IO_HOOK) {
@@ -492,12 +529,14 @@ int v3_remove_device(struct vm_device * dev) {
 }
 
 
-struct vm_device * v3_add_device(struct v3_vm_info * vm,
-				 char * name, 
-				 struct v3_device_ops * ops, 
-				 void * private_data) {
+struct vm_device * 
+v3_add_device(struct v3_vm_info    * vm,
+	      char                 * name, 
+	      struct v3_device_ops * ops, 
+	      void                 * private_data) 
+{
     struct vmm_dev_mgr * mgr = &(vm->dev_mgr);
-    struct vm_device * dev = NULL;
+    struct vm_device   * dev = NULL;
 
 
     // Check if we already registered a device of the same name
@@ -516,10 +555,9 @@ struct vm_device * v3_add_device(struct v3_vm_info * vm,
     INIT_LIST_HEAD(&(dev->res_hooks));
 
     strncpy(dev->name, name, 32);
-    dev->ops = ops;
+    dev->ops          = ops;
     dev->private_data = private_data;
-
-    dev->vm = vm;
+    dev->vm           = vm;
 
     list_add(&(dev->dev_link), &(mgr->dev_list));
     mgr->num_devs++;
@@ -530,9 +568,11 @@ struct vm_device * v3_add_device(struct v3_vm_info * vm,
 }
 
 
-void v3_print_dev_mgr(struct v3_vm_info * vm) {
+void 
+v3_print_dev_mgr(struct v3_vm_info * vm) 
+{
     struct vmm_dev_mgr * mgr = &(vm->dev_mgr);
-    struct vm_device * dev;
+    struct vm_device   * dev = NULL;
 
     V3_Print("%d devices registered with manager\n", mgr->num_devs);
 
@@ -547,11 +587,11 @@ void v3_print_dev_mgr(struct v3_vm_info * vm) {
 
 
 struct blk_frontend {
-    int (*connect)(struct v3_vm_info * vm, 
-		    void * frontend_data, 
+    int (*connect)(struct v3_vm_info      * vm, 
+		    void                  * frontend_data, 
 		    struct v3_dev_blk_ops * ops, 
-		    v3_cfg_tree_t * cfg, 
-		    void * priv_data);
+		    v3_cfg_tree_t         * cfg, 
+		    void                  * priv_data);
 	
 
     struct list_head blk_node;
@@ -561,14 +601,15 @@ struct blk_frontend {
 
 
 
-int v3_dev_add_blk_frontend(struct v3_vm_info * vm, 
-			    char * name, 
-			    int (*connect)(struct v3_vm_info * vm, 
-					    void * frontend_data, 
-					    struct v3_dev_blk_ops * ops, 
-					    v3_cfg_tree_t * cfg, 
-					    void * priv_data), 
-			    void * priv_data) {
+int 
+v3_dev_add_blk_frontend(struct v3_vm_info * vm, char * name, 
+			int (*connect)(struct v3_vm_info     * vm, 
+				       void                  * frontend_data, 
+				       struct v3_dev_blk_ops * ops, 
+				       v3_cfg_tree_t         * cfg, 
+				       void                  * priv_data), 
+			void * priv_data) 
+{
 
     struct blk_frontend * frontend = NULL;
 
@@ -581,7 +622,7 @@ int v3_dev_add_blk_frontend(struct v3_vm_info * vm,
 
     memset(frontend, 0, sizeof(struct blk_frontend));
     
-    frontend->connect = connect;
+    frontend->connect   = connect;
     frontend->priv_data = priv_data;
 	
     list_add(&(frontend->blk_node), &(vm->dev_mgr.blk_list));
@@ -590,11 +631,13 @@ int v3_dev_add_blk_frontend(struct v3_vm_info * vm,
     return 0;
 }
 
-int v3_dev_connect_blk(struct v3_vm_info * vm, 
-		       char * frontend_name, 
-		       struct v3_dev_blk_ops * ops, 
-		       v3_cfg_tree_t * cfg, 
-		       void * private_data) {
+int 
+v3_dev_connect_blk(struct v3_vm_info     * vm, 
+		   char                  * frontend_name, 
+		   struct v3_dev_blk_ops * ops, 
+		   v3_cfg_tree_t         * cfg, 
+		   void                  * private_data) 
+{
 
     struct blk_frontend * frontend = NULL;
 
@@ -617,11 +660,11 @@ int v3_dev_connect_blk(struct v3_vm_info * vm,
 
 
 struct net_frontend {
-    int (*connect)(struct v3_vm_info * vm, 
-		    void * frontend_data, 
+    int (*connect)(struct v3_vm_info      * vm, 
+		    void                  * frontend_data, 
 		    struct v3_dev_net_ops * ops, 
-		    v3_cfg_tree_t * cfg, 
-		    void * priv_data);
+		    v3_cfg_tree_t         * cfg, 
+		    void                  * priv_data);
     
 
     struct list_head net_node;
@@ -630,14 +673,14 @@ struct net_frontend {
 };
 
 
-int v3_dev_add_net_frontend(struct v3_vm_info * vm, 
-			    char * name, 
-			    int (*connect)(struct v3_vm_info * vm, 
-					    void * frontend_data, 
-					    struct v3_dev_net_ops * ops, 
-					    v3_cfg_tree_t * cfg, 
-					    void * private_data), 
-			    void * priv_data)
+int 
+v3_dev_add_net_frontend(struct v3_vm_info * vm, char * name, 
+			int (*connect)(struct v3_vm_info     * vm, 
+				       void                  * frontend_data, 
+				       struct v3_dev_net_ops * ops, 
+				       v3_cfg_tree_t         * cfg, 
+				       void                  * private_data), 
+			void * priv_data)
 {
     struct net_frontend * frontend = NULL;
 
@@ -650,7 +693,7 @@ int v3_dev_add_net_frontend(struct v3_vm_info * vm,
 
     memset(frontend, 0, sizeof(struct net_frontend));
     
-    frontend->connect = connect;
+    frontend->connect   = connect;
     frontend->priv_data = priv_data;
 	
     list_add(&(frontend->net_node), &(vm->dev_mgr.net_list));
@@ -660,11 +703,12 @@ int v3_dev_add_net_frontend(struct v3_vm_info * vm,
 }
 
 
-int v3_dev_connect_net(struct v3_vm_info * vm, 
-		       char * frontend_name, 
-		       struct v3_dev_net_ops * ops, 
-		       v3_cfg_tree_t * cfg, 
-		       void * private_data)
+int 
+v3_dev_connect_net(struct v3_vm_info     * vm, 
+		   char                  * frontend_name, 
+		   struct v3_dev_net_ops * ops, 
+		   v3_cfg_tree_t         * cfg, 
+		   void                  * private_data)
 {
     struct net_frontend * frontend = NULL;
 
@@ -686,11 +730,11 @@ int v3_dev_connect_net(struct v3_vm_info * vm,
 
 
 struct cons_frontend {
-    int (*connect)(struct v3_vm_info * vm, 
-		   void * frontend_data, 
+    int (*connect)(struct v3_vm_info         * vm, 
+		   void                      * frontend_data, 
 		   struct v3_dev_console_ops * ops, 
-		   v3_cfg_tree_t * cfg, 
-		   void * priv_data);
+		   v3_cfg_tree_t             * cfg, 
+		   void                      * priv_data);
     
 
     struct list_head cons_node;
@@ -698,14 +742,14 @@ struct cons_frontend {
     void * priv_data;
 };
 
-int v3_dev_add_console_frontend(struct v3_vm_info * vm, 
-				char * name, 
-				int (*connect)(struct v3_vm_info * vm, 
-					       void * frontend_data, 
-					       struct v3_dev_console_ops * ops, 
-					       v3_cfg_tree_t * cfg, 
-					       void * private_data), 
-				void * priv_data)
+int 
+v3_dev_add_console_frontend(struct v3_vm_info * vm, char * name, 
+			    int (*connect)(struct v3_vm_info         * vm, 
+					   void                      * frontend_data, 
+					   struct v3_dev_console_ops * ops, 
+					   v3_cfg_tree_t             * cfg, 
+					   void                      * private_data), 
+			    void * priv_data)
 {
     struct cons_frontend * frontend = NULL;
 
@@ -718,7 +762,7 @@ int v3_dev_add_console_frontend(struct v3_vm_info * vm,
 
     memset(frontend, 0, sizeof(struct cons_frontend));
     
-    frontend->connect = connect;
+    frontend->connect   = connect;
     frontend->priv_data = priv_data;
 	
     list_add(&(frontend->cons_node), &(vm->dev_mgr.cons_list));
@@ -728,11 +772,12 @@ int v3_dev_add_console_frontend(struct v3_vm_info * vm,
 }
 
 
-int v3_dev_connect_console(struct v3_vm_info * vm, 
-			   char * frontend_name, 
-			   struct v3_dev_console_ops * ops, 
-			   v3_cfg_tree_t * cfg, 
-			   void * private_data)
+int 
+v3_dev_connect_console(struct v3_vm_info         * vm, 
+		       char                      * frontend_name, 
+		       struct v3_dev_console_ops * ops, 
+		       v3_cfg_tree_t             * cfg, 
+		       void                      * private_data)
 {
     struct cons_frontend * frontend = NULL;
 
@@ -753,12 +798,12 @@ int v3_dev_connect_console(struct v3_vm_info * vm,
 }
 
 struct char_frontend {
-    int (*connect)(struct v3_vm_info * vm, 
-		   void * frontend_data, 
+    int (*connect)(struct v3_vm_info      * vm, 
+		   void                   * frontend_data, 
 		   struct v3_dev_char_ops * ops, 
-		   v3_cfg_tree_t * cfg, 
-		   void * priv_data, 
-		   void ** push_fn_arg);
+		   v3_cfg_tree_t          * cfg, 
+		   void                   * priv_data, 
+		   void                  ** push_fn_arg);
     
 
     struct list_head char_node;
@@ -766,15 +811,15 @@ struct char_frontend {
     void * priv_data;
 };
 
-int v3_dev_add_char_frontend(struct v3_vm_info * vm, 
-			     char * name, 
-			     int (*connect)(struct v3_vm_info * vm, 
-					    void * frontend_data, 
-					    struct v3_dev_char_ops * ops, 
-					    v3_cfg_tree_t * cfg, 
-					    void * private_data, 
-					    void ** push_fn_arg), 
-			     void * priv_data)
+int 
+v3_dev_add_char_frontend(struct v3_vm_info * vm, char * name, 
+			 int (*connect)(struct v3_vm_info      * vm, 
+					void                   * frontend_data, 
+					struct v3_dev_char_ops * ops, 
+					v3_cfg_tree_t          * cfg, 
+					void                   * private_data, 
+					void                  ** push_fn_arg), 
+			 void * priv_data)
 {
     struct char_frontend * frontend = NULL;
 
@@ -787,7 +832,7 @@ int v3_dev_add_char_frontend(struct v3_vm_info * vm,
 
     memset(frontend, 0, sizeof(struct char_frontend));
     
-    frontend->connect = connect;
+    frontend->connect   = connect;
     frontend->priv_data = priv_data;
 	
     list_add(&(frontend->char_node), &(vm->dev_mgr.char_list));
@@ -797,12 +842,13 @@ int v3_dev_add_char_frontend(struct v3_vm_info * vm,
 }
 
 
-int v3_dev_connect_char(struct v3_vm_info * vm, 
-			char * frontend_name, 
-			struct v3_dev_char_ops * ops, 
-			v3_cfg_tree_t * cfg, 
-			void * private_data, 
-			void ** push_fn_arg)
+int 
+v3_dev_connect_char(struct v3_vm_info      * vm, 
+		    char                   * frontend_name, 
+		    struct v3_dev_char_ops * ops, 
+		    v3_cfg_tree_t          * cfg, 
+		    void                   * private_data, 
+		    void                  ** push_fn_arg)
 {
     struct char_frontend * frontend = NULL;
 
@@ -824,19 +870,21 @@ int v3_dev_connect_char(struct v3_vm_info * vm,
 
 
 
-static int free_frontends(struct v3_vm_info * vm, struct vmm_dev_mgr * mgr) {
-    struct char_frontend * chr = NULL;
-    struct char_frontend * tmp_chr = NULL;
-    struct cons_frontend * cons = NULL;
-    struct cons_frontend * tmp_cons = NULL;
-    struct net_frontend * net = NULL;
-    struct net_frontend * tmp_net = NULL;
-    struct blk_frontend * blk = NULL;
-    struct blk_frontend * tmp_blk = NULL;
+static int 
+free_frontends(struct v3_vm_info * vm, struct vmm_dev_mgr * mgr) 
+{
+    struct char_frontend * chr       = NULL;
+    struct char_frontend * tmp_chr   = NULL;
+    struct cons_frontend * cons      = NULL;
+    struct cons_frontend * tmp_cons  = NULL;
+    struct net_frontend  * net       = NULL;
+    struct net_frontend  * tmp_net   = NULL;
+    struct blk_frontend  * blk       = NULL;
+    struct blk_frontend  * tmp_blk   = NULL;
 
 
 
-    list_for_each_entry_safe(chr, tmp_chr, &(mgr->char_list), char_node) {
+    list_for_each_entry_safe(chr,  tmp_chr,  &(mgr->char_list), char_node) {
 	list_del(&(chr->char_node));
 	V3_Free(chr);
     }
@@ -846,18 +894,18 @@ static int free_frontends(struct v3_vm_info * vm, struct vmm_dev_mgr * mgr) {
 	V3_Free(cons);
     }
 
-    list_for_each_entry_safe(net, tmp_net, &(mgr->net_list), net_node) {
+    list_for_each_entry_safe(net,  tmp_net,  &(mgr->net_list),  net_node) {
 	list_del(&(net->net_node));
 	V3_Free(net);
     }
 
-    list_for_each_entry_safe(blk, tmp_blk, &(mgr->blk_list), blk_node) {
+    list_for_each_entry_safe(blk,  tmp_blk,  &(mgr->blk_list),  blk_node) {
 	list_del(&(blk->blk_node));
 	V3_Free(blk);
     }
 
-    v3_free_htable(mgr->blk_table, 0, 0);
-    v3_free_htable(mgr->net_table, 0, 0);
+    v3_free_htable(mgr->blk_table,  0, 0);
+    v3_free_htable(mgr->net_table,  0, 0);
     v3_free_htable(mgr->char_table, 0, 0);
     v3_free_htable(mgr->cons_table, 0, 0);
 

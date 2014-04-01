@@ -35,12 +35,16 @@ static struct {} null_ext  __attribute__((__used__))                    \
 
 
 
-static uint_t ext_hash_fn(addr_t key) {
+static uint_t 
+ext_hash_fn(addr_t key) 
+{
     char * name = (char *)key;
     return v3_hash_buffer((uint8_t *)name, strlen(name));
 }
 
-static int ext_eq_fn(addr_t key1, addr_t key2) {
+static int 
+ext_eq_fn(addr_t key1, addr_t key2) 
+{
     char * name1 = (char *)key1;
     char * name2 = (char *)key2;
 
@@ -49,10 +53,12 @@ static int ext_eq_fn(addr_t key1, addr_t key2) {
 
 
 
-int V3_init_extensions() {
+int 
+V3_init_extensions() 
+{
     extern struct v3_extension_impl * __start__v3_extensions[];
     extern struct v3_extension_impl * __stop__v3_extensions[];
-    struct v3_extension_impl ** tmp_ext = __start__v3_extensions;
+    struct v3_extension_impl       ** tmp_ext = __start__v3_extensions;
     int i = 0;
 
     ext_table = v3_create_htable(0, ext_hash_fn, ext_eq_fn);
@@ -79,14 +85,18 @@ int V3_init_extensions() {
 
 
 
-int V3_deinit_extensions() {
+int 
+V3_deinit_extensions() 
+{
     v3_free_htable(ext_table, 0, 0);
 
     return 0;
 }
 
 
-int v3_init_ext_manager(struct v3_vm_info * vm) {
+int 
+v3_init_ext_manager(struct v3_vm_info * vm) 
+{
     struct v3_extensions * ext_state = &(vm->extensions);
 
     INIT_LIST_HEAD(&(ext_state->extensions));
@@ -97,10 +107,12 @@ int v3_init_ext_manager(struct v3_vm_info * vm) {
 }
 
 
-int v3_deinit_ext_manager(struct v3_vm_info * vm)  {
+int 
+v3_deinit_ext_manager(struct v3_vm_info * vm)  
+{
     struct v3_extensions * ext_state = &(vm->extensions);
-    struct v3_extension * ext = NULL;
-    struct v3_extension * tmp = NULL;
+    struct v3_extension  * ext = NULL;
+    struct v3_extension  * tmp = NULL;
     int i;
 
     /* deinit per-core state first */
@@ -133,9 +145,11 @@ int v3_deinit_ext_manager(struct v3_vm_info * vm)  {
 
 
 
-int v3_add_extension(struct v3_vm_info * vm, const char * name, v3_cfg_tree_t * cfg) {
+int 
+v3_add_extension(struct v3_vm_info * vm, const char * name, v3_cfg_tree_t * cfg) 
+{
     struct v3_extension_impl * impl = NULL;
-    struct v3_extension * ext = NULL;
+    struct v3_extension      * ext  = NULL;
     int ext_size;
 
     impl = (void *)v3_htable_search(ext_table, (addr_t)name);
@@ -149,7 +163,7 @@ int v3_add_extension(struct v3_vm_info * vm, const char * name, v3_cfg_tree_t * 
 
     /* this allows each extension to track its own per-core state */
     ext_size = sizeof(struct v3_extension) + (sizeof(void *) * vm->num_cores);
-    ext = V3_Malloc(ext_size);
+    ext      = V3_Malloc(ext_size);
     
     if (!ext) {
 	PrintError("Could not allocate extension\n");
@@ -177,9 +191,11 @@ int v3_add_extension(struct v3_vm_info * vm, const char * name, v3_cfg_tree_t * 
     return 0;
 }
 
-int v3_init_core_extensions(struct v3_core_info * core) {
-    struct v3_extension * ext = NULL;
-    uint32_t cpuid = core->vcpu_id;
+int 
+v3_init_core_extensions(struct v3_core_info * core) 
+{
+    struct v3_extension * ext   = NULL;
+    uint32_t              cpuid = core->vcpu_id;
 
     list_for_each_entry(ext, &(core->vm_info->extensions.extensions), node) {
 	if ((ext->impl) && (ext->impl->core_init)) {
@@ -195,11 +211,13 @@ int v3_init_core_extensions(struct v3_core_info * core) {
 }
 
 
-int v3_deinit_core_extensions (struct v3_core_info * core) {
-        struct v3_extension * ext = NULL;
-        struct v3_extension * tmp = NULL;
-        struct v3_vm_info * vm = core->vm_info;
-        uint32_t cpuid = core->vcpu_id;
+int 
+v3_deinit_core_extensions (struct v3_core_info * core) 
+{
+        struct v3_extension * ext   = NULL;
+        struct v3_extension * tmp   = NULL;
+        struct v3_vm_info   * vm    = core->vm_info;
+        uint32_t              cpuid = core->vcpu_id;
 
         list_for_each_entry_safe(ext, tmp, &(vm->extensions.extensions), node) {
             if ((ext->impl) && (ext->impl->core_deinit)) {
@@ -216,7 +234,9 @@ int v3_deinit_core_extensions (struct v3_core_info * core) {
 
 
 
-void * v3_get_extension_state(struct v3_vm_info * vm, const char * name) {
+void * 
+v3_get_extension_state(struct v3_vm_info * vm, const char * name) 
+{
     struct v3_extension * ext = NULL;
 
     list_for_each_entry(ext, &(vm->extensions.extensions), node) {
@@ -229,10 +249,12 @@ void * v3_get_extension_state(struct v3_vm_info * vm, const char * name) {
 }
 
 
-void * v3_get_ext_core_state (struct v3_core_info * core, const char * name) {
-    struct v3_extension * ext = NULL;
-    struct v3_vm_info * vm = core->vm_info;
-    uint32_t cpuid = core->vcpu_id;
+void * 
+v3_get_ext_core_state (struct v3_core_info * core, const char * name) 
+{
+    struct v3_extension * ext   = NULL;
+    struct v3_vm_info   * vm    = core->vm_info;
+    uint32_t              cpuid = core->vcpu_id;
 
     list_for_each_entry(ext, &(vm->extensions.extensions), node) {
 	if (strncmp(ext->impl->name, name, strlen(ext->impl->name)) == 0) {

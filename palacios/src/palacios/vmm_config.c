@@ -48,7 +48,7 @@ struct file_hdr {
 };
 
 struct file_idx_table {
-    uint64_t num_files;
+    uint64_t        num_files;
     struct file_hdr hdrs[0];
 };
 
@@ -57,14 +57,16 @@ struct file_idx_table {
 
 static int setup_memory_map(struct v3_vm_info * vm, v3_cfg_tree_t * cfg);
 static int setup_extensions(struct v3_vm_info * vm, v3_cfg_tree_t * cfg);
-static int setup_devices(struct v3_vm_info * vm, v3_cfg_tree_t * cfg);
+static int setup_devices   (struct v3_vm_info * vm, v3_cfg_tree_t * cfg);
 
 
 
-char * v3_cfg_val(v3_cfg_tree_t * tree, char * tag) {
-    char * attrib = (char *)v3_xml_attr(tree, tag);
+char * 
+v3_cfg_val(v3_cfg_tree_t * tree, char * tag) 
+{
+    char          * attrib      = (char *)v3_xml_attr(tree, tag);
     v3_cfg_tree_t * child_entry = v3_xml_child(tree, tag);
-    char * val = NULL;
+    char          * val = NULL;
 
     if ((child_entry != NULL) && (attrib != NULL)) {
 	PrintError("Duplicate Configuration parameters present for %s\n", tag);
@@ -74,8 +76,9 @@ char * v3_cfg_val(v3_cfg_tree_t * tree, char * tag) {
     if (attrib == NULL) {
     	val = v3_xml_txt(child_entry);
     	
-    	if ( val[0] == 0 )
+    	if (val[0] == 0) {
     		val = NULL;
+	}
     } else {
     	val = attrib;
     }
@@ -83,17 +86,23 @@ char * v3_cfg_val(v3_cfg_tree_t * tree, char * tag) {
     return val;
 }
 
-v3_cfg_tree_t * v3_cfg_subtree(v3_cfg_tree_t * tree, char * tag) {
+v3_cfg_tree_t * 
+v3_cfg_subtree(v3_cfg_tree_t * tree, char * tag) 
+{
     return v3_xml_child(tree, tag);
 }
 
-v3_cfg_tree_t * v3_cfg_next_branch(v3_cfg_tree_t * tree) {
+v3_cfg_tree_t * 
+v3_cfg_next_branch(v3_cfg_tree_t * tree) 
+{
     return v3_xml_next(tree);
 }
 
 
 
-struct v3_cfg_file * v3_cfg_get_file(struct v3_vm_info * vm, char * tag) {
+struct v3_cfg_file * 
+v3_cfg_get_file(struct v3_vm_info * vm, char * tag) 
+{
     struct v3_cfg_file * file = NULL;
 
     file = (struct v3_cfg_file *)v3_htable_search(vm->cfg_data->file_table, (addr_t)tag);
@@ -102,24 +111,30 @@ struct v3_cfg_file * v3_cfg_get_file(struct v3_vm_info * vm, char * tag) {
 }
 
 
-static uint_t file_hash_fn(addr_t key) {
+static uint_t 
+file_hash_fn(addr_t key) 
+{
     char * name = (char *)key;
     return v3_hash_buffer((uchar_t *)name, strlen(name));
 }
 
-static int file_eq_fn(addr_t key1, addr_t key2) {
+static int 
+file_eq_fn(addr_t key1, addr_t key2) 
+{
     char * name1 = (char *)key1;
     char * name2 = (char *)key2;
 
     return (strcmp(name1, name2) == 0);
 }
 
-static struct v3_config * parse_config(void * cfg_blob) {
-    struct v3_config * cfg = NULL;
+static struct v3_config * 
+parse_config(void * cfg_blob) 
+{
+    struct v3_config      * cfg       = NULL;
+    struct file_idx_table * files     = NULL;
+    v3_cfg_tree_t         * file_tree = NULL;
+    uint_t                  xml_len   = 0; 
     int offset = 0;
-    uint_t xml_len = 0; 
-    struct file_idx_table * files = NULL;
-    v3_cfg_tree_t * file_tree = NULL;
 
     V3_Print("cfg data at %p\n", cfg_blob);
 
@@ -149,25 +164,25 @@ static struct v3_config * parse_config(void * cfg_blob) {
 	return NULL;
     }
     
-    xml_len = *(uint32_t *)(cfg_blob + offset);
-    offset += 4;
+    xml_len  = *(uint32_t *)(cfg_blob + offset);
+    offset  += 4;
 
     cfg->cfg = (v3_cfg_tree_t *)v3_xml_parse((uint8_t *)(cfg_blob + offset));
-    offset += xml_len;
+    offset  += xml_len;
    
-    offset += 8;
+    offset  += 8;
 
-    files = (struct file_idx_table *)(cfg_blob + offset);
+    files    = (struct file_idx_table *)(cfg_blob + offset);
 
     V3_Print("Number of files in cfg: %d\n", (uint32_t)(files->num_files));
 
     file_tree = v3_cfg_subtree(v3_cfg_subtree(cfg->cfg, "files"), "file");
 
     while (file_tree) {
-	char * id = v3_cfg_val(file_tree, "id");
+	char * id    = v3_cfg_val(file_tree, "id");
 	char * index = v3_cfg_val(file_tree, "index");
-	int idx = atoi(index);
-	struct file_hdr * hdr = &(files->hdrs[idx]);
+	int    idx   = atoi(index);
+	struct file_hdr    * hdr  = &(files->hdrs[idx]);
 	struct v3_cfg_file * file = NULL;
 
 	file = (struct v3_cfg_file *)V3_Malloc(sizeof(struct v3_cfg_file));
@@ -203,7 +218,9 @@ static struct v3_config * parse_config(void * cfg_blob) {
 }
 
 
-static inline uint32_t get_alignment(char * align_str) {
+static inline uint32_t 
+get_alignment(char * align_str) 
+{
     // default is 4KB alignment
     uint32_t alignment = PAGE_SIZE_4KB;
 
@@ -226,12 +243,14 @@ static inline uint32_t get_alignment(char * align_str) {
 }
 
 
-static int pre_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * vm_cfg) {
-    char * memory_str = v3_cfg_val(vm_cfg, "memory");
+static int 
+pre_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * vm_cfg) 
+{
+    char * memory_str      = v3_cfg_val(vm_cfg, "memory");
     char * schedule_hz_str = v3_cfg_val(vm_cfg, "schedule_hz");
-    char * vm_class = v3_cfg_val(vm_cfg, "class");
-    char * align_str = v3_cfg_val(v3_cfg_subtree(vm_cfg, "memory"), "alignment");
-    uint32_t sched_hz = 100; 	// set the schedule frequency to 100 HZ
+    char * vm_class        = v3_cfg_val(vm_cfg, "class");
+    char * align_str       = v3_cfg_val(v3_cfg_subtree(vm_cfg, "memory"), "alignment");
+    uint32_t sched_hz      = 100; 	// set the schedule frequency to 100 HZ
 
 
     if (!memory_str) {
@@ -247,7 +266,7 @@ static int pre_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * vm_cfg) {
     }
 
     // Amount of ram the Guest will have, always in MB
-    vm->mem_size = (addr_t)atoi(memory_str) * 1024 * 1024;
+    vm->mem_size  = (addr_t)atoi(memory_str) * 1024 * 1024;
     vm->mem_align = get_alignment(align_str);
 
 
@@ -293,12 +312,14 @@ static int pre_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * vm_cfg) {
 }
 
 
-static int determine_paging_mode(struct v3_core_info * core, v3_cfg_tree_t * core_cfg) {
+static int 
+determine_paging_mode(struct v3_core_info * core, v3_cfg_tree_t * core_cfg) 
+{
     extern v3_cpu_arch_t v3_mach_type;
 
     v3_cfg_tree_t * vm_tree = core->vm_info->cfg_data->cfg;
     v3_cfg_tree_t * pg_tree = v3_cfg_subtree(vm_tree, "paging");
-    char * pg_mode          = v3_cfg_val(pg_tree, "mode");
+    char          * pg_mode = v3_cfg_val(pg_tree, "mode");
     
     PrintDebug("Paging mode specified as %s\n", pg_mode);
 
@@ -337,7 +358,9 @@ static int determine_paging_mode(struct v3_core_info * core, v3_cfg_tree_t * cor
     return 0;
 }
 
-static int pre_config_core(struct v3_core_info * core, v3_cfg_tree_t * core_cfg) {
+static int 
+pre_config_core(struct v3_core_info * core, v3_cfg_tree_t * core_cfg) 
+{
     if (determine_paging_mode(core, core_cfg) != 0) {
 	return -1;
     }
@@ -362,7 +385,9 @@ static int pre_config_core(struct v3_core_info * core, v3_cfg_tree_t * core_cfg)
 
 
 
-static int post_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
+static int 
+post_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) 
+{
     
 
 
@@ -419,7 +444,9 @@ static int post_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
 
 
-static int post_config_core(struct v3_core_info * core, v3_cfg_tree_t * cfg) {
+static int 
+post_config_core(struct v3_core_info * core, v3_cfg_tree_t * cfg) 
+{
 
  
     if (v3_init_core_extensions(core) == -1) {
@@ -443,9 +470,11 @@ static int post_config_core(struct v3_core_info * core, v3_cfg_tree_t * cfg) {
 
 
 
-static struct v3_vm_info * allocate_guest(int num_cores) {
-    int guest_state_size = sizeof(struct v3_vm_info) + (sizeof(struct v3_core_info) * num_cores);
-    struct v3_vm_info * vm = V3_Malloc(guest_state_size);
+static struct v3_vm_info * 
+allocate_guest(int num_cores) 
+{
+    int guest_state_size    = sizeof(struct v3_vm_info) + (sizeof(struct v3_core_info) * num_cores);
+    struct v3_vm_info * vm  = V3_Malloc(guest_state_size);
 
     if (!vm) {
 	PrintError("Unable to allocate space for guest data structures\n");
@@ -470,13 +499,13 @@ static struct v3_vm_info * allocate_guest(int num_cores) {
 
 
 struct v3_vm_info * v3_config_guest(void * cfg_blob, void * priv_data) {
-    extern v3_cpu_arch_t v3_mach_type;
-    struct v3_config * cfg_data = NULL;
-    struct v3_vm_info * vm = NULL;
-    int num_cores = 0;
+    extern v3_cpu_arch_t   v3_mach_type;
+    struct v3_config     * cfg_data     = NULL;
+    struct v3_vm_info    * vm           = NULL;
+    v3_cfg_tree_t        * cores_cfg    = NULL;
+    v3_cfg_tree_t        * per_core_cfg = NULL;
+    int                    num_cores    = 0;
     int i = 0;
-    v3_cfg_tree_t * cores_cfg = NULL;
-    v3_cfg_tree_t * per_core_cfg = NULL;
 
     if (v3_mach_type == V3_INVALID_CPU) {
 	PrintError("Configuring guest on invalid CPU\n");
@@ -513,8 +542,7 @@ struct v3_vm_info * v3_config_guest(void * cfg_blob, void * priv_data) {
     }
 
     vm->host_priv_data = priv_data;
-
-    vm->cfg_data = cfg_data;
+    vm->cfg_data       = cfg_data;
 
     V3_Print("Preconfiguration\n");
 
@@ -530,8 +558,8 @@ struct v3_vm_info * v3_config_guest(void * cfg_blob, void * priv_data) {
     for (i = 0; i < vm->num_cores; i++) {
 	struct v3_core_info * core = &(vm->cores[i]);
 
-	core->vcpu_id = i;
-	core->vm_info = vm;
+	core->vcpu_id       = i;
+	core->vm_info       = vm;
 	core->core_cfg_data = per_core_cfg;
 
 	if (pre_config_core(core, per_core_cfg) == -1) {
@@ -570,7 +598,9 @@ struct v3_vm_info * v3_config_guest(void * cfg_blob, void * priv_data) {
 
 
 
-int v3_free_config(struct v3_vm_info * vm) {
+int 
+v3_free_config(struct v3_vm_info * vm) 
+{
    
     v3_free_htable(vm->cfg_data->file_table, 1, 0);
 
@@ -583,13 +613,15 @@ int v3_free_config(struct v3_vm_info * vm) {
 
 
 
-static int setup_memory_map(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
+static int 
+setup_memory_map(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) 
+{
     v3_cfg_tree_t * mem_region = v3_cfg_subtree(v3_cfg_subtree(cfg, "memmap"), "region");
 
     while (mem_region) {
 	addr_t start_addr = atox(v3_cfg_val(mem_region, "start"));
-	addr_t end_addr = atox(v3_cfg_val(mem_region, "end"));
-	addr_t host_addr = atox(v3_cfg_val(mem_region, "host_addr"));
+	addr_t end_addr   = atox(v3_cfg_val(mem_region, "end"));
+	addr_t host_addr  = atox(v3_cfg_val(mem_region, "host_addr"));
 
     
 	if (v3_add_shadow_mem(vm, V3_MEM_CORE_ANY, 
@@ -607,7 +639,9 @@ static int setup_memory_map(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 }
 
 
-static int setup_extensions(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
+static int 
+setup_extensions(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) 
+{
     v3_cfg_tree_t * extension = v3_cfg_subtree(v3_cfg_subtree(cfg, "extensions"), "extension");
 
     while (extension) {
@@ -632,7 +666,9 @@ static int setup_extensions(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 }
 
 
-static int setup_devices(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
+static int 
+setup_devices(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) 
+{
     v3_cfg_tree_t * device = v3_cfg_subtree(v3_cfg_subtree(cfg, "devices"), "device");
 
     

@@ -35,23 +35,27 @@ static int default_write(struct v3_core_info * core, uint16_t port, void *src, u
 static int default_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data);
 
 
-void v3_init_io_map(struct v3_vm_info * vm) {
+void 
+v3_init_io_map(struct v3_vm_info * vm) 
+{
 
-  vm->io_map.map.rb_node = NULL;
-  vm->io_map.arch_data = NULL;
-  vm->io_map.update_map = NULL;
+    vm->io_map.map.rb_node = NULL;
+    vm->io_map.arch_data   = NULL;
+    vm->io_map.update_map  = NULL;
 
 }
 
-int v3_deinit_io_map(struct v3_vm_info * vm) {
-    struct rb_node * node = v3_rb_first(&(vm->io_map.map));
-    struct v3_io_hook * hook = NULL;
-    struct rb_node * tmp_node = NULL;
+int 
+v3_deinit_io_map(struct v3_vm_info * vm) 
+{
+    struct rb_node    * node     = v3_rb_first(&(vm->io_map.map));
+    struct v3_io_hook * hook     = NULL;
+    struct rb_node    * tmp_node = NULL;
 
     while (node) {
-	hook = rb_entry(node, struct v3_io_hook, tree_node);
+	hook     = rb_entry(node, struct v3_io_hook, tree_node);
 	tmp_node = node;
-	node = v3_rb_next(node);
+	node     = v3_rb_next(node);
 
 	free_hook(vm, hook);
     }
@@ -62,115 +66,125 @@ int v3_deinit_io_map(struct v3_vm_info * vm) {
 
 
 
-static inline struct v3_io_hook * __insert_io_hook(struct v3_vm_info * vm, struct v3_io_hook * hook) {
-  struct rb_node ** p = &(vm->io_map.map.rb_node);
-  struct rb_node * parent = NULL;
-  struct v3_io_hook * tmp_hook = NULL;
-
-  while (*p) {
-    parent = *p;
-    tmp_hook = rb_entry(parent, struct v3_io_hook, tree_node);
-
-    if (hook->port < tmp_hook->port) {
-      p = &(*p)->rb_left;
-    } else if (hook->port > tmp_hook->port) {
-      p = &(*p)->rb_right;
-    } else {
-      return tmp_hook;
-    }
-  }
-
-  rb_link_node(&(hook->tree_node), parent, p);
-
-  return NULL;
-}
-
-
-static inline struct v3_io_hook * insert_io_hook(struct v3_vm_info * vm, struct v3_io_hook * hook) {
-  struct v3_io_hook * ret;
-
-  if ((ret = __insert_io_hook(vm, hook))) {
-    return ret;
-  }
-
-  v3_rb_insert_color(&(hook->tree_node), &(vm->io_map.map));
-
-  return NULL;
-}
-
-
-struct v3_io_hook * v3_get_io_hook(struct v3_vm_info * vm, uint16_t port) {
-  struct rb_node * n = vm->io_map.map.rb_node;
-  struct v3_io_hook * hook = NULL;
-
-  while (n) {
-    hook = rb_entry(n, struct v3_io_hook, tree_node);
+static inline struct v3_io_hook * 
+__insert_io_hook(struct v3_vm_info * vm, struct v3_io_hook * hook) 
+{
+    struct rb_node   ** p        = &(vm->io_map.map.rb_node);
+    struct rb_node    * parent   = NULL;
+    struct v3_io_hook * tmp_hook = NULL;
     
-    if (port < hook->port) {
-      n = n->rb_left;
-    } else if (port > hook->port) {
-      n = n->rb_right;
-    } else {
-      return hook;
+    while (*p) {
+	parent   = *p;
+	tmp_hook = rb_entry(parent, struct v3_io_hook, tree_node);
+	
+	if (hook->port < tmp_hook->port) {
+	    p = &(*p)->rb_left;
+	} else if (hook->port > tmp_hook->port) {
+	    p = &(*p)->rb_right;
+	} else {
+	    return tmp_hook;
+	}
     }
-  }
+    
+    rb_link_node(&(hook->tree_node), parent, p);
+    
+    return NULL;
+}
 
-  return NULL;
+
+static inline struct v3_io_hook * 
+insert_io_hook(struct v3_vm_info * vm, struct v3_io_hook * hook) 
+{
+    struct v3_io_hook * ret = NULL;
+
+    if ((ret = __insert_io_hook(vm, hook))) {
+	return ret;
+    }
+
+    v3_rb_insert_color(&(hook->tree_node), &(vm->io_map.map));
+
+    return NULL;
+}
+
+
+struct v3_io_hook * 
+v3_get_io_hook(struct v3_vm_info * vm, uint16_t port) 
+{
+    struct rb_node    * n    = vm->io_map.map.rb_node;
+    struct v3_io_hook * hook = NULL;
+
+    while (n) {
+	hook = rb_entry(n, struct v3_io_hook, tree_node);
+    
+	if (port < hook->port) {
+	    n = n->rb_left;
+	} else if (port > hook->port) {
+	    n = n->rb_right;
+	} else {
+	    return hook;
+	}
+    }
+
+    return NULL;
 }
 
 
 
 
 
-int v3_hook_io_port(struct v3_vm_info * vm, uint16_t port, 
-		    int (*read)(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
-		    int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data), 
-		    void * priv_data) {
-  struct v3_io_hook * io_hook = (struct v3_io_hook *)V3_Malloc(sizeof(struct v3_io_hook));
+int 
+v3_hook_io_port(struct v3_vm_info * vm, uint16_t port, 
+		int (*read)(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
+		int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data), 
+		void * priv_data) 
+{
+    struct v3_io_hook * io_hook = (struct v3_io_hook *)V3_Malloc(sizeof(struct v3_io_hook));
 
-  if (!io_hook) {
-      PrintError("Cannot allocate in hooking an I/O port\n");
-      return -1;
-  }
+    if (!io_hook) {
+	PrintError("Cannot allocate in hooking an I/O port\n");
+	return -1;
+    }
 
 
-  io_hook->port = port;
+    io_hook->port = port;
 
-  if (!read) {
-    io_hook->read = &default_read;
-  } else {
-    io_hook->read = read;
-  }
+    if (!read) {
+	io_hook->read = &default_read;
+    } else {
+	io_hook->read = read;
+    }
 
-  if (!write) {
-    io_hook->write = &default_write;
-  } else {
-    io_hook->write = write;
-  }
+    if (!write) {
+	io_hook->write = &default_write;
+    } else {
+	io_hook->write = write;
+    }
 
-  io_hook->priv_data = priv_data;
+    io_hook->priv_data = priv_data;
 
-  if (insert_io_hook(vm, io_hook)) {
-      PrintError("Could not insert IO hook for port %u (0x%x)\n", port, port);
-      V3_Free(io_hook);
-      return -1;
-  }
+    if (insert_io_hook(vm, io_hook)) {
+	PrintError("Could not insert IO hook for port %u (0x%x)\n", port, port);
+	V3_Free(io_hook);
+	return -1;
+    }
 
-  if (vm->io_map.update_map) {
-      if (vm->io_map.update_map(vm, port, 
-				  ((read == NULL) ? 0 : 1), 
+    if (vm->io_map.update_map) {
+	if (vm->io_map.update_map(vm, port, 
+				  ((read  == NULL) ? 0 : 1), 
 				  ((write == NULL) ? 0 : 1)) == -1) {
-	  PrintError("Could not update IO map for port %u (0x%x)\n", port, port);
-	  V3_Free(io_hook);
-	  return -1;
-      }
-  }
+	    PrintError("Could not update IO map for port %u (0x%x)\n", port, port);
+	    V3_Free(io_hook);
+	    return -1;
+	}
+    }
 
-  return 0;
+    return 0;
 }
 
 
-static int free_hook(struct v3_vm_info * vm, struct v3_io_hook * hook) {
+static int 
+free_hook(struct v3_vm_info * vm, struct v3_io_hook * hook) 
+{
     v3_rb_erase(&(hook->tree_node), &(vm->io_map.map));
 
     if (vm->io_map.update_map) {
@@ -183,7 +197,9 @@ static int free_hook(struct v3_vm_info * vm, struct v3_io_hook * hook) {
     return 0;
 }
 
-int v3_unhook_io_port(struct v3_vm_info * vm, uint16_t port) {
+int 
+v3_unhook_io_port(struct v3_vm_info * vm, uint16_t port) 
+{
     struct v3_io_hook * hook = v3_get_io_hook(vm, port);
 
     if (hook == NULL) {
@@ -202,9 +218,11 @@ int v3_unhook_io_port(struct v3_vm_info * vm, uint16_t port) {
 
 
 
-void v3_refresh_io_map(struct v3_vm_info * vm) {
-    struct v3_io_map * io_map = &(vm->io_map);
-    struct v3_io_hook * tmp = NULL;
+void 
+v3_refresh_io_map(struct v3_vm_info * vm) 
+{
+    struct v3_io_map  * io_map = &(vm->io_map);
+    struct v3_io_hook * tmp    = NULL;
     
     if (io_map->update_map == NULL) {
 	PrintError("Trying to refresh an io map with no backend\n");
@@ -213,7 +231,7 @@ void v3_refresh_io_map(struct v3_vm_info * vm) {
 
     v3_rb_for_each_entry(tmp, &(io_map->map), tree_node) {
 	io_map->update_map(vm, tmp->port, 
-			   ((tmp->read == NULL) ? 0 : 1), 
+			   ((tmp->read  == NULL) ? 0 : 1), 
 			   ((tmp->write == NULL) ? 0 : 1));
     }
 
@@ -221,8 +239,10 @@ void v3_refresh_io_map(struct v3_vm_info * vm) {
 
 
 
-void v3_print_io_map(struct v3_vm_info * vm) {
-    struct v3_io_map * io_map = &(vm->io_map);
+void 
+v3_print_io_map(struct v3_vm_info * vm) 
+{
+    struct v3_io_map  * io_map   = &(vm->io_map);
     struct v3_io_hook * tmp_hook = NULL;
 
     V3_Print("VMM IO Map\n");
@@ -241,10 +261,10 @@ void v3_print_io_map(struct v3_vm_info * vm) {
  */
 void v3_outb(uint16_t port, uint8_t value) {
     __asm__ __volatile__ (
-	"outb %b0, %w1"
-	:
-	: "a" (value), "Nd" (port)
-    );
+			  "outb %b0, %w1"
+			  :
+			  : "a" (value), "Nd" (port)
+			  );
 }
 
 /*
@@ -254,10 +274,10 @@ uint8_t v3_inb(uint16_t port) {
     uint8_t value;
 
     __asm__ __volatile__ (
-	"inb %w1, %b0"
-	: "=a" (value)
-	: "Nd" (port)
-    );
+			  "inb %w1, %b0"
+			  : "=a" (value)
+			  : "Nd" (port)
+			  );
 
     return value;
 }
@@ -267,10 +287,10 @@ uint8_t v3_inb(uint16_t port) {
  */
 void v3_outw(uint16_t port, uint16_t value) {
     __asm__ __volatile__ (
-	"outw %w0, %w1"
-	:
-	: "a" (value), "Nd" (port)
-    );
+			  "outw %w0, %w1"
+			  :
+			  : "a" (value), "Nd" (port)
+			  );
 }
 
 /*
@@ -280,10 +300,10 @@ uint16_t v3_inw(uint16_t port) {
     uint16_t value;
 
     __asm__ __volatile__ (
-	"inw %w1, %w0"
-	: "=a" (value)
-	: "Nd" (port)
-    );
+			  "inw %w1, %w0"
+			  : "=a" (value)
+			  : "Nd" (port)
+			  );
 
     return value;
 }
@@ -293,10 +313,10 @@ uint16_t v3_inw(uint16_t port) {
  */
 void v3_outdw(uint16_t port, uint_t value) {
     __asm__ __volatile__ (
-	"outl %0, %1"
-	:
-	: "a" (value), "Nd" (port)
-    );
+			  "outl %0, %1"
+			  :
+			  : "a" (value), "Nd" (port)
+			  );
 }
 
 /*
@@ -306,10 +326,10 @@ uint_t v3_indw(uint16_t port) {
     uint_t value;
 
     __asm__ __volatile__ (
-	"inl %1, %0"
-	: "=a" (value)
-	: "Nd" (port)
-    );
+			  "inl %1, %0"
+			  : "=a" (value)
+			  : "Nd" (port)
+			  );
 
     return value;
 }
@@ -320,9 +340,9 @@ uint_t v3_indw(uint16_t port) {
 /* FIX ME */
 static int default_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     if (length == 1) {
-	v3_outb(port, *(uint8_t *)src);
+	v3_outb(port,  *(uint8_t  *)src);
     } else if (length == 2) {
-	v3_outw(port, *(uint16_t *)src);
+	v3_outw(port,  *(uint16_t *)src);
     } else if (length == 4) {
 	v3_outdw(port, *(uint32_t *)src);
     } else {
@@ -334,7 +354,7 @@ static int default_write(struct v3_core_info * core, uint16_t port, void * src, 
 
 static int default_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
     if (length == 1) {
-	*(uint8_t *)dst = v3_inb(port);
+	*(uint8_t *)dst  = v3_inb(port);
     } else if (length == 2) {
 	*(uint16_t *)dst = v3_inw(port);
     } else if (length == 4) {

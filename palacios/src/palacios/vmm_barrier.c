@@ -22,7 +22,9 @@
 #include <palacios/vmm.h>
 #include <palacios/vm.h>
 
-int v3_init_barrier(struct v3_vm_info * vm_info) {
+int 
+v3_init_barrier(struct v3_vm_info * vm_info) 
+{
     struct v3_barrier * barrier = &(vm_info->barrier);
 
     memset(barrier, 0, sizeof(struct v3_barrier));
@@ -32,7 +34,9 @@ int v3_init_barrier(struct v3_vm_info * vm_info) {
     return 0;
 }
 
-int v3_deinit_barrier(struct v3_vm_info * vm_info) {
+int 
+v3_deinit_barrier(struct v3_vm_info * vm_info) 
+{
     struct v3_barrier * barrier = &(vm_info->barrier);
 
     v3_bitmap_deinit(&(barrier->cpu_map));
@@ -41,19 +45,20 @@ int v3_deinit_barrier(struct v3_vm_info * vm_info) {
     return 0;
 }
 
-int v3_raise_barrier_nowait(struct v3_vm_info * vm_info, struct v3_core_info * local_core) {
-    struct v3_barrier * barrier = &(vm_info->barrier);
-    addr_t flag;
-    int acquired = 0;
-
-    int local_vcpu = -1;
+int 
+v3_raise_barrier_nowait(struct v3_vm_info * vm_info, struct v3_core_info * local_core) 
+{
+    struct v3_barrier * barrier    = &(vm_info->barrier);
+    int                 acquired   = 0;
+    int                 local_vcpu = -1;
+    addr_t              flag       = 0;
     int i = 0;
 
     flag = v3_spin_lock_irqsave(barrier->lock);
 
     if (barrier->active == 0) {
 	barrier->active = 1;
-	acquired = 1;
+	acquired        = 1;
     }
 
     v3_spin_unlock_irqrestore(barrier->lock, flag);
@@ -88,9 +93,11 @@ int v3_raise_barrier_nowait(struct v3_vm_info * vm_info, struct v3_core_info * l
     return 0;
 }
 
-int v3_wait_for_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local_core) {
-    struct v3_barrier * barrier = &(vm_info->barrier);
-    int all_blocked = 0;
+int 
+v3_wait_for_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local_core) 
+{
+    struct v3_barrier * barrier     = &(vm_info->barrier);
+    int                 all_blocked = 0;
     int i = 0;
 
     if (barrier->active == 0) {
@@ -138,7 +145,9 @@ int v3_wait_for_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local
  *                     if the calling thread is not associated with a VM's core context
  */
 
-int v3_raise_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local_core) {
+int 
+v3_raise_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local_core) 
+{
     int ret = 0;
 
 
@@ -165,7 +174,9 @@ int v3_raise_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local_co
  *   TODO: Need someway to check that the barrier is active
  */
 
-int v3_lower_barrier(struct v3_vm_info * vm_info) {
+int 
+v3_lower_barrier(struct v3_vm_info * vm_info) 
+{
     struct v3_barrier * barrier = &(vm_info->barrier);
 
     
@@ -191,7 +202,9 @@ int v3_lower_barrier(struct v3_vm_info * vm_info) {
  *       it has reached the barrier and sit in a yield loop until the 
  *       barrier has been lowered
  */
-int v3_wait_at_barrier(struct v3_core_info * core) {
+int 
+v3_wait_at_barrier(struct v3_core_info * core) 
+{
     struct v3_barrier * barrier = &(core->vm_info->barrier);
 
     if (barrier->active == 0) {
@@ -206,12 +219,12 @@ int v3_wait_at_barrier(struct v3_core_info * core) {
     
     
     // set cpu bit in barrier bitmap
-    v3_bitmap_set(&(barrier->cpu_map), core->vcpu_id);
+    v3_bitmap_set(&(barrier->cpu_map),       core->vcpu_id);
     V3_Print("Core %d bit set as waiting\n", core->vcpu_id);
 
     // wait for cpu bit to clear
     while (v3_bitmap_check(&(barrier->cpu_map), core->vcpu_id)) {
-	v3_yield(core,-1);
+	v3_yield(core, -1);
     }
 
     return 0;

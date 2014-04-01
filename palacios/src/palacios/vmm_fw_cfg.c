@@ -25,8 +25,8 @@
 #include <palacios/vm.h>
 
 
-#define FW_CFG_CTL_PORT     0x510
-#define FW_CFG_DATA_PORT    0x511
+#define FW_CFG_CTL_PORT         0x510
+#define FW_CFG_DATA_PORT        0x511
 
 #define FW_CFG_SIGNATURE        0x00
 #define FW_CFG_ID               0x01
@@ -65,7 +65,7 @@
 #define FW_CFG_E820_TABLE      (FW_CFG_ARCH_LOCAL + 3)
 #define FW_CFG_HPET            (FW_CFG_ARCH_LOCAL + 4)
 
-#define FW_CFG_INVALID        0xffff
+#define FW_CFG_INVALID         0xffff
 
 
 
@@ -175,7 +175,7 @@ fw_cfg_data_read(struct v3_core_info * core, uint16_t port, void * src, uint_t l
     V3_ASSERT(length == 1);
 
     struct v3_fw_cfg_state * cfg_state = (struct v3_fw_cfg_state *)priv_data;
-    int arch = !!(cfg_state->cur_entry & FW_CFG_ARCH_LOCAL);
+    int                      arch      = !!(cfg_state->cur_entry & FW_CFG_ARCH_LOCAL);
     struct v3_fw_cfg_entry * cfg_entry = &cfg_state->entries[arch][cfg_state->cur_entry & FW_CFG_ENTRY_MASK];
     uint8_t ret;
 
@@ -199,7 +199,7 @@ fw_cfg_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t 
     V3_ASSERT(length == 1);
 
     struct v3_fw_cfg_state * cfg_state = (struct v3_fw_cfg_state *)priv_data;
-    int arch = !!(cfg_state->cur_entry & FW_CFG_ARCH_LOCAL);
+    int                      arch      = !!(cfg_state->cur_entry & FW_CFG_ARCH_LOCAL);
     struct v3_fw_cfg_entry * cfg_entry = &cfg_state->entries[arch][cfg_state->cur_entry & FW_CFG_ENTRY_MASK];
 
     if ( (cfg_state->cur_entry  &  FW_CFG_WRITE_CHANNEL) && 

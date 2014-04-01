@@ -31,7 +31,9 @@
 #endif
 
 
-static addr_t create_generic_pt_page() {
+static addr_t 
+create_generic_pt_page() 
+{
     void * page = 0;
     void *temp;
 
@@ -52,13 +54,17 @@ static addr_t create_generic_pt_page() {
 #include "vmm_direct_paging_32pae.h"
 #include "vmm_direct_paging_64.h"
 
-int v3_init_passthrough_pts(struct v3_core_info * core) {
+int 
+v3_init_passthrough_pts(struct v3_core_info * core) 
+{
     core->direct_map_pt = (addr_t)V3_PAddr((void *)create_generic_pt_page());
     return 0;
 }
 
 
-int v3_free_passthrough_pts(struct v3_core_info * core) {
+int 
+v3_free_passthrough_pts(struct v3_core_info * core) 
+{
     v3_cpu_mode_t mode = v3_get_vm_cpu_mode(core);
 
     // Delete the old direct map page tables
@@ -84,7 +90,9 @@ int v3_free_passthrough_pts(struct v3_core_info * core) {
 
 
 
-int v3_free_nested_pts(struct v3_core_info * core) {
+int 
+v3_free_nested_pts(struct v3_core_info * core) 
+{
     v3_cpu_mode_t mode = v3_get_host_cpu_mode(core);
 
     // Delete the old direct map page tables
@@ -109,7 +117,9 @@ int v3_free_nested_pts(struct v3_core_info * core) {
 
 
 
-int v3_reset_passthrough_pts(struct v3_core_info * core) {
+int 
+v3_reset_passthrough_pts(struct v3_core_info * core) 
+{
 
     v3_free_passthrough_pts(core);
 
@@ -121,7 +131,9 @@ int v3_reset_passthrough_pts(struct v3_core_info * core) {
 
 
 
-int v3_activate_passthrough_pt(struct v3_core_info * core) {
+int 
+v3_activate_passthrough_pt(struct v3_core_info * core) 
+{
     // For now... But we need to change this....
     // As soon as shadow paging becomes active the passthrough tables are hosed
     // So this will cause chaos if it is called at that time
@@ -132,7 +144,9 @@ int v3_activate_passthrough_pt(struct v3_core_info * core) {
 }
 
 
-int v3_handle_passthrough_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
+int 
+v3_handle_passthrough_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) 
+{
     v3_cpu_mode_t mode = v3_get_vm_cpu_mode(core);
 
     switch(mode) {
@@ -155,7 +169,9 @@ int v3_handle_passthrough_pagefault(struct v3_core_info * core, addr_t fault_add
 
 
 
-int v3_handle_nested_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
+int 
+v3_handle_nested_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) 
+{
     v3_cpu_mode_t mode = v3_get_host_cpu_mode();
 
 
@@ -180,7 +196,9 @@ int v3_handle_nested_pagefault(struct v3_core_info * core, addr_t fault_addr, pf
     return -1;
 }
 
-int v3_invalidate_passthrough_addr(struct v3_core_info * core, addr_t inv_addr) {
+int 
+v3_invalidate_passthrough_addr(struct v3_core_info * core, addr_t inv_addr) 
+{
     v3_cpu_mode_t mode = v3_get_vm_cpu_mode(core);
 
     switch(mode) {
@@ -202,7 +220,9 @@ int v3_invalidate_passthrough_addr(struct v3_core_info * core, addr_t inv_addr) 
 }
 
 
-int v3_invalidate_nested_addr(struct v3_core_info * core, addr_t inv_addr) {
+int 
+v3_invalidate_nested_addr(struct v3_core_info * core, addr_t inv_addr) 
+{
 
 #ifdef __V3_64BIT__
     v3_cpu_mode_t mode = LONG;

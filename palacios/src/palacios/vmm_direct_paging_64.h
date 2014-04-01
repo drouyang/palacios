@@ -29,13 +29,15 @@
 
 // Reference: AMD Software Developer Manual Vol.2 Ch.5 "Page Translation and Protection"
 
-static inline int handle_passthrough_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) {
-    pml4e64_t * pml      = NULL;
-    pdpe64_t * pdpe      = NULL;
-    pde64_t * pde        = NULL;
+static inline int 
+handle_passthrough_pagefault_64(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) 
+{
+    pml4e64_t   * pml    = NULL;
+    pdpe64_t    * pdpe   = NULL;
+    pde64_t     * pde    = NULL;
     pde64_2MB_t * pde2mb = NULL;
-    pte64_t * pte        = NULL;
-    addr_t host_addr     = 0;
+    pte64_t     * pte    = NULL;
+    addr_t        host_addr = 0;
 
     int pml_index  = PML4E64_INDEX(fault_addr);
     int pdpe_index = PDPE64_INDEX(fault_addr);
@@ -75,8 +77,8 @@ static inline int handle_passthrough_pagefault_64(struct v3_core_info * core, ad
 	pdpe = (pdpe64_t *)create_generic_pt_page();
    
 	// Set default PML Flags...
-	pml[pml_index].present = 1;
-        pml[pml_index].writable = 1;
+	pml[pml_index].present   = 1;
+        pml[pml_index].writable  = 1;
         pml[pml_index].user_page = 1;
 
 	pml[pml_index].pdp_base_addr = PAGE_BASE_ADDR_4KB((addr_t)V3_PAddr(pdpe));    
@@ -89,8 +91,8 @@ static inline int handle_passthrough_pagefault_64(struct v3_core_info * core, ad
 	pde = (pde64_t *)create_generic_pt_page();
 	
 	// Set default PDPE Flags...
-	pdpe[pdpe_index].present = 1;
-	pdpe[pdpe_index].writable = 1;
+	pdpe[pdpe_index].present   = 1;
+	pdpe[pdpe_index].writable  = 1;
 	pdpe[pdpe_index].user_page = 1;
 
 	pdpe[pdpe_index].pd_base_addr = PAGE_BASE_ADDR_4KB((addr_t)V3_PAddr(pde));    
@@ -153,8 +155,8 @@ static inline int handle_passthrough_pagefault_64(struct v3_core_info * core, ad
     if (pde[pde_index].present == 0) {
 	pte = (pte64_t *)create_generic_pt_page();
 	
-	pde[pde_index].present = 1;
-	pde[pde_index].writable = 1;
+	pde[pde_index].present   = 1;
+	pde[pde_index].writable  = 1;
 	pde[pde_index].user_page = 1;
 	
 	pde[pde_index].pt_base_addr = PAGE_BASE_ADDR_4KB((addr_t)V3_PAddr(pte));
@@ -205,21 +207,23 @@ static inline int handle_passthrough_pagefault_64(struct v3_core_info * core, ad
     return 0;
 }
 
-static inline int invalidate_addr_64(struct v3_core_info * core, addr_t inv_addr) {
-    pml4e64_t * pml = NULL;
-    pdpe64_t * pdpe = NULL;
-    pde64_t * pde = NULL;
-    pte64_t * pte = NULL;
+static inline int 
+invalidate_addr_64(struct v3_core_info * core, addr_t inv_addr) 
+{
+    pml4e64_t * pml  = NULL;
+    pdpe64_t  * pdpe = NULL;
+    pde64_t   * pde  = NULL;
+    pte64_t   * pte  = NULL;
 
 
     // TODO:
     // Call INVLPGA
 
     // clear the page table entry
-    int pml_index = PML4E64_INDEX(inv_addr);
+    int pml_index  = PML4E64_INDEX(inv_addr);
     int pdpe_index = PDPE64_INDEX(inv_addr);
-    int pde_index = PDE64_INDEX(inv_addr);
-    int pte_index = PTE64_INDEX(inv_addr);
+    int pde_index  = PDE64_INDEX(inv_addr);
+    int pte_index  = PTE64_INDEX(inv_addr);
 
     
     // Lookup the correct PDE address based on the PAGING MODE
@@ -238,8 +242,8 @@ static inline int invalidate_addr_64(struct v3_core_info * core, addr_t inv_addr
     if (pdpe[pdpe_index].present == 0) {
 	return 0;
     } else if (pdpe[pdpe_index].large_page == 1) { // 1GiB
-	pdpe[pdpe_index].present = 0;
-	pdpe[pdpe_index].writable = 0;
+	pdpe[pdpe_index].present   = 0;
+	pdpe[pdpe_index].writable  = 0;
 	pdpe[pdpe_index].user_page = 0;
 	return 0;
     }
@@ -249,16 +253,16 @@ static inline int invalidate_addr_64(struct v3_core_info * core, addr_t inv_addr
     if (pde[pde_index].present == 0) {
 	return 0;
     } else if (pde[pde_index].large_page == 1) { // 2MiB
-	pde[pde_index].present = 0;
-	pde[pde_index].writable = 0;
+	pde[pde_index].present   = 0;
+	pde[pde_index].writable  = 0;
 	pde[pde_index].user_page = 0;
 	return 0;
     }
 
     pte = V3_VAddr((void*)BASE_TO_PAGE_ADDR(pde[pde_index].pt_base_addr));
 
-    pte[pte_index].present = 0; // 4KiB
-    pte[pte_index].writable = 0;
+    pte[pte_index].present   = 0; // 4KiB
+    pte[pte_index].writable  = 0;
     pte[pte_index].user_page = 0;
 
     return 0;

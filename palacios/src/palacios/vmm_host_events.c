@@ -21,23 +21,27 @@
 #include <palacios/vmm_host_events.h>
 #include <palacios/vm.h>
 
-int v3_init_host_events(struct v3_vm_info * vm) {
+int 
+v3_init_host_events(struct v3_vm_info * vm) 
+{
     struct v3_host_events * host_evts = &(vm->host_event_hooks);
 
     INIT_LIST_HEAD(&(host_evts->keyboard_events));
-    INIT_LIST_HEAD(&(host_evts->mouse_events));
-    INIT_LIST_HEAD(&(host_evts->timer_events));
-    INIT_LIST_HEAD(&(host_evts->serial_events));
-    INIT_LIST_HEAD(&(host_evts->console_events));
-    INIT_LIST_HEAD(&(host_evts->debug_events));
+    INIT_LIST_HEAD(&(host_evts->mouse_events   ));
+    INIT_LIST_HEAD(&(host_evts->timer_events   ));
+    INIT_LIST_HEAD(&(host_evts->serial_events  ));
+    INIT_LIST_HEAD(&(host_evts->console_events ));
+    INIT_LIST_HEAD(&(host_evts->debug_events   ));
 
     return 0;
 }
 
-int v3_deinit_host_events(struct v3_vm_info * vm) {
-    struct v3_host_events * host_evts = &(vm->host_event_hooks);
-    struct v3_host_event_hook * hook = NULL;
-    struct v3_host_event_hook * tmp = NULL;
+int 
+v3_deinit_host_events(struct v3_vm_info * vm)
+{
+    struct v3_host_events     * host_evts = &(vm->host_event_hooks);
+    struct v3_host_event_hook * hook      = NULL;
+    struct v3_host_event_hook * tmp       = NULL;
 
     list_for_each_entry_safe(hook, tmp, &(host_evts->keyboard_events), link) {
 	list_del(&(hook->link));
@@ -61,7 +65,7 @@ int v3_deinit_host_events(struct v3_vm_info * vm) {
 	V3_Free(hook);
     }
 
-
+ 
     list_for_each_entry_safe(hook, tmp, &(host_evts->console_events), link) {
 	list_del(&(hook->link));
 	V3_Free(hook);
@@ -77,21 +81,24 @@ int v3_deinit_host_events(struct v3_vm_info * vm) {
 }
 
 
-int v3_hook_host_event(struct v3_vm_info * vm, 
-		       v3_host_evt_type_t event_type, 
-		       union v3_host_event_handler cb, 
-		       void * private_data) {
+int 
+v3_hook_host_event(struct v3_vm_info           * vm, 
+		   v3_host_evt_type_t            event_type, 
+		   union v3_host_event_handler   cb, 
+		   void                        * private_data) 
+{
   
-    struct v3_host_events * host_evts = &(vm->host_event_hooks);
-    struct v3_host_event_hook * hook = NULL;
+    struct v3_host_events     * host_evts = &(vm->host_event_hooks);
+    struct v3_host_event_hook * hook      = NULL;
 
     hook = (struct v3_host_event_hook *)V3_Malloc(sizeof(struct v3_host_event_hook));
+
     if (hook == NULL) {
 	PrintError("Could not allocate event hook\n");
 	return -1;
     }
 
-    hook->cb = cb;
+    hook->cb           = cb;
     hook->private_data = private_data;
 
     switch (event_type)  {
@@ -119,10 +126,12 @@ int v3_hook_host_event(struct v3_vm_info * vm,
 }
 
 
-int v3_deliver_keyboard_event(struct v3_vm_info * vm, 
-			      struct v3_keyboard_event * evt) {
-    struct v3_host_events * host_evts = NULL;
-    struct v3_host_event_hook * hook = NULL;
+int 
+v3_deliver_keyboard_event(struct v3_vm_info        * vm, 
+			  struct v3_keyboard_event * evt) 
+{
+    struct v3_host_events     * host_evts = NULL;
+    struct v3_host_event_hook * hook      = NULL;
 
 
     host_evts = &(vm->host_event_hooks);
@@ -142,10 +151,12 @@ int v3_deliver_keyboard_event(struct v3_vm_info * vm,
 }
 
 
-int v3_deliver_mouse_event(struct v3_vm_info * vm, 
-			   struct v3_mouse_event * evt) {
-    struct v3_host_events * host_evts = NULL;
-    struct v3_host_event_hook * hook = NULL;
+int 
+v3_deliver_mouse_event(struct v3_vm_info     * vm, 
+		       struct v3_mouse_event * evt) 
+{
+    struct v3_host_events     * host_evts = NULL;
+    struct v3_host_event_hook * hook      = NULL;
 
 
     host_evts = &(vm->host_event_hooks);
@@ -165,10 +176,12 @@ int v3_deliver_mouse_event(struct v3_vm_info * vm,
 }
 
 
-int v3_deliver_timer_event(struct v3_vm_info * vm, 
-			   struct v3_timer_event * evt) {
-    struct v3_host_events * host_evts = NULL;
-    struct v3_host_event_hook * hook = NULL;
+int
+v3_deliver_timer_event(struct v3_vm_info     * vm, 
+		       struct v3_timer_event * evt) 
+{
+    struct v3_host_events     * host_evts = NULL;
+    struct v3_host_event_hook * hook      = NULL;
 
 
     host_evts = &(vm->host_event_hooks);
@@ -187,10 +200,12 @@ int v3_deliver_timer_event(struct v3_vm_info * vm,
     return 0;
 }
 
-int v3_deliver_serial_event(struct v3_vm_info * vm, 
-			    struct v3_serial_event * evt) {
-    struct v3_host_events * host_evts = NULL;
-    struct v3_host_event_hook * hook = NULL;
+int 
+v3_deliver_serial_event(struct v3_vm_info      * vm, 
+			struct v3_serial_event * evt) 
+{
+    struct v3_host_events     * host_evts = NULL;
+    struct v3_host_event_hook * hook      = NULL;
 
 
     host_evts = &(vm->host_event_hooks);
@@ -211,10 +226,12 @@ int v3_deliver_serial_event(struct v3_vm_info * vm,
 
 
 
-int v3_deliver_console_event(struct v3_vm_info * vm, 
-			     struct v3_console_event * evt) {
-    struct v3_host_events * host_evts = NULL;
-    struct v3_host_event_hook * hook = NULL;
+int 
+v3_deliver_console_event(struct v3_vm_info       * vm, 
+			 struct v3_console_event * evt) 
+{
+    struct v3_host_events     * host_evts = NULL;
+    struct v3_host_event_hook * hook      = NULL;
 
 
     host_evts = &(vm->host_event_hooks);
@@ -235,10 +252,12 @@ int v3_deliver_console_event(struct v3_vm_info * vm,
 
 
 
-int v3_deliver_debug_event(struct v3_vm_info * vm, 
-			   struct v3_debug_event * evt) {
-    struct v3_host_events * host_evts = NULL;
-    struct v3_host_event_hook * hook = NULL;
+int 
+v3_deliver_debug_event(struct v3_vm_info     * vm, 
+		       struct v3_debug_event * evt) 
+{
+    struct v3_host_events     * host_evts = NULL;
+    struct v3_host_event_hook * hook      = NULL;
 
 
     host_evts = &(vm->host_event_hooks);

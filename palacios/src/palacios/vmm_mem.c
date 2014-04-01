@@ -32,9 +32,11 @@
 
 
 
-struct v3_mem_region * v3_get_base_region(struct v3_vm_info * vm, addr_t gpa) {
-    struct v3_mem_map * map = &(vm->mem_map);
-    uint32_t block_index = gpa / MEM_BLOCK_SIZE_BYTES;
+struct v3_mem_region * 
+v3_get_base_region(struct v3_vm_info * vm, addr_t gpa) 
+{
+    struct v3_mem_map * map         = &(vm->mem_map);
+    uint32_t            block_index = gpa / MEM_BLOCK_SIZE_BYTES;
 
     if (gpa > (map->num_base_blocks * MEM_BLOCK_SIZE_BYTES) ||
 	(block_index >= map->num_base_blocks)) {
@@ -51,7 +53,9 @@ struct v3_mem_region * v3_get_base_region(struct v3_vm_info * vm, addr_t gpa) {
 
 
 
-static int mem_offset_hypercall(struct v3_core_info * core, uint_t hcall_id, void * private_data) {
+static int 
+mem_offset_hypercall(struct v3_core_info * core, uint_t hcall_id, void * private_data) 
+{
 
     /*
       PrintDebug("V3Vee: Memory offset hypercall (offset=%p)\n", 
@@ -63,8 +67,10 @@ static int mem_offset_hypercall(struct v3_core_info * core, uint_t hcall_id, voi
     return 0;
 }
 
-static int unhandled_err(struct v3_core_info * core, addr_t guest_va, addr_t guest_pa, 
-			 struct v3_mem_region * reg, pf_error_t access_info) {
+static int 
+unhandled_err(struct v3_core_info * core, addr_t guest_va, addr_t guest_pa, 
+	      struct v3_mem_region * reg, pf_error_t access_info) 
+{
 
     PrintError("Unhandled memory access error (gpa=%p, gva=%p, error_code=%d)\n",
 	       (void *)guest_pa, (void *)guest_va, *(uint32_t *)&access_info);
@@ -81,18 +87,20 @@ static int unhandled_err(struct v3_core_info * core, addr_t guest_va, addr_t gue
    but we cache the NUMA nodes in the region descriptor after this so it should be fine.
    All subsequent lookups will go through that.
 */
-static int gpa_to_node_from_cfg(struct v3_vm_info * vm, addr_t gpa) {
-    v3_cfg_tree_t * layout_cfg = v3_cfg_subtree(vm->cfg_data->cfg, "mem_layout");
+static int 
+gpa_to_node_from_cfg(struct v3_vm_info * vm, addr_t gpa) 
+{
+    v3_cfg_tree_t * layout_cfg  = v3_cfg_subtree(vm->cfg_data->cfg, "mem_layout");
     v3_cfg_tree_t * region_desc = v3_cfg_subtree(layout_cfg, "region");
 
     while (region_desc) {
 	char * start_addr_str = v3_cfg_val(region_desc, "start_addr");
-	char * end_addr_str = v3_cfg_val(region_desc, "end_addr");
-	char * node_id_str = v3_cfg_val(region_desc, "node");
+	char * end_addr_str   = v3_cfg_val(region_desc, "end_addr");
+	char * node_id_str    = v3_cfg_val(region_desc, "node");
 
 	addr_t start_addr = 0;
-	addr_t end_addr = 0;
-	int node_id = 0;
+	addr_t end_addr   = 0;
+	int    node_id    = 0;
 	
 	if ((!start_addr_str) || (!end_addr_str) || (!node_id_str)) {
 	    PrintError("Invalid memory layout in configuration\n");
@@ -100,8 +108,8 @@ static int gpa_to_node_from_cfg(struct v3_vm_info * vm, addr_t gpa) {
 	}
 	
 	start_addr = atox(start_addr_str);
-	end_addr = atox(end_addr_str);
-	node_id = atoi(node_id_str);
+	end_addr   = atox(end_addr_str);
+	node_id    = atoi(node_id_str);
 
 	if ((gpa >= start_addr) && (gpa < end_addr)) {
 	    return node_id;
@@ -115,43 +123,47 @@ static int gpa_to_node_from_cfg(struct v3_vm_info * vm, addr_t gpa) {
 
 
 
-int v3_mem_write_gpa(struct v3_core_info * core, addr_t gpa, uint8_t * src, uint64_t len) {
+int 
+v3_mem_write_gpa(struct v3_core_info * core, addr_t gpa, uint8_t * src, uint64_t len) 
+{
 
     return -1;
 }
 
-int v3_mem_read_gpa(struct v3_core_info * core, addr_t gpa, uint8_t * dst, uint64_t len) {
+int 
+v3_mem_read_gpa(struct v3_core_info * core, addr_t gpa, uint8_t * dst, uint64_t len) 
+{
     return -1;
 }
 
 
-int v3_init_mem_map(struct v3_vm_info * vm) {
-    struct v3_mem_map * map = &(vm->mem_map);
-    map->num_base_blocks = (vm->mem_size / MEM_BLOCK_SIZE_BYTES) + \
-	((vm->mem_size % MEM_BLOCK_SIZE_BYTES) > 0);
-
-    addr_t block_pages = MEM_BLOCK_SIZE_BYTES >> 12;
-
+int 
+v3_init_mem_map(struct v3_vm_info * vm) 
+{
+    struct v3_mem_map * map         = &(vm->mem_map);
+    addr_t              block_pages = MEM_BLOCK_SIZE_BYTES >> 12;
     int i = 0;
 
-    map->mem_regions.rb_node = NULL;
+    map->mem_regions.rb_node = NULL;    
+    map->num_base_blocks     = (vm->mem_size / MEM_BLOCK_SIZE_BYTES) + \
+	                       ((vm->mem_size % MEM_BLOCK_SIZE_BYTES) > 0);
 
-    
-    map->base_regions = V3_Malloc(sizeof(struct v3_mem_region) * map->num_base_blocks);
+    map->base_regions        = V3_Malloc(sizeof(struct v3_mem_region) * map->num_base_blocks);
+
     memset(map->base_regions, 0, sizeof(struct v3_mem_region) * map->num_base_blocks);
 	
     V3_Print("Initializing memory map with %d mem blocks\n", map->num_base_blocks);
 
     for (i = 0; i < map->num_base_blocks; i++) {
-	struct v3_mem_region * region = &(map->base_regions[i]);
-	int node_id = -1;
+	struct v3_mem_region * region  = &(map->base_regions[i]);
+	int                    node_id = -1;
 
 	// There is an underlying region that contains all of the guest memory
 	// PrintDebug("Mapping %d pages of memory (%u bytes)\n", (int)mem_pages, (uint_t)core->mem_size);
 	
 	// 2MB page alignment needed for 2MB hardware nested paging
 	region->guest_start = MEM_BLOCK_SIZE_BYTES * i;
-	region->guest_end = region->guest_start + MEM_BLOCK_SIZE_BYTES;
+	region->guest_end   = region->guest_start + MEM_BLOCK_SIZE_BYTES;
 
 	// We assume that the xml config was smart enough to align the layout to the block size
 	// If they didn't we're going to ignore their settings 
@@ -174,13 +186,13 @@ int v3_init_mem_map(struct v3_vm_info * vm) {
 	// Clear the memory...
 	memset(V3_VAddr((void *)region->host_addr), 0, MEM_BLOCK_SIZE_BYTES);
 	
-	region->flags.read = 1;
-	region->flags.write = 1;
-	region->flags.exec = 1;
-	region->flags.base = 1;
+	region->flags.read    = 1;
+	region->flags.write   = 1;
+	region->flags.exec    = 1;
+	region->flags.base    = 1;
 	region->flags.alloced = 1;
 	
-	region->unhandled = unhandled_err;
+	region->unhandled     = unhandled_err;
     }
 
 
@@ -190,19 +202,21 @@ int v3_init_mem_map(struct v3_vm_info * vm) {
 }
 
 
-void v3_delete_mem_map(struct v3_vm_info * vm) {
-    struct v3_mem_map * map = &(vm->mem_map);
-    struct rb_node * node = v3_rb_first(&(map->mem_regions));
-    struct v3_mem_region * reg = NULL;
-    struct rb_node * tmp_node = NULL;
+void 
+v3_delete_mem_map(struct v3_vm_info * vm) 
+{
+    struct v3_mem_map    * map      = &(vm->mem_map);
+    struct rb_node       * node     = v3_rb_first(&(map->mem_regions));
+    struct v3_mem_region * reg      = NULL;
+    struct rb_node       * tmp_node = NULL;
     addr_t block_pages = MEM_BLOCK_SIZE_BYTES >> 12;
-    int i = 0;
+    int    i = 0;
     
 
     while (node) {
-	reg = rb_entry(node, struct v3_mem_region, tree_node);
+	reg      = rb_entry(node, struct v3_mem_region, tree_node);
 	tmp_node = node;
-	node = v3_rb_next(node);
+	node     = v3_rb_next(node);
 
 	v3_delete_mem_region(vm, reg);
     }
@@ -217,8 +231,10 @@ void v3_delete_mem_map(struct v3_vm_info * vm) {
 }
 
 
-struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t core_id, uint16_t flags, 
-					       addr_t guest_addr_start, addr_t guest_addr_end) {
+struct v3_mem_region * 
+v3_create_mem_region(struct v3_vm_info * vm, uint16_t core_id, uint16_t flags, 
+		     addr_t guest_addr_start, addr_t guest_addr_end) 
+{
     struct v3_mem_region * entry = NULL;
 
 
@@ -242,10 +258,10 @@ struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t cor
     memset(entry, 0, sizeof(struct v3_mem_region));
 
     entry->guest_start = guest_addr_start;
-    entry->guest_end = guest_addr_end;
+    entry->guest_end   = guest_addr_end;
     entry->flags.value = flags;
-    entry->core_id = core_id;
-    entry->unhandled = unhandled_err;
+    entry->core_id     = core_id;
+    entry->unhandled   = unhandled_err;
 
     return entry;
 }
@@ -253,15 +269,18 @@ struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t cor
 
 
 
-int v3_add_shadow_mem( struct v3_vm_info * vm, uint16_t core_id,
-		       uint16_t             mem_flags, 
-		       addr_t               guest_addr_start,
-		       addr_t               guest_addr_end,
-		       addr_t               host_addr)
+int 
+v3_add_shadow_mem( struct v3_vm_info * vm, 
+		   uint16_t            core_id,
+		   uint16_t            mem_flags, 
+		   addr_t              guest_addr_start,
+		   addr_t              guest_addr_end,
+		   addr_t              host_addr)
 {
     struct v3_mem_region * entry = NULL;
 
-    entry = v3_create_mem_region(vm, core_id, mem_flags | V3_MEM_ALLOC, 
+    entry = v3_create_mem_region(vm, core_id, 
+				 mem_flags | V3_MEM_ALLOC, 
 				 guest_addr_start, 
 				 guest_addr_end);
 
@@ -277,15 +296,16 @@ int v3_add_shadow_mem( struct v3_vm_info * vm, uint16_t core_id,
 
 
 
-static inline 
-struct v3_mem_region * __insert_mem_region(struct v3_vm_info * vm, 
-					   struct v3_mem_region * region) {
-    struct rb_node ** p = &(vm->mem_map.mem_regions.rb_node);
-    struct rb_node * parent = NULL;
-    struct v3_mem_region * tmp_region;
+static inline struct v3_mem_region * 
+__insert_mem_region(struct v3_vm_info    * vm, 
+		    struct v3_mem_region * region) 
+{
+    struct rb_node      ** p          = &(vm->mem_map.mem_regions.rb_node);
+    struct rb_node       * parent     = NULL;
+    struct v3_mem_region * tmp_region = NULL;
 
     while (*p) {
-	parent = *p;
+	parent     = *p;
 	tmp_region = rb_entry(parent, struct v3_mem_region, tree_node);
 
 	if (region->guest_end <= tmp_region->guest_start) {
@@ -314,8 +334,10 @@ struct v3_mem_region * __insert_mem_region(struct v3_vm_info * vm,
 
 
 
-int v3_insert_mem_region(struct v3_vm_info * vm, struct v3_mem_region * region) {
-    struct v3_mem_region * ret;
+int 
+v3_insert_mem_region(struct v3_vm_info * vm, struct v3_mem_region * region) 
+{
+    struct v3_mem_region * ret = NULL;
     int i = 0;
 
     if ((ret = __insert_mem_region(vm, region))) {
@@ -365,8 +387,10 @@ int v3_insert_mem_region(struct v3_vm_info * vm, struct v3_mem_region * region) 
 
 
 
-struct v3_mem_region * v3_get_mem_region(struct v3_vm_info * vm, uint16_t core_id, addr_t guest_addr) {
-    struct rb_node * n = vm->mem_map.mem_regions.rb_node;
+struct v3_mem_region * 
+v3_get_mem_region(struct v3_vm_info * vm, uint16_t core_id, addr_t guest_addr) 
+{
+    struct rb_node       * n   = vm->mem_map.mem_regions.rb_node;
     struct v3_mem_region * reg = NULL;
 
     while (n) {
@@ -408,9 +432,11 @@ struct v3_mem_region * v3_get_mem_region(struct v3_vm_info * vm, uint16_t core_i
  * If the address falls outside a sub region, the next sub region is returned
  * NOTE that we have to be careful about core_ids here...
  */
-static struct v3_mem_region * get_next_mem_region( struct v3_vm_info * vm, uint16_t core_id, addr_t guest_addr) {
-    struct rb_node * n = vm->mem_map.mem_regions.rb_node;
-    struct v3_mem_region * reg = NULL;
+static struct v3_mem_region * 
+get_next_mem_region( struct v3_vm_info * vm, uint16_t core_id, addr_t guest_addr) 
+{
+    struct rb_node       * n      = vm->mem_map.mem_regions.rb_node;
+    struct v3_mem_region * reg    = NULL;
     struct v3_mem_region * parent = NULL;
 
     if (n == NULL) {
@@ -480,8 +506,10 @@ static struct v3_mem_region * get_next_mem_region( struct v3_vm_info * vm, uint1
  * this can be either the base region or a sub region. 
  * IF there are multiple regions in the range then it returns NULL
  */
-static struct v3_mem_region * get_overlapping_region(struct v3_vm_info * vm, uint16_t core_id, 
-						     addr_t start_gpa, addr_t end_gpa) {
+static struct v3_mem_region * 
+get_overlapping_region(struct v3_vm_info * vm, uint16_t core_id, 
+		       addr_t start_gpa, addr_t end_gpa) 
+{
     struct v3_mem_region * start_region = v3_get_mem_region(vm, core_id, start_gpa);
 
     if (start_region == NULL) {
@@ -520,7 +548,9 @@ static struct v3_mem_region * get_overlapping_region(struct v3_vm_info * vm, uin
 
 
 
-void v3_delete_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg) {
+void 
+v3_delete_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg) 
+{
     int i = 0;
 
     if (reg == NULL) {
@@ -529,8 +559,6 @@ void v3_delete_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg) {
 
 
     v3_rb_erase(&(reg->tree_node), &(vm->mem_map.mem_regions));
-
-
 
     // If the guest isn't running then there shouldn't be anything to invalidate. 
     // Page tables should __always__ be created on demand during execution
@@ -581,17 +609,20 @@ void v3_delete_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg) {
 }
 
 // Determine if a given address can be handled by a large page of the requested size
-uint32_t v3_get_max_page_size(struct v3_core_info * core, addr_t page_addr, v3_cpu_mode_t mode) {
-    addr_t pg_start = 0;
-    addr_t pg_end = 0; 
-    uint32_t page_size = PAGE_SIZE_4KB;
+uint32_t 
+v3_get_max_page_size(struct v3_core_info * core, addr_t page_addr, v3_cpu_mode_t mode) 
+{
+    addr_t   pg_start    = 0;
+    addr_t   pg_end      = 0; 
+    uint32_t page_size   = PAGE_SIZE_4KB;
     struct v3_mem_region * reg = NULL;
     
     switch (mode) {
         case PROTECTED:
 	    if (core->use_large_pages == 1) {
+
 		pg_start = PAGE_ADDR_4MB(page_addr);
-		pg_end = (pg_start + PAGE_SIZE_4MB);
+		pg_end   = (pg_start + PAGE_SIZE_4MB);
 
 		reg = get_overlapping_region(core->vm_info, core->vcpu_id, pg_start, pg_end); 
 
@@ -603,7 +634,7 @@ uint32_t v3_get_max_page_size(struct v3_core_info * core, addr_t page_addr, v3_c
         case PROTECTED_PAE:
 	    if (core->use_large_pages == 1) {
 		pg_start = PAGE_ADDR_2MB(page_addr);
-		pg_end = (pg_start + PAGE_SIZE_2MB);
+		pg_end   = (pg_start + PAGE_SIZE_2MB);
 
 		reg = get_overlapping_region(core->vm_info, core->vcpu_id, pg_start, pg_end);
 
@@ -617,7 +648,7 @@ uint32_t v3_get_max_page_size(struct v3_core_info * core, addr_t page_addr, v3_c
         case LONG_16_COMPAT:
 	    if (core->use_giant_pages == 1) {
 		pg_start = PAGE_ADDR_1GB(page_addr);
-		pg_end = (pg_start + PAGE_SIZE_1GB);
+		pg_end   = (pg_start + PAGE_SIZE_1GB);
 		
 		reg = get_overlapping_region(core->vm_info, core->vcpu_id, pg_start, pg_end);
 		
@@ -629,7 +660,7 @@ uint32_t v3_get_max_page_size(struct v3_core_info * core, addr_t page_addr, v3_c
 
 	    if (core->use_large_pages == 1) {
 		pg_start = PAGE_ADDR_2MB(page_addr);
-		pg_end = (pg_start + PAGE_SIZE_2MB);
+		pg_end   = (pg_start + PAGE_SIZE_2MB);
 
 		reg = get_overlapping_region(core->vm_info, core->vcpu_id, pg_start, pg_end);
 		
@@ -648,10 +679,12 @@ uint32_t v3_get_max_page_size(struct v3_core_info * core, addr_t page_addr, v3_c
 
 
 
-void v3_print_mem_map(struct v3_vm_info * vm) {
-    struct v3_mem_map * map = &(vm->mem_map);
-    struct rb_node * node = v3_rb_first(&(map->mem_regions));
-    struct v3_mem_region * reg = NULL;
+void 
+v3_print_mem_map(struct v3_vm_info * vm) 
+{
+    struct v3_mem_map    * map  = &(vm->mem_map);
+    struct rb_node       * node = v3_rb_first(&(map->mem_regions));
+    struct v3_mem_region * reg  = NULL;
     int i = 0;
 
     V3_Print("Memory Layout (all cores):\n");
@@ -676,9 +709,9 @@ void v3_print_mem_map(struct v3_vm_info * vm) {
 	reg = rb_entry(node, struct v3_mem_region, tree_node);
 
 	V3_Print("%d:  0x%p - 0x%p -> 0x%p\n", i, 
-		   (void *)(reg->guest_start), 
-		   (void *)(reg->guest_end - 1), 
-		   (void *)(reg->host_addr));
+		 (void *)(reg->guest_start), 
+		 (void *)(reg->guest_end - 1), 
+		 (void *)(reg->host_addr));
 
 	V3_Print("\t(flags=0x%x) (core=0x%x) (unhandled = 0x%p)\n", 
 		 reg->flags.value, 
@@ -693,7 +726,9 @@ void v3_print_mem_map(struct v3_vm_info * vm) {
 
 #ifdef V3_CONFIG_CHECKPOINT
 #include <palacios/vmm_checkpoint.h>
-int v3_mem_save(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
+int 
+v3_mem_save(struct v3_vm_info * vm, struct v3_chkpt * chkpt) 
+{
 
 
 
@@ -701,7 +736,9 @@ int v3_mem_save(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
 }
 
 
-int v3_mem_load(struct v3_vm_info * vm, struct v3_chkpt * chkpt) {
+int 
+v3_mem_load(struct v3_vm_info * vm, struct v3_chkpt * chkpt) 
+{
 
 
     return 0;

@@ -28,17 +28,19 @@
 #include <palacios/vm.h>
 
 
-static inline int handle_passthrough_pagefault_32pae(struct v3_core_info * core, 
-						     addr_t fault_addr, 
-						     pf_error_t error_code) {
+static inline int 
+handle_passthrough_pagefault_32pae(struct v3_core_info * core, 
+				   addr_t                fault_addr, 
+				   pf_error_t            error_code) 
+{
     pdpe32pae_t * pdpe = NULL;
-    pde32pae_t * pde = NULL;
-    pte32pae_t * pte = NULL;
-    addr_t host_addr = 0;
+    pde32pae_t  * pde  = NULL;
+    pte32pae_t  * pte  = NULL;
+    addr_t        host_addr = 0;
 
     int pdpe_index = PDPE32PAE_INDEX(fault_addr);
-    int pde_index = PDE32PAE_INDEX(fault_addr);
-    int pte_index = PTE32PAE_INDEX(fault_addr);
+    int pde_index  = PDE32PAE_INDEX(fault_addr);
+    int pte_index  = PTE32PAE_INDEX(fault_addr);
 
     struct v3_mem_region * region =  v3_get_mem_region(core->vm_info, core->vcpu_id, fault_addr);
   
@@ -71,8 +73,8 @@ static inline int handle_passthrough_pagefault_32pae(struct v3_core_info * core,
     if (pde[pde_index].present == 0) {
 	pte = (pte32pae_t *)create_generic_pt_page();
 
-	pde[pde_index].present = 1;
-	pde[pde_index].writable = 1;
+	pde[pde_index].present   = 1;
+	pde[pde_index].writable  = 1;
 	pde[pde_index].user_page = 1;
 
 	pde[pde_index].pt_base_addr = PAGE_BASE_ADDR((addr_t)V3_PAddr(pte));
@@ -119,19 +121,21 @@ static inline int handle_passthrough_pagefault_32pae(struct v3_core_info * core,
 }
 
 
-static inline int invalidate_addr_32pae(struct v3_core_info * core, addr_t inv_addr) {
+static inline int 
+invalidate_addr_32pae(struct v3_core_info * core, addr_t inv_addr) 
+{
     pdpe32pae_t * pdpe = NULL;
-    pde32pae_t * pde = NULL;
-    pte32pae_t * pte = NULL;
-
+    pde32pae_t  * pde  = NULL;
+    pte32pae_t  * pte  = NULL;
+ 
 
     // TODO:
     // Call INVLPGA
 
     // clear the page table entry
     int pdpe_index = PDPE32PAE_INDEX(inv_addr);
-    int pde_index = PDE32PAE_INDEX(inv_addr);
-    int pte_index = PTE32PAE_INDEX(inv_addr);
+    int pde_index  = PDE32PAE_INDEX(inv_addr);
+    int pte_index  = PTE32PAE_INDEX(inv_addr);
 
     
     // Lookup the correct PDE address based on the PAGING MODE
