@@ -395,7 +395,7 @@ static int set_size(struct virtio_balloon_state * virtio, addr_t size) {
 
 static int handle_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) {
     struct virtio_balloon_state * virtio = (struct virtio_balloon_state *)priv_data;
-    int tgt_size = info->vm_regs.rcx;
+    int tgt_size = core->vm_regs.rcx;
 
     
     return set_size(virtio, tgt_size);
@@ -406,8 +406,8 @@ static int handle_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv
 static int handle_query_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) {
     struct virtio_balloon_state * virtio = (struct virtio_balloon_state *)priv_data;
     
-    info->vm_regs.rcx = virtio->balloon_cfg.requested_pages;
-    info->vm_regs.rdx = virtio->balloon_cfg.allocated_pages;
+    core->vm_regs.rcx = virtio->balloon_cfg.requested_pages;
+    core->vm_regs.rdx = virtio->balloon_cfg.allocated_pages;
 
     
     return 0;
