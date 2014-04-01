@@ -307,8 +307,6 @@ config DEBUG_VNET
 
 endmenu
 
-source "palacios/src/gears/Kconfig"
-
 menu "Debug configuration"
 
 ## Is unwind information useful

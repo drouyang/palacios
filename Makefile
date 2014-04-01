@@ -438,7 +438,6 @@ devices-y       := palacios/src/devices/
 interfaces-y    := palacios/src/interfaces/
 extensions-y    := palacios/src/extensions/
 vnet-y          := palacios/src/vnet/
-gears-y         := palacios/src/gears/
 modules-y       := modules/
 
 
@@ -535,7 +534,7 @@ export	INSTALL_PATH ?= /build
 
 
 palacios-dirs	:= $(patsubst %/,%,$(filter %/,  \
-		     $(core-y) $(devices-y) $(interfaces-y) $(extensions-y) $(vnet-y) $(gears-y) $(libs-y)) $(modules-y))
+		     $(core-y) $(devices-y) $(interfaces-y) $(extensions-y) $(vnet-y) $(libs-y)) $(modules-y))
 
 
 
@@ -546,7 +545,7 @@ palacios-dirs	:= $(patsubst %/,%,$(filter %/,  \
 
 palacios-cleandirs := $(sort $(palacios-dirs) $(patsubst %/,%,$(filter %/, \
 		     	$(core-n) $(core-) $(devices-n) $(devices-) \
-			$(interfaces-n) $(interfaces-) $(extensions-n) $(extensions-) $(vnet-n) $(vnet-) $(gears-n) $(gears-) $(modules-n) $(modules-))))
+			$(interfaces-n) $(interfaces-) $(extensions-n) $(extensions-) $(vnet-n) $(vnet-) $(modules-n) $(modules-))))
 
 
 
@@ -556,7 +555,6 @@ interfaces-y    := $(patsubst %/, %/built-in.o, $(interfaces-y))
 extensions-y    := $(patsubst %/, %/built-in.o, $(extensions-y))
 libs-y		:= $(patsubst %/, %/built-in.o, $(libs-y))
 vnet-y          := $(patsubst %/, %/built-in.o, $(vnet-y))
-gears-y         := $(patsubst %/, %/built-in.o, $(gears-y))
 modules-y       := $(patsubst %/, %/built-in.o, $(modules-y))
 #lnxmod-y        := $(patsubst %/, %/built-in.o, $(lnxmod-y))
 
@@ -582,7 +580,7 @@ modules-y       := $(patsubst %/, %/built-in.o, $(modules-y))
 
 
 
-palacios := $(core-y) $(devices-y) $(interfaces-y) $(extensions-y) $(vnet-y) $(gears-y) $(libs-y) $(modules-y)
+palacios := $(core-y) $(devices-y) $(interfaces-y) $(extensions-y) $(vnet-y) $(libs-y) $(modules-y)
 
 
 # Rule to link palacios - also used during CONFIG_CONFIGKALLSYMS
