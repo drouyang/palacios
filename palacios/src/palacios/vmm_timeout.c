@@ -24,10 +24,12 @@
 
 
 
-int v3_add_core_timeout(struct v3_core_info * core, uint64_t cycles,
-			int (*callback)(struct v3_core_info * core, 
-					void * private_data),
-			void * private_data) {
+int 
+v3_add_core_timeout(struct v3_core_info * core, 
+		    uint64_t              cycles,
+		    int (*callback)(struct v3_core_info * core, void * private_data),
+		    void                * private_data) 
+{
     struct v3_core_timeouts * timeouts = &(core->timeouts);
 
     if (timeouts->timeout_active) {
@@ -35,17 +37,19 @@ int v3_add_core_timeout(struct v3_core_info * core, uint64_t cycles,
 	return -1;
     }
 
-    timeouts->callback = callback;
-    timeouts->private_data = private_data;
+    timeouts->callback       = callback;
+    timeouts->private_data   = private_data;
     timeouts->timeout_active = 1;
-    timeouts->next_timeout = cycles;
+    timeouts->next_timeout   = cycles;
 
     return 0;
 }
 
 
 
-int v3_handle_timeouts(struct v3_core_info * core, uint64_t guest_cycles) {
+int 
+v3_handle_timeouts(struct v3_core_info * core, uint64_t guest_cycles) 
+{
     struct v3_core_timeouts * timeouts = &(core->timeouts);
 
     /*
@@ -54,7 +58,7 @@ int v3_handle_timeouts(struct v3_core_info * core, uint64_t guest_cycles) {
     */
 
     if (guest_cycles >= timeouts->next_timeout) {
-	timeouts->next_timeout = 0;
+	timeouts->next_timeout   = 0;
 	timeouts->timeout_active = 0;
 
 	if (timeouts->callback) {

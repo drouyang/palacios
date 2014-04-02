@@ -32,32 +32,40 @@
 
 
 /* Same as SVM */
-static int update_map(struct v3_vm_info * vm, uint16_t port, int hook_read, int hook_write) {
+static int 
+update_map(struct v3_vm_info * vm, 
+	   uint16_t            port, 
+	   int                 hook_read, 
+	   int                 hook_write) 
+{
     uint8_t * bitmap = (uint8_t *)(vm->io_map.arch_data);
-    int major = port / 8;
-    int minor = port % 8;
+    int       major  = port / 8;
+    int       minor  = port % 8;
 
-    if ((hook_read == 0) && (hook_write == 0)) {
+    if ( (hook_read  == 0) && 
+	 (hook_write == 0) ) {
 	*(bitmap + major) &= ~(0x1 << minor);
     } else {
-	*(bitmap + major) |= (0x1 << minor);
+	*(bitmap + major) |=  (0x1 << minor);
     }
 
     return 0;
 }
 
-int v3_init_vmx_io_map(struct v3_vm_info * vm) {
-    void *temp;
+int 
+v3_init_vmx_io_map(struct v3_vm_info * vm) 
+{
+    addr_t map_paddr      = 0;
 
     vm->io_map.update_map = update_map;
+    map_paddr             = (addr_t)V3_AllocPages(2);
 
-    temp = V3_AllocPages(2);
-    if (!temp) {
+    if (!map_paddr) {
 	PrintError("Cannot allocate io bitmap\n");
 	return -1;
     }
 		   
-    vm->io_map.arch_data = V3_VAddr(temp);
+    vm->io_map.arch_data = V3_VAddr((void *)map_paddr);
     memset(vm->io_map.arch_data, 0xff, PAGE_SIZE_4KB * 2);
 
     v3_refresh_io_map(vm);
@@ -65,19 +73,23 @@ int v3_init_vmx_io_map(struct v3_vm_info * vm) {
     return 0;
 }
 
-int v3_deinit_vmx_io_map(struct v3_vm_info * vm) {
+int 
+v3_deinit_vmx_io_map(struct v3_vm_info * vm) 
+{
     V3_FreePages(V3_PAddr(vm->io_map.arch_data), 2);
     return 0;
 }
 
 
-int v3_handle_vmx_io_in(struct v3_core_info * core, struct vmx_exit_info * exit_info) {
-    struct vmx_exit_io_qual io_qual = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);;
-    struct v3_io_hook * hook = NULL;
+int
+v3_handle_vmx_io_in(struct v3_core_info  * core, 
+		    struct vmx_exit_info * exit_info) 
+{
+    struct vmx_exit_io_qual   io_qual = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);;
+    struct v3_io_hook       * hook    = NULL;
     int read_size = 0;
 
-    hook = v3_get_io_hook(core->vm_info, io_qual.port);
-
+    hook      = v3_get_io_hook(core->vm_info, io_qual.port);
     read_size = io_qual.access_size + 1;
 
     PrintDebug("IN of %d bytes on port %d (0x%x)\n", read_size, io_qual.port, io_qual.port);
@@ -100,27 +112,29 @@ int v3_handle_vmx_io_in(struct v3_core_info * core, struct vmx_exit_info * exit_
     return 0;
 }
 
-int v3_handle_vmx_io_ins(struct v3_core_info * core, struct vmx_exit_info * exit_info) {
-    struct vmx_exit_io_qual io_qual = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);;
-    struct v3_io_hook * hook = NULL;
-    int read_size = 0;
-    addr_t guest_va = exit_info->guest_linear_addr;
-    addr_t host_addr = 0;
-    int rdi_change = 0;
-    uint32_t rep_num = 1;
-    struct rflags * flags = (struct rflags *)&(core->ctrl_regs.rflags);
+int 
+v3_handle_vmx_io_ins(struct v3_core_info  * core, 
+		     struct vmx_exit_info * exit_info) 
+{
+    struct vmx_exit_io_qual   io_qual  = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);;
+    struct rflags           * flags    = (struct rflags *)&(core->ctrl_regs.rflags);
+    addr_t                    guest_va = exit_info->guest_linear_addr;
+    struct v3_io_hook       * hook     = NULL;
 
-    hook = v3_get_io_hook(core->vm_info, io_qual.port);
-
+    addr_t   host_addr  = 0;
+    int      rdi_change = 0;
+    int      read_size  = 0;
+    uint32_t rep_num    = 1;
 
     PrintDebug("INS on port 0x%x\n", io_qual.port);
 
+    hook      = v3_get_io_hook(core->vm_info, io_qual.port);
     read_size = io_qual.access_size + 1;
 
     if (io_qual.rep) {
         struct vmx_exit_io_instr_info instr_info = *(struct vmx_exit_io_instr_info *)&(exit_info->instr_info);
 
-        if (instr_info.addr_size == 0) {
+        if (instr_info.addr_size       == 0) {
             rep_num = core->vm_regs.rcx & 0xffff;
         } else if(instr_info.addr_size == 1) {
             rep_num = core->vm_regs.rcx & 0xffffffff;
@@ -135,12 +149,10 @@ int v3_handle_vmx_io_ins(struct v3_core_info * core, struct vmx_exit_info * exit
     if (flags->df) {
         rdi_change = -read_size;
     } else {
-        rdi_change = read_size;
+        rdi_change =  read_size;
     }
 
     PrintDebug("INS size=%d for %d steps\n", read_size, rep_num);
-
-
 
     if (v3_gva_to_hva(core, guest_va, &host_addr) == -1) {
         PrintError("Could not convert Guest VA to host VA\n");
@@ -148,21 +160,19 @@ int v3_handle_vmx_io_ins(struct v3_core_info * core, struct vmx_exit_info * exit
     }
 
     do {
-
 	if (hook == NULL) {
 	    PrintDebug("INS operation on unhooked IO port 0x%x - returning zeros\n", io_qual.port);
-	    
-	    memset((char*)host_addr,0,read_size);
+	    memset((uint8_t *)host_addr, 0, read_size);
 
 	} else {
-	    if (hook->read(core, io_qual.port, (char *)host_addr, read_size, hook->priv_data) != read_size) {
+	    if (hook->read(core, io_qual.port, (uint8_t *)host_addr, read_size, hook->priv_data) != read_size) {
 		PrintError("Read Failure for INS on port 0x%x\n", io_qual.port);
 		return -1;
 	    }
 	}
 	
 
-        host_addr += rdi_change;
+        host_addr         += rdi_change;
         core->vm_regs.rdi += rdi_change;
 
         if (io_qual.rep) {
@@ -179,14 +189,16 @@ int v3_handle_vmx_io_ins(struct v3_core_info * core, struct vmx_exit_info * exit
 
 
 
-int v3_handle_vmx_io_out(struct v3_core_info * core, struct vmx_exit_info * exit_info) {
-    struct vmx_exit_io_qual io_qual = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);
-    struct v3_io_hook * hook = NULL;
+int 
+v3_handle_vmx_io_out(struct v3_core_info  * core, 
+		     struct vmx_exit_info * exit_info) 
+{
+    struct vmx_exit_io_qual   io_qual = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);
+    struct v3_io_hook       * hook    = NULL;
+
     int write_size = 0;
 
-    hook =  v3_get_io_hook(core->vm_info, io_qual.port);
-
-
+    hook       =  v3_get_io_hook(core->vm_info, io_qual.port);
     write_size = io_qual.access_size + 1;
     
     PrintDebug("OUT of %d bytes on port %d (0x%x)\n", write_size, io_qual.port, io_qual.port);
@@ -195,7 +207,7 @@ int v3_handle_vmx_io_out(struct v3_core_info * core, struct vmx_exit_info * exit
 	PrintDebug("OUT operation on unhooked IO port 0x%x - ignored\n", io_qual.port);
     } else {  
 	if (hook->write(core, io_qual.port, &(core->vm_regs.rax), write_size, hook->priv_data) != write_size) {
-	    PrintError("Write failure for out on port %x\n",io_qual.port);
+	    PrintError("Write failure for out on port %x\n", io_qual.port);
 	    return -1;
 	}
     }
@@ -207,27 +219,30 @@ int v3_handle_vmx_io_out(struct v3_core_info * core, struct vmx_exit_info * exit
 
 
 
-int v3_handle_vmx_io_outs(struct v3_core_info * core, struct vmx_exit_info * exit_info) {
-    struct vmx_exit_io_qual io_qual = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);
-    struct v3_io_hook * hook = NULL;
-    int write_size;
-    addr_t guest_va = exit_info->guest_linear_addr;
-    addr_t host_addr;
-    int rsi_change;
-    uint32_t rep_num = 1;
-    struct rflags * flags = (struct rflags *)&(core->ctrl_regs.rflags);
+int 
+v3_handle_vmx_io_outs(struct v3_core_info  * core, 
+		      struct vmx_exit_info * exit_info) 
+{
+    struct vmx_exit_io_qual   io_qual  = *(struct vmx_exit_io_qual *)&(exit_info->exit_qual);
+    struct rflags           * flags    =  (struct rflags *)&(core->ctrl_regs.rflags);
+    addr_t                    guest_va = exit_info->guest_linear_addr;
+    struct v3_io_hook       * hook     = NULL;
 
-    hook = v3_get_io_hook(core->vm_info, io_qual.port);
-
+    int      write_size = 0;
+    addr_t   host_addr  = 0;
+    int      rsi_change = 0;
+    uint32_t rep_num    = 1;
+ 
     PrintDebug("OUTS on port 0x%x\n", io_qual.port);
 
+    hook       = v3_get_io_hook(core->vm_info, io_qual.port);
     write_size = io_qual.access_size + 1;
 
     if (io_qual.rep) {
         // Grab the address sized bits of rcx
         struct vmx_exit_io_instr_info instr_info = *(struct vmx_exit_io_instr_info *)&(exit_info->instr_info);
 
-        if (instr_info.addr_size == 0) {
+        if (instr_info.addr_size       == 0) {
             rep_num = core->vm_regs.rcx & 0xffff;
         } else if(instr_info.addr_size == 1) {
             rep_num = core->vm_regs.rcx & 0xffffffff;
@@ -242,7 +257,7 @@ int v3_handle_vmx_io_outs(struct v3_core_info * core, struct vmx_exit_info * exi
     if (flags->df) {
         rsi_change = -write_size;
     } else {
-        rsi_change = write_size;
+        rsi_change =  write_size;
     }
 
 
@@ -259,14 +274,14 @@ int v3_handle_vmx_io_outs(struct v3_core_info * core, struct vmx_exit_info * exi
 	if (hook == NULL) {
 	    PrintDebug("OUTS operation on unhooked IO port 0x%x - ignored\n", io_qual.port);
 	} else {
-	    if (hook->write(core, io_qual.port, (char *)host_addr, write_size, hook->priv_data) != write_size) {
+	    if (hook->write(core, io_qual.port, (uint8_t *)host_addr, write_size, hook->priv_data) != write_size) {
 		PrintError("Read failure for INS on port 0x%x\n", io_qual.port);
 		return -1;
 	    }
 	}
 	
 
-       host_addr += rsi_change;
+       host_addr         += rsi_change;
        core->vm_regs.rsi += rsi_change;
 
        if (io_qual.rep) {

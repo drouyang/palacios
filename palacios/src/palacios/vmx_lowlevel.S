@@ -42,7 +42,7 @@
 	mov	16(%rax), %rbp;		\
 	mov	32(%rax), %rbx;		\
 	mov	40(%rax), %rdx;		\
-	mov 48(%rax), %rcx;		\
+	mov     48(%rax), %rcx;		\
 					\
 	mov	64(%rax), %r8;		\
 	mov	72(%rax), %r9;		\

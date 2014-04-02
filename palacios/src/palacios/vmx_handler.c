@@ -49,7 +49,10 @@
 #endif
 
 /* At this point the GPRs are already copied into the v3_core_info state */
-int v3_handle_vmx_exit(struct v3_core_info * core, struct vmx_exit_info * exit_info) {
+int 
+v3_handle_vmx_exit(struct v3_core_info  * core,
+		   struct vmx_exit_info * exit_info) 
+{
     struct vmx_basic_exit_info * basic_info = (struct vmx_basic_exit_info *)&(exit_info->exit_reason);
 
     /*
@@ -115,7 +118,7 @@ int v3_handle_vmx_exit(struct v3_core_info * core, struct vmx_exit_info * exit_i
 		V3_Print("Invalid OPCODE Exception\n");
 		{
 		    addr_t linear_addr = 0;
-		    addr_t host_addr = 0;
+		    addr_t host_addr   = 0;
 
 		    v3_print_guest_state(core);
 
@@ -130,8 +133,7 @@ int v3_handle_vmx_exit(struct v3_core_info * core, struct vmx_exit_info * exit_i
 		    }
 		
 		    V3_Print("VMX core %u: Host Address of rip = 0x%p\n", core->vcpu_id, (void *)host_addr);
-		
-		    V3_Print("VMX core %u: Instr (15 bytes) at %p:\n", core->vcpu_id, (void *)host_addr);
+		    V3_Print("VMX core %u: Instr (15 bytes) at %p:\n",    core->vcpu_id, (void *)host_addr);
 		    v3_dump_mem((uint8_t *)host_addr, 15);
 		
 		    V3_Print("Stack Trace:\n");
@@ -364,159 +366,109 @@ int v3_handle_vmx_exit(struct v3_core_info * core, struct vmx_exit_info * exit_i
 }
 
 static const char VMX_EXIT_INFO_EXCEPTION_OR_NMI_STR[] = "VMX_EXIT_INFO_EXCEPTION_OR_NMI";
-static const char VMX_EXIT_EXTERNAL_INTR_STR[] = "VMX_EXIT_EXTERNAL_INTR";
-static const char VMX_EXIT_TRIPLE_FAULT_STR[] = "VMX_EXIT_TRIPLE_FAULT";
-static const char VMX_EXIT_INIT_SIGNAL_STR[] = "VMX_EXIT_INIT_SIGNAL";
-static const char VMX_EXIT_STARTUP_IPI_STR[] = "VMX_EXIT_STARTUP_IPI";
-static const char VMX_EXIT_IO_SMI_STR[] = "VMX_EXIT_IO_SMI";
-static const char VMX_EXIT_OTHER_SMI_STR[] = "VMX_EXIT_OTHER_SMI";
-static const char VMX_EXIT_INTR_WINDOW_STR[] = "VMX_EXIT_INTR_WINDOW";
-static const char VMX_EXIT_NMI_WINDOW_STR[] = "VMX_EXIT_NMI_WINDOW";
-static const char VMX_EXIT_TASK_SWITCH_STR[] = "VMX_EXIT_TASK_SWITCH";
-static const char VMX_EXIT_CPUID_STR[] = "VMX_EXIT_CPUID";
-static const char VMX_EXIT_HLT_STR[] = "VMX_EXIT_HLT";
-static const char VMX_EXIT_INVD_STR[] = "VMX_EXIT_INVD";
-static const char VMX_EXIT_INVLPG_STR[] = "VMX_EXIT_INVLPG";
-static const char VMX_EXIT_RDPMC_STR[] = "VMX_EXIT_RDPMC";
-static const char VMX_EXIT_RDTSC_STR[] = "VMX_EXIT_RDTSC";
-static const char VMX_EXIT_RSM_STR[] = "VMX_EXIT_RSM";
-static const char VMX_EXIT_VMCALL_STR[] = "VMX_EXIT_VMCALL";
-static const char VMX_EXIT_VMCLEAR_STR[] = "VMX_EXIT_VMCLEAR";
-static const char VMX_EXIT_VMLAUNCH_STR[] = "VMX_EXIT_VMLAUNCH";
-static const char VMX_EXIT_VMPTRLD_STR[] = "VMX_EXIT_VMPTRLD";
-static const char VMX_EXIT_VMPTRST_STR[] = "VMX_EXIT_VMPTRST";
-static const char VMX_EXIT_VMREAD_STR[] = "VMX_EXIT_VMREAD";
-static const char VMX_EXIT_VMRESUME_STR[] = "VMX_EXIT_VMRESUME";
-static const char VMX_EXIT_VMWRITE_STR[] = "VMX_EXIT_VMWRITE";
-static const char VMX_EXIT_VMXOFF_STR[] = "VMX_EXIT_VMXOFF";
-static const char VMX_EXIT_VMXON_STR[] = "VMX_EXIT_VMXON";
-static const char VMX_EXIT_CR_REG_ACCESSES_STR[] = "VMX_EXIT_CR_REG_ACCESSES";
-static const char VMX_EXIT_MOV_DR_STR[] = "VMX_EXIT_MOV_DR";
-static const char VMX_EXIT_IO_INSTR_STR[] = "VMX_EXIT_IO_INSTR";
-static const char VMX_EXIT_RDMSR_STR[] = "VMX_EXIT_RDMSR";
-static const char VMX_EXIT_WRMSR_STR[] = "VMX_EXIT_WRMSR";
-static const char VMX_EXIT_INVALID_GUEST_STATE_STR[] = "VMX_EXIT_INVALID_GUEST_STATE";
-static const char VMX_EXIT_INVALID_MSR_LOAD_STR[] = "VMX_EXIT_INVALID_MSR_LOAD";
-static const char VMX_EXIT_MWAIT_STR[] = "VMX_EXIT_MWAIT";
-static const char VMX_EXIT_MONITOR_STR[] = "VMX_EXIT_MONITOR";
-static const char VMX_EXIT_PAUSE_STR[] = "VMX_EXIT_PAUSE";
+static const char VMX_EXIT_EXTERNAL_INTR_STR[]         = "VMX_EXIT_EXTERNAL_INTR";
+static const char VMX_EXIT_TRIPLE_FAULT_STR[]          = "VMX_EXIT_TRIPLE_FAULT";
+static const char VMX_EXIT_INIT_SIGNAL_STR[]           = "VMX_EXIT_INIT_SIGNAL";
+static const char VMX_EXIT_STARTUP_IPI_STR[]           = "VMX_EXIT_STARTUP_IPI";
+static const char VMX_EXIT_IO_SMI_STR[]                = "VMX_EXIT_IO_SMI";
+static const char VMX_EXIT_OTHER_SMI_STR[]             = "VMX_EXIT_OTHER_SMI";
+static const char VMX_EXIT_INTR_WINDOW_STR[]           = "VMX_EXIT_INTR_WINDOW";
+static const char VMX_EXIT_NMI_WINDOW_STR[]            = "VMX_EXIT_NMI_WINDOW";
+static const char VMX_EXIT_TASK_SWITCH_STR[]           = "VMX_EXIT_TASK_SWITCH";
+static const char VMX_EXIT_CPUID_STR[]                 = "VMX_EXIT_CPUID";
+static const char VMX_EXIT_HLT_STR[]                   = "VMX_EXIT_HLT";
+static const char VMX_EXIT_INVD_STR[]                  = "VMX_EXIT_INVD";
+static const char VMX_EXIT_INVLPG_STR[]                = "VMX_EXIT_INVLPG";
+static const char VMX_EXIT_RDPMC_STR[]                 = "VMX_EXIT_RDPMC";
+static const char VMX_EXIT_RDTSC_STR[]                 = "VMX_EXIT_RDTSC";
+static const char VMX_EXIT_RSM_STR[]                   = "VMX_EXIT_RSM";
+static const char VMX_EXIT_VMCALL_STR[]                = "VMX_EXIT_VMCALL";
+static const char VMX_EXIT_VMCLEAR_STR[]               = "VMX_EXIT_VMCLEAR";
+static const char VMX_EXIT_VMLAUNCH_STR[]              = "VMX_EXIT_VMLAUNCH";
+static const char VMX_EXIT_VMPTRLD_STR[]               = "VMX_EXIT_VMPTRLD";
+static const char VMX_EXIT_VMPTRST_STR[]               = "VMX_EXIT_VMPTRST";
+static const char VMX_EXIT_VMREAD_STR[]                = "VMX_EXIT_VMREAD";
+static const char VMX_EXIT_VMRESUME_STR[]              = "VMX_EXIT_VMRESUME";
+static const char VMX_EXIT_VMWRITE_STR[]               = "VMX_EXIT_VMWRITE";
+static const char VMX_EXIT_VMXOFF_STR[]                = "VMX_EXIT_VMXOFF";
+static const char VMX_EXIT_VMXON_STR[]                 = "VMX_EXIT_VMXON";
+static const char VMX_EXIT_CR_REG_ACCESSES_STR[]       = "VMX_EXIT_CR_REG_ACCESSES";
+static const char VMX_EXIT_MOV_DR_STR[]                = "VMX_EXIT_MOV_DR";
+static const char VMX_EXIT_IO_INSTR_STR[]              = "VMX_EXIT_IO_INSTR";
+static const char VMX_EXIT_RDMSR_STR[]                 = "VMX_EXIT_RDMSR";
+static const char VMX_EXIT_WRMSR_STR[]                 = "VMX_EXIT_WRMSR";
+static const char VMX_EXIT_INVALID_GUEST_STATE_STR[]   = "VMX_EXIT_INVALID_GUEST_STATE";
+static const char VMX_EXIT_INVALID_MSR_LOAD_STR[]      = "VMX_EXIT_INVALID_MSR_LOAD";
+static const char VMX_EXIT_MWAIT_STR[]                 = "VMX_EXIT_MWAIT";
+static const char VMX_EXIT_MONITOR_STR[]               = "VMX_EXIT_MONITOR";
+static const char VMX_EXIT_PAUSE_STR[]                 = "VMX_EXIT_PAUSE";
 static const char VMX_EXIT_INVALID_MACHINE_CHECK_STR[] = "VMX_EXIT_INVALIDE_MACHINE_CHECK";
-static const char VMX_EXIT_TPR_BELOW_THRESHOLD_STR[] = "VMX_EXIT_TPR_BELOW_THRESHOLD";
-static const char VMX_EXIT_APIC_STR[] = "VMX_EXIT_APIC";
-static const char VMX_EXIT_GDTR_IDTR_STR[] = "VMX_EXIT_GDTR_IDTR";
-static const char VMX_EXIT_LDTR_TR_STR[] = "VMX_EXIT_LDTR_TR";
-static const char VMX_EXIT_EPT_VIOLATION_STR[] = "VMX_EXIT_EPT_VIOLATION";
-static const char VMX_EXIT_EPT_CONFIG_STR[] = "VMX_EXIT_EPT_CONFIG";
-static const char VMX_EXIT_INVEPT_STR[] = "VMX_EXIT_INVEPT";
-static const char VMX_EXIT_RDTSCP_STR[] = "VMX_EXIT_RDTSCP";
+static const char VMX_EXIT_TPR_BELOW_THRESHOLD_STR[]   = "VMX_EXIT_TPR_BELOW_THRESHOLD";
+static const char VMX_EXIT_APIC_STR[]                  = "VMX_EXIT_APIC";
+static const char VMX_EXIT_GDTR_IDTR_STR[]             = "VMX_EXIT_GDTR_IDTR";
+static const char VMX_EXIT_LDTR_TR_STR[]               = "VMX_EXIT_LDTR_TR";
+static const char VMX_EXIT_EPT_VIOLATION_STR[]         = "VMX_EXIT_EPT_VIOLATION";
+static const char VMX_EXIT_EPT_CONFIG_STR[]            = "VMX_EXIT_EPT_CONFIG";
+static const char VMX_EXIT_INVEPT_STR[]                = "VMX_EXIT_INVEPT";
+static const char VMX_EXIT_RDTSCP_STR[]                = "VMX_EXIT_RDTSCP";
 static const char VMX_EXIT_EXPIRED_PREEMPT_TIMER_STR[] = "VMX_EXIT_EXPIRED_PREEMPT_TIMER";
-static const char VMX_EXIT_INVVPID_STR[] = "VMX_EXIT_INVVPID";
-static const char VMX_EXIT_WBINVD_STR[] = "VMX_EXIT_WBINVD";
-static const char VMX_EXIT_XSETBV_STR[] = "VMX_EXIT_XSETBV";
+static const char VMX_EXIT_INVVPID_STR[]               = "VMX_EXIT_INVVPID";
+static const char VMX_EXIT_WBINVD_STR[]                = "VMX_EXIT_WBINVD";
+static const char VMX_EXIT_XSETBV_STR[]                = "VMX_EXIT_XSETBV";
 
 const char * v3_vmx_exit_code_to_str(vmx_exit_t exit)
 {
     switch (exit) {
-        case VMX_EXIT_INFO_EXCEPTION_OR_NMI:
-            return VMX_EXIT_INFO_EXCEPTION_OR_NMI_STR;
-        case VMX_EXIT_EXTERNAL_INTR:
-            return VMX_EXIT_EXTERNAL_INTR_STR;
-        case VMX_EXIT_TRIPLE_FAULT:
-            return VMX_EXIT_TRIPLE_FAULT_STR;
-        case VMX_EXIT_INIT_SIGNAL:
-            return VMX_EXIT_INIT_SIGNAL_STR;
-        case VMX_EXIT_STARTUP_IPI:
-            return VMX_EXIT_STARTUP_IPI_STR;
-        case VMX_EXIT_IO_SMI:
-            return VMX_EXIT_IO_SMI_STR;
-        case VMX_EXIT_OTHER_SMI:
-            return VMX_EXIT_OTHER_SMI_STR;
-        case VMX_EXIT_INTR_WINDOW:
-            return VMX_EXIT_INTR_WINDOW_STR;
-        case VMX_EXIT_NMI_WINDOW:
-            return VMX_EXIT_NMI_WINDOW_STR;
-        case VMX_EXIT_TASK_SWITCH:
-            return VMX_EXIT_TASK_SWITCH_STR;
-        case VMX_EXIT_CPUID:
-            return VMX_EXIT_CPUID_STR;
-        case VMX_EXIT_HLT:
-            return VMX_EXIT_HLT_STR;
-        case VMX_EXIT_INVD:
-            return VMX_EXIT_INVD_STR;
-        case VMX_EXIT_INVLPG:
-            return VMX_EXIT_INVLPG_STR;
-        case VMX_EXIT_RDPMC:
-            return VMX_EXIT_RDPMC_STR;
-        case VMX_EXIT_RDTSC:
-            return VMX_EXIT_RDTSC_STR;
-        case VMX_EXIT_RSM:
-            return VMX_EXIT_RSM_STR;
-        case VMX_EXIT_VMCALL:
-            return VMX_EXIT_VMCALL_STR;
-        case VMX_EXIT_VMCLEAR:
-            return VMX_EXIT_VMCLEAR_STR;
-        case VMX_EXIT_VMLAUNCH:
-            return VMX_EXIT_VMLAUNCH_STR;
-        case VMX_EXIT_VMPTRLD:
-            return VMX_EXIT_VMPTRLD_STR;
-        case VMX_EXIT_VMPTRST:
-            return VMX_EXIT_VMPTRST_STR;
-        case VMX_EXIT_VMREAD:
-            return VMX_EXIT_VMREAD_STR;
-        case VMX_EXIT_VMRESUME:
-            return VMX_EXIT_VMRESUME_STR;
-        case VMX_EXIT_VMWRITE:
-            return VMX_EXIT_VMWRITE_STR;
-        case VMX_EXIT_VMXOFF:
-            return VMX_EXIT_VMXOFF_STR;
-        case VMX_EXIT_VMXON:
-            return VMX_EXIT_VMXON_STR;
-        case VMX_EXIT_CR_REG_ACCESSES:
-            return VMX_EXIT_CR_REG_ACCESSES_STR;
-        case VMX_EXIT_MOV_DR:
-            return VMX_EXIT_MOV_DR_STR;
-        case VMX_EXIT_IO_INSTR:
-            return VMX_EXIT_IO_INSTR_STR;
-        case VMX_EXIT_RDMSR:
-            return VMX_EXIT_RDMSR_STR;
-        case VMX_EXIT_WRMSR:
-            return VMX_EXIT_WRMSR_STR;
-        case VMX_EXIT_INVALID_GUEST_STATE:
-            return VMX_EXIT_INVALID_GUEST_STATE_STR;
-        case VMX_EXIT_INVALID_MSR_LOAD:
-            return VMX_EXIT_INVALID_MSR_LOAD_STR;
-        case VMX_EXIT_MWAIT:
-            return VMX_EXIT_MWAIT_STR;
-        case VMX_EXIT_MONITOR:
-            return VMX_EXIT_MONITOR_STR;
-        case VMX_EXIT_PAUSE:
-            return VMX_EXIT_PAUSE_STR;
-        case VMX_EXIT_INVALID_MACHINE_CHECK:
-            return VMX_EXIT_INVALID_MACHINE_CHECK_STR;
-        case VMX_EXIT_TPR_BELOW_THRESHOLD:
-            return VMX_EXIT_TPR_BELOW_THRESHOLD_STR;
-        case VMX_EXIT_APIC:
-            return VMX_EXIT_APIC_STR;
-        case VMX_EXIT_GDTR_IDTR:
-            return VMX_EXIT_GDTR_IDTR_STR;
-        case VMX_EXIT_LDTR_TR:
-            return VMX_EXIT_LDTR_TR_STR;
-        case VMX_EXIT_EPT_VIOLATION:
-            return VMX_EXIT_EPT_VIOLATION_STR;
-        case VMX_EXIT_EPT_CONFIG:
-            return VMX_EXIT_EPT_CONFIG_STR;
-        case VMX_EXIT_INVEPT:
-            return VMX_EXIT_INVEPT_STR;
-        case VMX_EXIT_RDTSCP:
-            return VMX_EXIT_RDTSCP_STR;
-        case VMX_EXIT_EXPIRED_PREEMPT_TIMER:
-            return VMX_EXIT_EXPIRED_PREEMPT_TIMER_STR;
-        case VMX_EXIT_INVVPID:
-            return VMX_EXIT_INVVPID_STR;
-        case VMX_EXIT_WBINVD:
-            return VMX_EXIT_WBINVD_STR;
-        case VMX_EXIT_XSETBV:
-            return VMX_EXIT_XSETBV_STR;
+        case VMX_EXIT_INFO_EXCEPTION_OR_NMI:   return VMX_EXIT_INFO_EXCEPTION_OR_NMI_STR;
+        case VMX_EXIT_EXTERNAL_INTR:           return VMX_EXIT_EXTERNAL_INTR_STR;
+        case VMX_EXIT_TRIPLE_FAULT:            return VMX_EXIT_TRIPLE_FAULT_STR;
+        case VMX_EXIT_INIT_SIGNAL:             return VMX_EXIT_INIT_SIGNAL_STR;
+        case VMX_EXIT_STARTUP_IPI:             return VMX_EXIT_STARTUP_IPI_STR;
+        case VMX_EXIT_IO_SMI:                  return VMX_EXIT_IO_SMI_STR;
+        case VMX_EXIT_OTHER_SMI:               return VMX_EXIT_OTHER_SMI_STR;
+        case VMX_EXIT_INTR_WINDOW:             return VMX_EXIT_INTR_WINDOW_STR;
+        case VMX_EXIT_NMI_WINDOW:              return VMX_EXIT_NMI_WINDOW_STR;
+        case VMX_EXIT_TASK_SWITCH:             return VMX_EXIT_TASK_SWITCH_STR;
+        case VMX_EXIT_CPUID:                   return VMX_EXIT_CPUID_STR;
+        case VMX_EXIT_HLT:                     return VMX_EXIT_HLT_STR;
+        case VMX_EXIT_INVD:                    return VMX_EXIT_INVD_STR;
+        case VMX_EXIT_INVLPG:                  return VMX_EXIT_INVLPG_STR;
+        case VMX_EXIT_RDPMC:                   return VMX_EXIT_RDPMC_STR;
+        case VMX_EXIT_RDTSC:                   return VMX_EXIT_RDTSC_STR;
+        case VMX_EXIT_RSM:                     return VMX_EXIT_RSM_STR;
+        case VMX_EXIT_VMCALL:                  return VMX_EXIT_VMCALL_STR;
+        case VMX_EXIT_VMCLEAR:                 return VMX_EXIT_VMCLEAR_STR;
+        case VMX_EXIT_VMLAUNCH:                return VMX_EXIT_VMLAUNCH_STR;
+        case VMX_EXIT_VMPTRLD:                 return VMX_EXIT_VMPTRLD_STR;
+        case VMX_EXIT_VMPTRST:                 return VMX_EXIT_VMPTRST_STR;
+        case VMX_EXIT_VMREAD:                  return VMX_EXIT_VMREAD_STR;
+        case VMX_EXIT_VMRESUME:                return VMX_EXIT_VMRESUME_STR;
+        case VMX_EXIT_VMWRITE:                 return VMX_EXIT_VMWRITE_STR;
+        case VMX_EXIT_VMXOFF:                  return VMX_EXIT_VMXOFF_STR;
+        case VMX_EXIT_VMXON:                   return VMX_EXIT_VMXON_STR;
+        case VMX_EXIT_CR_REG_ACCESSES:         return VMX_EXIT_CR_REG_ACCESSES_STR;
+        case VMX_EXIT_MOV_DR:                  return VMX_EXIT_MOV_DR_STR;
+        case VMX_EXIT_IO_INSTR:                return VMX_EXIT_IO_INSTR_STR;
+        case VMX_EXIT_RDMSR:                   return VMX_EXIT_RDMSR_STR;
+        case VMX_EXIT_WRMSR:                   return VMX_EXIT_WRMSR_STR;
+        case VMX_EXIT_INVALID_GUEST_STATE:     return VMX_EXIT_INVALID_GUEST_STATE_STR;
+        case VMX_EXIT_INVALID_MSR_LOAD:        return VMX_EXIT_INVALID_MSR_LOAD_STR;
+        case VMX_EXIT_MWAIT:                   return VMX_EXIT_MWAIT_STR;
+        case VMX_EXIT_MONITOR:                 return VMX_EXIT_MONITOR_STR;
+        case VMX_EXIT_PAUSE:                   return VMX_EXIT_PAUSE_STR;
+        case VMX_EXIT_INVALID_MACHINE_CHECK:   return VMX_EXIT_INVALID_MACHINE_CHECK_STR;
+        case VMX_EXIT_TPR_BELOW_THRESHOLD:     return VMX_EXIT_TPR_BELOW_THRESHOLD_STR;
+        case VMX_EXIT_APIC:                    return VMX_EXIT_APIC_STR;
+        case VMX_EXIT_GDTR_IDTR:               return VMX_EXIT_GDTR_IDTR_STR;
+        case VMX_EXIT_LDTR_TR:                 return VMX_EXIT_LDTR_TR_STR;
+        case VMX_EXIT_EPT_VIOLATION:           return VMX_EXIT_EPT_VIOLATION_STR;
+        case VMX_EXIT_EPT_CONFIG:              return VMX_EXIT_EPT_CONFIG_STR;
+        case VMX_EXIT_INVEPT:                  return VMX_EXIT_INVEPT_STR;
+        case VMX_EXIT_RDTSCP:                  return VMX_EXIT_RDTSCP_STR;
+        case VMX_EXIT_EXPIRED_PREEMPT_TIMER:   return VMX_EXIT_EXPIRED_PREEMPT_TIMER_STR;
+        case VMX_EXIT_INVVPID:                 return VMX_EXIT_INVVPID_STR;
+        case VMX_EXIT_WBINVD:                  return VMX_EXIT_WBINVD_STR;
+        case VMX_EXIT_XSETBV:                  return VMX_EXIT_XSETBV_STR;
     }
     return NULL;
 }

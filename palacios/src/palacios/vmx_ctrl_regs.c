@@ -33,12 +33,17 @@
 #define PrintDebug(fmt, args...)
 #endif
 
-static v3_reg_t * get_reg_ptr(struct v3_core_info * core, struct vmx_exit_cr_qual * cr_qual);
-static int handle_mov_to_cr0(struct v3_core_info * core, v3_reg_t * new_val, struct vmx_exit_info * exit_info);
-static int handle_mov_to_cr3(struct v3_core_info * core, v3_reg_t * cr3_reg);
+static v3_reg_t *  get_reg_ptr(struct v3_core_info * core, struct vmx_exit_cr_qual * cr_qual);
+static int   handle_mov_to_cr0(struct v3_core_info * core, v3_reg_t * new_val, struct vmx_exit_info * exit_info);
+static int   handle_mov_to_cr3(struct v3_core_info * core, v3_reg_t * cr3_reg);
 static int handle_mov_from_cr3(struct v3_core_info * core, v3_reg_t * cr3_reg);
 
-int v3_vmx_handle_cr0_access(struct v3_core_info * core, struct vmx_exit_cr_qual * cr_qual, struct vmx_exit_info * exit_info) {
+
+int
+v3_vmx_handle_cr0_access(struct v3_core_info     * core, 
+			 struct vmx_exit_cr_qual * cr_qual, 
+			 struct vmx_exit_info    * exit_info) 
+{
 
     if (cr_qual->access_type < 3) {
         v3_reg_t * reg = get_reg_ptr(core, cr_qual);
@@ -69,7 +74,10 @@ int v3_vmx_handle_cr0_access(struct v3_core_info * core, struct vmx_exit_cr_qual
     return -1;
 }
 
-int v3_vmx_handle_cr3_access(struct v3_core_info * core, struct vmx_exit_cr_qual * cr_qual) {
+int 
+v3_vmx_handle_cr3_access(struct v3_core_info     * core, 
+			 struct vmx_exit_cr_qual * cr_qual) 
+{
 
     if (cr_qual->access_type < 2) {
         v3_reg_t * reg = get_reg_ptr(core, cr_qual);
@@ -85,7 +93,10 @@ int v3_vmx_handle_cr3_access(struct v3_core_info * core, struct vmx_exit_cr_qual
     return -1;
 }
 
-int v3_vmx_handle_cr4_access(struct v3_core_info * core, struct vmx_exit_cr_qual * cr_qual) {
+int 
+v3_vmx_handle_cr4_access(struct v3_core_info     * core, 
+			 struct vmx_exit_cr_qual * cr_qual) 
+{
     if (cr_qual->access_type < 2) {
 
 	if (cr_qual->access_type == 0) {
@@ -108,7 +119,10 @@ int v3_vmx_handle_cr4_access(struct v3_core_info * core, struct vmx_exit_cr_qual
     return -1;
 }
 
-static int handle_mov_to_cr3(struct v3_core_info * core, v3_reg_t * cr3_reg) {
+static int 
+handle_mov_to_cr3(struct v3_core_info * core, 
+		  v3_reg_t            * cr3_reg) 
+{
 
     if (core->shdw_pg_mode == SHADOW_PAGING) {
 
@@ -146,8 +160,11 @@ static int handle_mov_to_cr3(struct v3_core_info * core, v3_reg_t * cr3_reg) {
     return 0;
 }
 
-static int handle_mov_from_cr3(struct v3_core_info * core, v3_reg_t * cr3_reg) {
-
+static
+int handle_mov_from_cr3(struct v3_core_info * core, 
+			v3_reg_t            * cr3_reg) 
+{
+    
 
     if (core->shdw_pg_mode == SHADOW_PAGING) {
 
@@ -168,12 +185,16 @@ static int handle_mov_from_cr3(struct v3_core_info * core, v3_reg_t * cr3_reg) {
     return 0;
 }
 
-static int handle_mov_to_cr0(struct v3_core_info * core, v3_reg_t * new_cr0, struct vmx_exit_info * exit_info) {
-    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
-    struct cr0_32 * shdw_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
-    struct cr0_32 * new_shdw_cr0 = (struct cr0_32 *)new_cr0;
-    struct vmx_data * vmx_info = (struct vmx_data *)core->vmm_data;
-    uint_t paging_transition = 0;
+static int 
+handle_mov_to_cr0(struct v3_core_info  * core, 
+		  v3_reg_t             * new_cr0, 
+		  struct vmx_exit_info * exit_info) 
+{
+    struct cr0_32   * guest_cr0    = (struct cr0_32   *)&(core->ctrl_regs.cr0);
+    struct cr0_32   * shdw_cr0     = (struct cr0_32   *)&(core->shdw_pg_state.guest_cr0);
+    struct cr0_32   * new_shdw_cr0 = (struct cr0_32   *)new_cr0;
+    struct vmx_data * vmx_info     = (struct vmx_data *)core->vmm_data;
+    uint_t paging_transition       = 0;
     extern v3_cpu_arch_t v3_mach_type;
 
 
@@ -181,7 +202,8 @@ static int handle_mov_to_cr0(struct v3_core_info * core, v3_reg_t * new_cr0, str
     PrintDebug("Old shadow CR0: 0x%x, New shadow CR0: 0x%x\n",
 	       (uint32_t)core->shdw_pg_state.guest_cr0, (uint32_t)*new_cr0);
 
-    if ((new_shdw_cr0->pe != shdw_cr0->pe) && (vmx_info->assist_state != VMXASSIST_DISABLED)) {
+    if ((new_shdw_cr0->pe       != shdw_cr0->pe) && 
+	(vmx_info->assist_state != VMXASSIST_DISABLED)) {
 	/*
 	  PrintDebug("Guest CR0: 0x%x\n", *(uint32_t *)guest_cr0);
 	  PrintDebug("Old shadow CR0: 0x%x\n", *(uint32_t *)shdw_cr0);
@@ -215,15 +237,15 @@ static int handle_mov_to_cr0(struct v3_core_info * core, v3_reg_t * new_cr0, str
 	
 	// Except PG, PE, and NE, which are always set
 	if ((core->shdw_pg_mode == SHADOW_PAGING) ||  
-	    (v3_mach_type != V3_VMX_EPT_UG_CPU)) {
+	    (v3_mach_type       != V3_VMX_EPT_UG_CPU)) {
 	    
 	    // The shadow always reflects the new value
-	    *shdw_cr0 = *new_shdw_cr0;
+	    *shdw_cr0     = *new_shdw_cr0;
 	    
 
 	    // We don't care about most of the flags, so lets go for it 
 	    // and set them to the guest values
-	    *guest_cr0 = *shdw_cr0;
+	    *guest_cr0    = *shdw_cr0;
 	
 	    guest_cr0->pe = 1;
 	    guest_cr0->pg = 1;
@@ -231,8 +253,7 @@ static int handle_mov_to_cr0(struct v3_core_info * core, v3_reg_t * new_cr0, str
 	    // Unrestricted guest 
 	    //    *(uint32_t *)shdw_cr0 = (0x00000020 & *(uint32_t *)new_shdw_cr0);
 
-	    *guest_cr0 = *new_shdw_cr0;
-
+	    *guest_cr0    = *new_shdw_cr0;
 	    guest_cr0->cd = 0;
 	}
 
@@ -253,7 +274,6 @@ static int handle_mov_to_cr0(struct v3_core_info * core, v3_reg_t * new_cr0, str
 			
 			hw_efer->lma = 1;
 			hw_efer->lme = 1;
-			
 			vmx_info->entry_ctrls.guest_ia32e = 1;
 		    }
 		} else {
@@ -261,7 +281,6 @@ static int handle_mov_to_cr0(struct v3_core_info * core, v3_reg_t * new_cr0, str
 			PrintDebug("Enabling long mode\n");
 			
 			hw_efer->lma = 1;
-			
 			vmx_info->entry_ctrls.guest_ia32e = 1;
 		    }
  		}
@@ -293,7 +312,10 @@ static int handle_mov_to_cr0(struct v3_core_info * core, v3_reg_t * new_cr0, str
     return 0;
 }
 
-static v3_reg_t * get_reg_ptr(struct v3_core_info * core, struct vmx_exit_cr_qual * cr_qual) {
+static v3_reg_t * 
+get_reg_ptr(struct v3_core_info     * core, 
+	    struct vmx_exit_cr_qual * cr_qual) 
+{
     v3_reg_t * reg = NULL;
 
     switch (cr_qual->gpr) {

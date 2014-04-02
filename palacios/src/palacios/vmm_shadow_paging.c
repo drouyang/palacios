@@ -71,7 +71,7 @@ static int shdw_pg_eq_fn(addr_t key1, addr_t key2)
 
 
 int
-V3_init_shdw_pging() 
+V3_init_shdw_paging() 
 {
     extern struct v3_shdw_pg_impl * __start__v3_shdw_pg_impls[];
     extern struct v3_shdw_pg_impl * __stop__v3_shdw_pg_impls[];

@@ -44,19 +44,20 @@ struct vmx_assist_header {
 
 union vmcs_arbytes {
     struct arbyte_fields {
-        unsigned int seg_type : 4,
-            s         : 1,
-            dpl       : 2,
-            p         : 1,
-            reserved0 : 4,
-            avl       : 1,
-            reserved1 : 1,
-            default_ops_size: 1,
-            g         : 1,
-            null_bit  : 1,
-            reserved2 : 15;
+        uint32_t seg_type          : 4;
+        uint32_t s                 : 1;
+	uint32_t dpl               : 2;
+	uint32_t p                 : 1;
+	uint32_t reserved0         : 4;
+	uint32_t avl               : 1;
+	uint32_t reserved1         : 1;
+	uint32_t default_ops_size  : 1;
+	uint32_t g                 : 1;
+	uint32_t null_bit          : 1;
+	uint32_t reserved2         : 15;
     } __attribute__((packed)) fields;
-    unsigned int bytes;
+
+    uint32_t  bytes;
 } __attribute__((packed));
 
 struct vmx_assist_segment {
@@ -102,11 +103,13 @@ struct vmx_assist_context {
 static void vmx_save_world_ctx(struct v3_core_info * core, struct vmx_assist_context * ctx);
 static void vmx_restore_world_ctx(struct v3_core_info * core, struct vmx_assist_context * ctx);
 
-int v3_vmxassist_ctx_switch(struct v3_core_info * core) {
-    struct vmx_assist_context * old_ctx = NULL;
-    struct vmx_assist_context * new_ctx = NULL;
-    struct vmx_assist_header * hdr = NULL;
-    struct vmx_data * vmx_info = (struct vmx_data *)core->vmm_data;
+int 
+v3_vmxassist_ctx_switch(struct v3_core_info * core) 
+{
+    struct vmx_data           * vmx_info = (struct vmx_data *)core->vmm_data;
+    struct vmx_assist_context * old_ctx  = NULL;
+    struct vmx_assist_context * new_ctx  = NULL;
+    struct vmx_assist_header  * hdr      = NULL;
  
 
 
@@ -152,62 +155,68 @@ int v3_vmxassist_ctx_switch(struct v3_core_info * core) {
 }
 
 
-static void save_segment(struct v3_segment * seg, struct vmx_assist_segment * vmx_assist_seg) {
+static void 
+save_segment(struct v3_segment * seg, struct vmx_assist_segment * vmx_assist_seg) 
+{
     struct vmcs_segment tmp_seg;
 
     memset(&tmp_seg, 0, sizeof(struct vmcs_segment));
 
     v3_seg_to_vmxseg(seg, &tmp_seg);
 
-    vmx_assist_seg->sel = tmp_seg.selector;
-    vmx_assist_seg->limit = tmp_seg.limit;
-    vmx_assist_seg->base = tmp_seg.base;
+    vmx_assist_seg->sel           = tmp_seg.selector;
+    vmx_assist_seg->limit         = tmp_seg.limit;
+    vmx_assist_seg->base          = tmp_seg.base;
     vmx_assist_seg->arbytes.bytes = tmp_seg.access.val;
 }
 
 
-static void load_segment(struct vmx_assist_segment * vmx_assist_seg, struct v3_segment * seg)  {
+static void 
+load_segment(struct vmx_assist_segment * vmx_assist_seg, struct v3_segment * seg)  
+{
     struct vmcs_segment tmp_seg;
 
     memset(&tmp_seg, 0, sizeof(struct vmcs_segment));
 
-    tmp_seg.selector = vmx_assist_seg->sel;
-    tmp_seg.limit = vmx_assist_seg->limit;
-    tmp_seg.base = vmx_assist_seg->base;
+    tmp_seg.selector   = vmx_assist_seg->sel;
+    tmp_seg.limit      = vmx_assist_seg->limit;
+    tmp_seg.base       = vmx_assist_seg->base;
     tmp_seg.access.val = vmx_assist_seg->arbytes.bytes;
 
     v3_vmxseg_to_seg(&tmp_seg, seg);
 }
 
-static void vmx_save_world_ctx(struct v3_core_info * core, struct vmx_assist_context * ctx) {
+static void 
+vmx_save_world_ctx(struct v3_core_info * core, struct vmx_assist_context * ctx) 
+{
     struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
 
     PrintDebug("Writing from RIP: 0x%p\n", (void *)(addr_t)core->rip);
     
-    ctx->eip = core->rip;
-    ctx->esp = core->vm_regs.rsp;
+    ctx->eip    = core->rip;
+    ctx->esp    = core->vm_regs.rsp;
     ctx->eflags = core->ctrl_regs.rflags;
 
-    ctx->cr0 = core->shdw_pg_state.guest_cr0;
-    ctx->cr3 = core->shdw_pg_state.guest_cr3;
-    ctx->cr4 = vmx_info->guest_cr4;
+    ctx->cr0    = core->shdw_pg_state.guest_cr0;
+    ctx->cr3    = core->shdw_pg_state.guest_cr3;
+    ctx->cr4    = vmx_info->guest_cr4;
 
     
-    save_segment(&(core->segments.cs), &(ctx->cs));
-    save_segment(&(core->segments.ds), &(ctx->ds));
-    save_segment(&(core->segments.es), &(ctx->es));
-    save_segment(&(core->segments.ss), &(ctx->ss));
-    save_segment(&(core->segments.fs), &(ctx->fs));
-    save_segment(&(core->segments.gs), &(ctx->gs));
-    save_segment(&(core->segments.tr), &(ctx->tr));
+    save_segment(&(core->segments.cs),   &(ctx->cs));
+    save_segment(&(core->segments.ds),   &(ctx->ds));
+    save_segment(&(core->segments.es),   &(ctx->es));
+    save_segment(&(core->segments.ss),   &(ctx->ss));
+    save_segment(&(core->segments.fs),   &(ctx->fs));
+    save_segment(&(core->segments.gs),   &(ctx->gs));
+    save_segment(&(core->segments.tr),   &(ctx->tr));
     save_segment(&(core->segments.ldtr), &(ctx->ldtr));
 
     // Odd segments 
     ctx->idtr_limit = core->segments.idtr.limit;
-    ctx->idtr_base = core->segments.idtr.base;
+    ctx->idtr_base  = core->segments.idtr.base;
 
     ctx->gdtr_limit = core->segments.gdtr.limit;
-    ctx->gdtr_base = core->segments.gdtr.base;
+    ctx->gdtr_base  = core->segments.gdtr.base;
 }
 
 static void vmx_restore_world_ctx(struct v3_core_info * core, struct vmx_assist_context * ctx) {
@@ -215,48 +224,50 @@ static void vmx_restore_world_ctx(struct v3_core_info * core, struct vmx_assist_
 
     PrintDebug("ctx rip: %p\n", (void *)(addr_t)ctx->eip);
     
-    core->rip = ctx->eip;
-    core->vm_regs.rsp = ctx->esp;
+    core->rip              = ctx->eip;
+    core->vm_regs.rsp      = ctx->esp;
     core->ctrl_regs.rflags = ctx->eflags;
 
     core->shdw_pg_state.guest_cr0 = ctx->cr0;
     core->shdw_pg_state.guest_cr3 = ctx->cr3;
-    vmx_info->guest_cr4 = ctx->cr4;
+    vmx_info->guest_cr4           = ctx->cr4;
 
-    load_segment(&(ctx->cs), &(core->segments.cs));
-    load_segment(&(ctx->ds), &(core->segments.ds));
-    load_segment(&(ctx->es), &(core->segments.es));
-    load_segment(&(ctx->ss), &(core->segments.ss));
-    load_segment(&(ctx->fs), &(core->segments.fs));
-    load_segment(&(ctx->gs), &(core->segments.gs));
-    load_segment(&(ctx->tr), &(core->segments.tr));
+    load_segment(&(ctx->cs),   &(core->segments.cs));
+    load_segment(&(ctx->ds),   &(core->segments.ds));
+    load_segment(&(ctx->es),   &(core->segments.es));
+    load_segment(&(ctx->ss),   &(core->segments.ss));
+    load_segment(&(ctx->fs),   &(core->segments.fs));
+    load_segment(&(ctx->gs),   &(core->segments.gs));
+    load_segment(&(ctx->tr),   &(core->segments.tr));
     load_segment(&(ctx->ldtr), &(core->segments.ldtr));
 
     // odd segments
     core->segments.idtr.limit = ctx->idtr_limit;
-    core->segments.idtr.base = ctx->idtr_base;
+    core->segments.idtr.base  = ctx->idtr_base;
 
     core->segments.gdtr.limit = ctx->gdtr_limit;
-    core->segments.gdtr.base = ctx->gdtr_base;
+    core->segments.gdtr.base  = ctx->gdtr_base;
 
 }
 
 
 int v3_vmxassist_init(struct v3_core_info * core, struct vmx_data * vmx_state) {
 
-    core->rip = 0xd0000;
+    core->rip         = 0xd0000;
     core->vm_regs.rsp = 0x80000;
-    ((struct rflags *)&(core->ctrl_regs.rflags))->rsvd1 = 1;
+
 
 #define GUEST_CR0 0x80010031
 #define GUEST_CR4 0x00002010
     core->ctrl_regs.cr0 = GUEST_CR0;
     core->ctrl_regs.cr4 = GUEST_CR4;
 
+    ((struct rflags *)&(core->ctrl_regs.rflags))->rsvd1     = 1;
+
     ((struct cr0_32 *)&(core->shdw_pg_state.guest_cr0))->pe = 1;
     ((struct cr0_32 *)&(core->shdw_pg_state.guest_cr0))->wp = 1;
     ((struct cr0_32 *)&(core->shdw_pg_state.guest_cr0))->ne = 1;
-   
+
 
     // Setup segment registers
     {
@@ -265,30 +276,30 @@ int v3_vmxassist_init(struct v3_core_info * core, struct vmx_data * vmx_state) {
 	int i;
 
 	for (i = 0; i < 10; i++) {
-	    seg_reg[i].selector = 3 << 3;
-	    seg_reg[i].limit = 0xffff;
-	    seg_reg[i].base = 0x0;
+	    seg_reg[i].selector = (3 << 3);
+	    seg_reg[i].limit    = 0xffff;
+	    seg_reg[i].base     = 0x0;
 	}
 
 	core->segments.cs.selector = 2 << 3;
 
 	/* Set only the segment registers */
 	for (i = 0; i < 6; i++) {
-	    seg_reg[i].limit = 0xfffff;
+	    seg_reg[i].limit       = 0xfffff;
 	    seg_reg[i].granularity = 1;
-	    seg_reg[i].type = 3;
-	    seg_reg[i].system = 1;
-	    seg_reg[i].dpl = 0;
-	    seg_reg[i].present = 1;
-	    seg_reg[i].db = 1;
+	    seg_reg[i].type        = 3;
+	    seg_reg[i].system      = 1;
+	    seg_reg[i].dpl         = 0;
+	    seg_reg[i].present     = 1;
+	    seg_reg[i].db          = 1;
 	}
 
-	core->segments.cs.type = 0xb;
+	core->segments.cs.type          = 0xb;
 
-	core->segments.ldtr.selector = 0x20;
-	core->segments.ldtr.type = 2;
-	core->segments.ldtr.system = 0;
-	core->segments.ldtr.present = 1;
+	core->segments.ldtr.selector    = 0x20;
+	core->segments.ldtr.type        = 2;
+	core->segments.ldtr.system      = 0;
+	core->segments.ldtr.present     = 1;
 	core->segments.ldtr.granularity = 0;
 
     
@@ -313,30 +324,29 @@ int v3_vmxassist_init(struct v3_core_info * core, struct vmx_data * vmx_state) {
 
 	memcpy((void *)vmxassist_gdt, gdt, sizeof(uint64_t) * 5);
         
-	core->segments.gdtr.base = VMXASSIST_GDT;
+	core->segments.gdtr.base    = VMXASSIST_GDT;
+	uint64_t vmxassist_tss      = VMXASSIST_TSS;
 
-
-	uint64_t vmxassist_tss = VMXASSIST_TSS;
 	gdt[0x08 / sizeof(gdt[0])] |=
 	    ((vmxassist_tss & 0xFF000000) << (56 - 24)) |
 	    ((vmxassist_tss & 0x00FF0000) << (32 - 16)) |
-	    ((vmxassist_tss & 0x0000FFFF) << (16)) |
+	    ((vmxassist_tss & 0x0000FFFF) << (16))      |
 	    (8392 - 1);
 
-	core->segments.tr.selector = 0x08;
-	core->segments.tr.base = vmxassist_tss;
+	core->segments.tr.selector     = 0x08;
+	core->segments.tr.base         = vmxassist_tss;
 
-	//core->segments.tr.type = 0x9; 
-	core->segments.tr.type = 0x3;
-	core->segments.tr.system = 0;
-	core->segments.tr.present = 1;
-	core->segments.tr.granularity = 0;
+	//core->segments.tr.type         = 0x9; 
+	core->segments.tr.type         = 0x3;
+	core->segments.tr.system       = 0;
+	core->segments.tr.present      = 1;
+	core->segments.tr.granularity  = 0;
     }
  
     if (core->shdw_pg_mode == NESTED_PAGING) {
 	// setup 1to1 page table internally.
-	int i = 0;
 	pde32_4MB_t * pde = NULL;
+	int i = 0;
 
 	PrintError("Setting up internal VMXASSIST page tables\n");
 
@@ -348,16 +358,16 @@ int v3_vmxassist_init(struct v3_core_info * core, struct vmx_data * vmx_state) {
 	memset(pde, 0, PAGE_SIZE);
 
 	for (i = 0; i < 1024; i++) {
-	    pde[i].present = 1;
-	    pde[i].writable = 1;
-	    pde[i].user_page = 1;
-	    pde[i].large_page = 1;
+	    pde[i].present        = 1;
+	    pde[i].writable       = 1;
+	    pde[i].user_page      = 1;
+	    pde[i].large_page     = 1;
 	    pde[i].page_base_addr = PAGE_BASE_ADDR_4MB(i * PAGE_SIZE_4MB);
 
 	    //	    PrintError("PDE %d: %x\n", i, *(uint32_t *)&(pde[i]));
 	}
 
-	core->ctrl_regs.cr3 = VMXASSIST_1to1_PT;
+	core->ctrl_regs.cr3       = VMXASSIST_1to1_PT;
 
     }
 
@@ -366,7 +376,7 @@ int v3_vmxassist_init(struct v3_core_info * core, struct vmx_data * vmx_state) {
 
 	extern uint8_t v3_vmxassist_start[];
 	extern uint8_t v3_vmxassist_end[];
-	addr_t vmxassist_dst = 0;
+	addr_t         vmxassist_dst = 0;
 
 	if (v3_gpa_to_hva(core, VMXASSIST_START, &vmxassist_dst) == -1) {
 	    PrintError("Could not find VMXASSIST destination\n");

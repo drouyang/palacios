@@ -46,14 +46,15 @@ static addr_t create_ept_page() {
 
 
 
-int v3_init_ept(struct v3_core_info * core, struct vmx_hw_info * hw_info) {
-    addr_t ept_pa = (addr_t)V3_PAddr((void *)create_ept_page());    
+int 
+v3_init_ept(struct v3_core_info * core, 
+	    struct vmx_hw_info  * hw_info) 
+{
+    addr_t       ept_pa  = (addr_t)V3_PAddr((void *)create_ept_page());    
     vmx_eptp_t * ept_ptr = (vmx_eptp_t *)&(core->direct_map_pt);
 
 
-    ept_info = &(hw_info->ept_info);
-
-    /* TODO: Should we set this to WB?? */
+    ept_info      = &(hw_info->ept_info);
     ept_ptr->psmt = 6;
 
     if (ept_info->pg_walk_len4) {
@@ -65,21 +66,24 @@ int v3_init_ept(struct v3_core_info * core, struct vmx_hw_info * hw_info) {
 
     ept_ptr->pml_base_addr = PAGE_BASE_ADDR(ept_pa);
 
-
     return 0;
 }
 
 
 /* We can use the default paging macros, since the formats are close enough to allow it */
 
-int v3_handle_ept_fault(struct v3_core_info * core, addr_t fault_addr, struct ept_exit_qual * ept_qual) {
+int 
+v3_handle_ept_fault(struct v3_core_info  * core, 
+		    addr_t                 fault_addr, 
+		    struct ept_exit_qual * ept_qual) 
+{
     ept_pml4_t    * pml     = NULL;
-    //    ept_pdp_1GB_t * pdpe1gb = NULL;
     ept_pdp_t     * pdpe    = NULL;
     ept_pde_2MB_t * pde2mb  = NULL;
     ept_pde_t     * pde     = NULL;
     ept_pte_t     * pte     = NULL;
-    addr_t host_addr     = 0;
+    int    page_size        = PAGE_SIZE_4KB;
+    addr_t host_addr        = 0;
 
     int pml_index  = PML4E64_INDEX(fault_addr);
     int pdpe_index = PDPE64_INDEX(fault_addr);
@@ -87,20 +91,18 @@ int v3_handle_ept_fault(struct v3_core_info * core, addr_t fault_addr, struct ep
     int pte_index  = PTE64_INDEX(fault_addr);
 
     struct v3_mem_region * region = v3_get_mem_region(core->vm_info, core->vcpu_id, fault_addr);
-    int page_size = PAGE_SIZE_4KB;
-
-
 
     pf_error_t error_code = {0};
-    error_code.present = ept_qual->present;
-    error_code.write = ept_qual->write;
+    error_code.present    = ept_qual->present;
+    error_code.write      = ept_qual->write;
     
     if (region == NULL) {
 	PrintError("invalid region, addr=%p\n", (void *)fault_addr);
 	return -1;
     }
 
-    if ((core->use_large_pages == 1) || (core->use_giant_pages == 1)) {
+    if ((core->use_large_pages == 1) || 
+	(core->use_giant_pages == 1)) {
 	page_size = v3_get_max_page_size(core, fault_addr, LONG);
     }
 
@@ -116,9 +118,9 @@ int v3_handle_ept_fault(struct v3_core_info * core, addr_t fault_addr, struct ep
 	pdpe = (ept_pdp_t *)create_ept_page();
 	
 	// Set default PML Flags...
-	pml[pml_index].read = 1;
+	pml[pml_index].read  = 1;
 	pml[pml_index].write = 1;
-	pml[pml_index].exec = 1;
+	pml[pml_index].exec  = 1;
 
 	pml[pml_index].pdp_base_addr = PAGE_BASE_ADDR_4KB((addr_t)V3_PAddr(pdpe));
     } else {
@@ -132,9 +134,9 @@ int v3_handle_ept_fault(struct v3_core_info * core, addr_t fault_addr, struct ep
 	pde = (ept_pde_t *)create_ept_page();
 
 	// Set default PDPE Flags...
-	pdpe[pdpe_index].read = 1;
+	pdpe[pdpe_index].read  = 1;
 	pdpe[pdpe_index].write = 1;
-	pdpe[pdpe_index].exec = 1;
+	pdpe[pdpe_index].exec  = 1;
 
 	pdpe[pdpe_index].pd_base_addr = PAGE_BASE_ADDR_4KB((addr_t)V3_PAddr(pde));
     } else {
@@ -151,7 +153,7 @@ int v3_handle_ept_fault(struct v3_core_info * core, addr_t fault_addr, struct ep
 	if (pde2mb[pde_index].read == 0) {
 
 	    if ( (region->flags.alloced == 1) && 
-		 (region->flags.read == 1)) {
+		 (region->flags.read    == 1)) {
 		// Full access
 		pde2mb[pde_index].ipat = 1;
 
@@ -202,9 +204,9 @@ int v3_handle_ept_fault(struct v3_core_info * core, addr_t fault_addr, struct ep
 	v3_telemetry_inc_core_counter(core, "ALLOC_EPT_PAGE");
 	pte = (ept_pte_t *)create_ept_page();
 	
-	pde[pde_index].read = 1;
+	pde[pde_index].read  = 1;
 	pde[pde_index].write = 1;
-	pde[pde_index].exec = 1;
+	pde[pde_index].exec  = 1;
 
 	pde[pde_index].pt_base_addr = PAGE_BASE_ADDR_4KB((addr_t)V3_PAddr(pte));
     } else {
@@ -218,7 +220,7 @@ int v3_handle_ept_fault(struct v3_core_info * core, addr_t fault_addr, struct ep
     if (pte[pte_index].read == 0) {
 
 	if ( (region->flags.alloced == 1) && 
-	     (region->flags.read == 1)) {
+	     (region->flags.read    == 1)) {
 	    // Full access
 	    pte[pte_index].ipat = 1;
 

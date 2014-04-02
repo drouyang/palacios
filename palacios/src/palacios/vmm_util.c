@@ -27,16 +27,21 @@ void v3_dump_mem(uint8_t * start, int n) {
       
 
     for (i = 0; i < n; i += 16) {
-      snprintf(buf, 128, "%p ", (void *)(start + i));
-      for (j = i; (j < (i + 16)) && (j < n); j++) {
-	snprintf(buf+strlen(buf),128-strlen(buf),"%02x ", *(uint8_t *)(start + j));
-      }
-      for (j = i; (j < (i + 16)) && (j < n); j++) {
-	snprintf(buf+strlen(buf),128-strlen(buf),"%c", ((start[j] >= 32) && (start[j] <= 126)) ? start[j] : '.');
-      }
-      snprintf(buf+strlen(buf),128-strlen(buf), "\n");
-      buf[strlen(buf)]=0;
-      V3_Print("%s",buf);
+	snprintf(buf, 128, "%p ", (void *)(start + i));
+
+	for (j = i; (j < (i + 16)) && (j < n); j++) {
+	    snprintf(buf + strlen(buf), 128 - strlen(buf), "%02x ", *(uint8_t *)(start + j));
+	}
+
+	for (j = i; (j < (i + 16)) && (j < n); j++) {
+	    snprintf(buf + strlen(buf), 128 - strlen(buf), "%c", ((start[j] >= 32) && (start[j] <= 126)) ? start[j] : '.');
+	}
+
+	snprintf(buf + strlen(buf), 128 - strlen(buf), "\n");
+
+	buf[strlen(buf)] = 0;
+
+	V3_Print("%s",buf);
     }
     
 }
