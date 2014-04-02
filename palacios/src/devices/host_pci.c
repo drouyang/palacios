@@ -36,7 +36,6 @@
 #include <palacios/vmm_sprintf.h>
 #include <palacios/vmm_lowlevel.h>
 #include <palacios/vm.h> // must include this to avoid dependency issue
-#include <palacios/vmm_symspy.h>
 
 #include <devices/pci.h>
 #include <devices/pci_types.h>
@@ -809,14 +808,6 @@ static int setup_virt_pci_dev(struct v3_vm_info * vm_info, struct vm_device * de
     v3_pci_enable_capability(pci_dev, PCI_CAP_PM);
     v3_pci_enable_capability(pci_dev, PCI_CAP_VPD);
 
-    if (state->host_dev->iface == SYMBIOTIC) {
-#ifdef V3_CONFIG_SYMBIOTIC
-        v3_sym_map_pci_passthrough(vm_info, pci_dev->bus_num, pci_dev->dev_num, pci_dev->fn_num);
-#else
-        PrintError("ERROR Symbiotic Passthrough is not enabled\n");
-        return -1;
-#endif
-    }
 
     return 0;
 }

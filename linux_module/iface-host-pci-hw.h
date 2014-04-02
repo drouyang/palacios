@@ -158,8 +158,8 @@ static int setup_hw_pci_dev(struct host_pci_device * host_dev) {
 	    v3_lnx_printk("Setting host PCI device (%s) as IOMMU\n", host_dev->name);
 	    v3_dev->iface = IOMMU;
 	} else {
-	    v3_lnx_printk("Setting host PCI device (%s) as SYMBIOTIC\n", host_dev->name);
-	    v3_dev->iface = SYMBIOTIC;
+	    v3_lnx_printk("Error: Cannot passthrough PCI device without IOMMU\n");
+	    return -1;
 	}
 
     }

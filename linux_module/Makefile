@@ -2,10 +2,6 @@ include $(PWD)/../.config
 
 LDFLAGS += --whole-archive  --script=$(PWD)/ld.cmd
 
-ifdef V3_CONFIG_SYMMOD
-LDFLAGS += --script=$(PWD)/ld.symmod.cmd
-endif
-
 ifdef V3_CONFIG_CHECKPOINT
 LDFLAGS += --script=$(PWD)/ld.chkpt.cmd
 endif
