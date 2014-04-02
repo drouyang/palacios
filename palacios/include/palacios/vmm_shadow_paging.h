@@ -49,12 +49,8 @@ struct v3_shdw_pg_impl {
 
 
 struct v3_shdw_impl_state {
-    
     struct v3_shdw_pg_impl * current_impl;
     void * impl_data;
-
-    struct list_head event_callback_list;
-
 };
 
 struct v3_shdw_pg_state {
@@ -71,14 +67,6 @@ struct v3_shdw_pg_state {
 #endif
 
 
-};
-
-
-struct v3_shdw_pg_event {
-    enum {SHADOW_PAGEFAULT,SHADOW_INVLPG,SHADOW_INVALIDATE,SHADOW_ACTIVATE} event_type;
-    enum {SHADOW_PREIMPL, SHADOW_POSTIMPL} event_order;
-    addr_t     gva;        // for pf and invlpg
-    pf_error_t error_code; // for pf
 };
 
 
@@ -102,19 +90,6 @@ int v3_invalidate_shadow_pts(struct v3_core_info * core);
 /* Utility functions for shadow paging implementations */
 int v3_inject_guest_pf(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code);
 int v3_is_guest_pf(pt_access_status_t guest_access, pt_access_status_t shadow_access);
-
-
-int v3_register_shadow_paging_event_callback(struct v3_vm_info *vm,
-					  int (*callback)(struct v3_core_info *core, 
-							  struct v3_shdw_pg_event *event,
-							  void      *priv_data),
-					  void *priv_data);
-
-int v3_unregister_shadow_paging_event_callback(struct v3_vm_info *vm,
-					       int (*callback)(struct v3_core_info *core, 
-							       struct v3_shdw_pg_event *event,
-							       void      *priv_data),
-					       void *priv_data);
 
 
 

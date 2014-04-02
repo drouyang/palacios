@@ -44,9 +44,9 @@ struct telemetry_cb {
 
 
 struct exit_event {
-    uint_t exit_code;
-    uint_t cnt;
-    uint64_t handler_time;
+    uint32_t  exit_code;
+    uint32_t  cnt;
+    uint64_t  handler_time;
 
     struct rb_node tree_node;
 };
@@ -79,27 +79,32 @@ static int telem_eq_fn(addr_t key1, addr_t key2) {
 static int free_callback(struct v3_vm_info * vm, struct telemetry_cb * cb);
 static int free_exit(struct v3_core_info * core, struct exit_event * event);
 
-static int telemetry_hcall(struct v3_core_info * core,
-        hcall_id_t hcall_id, void * priv_data) {
+static int 
+telemetry_hcall(struct v3_core_info * core,
+		hcall_id_t hcall_id, void * priv_data) 
+{
     v3_print_core_telemetry(core);
     return 0;
 }
 
-void v3_init_telemetry(struct v3_vm_info * vm) {
+void 
+v3_init_telemetry(struct v3_vm_info * vm) 
+{
     struct v3_telemetry_state * telemetry = &(vm->telemetry);
 
-    telemetry->invoke_cnt = 0;
+    telemetry->invoke_cnt  = 0;
     telemetry->granularity = DEFAULT_GRANULARITY;
-
-    telemetry->prev_tsc = 0;
+    telemetry->prev_tsc    = 0;
 
     INIT_LIST_HEAD(&(telemetry->cb_list));
 
     v3_register_hypercall(vm, TELEMETRY_HCALL, telemetry_hcall, NULL);
 }
 
-void v3_deinit_telemetry(struct v3_vm_info * vm) {
-    struct telemetry_cb * cb = NULL;
+void 
+v3_deinit_telemetry(struct v3_vm_info * vm) 
+{
+    struct telemetry_cb * cb  = NULL;
     struct telemetry_cb * tmp = NULL;
 
     list_for_each_entry_safe(cb, tmp, &(vm->telemetry.cb_list), cb_node) {
@@ -108,26 +113,28 @@ void v3_deinit_telemetry(struct v3_vm_info * vm) {
 }
 
 
-void v3_init_core_telemetry(struct v3_core_info * core) {
+void 
+v3_init_core_telemetry(struct v3_core_info * core) 
+{
     struct v3_core_telemetry * telemetry = &(core->core_telem);
 
-    telemetry->exit_cnt = 0;
-    telemetry->vmm_start_tsc = 0;
-
-    telemetry->vm_telem = &(core->vm_info->telemetry);
-
+    telemetry->exit_cnt          = 0;
+    telemetry->vmm_start_tsc     = 0;
+    telemetry->vm_telem          = &(core->vm_info->telemetry);
     telemetry->exit_root.rb_node = NULL;
 
     telemetry->counter_table = v3_create_htable(0, telem_hash_fn, telem_eq_fn);
 }
 
-void v3_deinit_core_telemetry(struct v3_core_info * core) {
+void 
+v3_deinit_core_telemetry(struct v3_core_info * core) 
+{
     struct v3_core_telemetry * telemetry = &(core->core_telem);    
-    struct rb_node * node = v3_rb_first(&(telemetry->exit_root));
-    struct exit_event * evt = NULL;
+    struct rb_node           * node      = v3_rb_first(&(telemetry->exit_root));
+    struct exit_event        * evt       = NULL;
 
     while (node) {
-	evt = rb_entry(node, struct exit_event, tree_node);
+	evt  = rb_entry(node, struct exit_event, tree_node);
 	node = v3_rb_next(node);
 
 	free_exit(core, evt);
@@ -139,9 +146,11 @@ void v3_deinit_core_telemetry(struct v3_core_info * core) {
 
 
 
-void v3_telemetry_inc_core_counter(struct v3_core_info * core, char * counter_name) {
+void 
+v3_telemetry_inc_core_counter(struct v3_core_info * core, char * counter_name) 
+{
     struct v3_core_telemetry * telemetry = &(core->core_telem);
-    struct telem_counter * counter = NULL;
+    struct telem_counter     * counter   = NULL;
 
     counter = (struct telem_counter *)v3_htable_search(telemetry->counter_table, (addr_t)(counter_name));
 
@@ -163,9 +172,11 @@ void v3_telemetry_inc_core_counter(struct v3_core_info * core, char * counter_na
     return;
 }
 
-void v3_telemetry_reset_core_counter(struct v3_core_info * core, char * counter_name) {
+void
+v3_telemetry_reset_core_counter(struct v3_core_info * core, char * counter_name) 
+{
     struct v3_core_telemetry * telemetry = &(core->core_telem);
-    struct telem_counter * counter = NULL;
+    struct telem_counter     * counter   = NULL;
 
     counter = (struct telem_counter *)v3_htable_search(telemetry->counter_table, (addr_t)(counter_name));
 
@@ -181,14 +192,15 @@ void v3_telemetry_reset_core_counter(struct v3_core_info * core, char * counter_
 
 
 
-static inline struct exit_event * __insert_event(struct v3_core_info * core, 
-						 struct exit_event * evt) {
-    struct rb_node ** p = &(core->core_telem.exit_root.rb_node);
-    struct rb_node * parent = NULL;
+static inline struct exit_event * 
+__insert_event(struct v3_core_info * core, struct exit_event * evt) 
+{
+    struct rb_node   ** p       = &(core->core_telem.exit_root.rb_node);
+    struct rb_node    * parent  = NULL;
     struct exit_event * tmp_evt = NULL;
 
     while (*p) {
-	parent = *p;
+	parent  = *p;
 	tmp_evt = rb_entry(parent, struct exit_event, tree_node);
 
 	if (evt->exit_code < tmp_evt->exit_code) {
@@ -204,8 +216,9 @@ static inline struct exit_event * __insert_event(struct v3_core_info * core,
     return NULL;
 }
 
-static inline struct exit_event * insert_event(struct v3_core_info * core, 
-					       struct exit_event * evt) {
+static inline struct exit_event * 
+insert_event(struct v3_core_info * core, struct exit_event * evt) 
+{
     struct exit_event * ret;
 
     if ((ret = __insert_event(core, evt))) {
@@ -218,8 +231,10 @@ static inline struct exit_event * insert_event(struct v3_core_info * core,
 }
 
 
-static struct exit_event * get_exit(struct v3_core_info * core, uint_t exit_code) {
-    struct rb_node * n = core->core_telem.exit_root.rb_node;
+static struct exit_event * 
+get_exit(struct v3_core_info * core, uint_t exit_code) 
+{
+    struct rb_node    * n   = core->core_telem.exit_root.rb_node;
     struct exit_event * evt = NULL;
 
     while (n) {
@@ -238,7 +253,9 @@ static struct exit_event * get_exit(struct v3_core_info * core, uint_t exit_code
 }
 
 
-static inline struct exit_event * create_exit(uint_t exit_code) {
+static inline struct exit_event * 
+create_exit(uint_t exit_code)
+{
     struct exit_event * evt = V3_Malloc(sizeof(struct exit_event));
 
     if (!evt) {
@@ -246,8 +263,8 @@ static inline struct exit_event * create_exit(uint_t exit_code) {
 	return NULL;
     }
 
-    evt->exit_code = exit_code;
-    evt->cnt = 0;
+    evt->exit_code    = exit_code;
+    evt->cnt          = 0;
     evt->handler_time = 0;
 
     return evt;
@@ -255,22 +272,28 @@ static inline struct exit_event * create_exit(uint_t exit_code) {
 
 
 
-static int free_exit(struct v3_core_info * core, struct exit_event * evt) {
+static int 
+free_exit(struct v3_core_info * core, struct exit_event * evt) 
+{
     v3_rb_erase(&(evt->tree_node), &(core->core_telem.exit_root));
     V3_Free(evt);
     return 0;
 }
 
 
-void v3_telemetry_start_exit(struct v3_core_info * core) {
+void 
+v3_telemetry_start_exit(struct v3_core_info * core) 
+{
     rdtscll(core->core_telem.vmm_start_tsc);
 }
 
 
-void v3_telemetry_end_exit(struct v3_core_info * core, uint_t exit_code) {
+void 
+v3_telemetry_end_exit(struct v3_core_info * core, uint_t exit_code) 
+{
     struct v3_core_telemetry * telemetry = &(core->core_telem);
-    struct exit_event * evt = NULL;
-    uint64_t end_tsc = 0;
+    struct exit_event        * evt       = NULL;
+    uint64_t                   end_tsc   = 0;
 
     rdtscll(end_tsc);
 
@@ -298,19 +321,21 @@ void v3_telemetry_end_exit(struct v3_core_info * core, uint_t exit_code) {
 
 
 
-void v3_telemetry_reset(struct v3_core_info * core) {
+void 
+v3_telemetry_reset(struct v3_core_info * core) 
+{
     struct v3_core_telemetry * telemetry = &(core->core_telem);
 
 
     /* Clear exit stats */
     {
-	struct exit_event * evt = NULL;
-	struct rb_node * node = v3_rb_first(&(telemetry->exit_root));
+	struct exit_event * evt  = NULL;
+	struct rb_node    * node = v3_rb_first(&(telemetry->exit_root));
 
 	do {
 	    evt = rb_entry(node, struct exit_event, tree_node);
 	    
-	    evt->cnt = 0;
+	    evt->cnt          = 0;
 	    evt->handler_time = 0;
 	    
 	} while ((node = v3_rb_next(node)));
@@ -333,11 +358,13 @@ void v3_telemetry_reset(struct v3_core_info * core) {
 
 
 
-void v3_add_telemetry_cb(struct v3_vm_info * vm, 
-			 void (*telemetry_fn)(struct v3_vm_info * vm, void * private_data, char * hdr),
-			 void * private_data) {
+void 
+v3_add_telemetry_cb(struct v3_vm_info * vm, 
+		    void (*telemetry_fn)(struct v3_vm_info * vm, void * private_data, char * hdr),
+		    void * private_data) 
+{
     struct v3_telemetry_state * telemetry = &(vm->telemetry);
-    struct telemetry_cb * cb = (struct telemetry_cb *)V3_Malloc(sizeof(struct telemetry_cb));
+    struct telemetry_cb       * cb        = (struct telemetry_cb *)V3_Malloc(sizeof(struct telemetry_cb));
 
     if (!cb) {
 	PrintError("Cannot allocate in adding a telemtry callback\n");
@@ -352,7 +379,9 @@ void v3_add_telemetry_cb(struct v3_vm_info * vm,
 
 
 
-static int free_callback(struct v3_vm_info * vm, struct telemetry_cb * cb) {
+static int 
+free_callback(struct v3_vm_info * vm, struct telemetry_cb * cb) 
+{
     list_del(&(cb->cb_node));
     V3_Free(cb);
 
@@ -360,19 +389,24 @@ static int free_callback(struct v3_vm_info * vm, struct telemetry_cb * cb) {
 }
 
 
-static void telemetry_header(struct v3_vm_info *vm, struct v3_core_info * core, char * hdr_buf, int len) {
+static void 
+telemetry_header(struct v3_vm_info * vm, struct v3_core_info * core, char * hdr_buf, int len) 
+{
     struct v3_telemetry_state * telemetry = &(vm->telemetry);
 
     if (!core) {
-	snprintf(hdr_buf, len, "telem.%d>", telemetry->invoke_cnt);
+	snprintf(hdr_buf, len, "telem.%d>",           telemetry->invoke_cnt);
     } else {
 	snprintf(hdr_buf, len, "telem.%d (core:%d)>", telemetry->invoke_cnt, core->vcpu_id);
     }
 }
 
-static void print_telemetry_start(struct v3_vm_info *vm, char *hdr_buf) {
-    struct v3_telemetry_state * telemetry = &(vm->telemetry);
-    uint64_t invoke_tsc = 0;
+static void 
+print_telemetry_start(struct v3_vm_info * vm, char * hdr_buf)
+{
+    struct v3_telemetry_state * telemetry  = &(vm->telemetry);
+    uint64_t                    invoke_tsc = 0;
+
     rdtscll(invoke_tsc);
     V3_Print("%stelemetry tsc=%llu (window size: %llu)\n", hdr_buf, 
 	     invoke_tsc, (uint64_t)(invoke_tsc - telemetry->prev_tsc));	     
@@ -380,16 +414,18 @@ static void print_telemetry_start(struct v3_vm_info *vm, char *hdr_buf) {
     telemetry->prev_tsc = invoke_tsc;
 }
 
-static void print_telemetry_end(struct v3_vm_info *vm, char *hdr_buf)
+static void 
+print_telemetry_end(struct v3_vm_info * vm, char * hdr_buf)
 {
     V3_Print("%s Telemetry done\n", hdr_buf);
 }
 
-static void print_core_telemetry(struct v3_core_info * core, char *hdr_buf)
+static void 
+print_core_telemetry(struct v3_core_info * core, char * hdr_buf)
 {
-    struct exit_event * evt = NULL;
     struct v3_core_telemetry * telemetry = &(core->core_telem);
-    struct rb_node * node = v3_rb_first(&(telemetry->exit_root));
+    struct rb_node           * node      = v3_rb_first(&(telemetry->exit_root));
+    struct exit_event        * evt       = NULL;
 
     V3_Print("=============================================\n");
     V3_Print("=============================================\n");
@@ -401,7 +437,8 @@ static void print_core_telemetry(struct v3_core_info * core, char *hdr_buf)
     V3_Print("%sTime Breakdown: Host=%llu, Guest=%llu\n", hdr_buf,
 	     core->time_state.time_in_host, 
 	     core->time_state.time_in_guest);
-    core->time_state.time_in_host = 0;
+
+    core->time_state.time_in_host  = 0;
     core->time_state.time_in_guest = 0;
 
 
@@ -412,7 +449,7 @@ static void print_core_telemetry(struct v3_core_info * core, char *hdr_buf)
 
     do {
 	extern v3_cpu_arch_t v3_mach_type;
-	const char * code_str = NULL;
+	const char         * code_str = NULL;
 	
 	evt = rb_entry(node, struct exit_event, tree_node);
 
@@ -434,9 +471,9 @@ static void print_core_telemetry(struct v3_core_info * core, char *hdr_buf)
 
 	V3_Print("%s%s:%sCnt=%u,%sAvg. Time=%llu\n", 
 		 hdr_buf, code_str,
-		 (strlen(code_str) > 13) ? "\t" : "\t\t",
+		 (strlen(code_str) > 13)   ? "\t" : "\t\t",
 		 evt->cnt,
-		 (evt->cnt >= 100) ? "\t" : "\t\t",
+		 (evt->cnt         >= 100) ? "\t" : "\t\t",
 		 (uint64_t)(evt->handler_time / evt->cnt));
     } while ((node = v3_rb_next(node)));
 
@@ -465,20 +502,23 @@ static void print_core_telemetry(struct v3_core_info * core, char *hdr_buf)
     return;
 }
 
-void v3_print_core_telemetry(struct v3_core_info * core ) {
+void 
+v3_print_core_telemetry(struct v3_core_info * core) 
+{
     struct v3_vm_info * vm = core->vm_info;
     char hdr_buf[32];
     
     telemetry_header(vm, core, hdr_buf, 32);
 
-    print_telemetry_start(vm, hdr_buf);
-    print_core_telemetry(core, hdr_buf);
-    print_telemetry_end(vm, hdr_buf);
+    print_telemetry_start(vm,   hdr_buf);
+    print_core_telemetry(core,  hdr_buf);
+    print_telemetry_end(vm,     hdr_buf);
 
     return;
 }
 
-static void telemetry_callbacks(struct v3_vm_info * vm, char *hdr_buf)
+static void 
+telemetry_callbacks(struct v3_vm_info * vm, char * hdr_buf)
 {
     struct v3_telemetry_state * telemetry = &(vm->telemetry);
     // Registered callbacks
@@ -491,19 +531,22 @@ static void telemetry_callbacks(struct v3_vm_info * vm, char *hdr_buf)
     }
 }
 
-void v3_print_global_telemetry(struct v3_vm_info * vm) {
+void 
+v3_print_global_telemetry(struct v3_vm_info * vm) 
+{
     struct v3_telemetry_state * telemetry = &(vm->telemetry);
     char hdr_buf[32];
 
     telemetry_header(vm, NULL, hdr_buf, 32);
     telemetry->invoke_cnt++; // XXX this increment isn't atomic and probably should be
 
-    print_telemetry_start( vm, hdr_buf );
-    telemetry_callbacks( vm, hdr_buf );
-    print_telemetry_end( vm, hdr_buf );
+    print_telemetry_start(vm, hdr_buf);
+    telemetry_callbacks(vm,   hdr_buf);
+    print_telemetry_end(vm,   hdr_buf);
 }
 
-void v3_print_telemetry(struct v3_vm_info * vm, struct v3_core_info * core )
+void 
+v3_print_telemetry(struct v3_vm_info * vm, struct v3_core_info * core)
 {
     struct v3_telemetry_state * telemetry = &(vm->telemetry);
     char hdr_buf[32];
@@ -511,10 +554,10 @@ void v3_print_telemetry(struct v3_vm_info * vm, struct v3_core_info * core )
     telemetry_header(vm, core, hdr_buf, 32);
     telemetry->invoke_cnt++; // XXX this increment isn't atomic and probably should be
 
-    print_telemetry_start(vm, hdr_buf);
+    print_telemetry_start(vm , hdr_buf);
     print_core_telemetry(core, hdr_buf);
-    telemetry_callbacks(vm, hdr_buf);
-    print_telemetry_end(vm, hdr_buf);
+    telemetry_callbacks(vm,    hdr_buf);
+    print_telemetry_end(vm,    hdr_buf);
 
     return;
 }

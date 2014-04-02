@@ -28,9 +28,9 @@
 
 
 u32 pg_allocs = 0;
-u32 pg_frees = 0;
-u32 mallocs = 0;
-u32 frees = 0;
+u32 pg_frees  = 0;
+u32 mallocs   = 0;
+u32 frees     = 0;
 
 
 static struct v3_vm_info * irq_to_guest_map[256];

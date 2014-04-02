@@ -91,7 +91,7 @@ static int
 gpa_to_node_from_cfg(struct v3_vm_info * vm, addr_t gpa) 
 {
     v3_cfg_tree_t * layout_cfg  = v3_cfg_subtree(vm->cfg_data->cfg, "mem_layout");
-    v3_cfg_tree_t * region_desc = v3_cfg_subtree(layout_cfg, "region");
+    v3_cfg_tree_t * region_desc = v3_cfg_subtree(layout_cfg,        "region");
 
     while (region_desc) {
 	char * start_addr_str = v3_cfg_val(region_desc, "start_addr");

@@ -32,8 +32,8 @@
  * module is removed XXX
  */
 static struct hashtable * option_table = NULL;
-static uint8_t * string_table = NULL;
-static char * true_val = "true";
+static uint8_t          * string_table = NULL;
+static char             * true_val     = "true";
  
 static uint_t option_hash_fn(addr_t key) {
     char * name = (char *)key;
@@ -68,9 +68,11 @@ static char * get_end_of_word(char * str) {
     return str;
 }
 
-int V3_init_options(char * options) {
-    char * c = NULL;
-    int opt_len = -1;
+int 
+V3_init_options(char * options) 
+{
+    char * c       = NULL;
+    int    opt_len = -1;
 
     if (options == NULL) {
 	return 0; 
@@ -84,7 +86,7 @@ int V3_init_options(char * options) {
     }
     
     // allocate length of options + NULL terminator byte
-    opt_len = strlen(options) + 1; 
+    opt_len      = strlen(options) + 1; 
     string_table = V3_Malloc(opt_len);
 
     if (string_table == NULL) {
@@ -93,7 +95,7 @@ int V3_init_options(char * options) {
 	return -1;
     }
 
-    memset(string_table, 0, opt_len);
+    memset(string_table, 0,       opt_len);
     memcpy(string_table, options, strlen(options));
     c = string_table;
     
@@ -160,6 +162,8 @@ int V3_init_options(char * options) {
     return 0;
 }
 
-char * v3_lookup_option(char * key) {
+char * 
+v3_lookup_option(char * key) 
+{
     return (char *)v3_htable_search(option_table, (addr_t)key);
 }

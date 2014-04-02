@@ -28,7 +28,8 @@
 //
 // Currently we disallow mwait in the CPUID field, so we need to raise an exception
 //
-int v3_handle_mwait(struct v3_core_info * core) 
+int 
+v3_handle_mwait(struct v3_core_info * core) 
 {
     PrintDebug("Raising undefined opcode due to mwait instruction\n");
 
@@ -40,7 +41,8 @@ int v3_handle_mwait(struct v3_core_info * core)
 //
 // Currently we disallow mwait in the CPUID field, so we need to raise an exception
 //
-int v3_handle_monitor(struct v3_core_info * core) 
+int 
+v3_handle_monitor(struct v3_core_info * core) 
 {
     PrintDebug("Raising undefined opcode due to monitor instruction\n");
 

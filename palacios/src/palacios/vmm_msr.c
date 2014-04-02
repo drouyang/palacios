@@ -24,21 +24,25 @@
 
 static int free_hook(struct v3_vm_info * vm, struct v3_msr_hook * hook);
 
-void v3_init_msr_map(struct v3_vm_info * vm) {
+void 
+v3_init_msr_map(struct v3_vm_info * vm) 
+{
     struct v3_msr_map * msr_map  = &(vm->msr_map);
 
     PrintDebug("Initializing MSR map.\n");
 
     INIT_LIST_HEAD(&(msr_map->hook_list));
-    msr_map->num_hooks = 0;
 
-    msr_map->arch_data = NULL;
+    msr_map->num_hooks  = 0;
+    msr_map->arch_data  = NULL;
     msr_map->update_map = NULL;
 }
 
-int v3_deinit_msr_map(struct v3_vm_info * vm) {
+int 
+v3_deinit_msr_map(struct v3_vm_info * vm) 
+{
     struct v3_msr_hook * hook = NULL;
-    struct v3_msr_hook * tmp = NULL;
+    struct v3_msr_hook * tmp  = NULL;
 
     list_for_each_entry_safe(hook, tmp, &(vm->msr_map.hook_list), link) {
 	free_hook(vm, hook);
@@ -47,10 +51,12 @@ int v3_deinit_msr_map(struct v3_vm_info * vm) {
     return 0;
 }
 
-int v3_handle_msr_write(struct v3_core_info * core) {
-    uint32_t msr_num = core->vm_regs.rcx;
-    struct v3_msr msr_val;
-    struct v3_msr_hook * hook = NULL;
+int 
+v3_handle_msr_write(struct v3_core_info * core) 
+{
+    uint32_t             msr_num = core->vm_regs.rcx;
+    struct v3_msr_hook * hook    = NULL;
+    struct v3_msr        msr_val;
     
     msr_val.value = 0;
 
@@ -80,10 +86,12 @@ int v3_handle_msr_write(struct v3_core_info * core) {
 }
 
 
-int v3_handle_msr_read(struct v3_core_info * core) {
-    uint32_t msr_num = core->vm_regs.rcx;
-    struct v3_msr msr_val;
-    struct v3_msr_hook * hook = NULL;
+int 
+v3_handle_msr_read(struct v3_core_info * core) 
+{
+    uint32_t             msr_num = core->vm_regs.rcx;
+    struct v3_msr_hook * hook    = NULL;
+    struct v3_msr        msr_val;
 
     msr_val.value = 0;
 
@@ -107,7 +115,9 @@ int v3_handle_msr_read(struct v3_core_info * core) {
 
 
 
-int v3_msr_unhandled_read(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data) {
+int 
+v3_msr_unhandled_read(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data) 
+{
     V3_Print("Palacios: Unhandled MSR Read (MSR=0x%x) - returning zero\n", msr);
 
     dst->value = 0;
@@ -116,20 +126,23 @@ int v3_msr_unhandled_read(struct v3_core_info * core, uint32_t msr, struct v3_ms
     return 0;
 }
 
-int v3_msr_unhandled_write(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data) {
+int 
+v3_msr_unhandled_write(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data) 
+{
     V3_Print("Palacios: Unhandled MSR Write (MSR=0x%x) - ignored\n", msr);
     // should produce GPF for unsupported msr
     return 0;
 }
 
 
-int v3_hook_msr(struct v3_vm_info * vm, uint32_t msr, 
-		int (*read)(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
-		int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data),
-		void * priv_data) {
-
-    struct v3_msr_map * msr_map = &(vm->msr_map);
-    struct v3_msr_hook * hook = NULL;
+int 
+v3_hook_msr(struct v3_vm_info * vm, uint32_t msr, 
+	    int (*read)(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
+	    int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data),
+	    void * priv_data) 
+{
+    struct v3_msr_map  * msr_map = &(vm->msr_map);
+    struct v3_msr_hook * hook    = NULL;
 
     hook = (struct v3_msr_hook *)V3_Malloc(sizeof(struct v3_msr_hook));
 
@@ -138,9 +151,9 @@ int v3_hook_msr(struct v3_vm_info * vm, uint32_t msr,
 	return -1;
     }
 
-    hook->read = read;
-    hook->write = write;
-    hook->msr = msr;
+    hook->read      = read;
+    hook->write     = write;
+    hook->msr       = msr;
     hook->priv_data = priv_data;
 
     msr_map->num_hooks++;
@@ -149,7 +162,7 @@ int v3_hook_msr(struct v3_vm_info * vm, uint32_t msr,
 
     if (msr_map->update_map) {
 	msr_map->update_map(vm, msr, 
-			    (read == NULL) ? 0 : 1,
+			    (read  == NULL) ? 0 : 1,
 			    (write == NULL) ? 0 : 1);
     }
 
@@ -160,7 +173,9 @@ int v3_hook_msr(struct v3_vm_info * vm, uint32_t msr,
 
 
 
-static int free_hook(struct v3_vm_info * vm, struct v3_msr_hook * hook) {
+static int 
+free_hook(struct v3_vm_info * vm, struct v3_msr_hook * hook) 
+{
     list_del(&(hook->link));
 
     if (vm->msr_map.update_map) {
@@ -173,7 +188,9 @@ static int free_hook(struct v3_vm_info * vm, struct v3_msr_hook * hook) {
 }
 
 
-int v3_unhook_msr(struct v3_vm_info * vm, uint32_t msr) {
+int 
+v3_unhook_msr(struct v3_vm_info * vm, uint32_t msr) 
+{
     struct v3_msr_hook * hook = v3_get_msr_hook(vm, msr);
 
     if (hook == NULL) {
@@ -188,9 +205,11 @@ int v3_unhook_msr(struct v3_vm_info * vm, uint32_t msr) {
 
 
 
-struct v3_msr_hook * v3_get_msr_hook(struct v3_vm_info * vm, uint32_t msr) {
-    struct v3_msr_map * msr_map = &(vm->msr_map);
-    struct v3_msr_hook * hook = NULL;
+struct v3_msr_hook * 
+v3_get_msr_hook(struct v3_vm_info * vm, uint32_t msr) 
+{
+    struct v3_msr_map  * msr_map = &(vm->msr_map);
+    struct v3_msr_hook * hook    = NULL;
 
     list_for_each_entry(hook, &(msr_map->hook_list), link) {
 	if (hook->msr == msr) {
@@ -202,9 +221,11 @@ struct v3_msr_hook * v3_get_msr_hook(struct v3_vm_info * vm, uint32_t msr) {
 }
 
 
-void v3_refresh_msr_map(struct v3_vm_info * vm) {
-    struct v3_msr_map * msr_map = &(vm->msr_map);
-    struct v3_msr_hook * hook = NULL;
+void 
+v3_refresh_msr_map(struct v3_vm_info * vm) 
+{
+    struct v3_msr_map  * msr_map = &(vm->msr_map);
+    struct v3_msr_hook * hook    = NULL;
 
     if (msr_map->update_map == NULL) {
 	PrintError("Trying to refresh an MSR map with no backend\n");
@@ -214,17 +235,19 @@ void v3_refresh_msr_map(struct v3_vm_info * vm) {
     list_for_each_entry(hook, &(msr_map->hook_list), link) {
 	PrintDebug("updating MSR map for msr 0x%x\n", hook->msr);
 	msr_map->update_map(vm, hook->msr, 	
-			    (hook->read == NULL) ? 0 : 1,
+			    (hook->read  == NULL) ? 0 : 1,
 			    (hook->write == NULL) ? 0 : 1);
     }
 }
 
-void v3_print_msr_map(struct v3_vm_info * vm) {
-    struct v3_msr_map * msr_map = &(vm->msr_map);
-    struct v3_msr_hook * hook = NULL;
+void 
+v3_print_msr_map(struct v3_vm_info * vm) 
+{
+    struct v3_msr_map  * msr_map = &(vm->msr_map);
+    struct v3_msr_hook * hook    = NULL;
 
     list_for_each_entry(hook, &(msr_map->hook_list), link) {
 	V3_Print("MSR HOOK (MSR=0x%x) (read=0x%p) (write=0x%p)\n",
-		   hook->msr, hook->read, hook->write);
+		 hook->msr, hook->read, hook->write);
     }
 }

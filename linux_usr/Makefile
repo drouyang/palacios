@@ -42,7 +42,6 @@ execs-$(V3_EXPERIMENTAL) += v3_simulate
 
 execs-$(V3_CONFIG_CONSOLE) += 	v3_cons \
 				v3_cons_sc \
-				v3_monitor
 
 execs-$(V3_CONFIG_STREAM)  += v3_stream
 execs-$(V3_CONFIG_HOST_PCI) += v3_pci

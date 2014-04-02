@@ -23,15 +23,16 @@
 
 #include <palacios/vmm_rbtree.h>
 
-static inline 
-struct v3_mtree * __insert_mtree_node(struct v3_mtree * root, struct v3_mtree * node) {
-    struct rb_node ** p = &(root->child.rb_node);
-    struct rb_node * parent = NULL;
+static inline struct v3_mtree * 
+__insert_mtree_node(struct v3_mtree * root, struct v3_mtree * node) 
+{
+    struct rb_node ** p      = &(root->child.rb_node);
+    struct rb_node  * parent = NULL;
     struct v3_mtree * tmp_node;
+    int ret  = 0;
 
     while (*p) {
-	int ret = 0;
-	parent = *p;
+	parent   = *p;
 	tmp_node = rb_entry(parent, struct v3_mtree, tree_node);
 
 	ret = strcmp(node->name, tmp_node->name);
@@ -52,9 +53,10 @@ struct v3_mtree * __insert_mtree_node(struct v3_mtree * root, struct v3_mtree * 
 
 
 
-struct v3_mtree * v3_mtree_create_node(struct v3_mtree * root, char * name) {
+struct v3_mtree * 
+v3_mtree_create_node(struct v3_mtree * root, char * name) {
     struct v3_mtree * node = (struct v3_mtree *)V3_Malloc(sizeof(struct v3_mtree));
-    struct v3_mtree * ret = NULL;
+    struct v3_mtree * ret  = NULL;
 
 
     PrintDebug("Creating Node %s\n", name);
@@ -65,7 +67,7 @@ struct v3_mtree * v3_mtree_create_node(struct v3_mtree * root, char * name) {
 	return NULL;
     }
 
-    memset(node, 0, sizeof(struct v3_mtree));
+    memset (node, 0, sizeof(struct v3_mtree));
     strncpy(node->name, name, V3_MTREE_NAME_LEN);
 
     if ((ret = __insert_mtree_node(root, node))) {
@@ -84,7 +86,9 @@ struct v3_mtree * v3_mtree_create_node(struct v3_mtree * root, char * name) {
 }
 
 
-struct v3_mtree * v3_mtree_create_subtree(struct v3_mtree * root, char * name) {
+struct v3_mtree * 
+v3_mtree_create_subtree(struct v3_mtree * root, char * name) 
+{
     struct v3_mtree * node = NULL;
 
     PrintDebug("Creating Subtree %s\n", name);
@@ -100,8 +104,10 @@ struct v3_mtree * v3_mtree_create_subtree(struct v3_mtree * root, char * name) {
 }
 
 
-struct v3_mtree * v3_mtree_create_value(struct v3_mtree * root, char * name, 
-					uint64_t size, void * value) {
+struct v3_mtree * 
+v3_mtree_create_value(struct v3_mtree * root, char * name, 
+		      uint64_t size, void * value) 
+{
     struct v3_mtree * node  = NULL;
 
     PrintDebug("Creating value %s\n", name);    
@@ -111,7 +117,7 @@ struct v3_mtree * v3_mtree_create_value(struct v3_mtree * root, char * name,
 	return NULL;
     }
 
-    node->size = size;
+    node->size  = size;
     node->value = value;
 
     return node;
@@ -119,9 +125,12 @@ struct v3_mtree * v3_mtree_create_value(struct v3_mtree * root, char * name,
 
 
 
-struct v3_mtree * v3_mtree_find_node(struct v3_mtree * root, char * name) {
-    struct rb_node * n = root->child.rb_node;
+struct v3_mtree * 
+v3_mtree_find_node(struct v3_mtree * root, char * name) 
+{
+    struct rb_node  * n        = root->child.rb_node;
     struct v3_mtree * tmp_node = NULL;
+    int ret = 0;
 
     if (root->subtree == 0) {
 	PrintError("Searching for node on a non-root mtree (search=%s), root=%s\n", name, root->name);
@@ -129,8 +138,8 @@ struct v3_mtree * v3_mtree_find_node(struct v3_mtree * root, char * name) {
     }
    
     while (n) {
-	int ret = 0;
 	tmp_node = rb_entry(n, struct v3_mtree, tree_node);
+
 	ret = strcmp(tmp_node->name, name);
 
 	if (ret < 0) {
@@ -146,7 +155,9 @@ struct v3_mtree * v3_mtree_find_node(struct v3_mtree * root, char * name) {
 }
 
 
-struct v3_mtree * v3_mtree_find_subtree(struct v3_mtree * root, char * name) {
+struct v3_mtree * 
+v3_mtree_find_subtree(struct v3_mtree * root, char * name) 
+{
     struct v3_mtree * node = v3_mtree_find_node(root, name);
     
     if (node->subtree == 0) {
@@ -157,7 +168,9 @@ struct v3_mtree * v3_mtree_find_subtree(struct v3_mtree * root, char * name) {
 }
 
 
-struct v3_mtree * v3_mtree_find_value(struct v3_mtree * root, char * name) {
+struct v3_mtree * 
+v3_mtree_find_value(struct v3_mtree * root, char * name) 
+{
     struct v3_mtree * node= v3_mtree_find_node(root, name);
     
     if (node->subtree == 1) {
@@ -168,7 +181,9 @@ struct v3_mtree * v3_mtree_find_value(struct v3_mtree * root, char * name) {
 }
 
 
-struct v3_mtree * v3_mtree_first_child(struct v3_mtree * root) {
+struct v3_mtree * 
+v3_mtree_first_child(struct v3_mtree * root) 
+{
     struct rb_node * node = v3_rb_first(&(root->child));
 
     if (node == NULL) {
@@ -179,7 +194,9 @@ struct v3_mtree * v3_mtree_first_child(struct v3_mtree * root) {
 }
 
 
-struct v3_mtree * v3_mtree_next_node(struct v3_mtree * node) {
+struct v3_mtree * 
+v3_mtree_next_node(struct v3_mtree * node) 
+{
     struct rb_node * next_node = v3_rb_next(&(node->tree_node));
 
     if (next_node == NULL) {
