@@ -145,7 +145,9 @@ v3_activate_passthrough_pt(struct v3_core_info * core)
 
 
 int 
-v3_handle_passthrough_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) 
+v3_handle_passthrough_pagefault(struct v3_core_info * core, 
+				addr_t                fault_addr, 
+				pf_error_t            error_code) 
 {
     v3_cpu_mode_t mode = v3_get_vm_cpu_mode(core);
 
@@ -170,7 +172,9 @@ v3_handle_passthrough_pagefault(struct v3_core_info * core, addr_t fault_addr, p
 
 
 int 
-v3_handle_nested_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) 
+v3_handle_nested_pagefault(struct v3_core_info * core, 
+			   addr_t                fault_addr, 
+			   pf_error_t            error_code) 
 {
     v3_cpu_mode_t mode = v3_get_host_cpu_mode();
 
@@ -197,7 +201,8 @@ v3_handle_nested_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_err
 }
 
 int 
-v3_invalidate_passthrough_addr(struct v3_core_info * core, addr_t inv_addr) 
+v3_invalidate_passthrough_addr(struct v3_core_info * core, 
+			       addr_t                inv_addr) 
 {
     v3_cpu_mode_t mode = v3_get_vm_cpu_mode(core);
 
@@ -221,7 +226,8 @@ v3_invalidate_passthrough_addr(struct v3_core_info * core, addr_t inv_addr)
 
 
 int 
-v3_invalidate_nested_addr(struct v3_core_info * core, addr_t inv_addr) 
+v3_invalidate_nested_addr(struct v3_core_info * core, 
+			  addr_t                inv_addr) 
 {
 
 #ifdef __V3_64BIT__

@@ -62,11 +62,11 @@ typedef enum {RESET, ICW1, ICW2, ICW3, ICW4,  READY} pic_state_t;
 
 static const uint_t MASTER_PORT1 = 0x20;
 static const uint_t MASTER_PORT2 = 0x21;
-static const uint_t SLAVE_PORT1 = 0xA0;
-static const uint_t SLAVE_PORT2 = 0xA1;
+static const uint_t SLAVE_PORT1  = 0xA0;
+static const uint_t SLAVE_PORT2  = 0xA1;
 
-static const uint_t ELCR1_PORT = 0x4d0;
-static const uint_t ELCR2_PORT = 0x4d1;
+static const uint_t ELCR1_PORT   = 0x4d0;
+static const uint_t ELCR2_PORT   = 0x4d1;
 
 
 #define IS_ICW1(x) (((x & 0x10) >> 4) == 0x1)
@@ -130,21 +130,21 @@ struct ocw1 {
 };
 
 struct ocw2 {
-    uint_t level  : 3;
+    uint_t level   : 3;
     uint_t cw_code : 2; // should be 00
-    uint_t EOI    : 1;
-    uint_t SL     : 1;
-    uint_t R      : 1;
+    uint_t EOI     : 1;
+    uint_t SL      : 1;
+    uint_t R       : 1;
 };
 
 struct ocw3 {
-    uint_t RIS    : 1;
-    uint_t RR     : 1;
-    uint_t P      : 1;
+    uint_t RIS     : 1;
+    uint_t RR      : 1;
+    uint_t P       : 1;
     uint_t cw_code : 2; // should be 01
-    uint_t smm    : 1;
-    uint_t esmm   : 1;
-    uint_t zero2  : 1;
+    uint_t smm     : 1;
+    uint_t esmm    : 1;
+    uint_t zero2   : 1;
 };
 
 
@@ -197,42 +197,47 @@ struct pic_internal {
 };
 
 
-#if 0
-static void DumpPICState(struct pic_internal *p)
+if 0
+static void 
+DumpPICState(struct pic_internal *p)
 {
 
-    PrintDebug("8259 PIC: master_state=0x%x\n",p->master_state);
-    PrintDebug("8259 PIC: master_irr=0x%x\n",p->master_irr);
-    PrintDebug("8259 PIC: master_isr=0x%x\n",p->master_isr);
-    PrintDebug("8259 PIC: master_imr=0x%x\n",p->master_imr);
+    PrintDebug("8259 PIC: master_state: 0x%x\n",  p->master_state);
+    PrintDebug("8259 PIC: master_irr:   0x%x\n",  p->master_irr);
+    PrintDebug("8259 PIC: master_isr:   0x%x\n",  p->master_isr);
+    PrintDebug("8259 PIC: master_imr:   0x%x\n",  p->master_imr);
 
-    PrintDebug("8259 PIC: master_ocw2=0x%x\n",p->master_ocw2);
-    PrintDebug("8259 PIC: master_ocw3=0x%x\n",p->master_ocw3);
+    PrintDebug("8259 PIC: master_ocw2:  0x%x\n",  p->master_ocw2);
+    PrintDebug("8259 PIC: master_ocw3:  0x%x\n",  p->master_ocw3);
 
-    PrintDebug("8259 PIC: master_icw1=0x%x\n",p->master_icw1);
-    PrintDebug("8259 PIC: master_icw2=0x%x\n",p->master_icw2);
-    PrintDebug("8259 PIC: master_icw3=0x%x\n",p->master_icw3);
-    PrintDebug("8259 PIC: master_icw4=0x%x\n",p->master_icw4);
+    PrintDebug("8259 PIC: master_icw1:  0x%x\n",  p->master_icw1);
+    PrintDebug("8259 PIC: master_icw2:  0x%x\n",  p->master_icw2);
+    PrintDebug("8259 PIC: master_icw3:  0x%x\n",  p->master_icw3);
+    PrintDebug("8259 PIC: master_icw4:  0x%x\n",  p->master_icw4);
 
-    PrintDebug("8259 PIC: slave_state=0x%x\n",p->slave_state);
-    PrintDebug("8259 PIC: slave_irr=0x%x\n",p->slave_irr);
-    PrintDebug("8259 PIC: slave_isr=0x%x\n",p->slave_isr);
-    PrintDebug("8259 PIC: slave_imr=0x%x\n",p->slave_imr);
+    PrintDebug("8259 PIC: slave_state:  0x%x\n",  p->slave_state);
+    PrintDebug("8259 PIC: slave_irr:    0x%x\n",  p->slave_irr);
+    PrintDebug("8259 PIC: slave_isr:    0x%x\n",  p->slave_isr);
+    PrintDebug("8259 PIC: slave_imr:    0x%x\n",  p->slave_imr);
 
-    PrintDebug("8259 PIC: slave_ocw2=0x%x\n",p->slave_ocw2);
-    PrintDebug("8259 PIC: slave_ocw3=0x%x\n",p->slave_ocw3);
+    PrintDebug("8259 PIC: slave_ocw2:   0x%x\n",  p->slave_ocw2);
+    PrintDebug("8259 PIC: slave_ocw3:   0x%x\n",  p->slave_ocw3);
 
-    PrintDebug("8259 PIC: slave_icw1=0x%x\n",p->slave_icw1);
-    PrintDebug("8259 PIC: slave_icw2=0x%x\n",p->slave_icw2);
-    PrintDebug("8259 PIC: slave_icw3=0x%x\n",p->slave_icw3);
-    PrintDebug("8259 PIC: slave_icw4=0x%x\n",p->slave_icw4);
+    PrintDebug("8259 PIC: slave_icw1:   0x%x\n",  p->slave_icw1);
+    PrintDebug("8259 PIC: slave_icw2:   0x%x\n",  p->slave_icw2);
+    PrintDebug("8259 PIC: slave_icw3:   0x%x\n",  p->slave_icw3);
+    PrintDebug("8259 PIC: slave_icw4:   0x%x\n",  p->slave_icw4);
 
 }
 #endif
 
-static int pic_raise_intr(struct v3_vm_info * vm, void * private_data, struct v3_irq * irq) {
-    struct pic_internal * state = (struct pic_internal*)private_data;
-    uint8_t irq_num = irq->irq;
+static int 
+pic_raise_intr(struct v3_vm_info * vm, 
+	       void              * private_data, 
+	       struct v3_irq     * irq) 
+{
+    struct pic_internal * state   = (struct pic_internal*)private_data;
+    uint8_t               irq_num = irq->irq;
 
     if (irq_num == 2) {
 	irq_num = 9;
@@ -247,14 +252,14 @@ static int pic_raise_intr(struct v3_vm_info * vm, void * private_data, struct v3
     if (irq_num <= 7) {
 	state->master_irr |= 0x01 << irq_num;
     } else if ((irq_num > 7) && (irq_num < 16)) {
-	state->slave_irr |= 0x01 << (irq_num - 8);
+	state->slave_irr  |= 0x01 << (irq_num - 8);
 	state->master_irr |= 0x01 << 2;
     } else {
 	PrintDebug("8259 PIC: Invalid IRQ raised (%d)\n", irq_num);
 	return 0;
     }
 
-    state->irq_ack_cbs[irq_num].ack = irq->ack;
+    state->irq_ack_cbs[irq_num].ack          = irq->ack;
     state->irq_ack_cbs[irq_num].private_data = irq->private_data;
 
     if (V3_Get_CPU() != vm->cores[0].pcpu_id) {
@@ -268,9 +273,13 @@ static int pic_raise_intr(struct v3_vm_info * vm, void * private_data, struct v3
 
 
 // This function is a hard lower, meaning we will delete any pending edge triggered interrupts
-static int pic_lower_intr(struct v3_vm_info * vm, void * private_data, struct v3_irq * irq) {
-    struct pic_internal * state = (struct pic_internal*)private_data;
-    uint8_t irq_num = irq->irq;
+static int 
+pic_lower_intr(struct v3_vm_info * vm, 
+	       void              * private_data, 
+	       struct v3_irq     * irq) 
+{
+    struct pic_internal * state   = (struct pic_internal*)private_data;
+    uint8_t               irq_num = irq->irq;
 
 
     if (irq_num == 2) {
@@ -278,6 +287,7 @@ static int pic_lower_intr(struct v3_vm_info * vm, void * private_data, struct v3
     }
 
     PrintDebug("[pic_lower_intr] IRQ line %d now low\n", irq_num);
+
     if (irq_num <= 7) {
 	state->master_irr &= ~(1 << irq_num);
 
@@ -296,10 +306,11 @@ static int pic_lower_intr(struct v3_vm_info * vm, void * private_data, struct v3
 
 
 
-static int pic_intr_pending(struct v3_core_info * core, void * private_data) {
-    struct pic_internal * state = (struct pic_internal*)private_data;
-
-    
+static int 
+pic_intr_pending(struct v3_core_info * core, 
+		 void                * private_data) 
+{
+    struct pic_internal * state = (struct pic_internal *)private_data;
 
     if (state->master_irr & ~(state->master_imr)) {
 
@@ -325,14 +336,18 @@ static int pic_intr_pending(struct v3_core_info * core, void * private_data) {
     return 0;
 }
 
-static int pic_get_intr_number(struct v3_core_info * core, void * private_data) {
+
+static int 
+pic_get_intr_number(struct v3_core_info * core, 
+		    void                * private_data) 
+{
     struct pic_internal * state = (struct pic_internal *)private_data;
-    int i = 0;
-    int j = 0;
     int irq = -1;
+    int i   =  0;
+    int j   =  0;
 
     PrintDebug("8259 PIC: getnum: master_irr: 0x%x master_imr: 0x%x\n", state->master_irr, state->master_imr);
-    PrintDebug("8259 PIC: getnum: slave_irr: 0x%x slave_imr: 0x%x\n", state->slave_irr, state->slave_imr);
+    PrintDebug("8259 PIC: getnum: slave_irr: 0x%x slave_imr: 0x%x\n",   state->slave_irr,  state->slave_imr);
 
     for (i = 0; i < 8; i++) {
 	if (((state->master_irr & ~(state->master_imr)) >> i) & 0x01) {
@@ -381,12 +396,18 @@ static int pic_get_intr_number(struct v3_core_info * core, void * private_data) 
 
 
 /* The IRQ number is the number returned by pic_get_intr_number(), not the pin number */
-static int pic_begin_irq(struct v3_core_info * core, void * private_data, int irq) {
-    struct pic_internal * state = (struct pic_internal*)private_data;
+static int 
+pic_begin_irq(struct v3_core_info * core, 
+	      void                * private_data, 
+	      int                   irq) 
+{
+    struct pic_internal * state = (struct pic_internal *)private_data;
     
-    if ((irq >= state->master_icw2) && (irq <= state->master_icw2 + 7)) {
+    if (( irq >= state->master_icw2     ) && 
+	( irq <= state->master_icw2 + 7 )) {
        irq &= 0x7;
-    } else if ((irq >= state->slave_icw2) && (irq <= state->slave_icw2 + 7)) {
+    } else if (( irq >= state->slave_icw2     ) &&
+	       ( irq <= state->slave_icw2 + 7 )) {
        irq &= 0x7;
        irq += 8;
     } else {
@@ -400,7 +421,7 @@ static int pic_begin_irq(struct v3_core_info * core, void * private_data, int ir
            state->master_isr |= (0x1 << irq);
 
            if (!(state->master_elcr & (0x1 << irq))) {
-               state->master_irr &= ~(0x1 << irq);
+               state->master_irr  &= ~(0x1 << irq);
            }
        } else {
 	   PrintDebug("8259 PIC: (master) Ignoring begin_irq for %d since I don't own it\n", irq);
@@ -409,7 +430,7 @@ static int pic_begin_irq(struct v3_core_info * core, void * private_data, int ir
     } else {
 	// This should always be true: See pic_get_intr_number
 	if (((state->slave_irr & ~(state->slave_imr)) >> (irq - 8)) & 0x01) {
-	   state->slave_isr |= (0x1 << (irq - 8));
+	   state->slave_isr  |= (0x1 << (irq - 8));
 	   state->master_isr |= 0x04;
 
 	   if (!(state->slave_elcr & (0x1 << (irq - 8)))) {
@@ -440,9 +461,9 @@ static int pic_begin_irq(struct v3_core_info * core, void * private_data, int ir
 
 
 static struct intr_ctrl_ops intr_ops = {
-    .intr_pending = pic_intr_pending,
+    .intr_pending    = pic_intr_pending,
     .get_intr_number = pic_get_intr_number,
-    .begin_irq = pic_begin_irq
+    .begin_irq       = pic_begin_irq
 };
 
 static struct intr_router_ops router_ops = {
@@ -451,7 +472,13 @@ static struct intr_router_ops router_ops = {
 };
 
 
-static int read_master_port1(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int 
+read_master_port1(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * dst, 
+		  uint_t                length, 
+		  void                * priv_data) 
+{
     struct pic_internal * state = (struct pic_internal *)priv_data;
 
     if (length != 1) {
@@ -470,21 +497,34 @@ static int read_master_port1(struct v3_core_info * core, ushort_t port, void * d
     return 1;
 }
 
-static int read_master_port2(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
-    struct pic_internal * state = (struct pic_internal *)priv_data;
+static int 
+read_master_port2(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * dst, 
+		  uint_t                length, 
+		  void                * priv_data) 
+{
+    struct pic_internal * state = NULL;
 
     if (length != 1) {
 	PrintError("8259 PIC: Invalid Read length (rd_Master2)\n");
 	return -1;
     }
 
+    state           = (struct pic_internal *)priv_data
     *(uint8_t *)dst = state->master_imr;
 
     return 1;
   
 }
 
-static int read_slave_port1(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int 
+read_slave_port1(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * dst, 
+		 uint_t                length, 
+		 void                * priv_data) 
+{
     struct pic_internal * state = (struct pic_internal *)priv_data;
 
     if (length != 1) {
@@ -493,7 +533,7 @@ static int read_slave_port1(struct v3_core_info * core, ushort_t port, void * ds
     }
   
     if ((state->slave_ocw3 & 0x03) == 0x02) {
-	*(uint8_t*)dst = state->slave_irr;
+	*(uint8_t *)dst = state->slave_irr;
     } else if ((state->slave_ocw3 & 0x03) == 0x03) {
 	*(uint8_t *)dst = state->slave_isr;
     } else {
@@ -503,7 +543,13 @@ static int read_slave_port1(struct v3_core_info * core, ushort_t port, void * ds
     return 1;
 }
 
-static int read_slave_port2(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int 
+read_slave_port2(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * dst, 
+		 uint_t                length, 
+		 void                * priv_data)
+{
     struct pic_internal * state = (struct pic_internal *)priv_data;
 
     if (length != 1) {
@@ -517,9 +563,15 @@ static int read_slave_port2(struct v3_core_info * core, ushort_t port, void * ds
 }
 
 
-static int write_master_port1(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int 
+write_master_port1(struct v3_core_info * core, 
+		   uint16_t              port, 
+		   void                * src, 
+		   uint_t                length, 
+		   void                * priv_data) 
+{
     struct pic_internal * state = (struct pic_internal *)priv_data;
-    uint8_t cw = *(uint8_t *)src;
+    uint8_t               cw    = *(uint8_t *)src;
 
     PrintDebug("8259 PIC: Write master port 1 with 0x%x\n",cw);
 
@@ -532,17 +584,13 @@ static int write_master_port1(struct v3_core_info * core, ushort_t port, void * 
 
     if (IS_ICW1(cw)) {
 
-        PrintDebug("8259 PIC: Setting ICW1 = %x (wr_Master1)\n", cw);
-
-        state->master_icw1 = cw;
+        state->master_icw1  = cw;
         state->master_state = ICW2;
 
     } else if (state->master_state == READY) {
         if (IS_OCW2(cw)) {
             // handle the EOI here
             struct ocw2 * cw2 =  (struct ocw2*)&cw;
-
-            PrintDebug("8259 PIC: Handling OCW2 = %x (wr_Master1)\n", cw);
 
             if ((cw2->EOI) && (!cw2->R) && (cw2->SL)) {
                 // specific EOI;
@@ -558,16 +606,20 @@ static int write_master_port1(struct v3_core_info * core, ushort_t port, void * 
 
             } else if ((cw2->EOI) & (!cw2->R) && (!cw2->SL)) {
                 int i;
+
                 // Non-specific EOI
                 PrintDebug("8259 PIC: Pre ISR = %x (wr_Master1)\n", state->master_isr);
+
                 for (i = 0; i < 8; i++) {
                     if (state->master_isr & (0x01 << i)) {
                         state->master_isr &= ~(0x01 << i);
                         break;
                     }
-                }	
+                }
+
                 PrintDebug("8259 PIC: Post ISR = %x (wr_Master1)\n", state->master_isr);
-            } else if (!(cw2->EOI) && (cw2->R) && (cw2->SL)) {
+
+            } else if (!(cw2->EOI) &&  (cw2->R) && (cw2->SL)) {
                 PrintDebug("8259 PIC: Ignoring set-priority, priorities not implemented (level=%d, wr_Master1)\n", cw2->level);
             } else if (!(cw2->EOI) && !(cw2->R) && (cw2->SL)) {
                 PrintDebug("8259 PIC: Ignoring no-op (level=%d, wr_Master1)\n", cw2->level);
@@ -594,9 +646,15 @@ static int write_master_port1(struct v3_core_info * core, ushort_t port, void * 
     return 1;
 }
 
-static int write_master_port2(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int 
+write_master_port2(struct v3_core_info * core, 
+		   uint16_t              port, 
+		   void                * src, 
+		   uint_t                length, 
+		   void                * priv_data) 
+{
     struct pic_internal * state = (struct pic_internal *)priv_data;
-    uint8_t cw = *(uint8_t *)src;    
+    uint8_t               cw    = *(uint8_t *)src;    
 
     PrintDebug("8259 PIC: Write master port 2 with 0x%x\n",cw);
 
@@ -613,8 +671,6 @@ static int write_master_port2(struct v3_core_info * core, ushort_t port, void * 
         PrintDebug("8259 PIC: Setting ICW2 = %x (wr_Master2)\n", cw);
         state->master_icw2 = cw;
 
-
-
         if (cw1->sngl == 0) {
             state->master_state = ICW3;
         } else if (cw1->ic4 == 1) {
@@ -629,7 +685,6 @@ static int write_master_port2(struct v3_core_info * core, ushort_t port, void * 
         struct icw1 * cw1 = (struct icw1 *)&(state->master_icw1);
 
         PrintDebug("8259 PIC: Setting ICW3 = %x (wr_Master2)\n", cw);
-
         state->master_icw3 = cw;
 
         if (cw1->ic4 == 1) {
@@ -660,9 +715,15 @@ static int write_master_port2(struct v3_core_info * core, ushort_t port, void * 
     return 1;
 }
 
-static int write_slave_port1(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int 
+write_slave_port1(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * src, 
+		  uint_t                length, 
+		  void                * priv_data)
+{
     struct pic_internal * state = (struct pic_internal *)priv_data;
-    uint8_t cw = *(uint8_t *)src;
+    uint8_t               cw    = *(uint8_t *)src;
 
     PrintDebug("8259 PIC: Write slave port 1 with 0x%x\n",cw);
 
@@ -676,8 +737,9 @@ static int write_slave_port1(struct v3_core_info * core, ushort_t port, void * s
 
     if (IS_ICW1(cw)) {
 	PrintDebug("8259 PIC: Setting ICW1 = %x (wr_Slave1)\n", cw);
-	state->slave_icw1 = cw;
+	state->slave_icw1  = cw;
 	state->slave_state = ICW2;
+
     } else if (state->slave_state == READY) {
 	if (IS_OCW2(cw)) {
 	    // handle the EOI here
@@ -726,9 +788,15 @@ static int write_slave_port1(struct v3_core_info * core, ushort_t port, void * s
     return 1;
 }
 
-static int write_slave_port2(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int 
+write_slave_port2(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * src, 
+		  uint_t                length, 
+		  void                * priv_data) 
+{
     struct pic_internal * state = (struct pic_internal *)priv_data;
-    uint8_t cw = *(uint8_t *)src;    
+    uint8_t               cw    = *(uint8_t *)src;    
 
     PrintDebug("8259 PIC: Write slave port 2 with 0x%x\n",cw);
 
@@ -770,11 +838,11 @@ static int write_slave_port2(struct v3_core_info * core, ushort_t port, void * s
 
     } else if (state->slave_state == ICW4) {
         PrintDebug("8259 PIC: Setting ICW4 = %x (wr_Slave2)\n", cw);
-        state->slave_icw4 = cw;
+        state->slave_icw4  = cw;
         state->slave_state = READY;
     } else if ((state->slave_state == ICW1) || (state->slave_state == READY)) {
         PrintDebug("8259 PIC: Setting IMR = %x (wr_Slave2)\n", cw);
-        state->slave_imr = cw;
+        state->slave_imr   = cw;
     } else {
         PrintError("8259 PIC: Invalid State at write (wr_Slave2)\n");
         return -1;
@@ -786,7 +854,13 @@ static int write_slave_port2(struct v3_core_info * core, ushort_t port, void * s
 
 
 
-static int read_elcr_port(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int 
+read_elcr_port(struct v3_core_info * core, 
+	       uint16_t              port, 
+	       void                * dst, 
+	       uint_t                length, 
+	       void                * priv_data) 
+{
     struct pic_internal * state = (struct pic_internal *)priv_data;
     
     if (length != 1) {
@@ -808,7 +882,13 @@ static int read_elcr_port(struct v3_core_info * core, ushort_t port, void * dst,
 }
 
 
-static int write_elcr_port(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int 
+write_elcr_port(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * src, 
+		uint_t                length, 
+		void                * priv_data)
+{
     struct pic_internal * state = (struct pic_internal *)priv_data;
     
     if (length != 1) {
@@ -818,7 +898,7 @@ static int write_elcr_port(struct v3_core_info * core, ushort_t port, void * src
 
     if (port == ELCR1_PORT) {
 	// master
-	state->master_elcr  = (*(uint8_t *)src) & state->master_elcr_mask;
+	state->master_elcr = (*(uint8_t *)src) & state->master_elcr_mask;
     } else if (port == ELCR2_PORT) {
 	state->slave_elcr  = (*(uint8_t *)src) & state->slave_elcr_mask;
     } else {
@@ -831,7 +911,9 @@ static int write_elcr_port(struct v3_core_info * core, ushort_t port, void * src
 
 
 
-static int pic_free(struct pic_internal * state) {
+static int
+pic_free(struct pic_internal * state) 
+{
     struct v3_core_info * core = state->core;
 
     v3_remove_intr_controller(core, state->controller_handle);
@@ -842,83 +924,88 @@ static int pic_free(struct pic_internal * state) {
 }
 
 #ifdef V3_CONFIG_CHECKPOINT
-static int pic_save(struct v3_chkpt_ctx * ctx, void * private_data) {
+static int 
+pic_save(struct v3_chkpt_ctx * ctx, 
+	 void                * private_data)
+{
     struct pic_internal * pic = (struct pic_internal *)private_data;
 
-    v3_chkpt_save_8(ctx, "MASTER_IRR", &(pic->master_irr));
-    v3_chkpt_save_8(ctx, "SLAVE_IRR", &(pic->slave_irr));
+    v3_chkpt_save_8(ctx, "MASTER_IRR",       &(pic->master_irr));
+    v3_chkpt_save_8(ctx, "SLAVE_IRR",        &(pic->slave_irr));
   
-    v3_chkpt_save_8(ctx, "MASTER_ISR", &(pic->master_isr));
-    v3_chkpt_save_8(ctx, "SLAVE_ISR", &(pic->slave_isr));
+    v3_chkpt_save_8(ctx, "MASTER_ISR",       &(pic->master_isr));
+    v3_chkpt_save_8(ctx, "SLAVE_ISR",        &(pic->slave_isr));
 
-    v3_chkpt_save_8(ctx, "MASTER_ELCR", &(pic->master_elcr));
-    v3_chkpt_save_8(ctx, "SLAVE_ELCR", &(pic->slave_elcr));
+    v3_chkpt_save_8(ctx, "MASTER_ELCR",      &(pic->master_elcr));
+    v3_chkpt_save_8(ctx, "SLAVE_ELCR",       &(pic->slave_elcr));
     v3_chkpt_save_8(ctx, "MASTER_ELCR_MASK", &(pic->master_elcr_mask));
-    v3_chkpt_save_8(ctx, "SLAVE_ELCR_MASK", &(pic->slave_elcr_mask));
+    v3_chkpt_save_8(ctx, "SLAVE_ELCR_MASK",  &(pic->slave_elcr_mask));
 
-    v3_chkpt_save_8(ctx, "MASTER_ICW1", &(pic->master_icw1));
-    v3_chkpt_save_8(ctx, "MASTER_ICW2", &(pic->master_icw2));
-    v3_chkpt_save_8(ctx, "MASTER_ICW3", &(pic->master_icw3));
-    v3_chkpt_save_8(ctx, "MASTER_ICW4", &(pic->master_icw4));
-
-
-    v3_chkpt_save_8(ctx, "SLAVE_ICW1", &(pic->slave_icw1));
-    v3_chkpt_save_8(ctx, "SLAVE_ICW2", &(pic->slave_icw2));
-    v3_chkpt_save_8(ctx, "SLAVE_ICW3", &(pic->slave_icw3));
-    v3_chkpt_save_8(ctx, "SLAVE_ICW4", &(pic->slave_icw4));
+    v3_chkpt_save_8(ctx, "MASTER_ICW1",      &(pic->master_icw1));
+    v3_chkpt_save_8(ctx, "MASTER_ICW2",      &(pic->master_icw2));
+    v3_chkpt_save_8(ctx, "MASTER_ICW3",      &(pic->master_icw3));
+    v3_chkpt_save_8(ctx, "MASTER_ICW4",      &(pic->master_icw4));
 
 
-    v3_chkpt_save_8(ctx, "MASTER_IMR", &(pic->master_imr));
-    v3_chkpt_save_8(ctx, "SLAVE_IMR", &(pic->slave_imr));
-    v3_chkpt_save_8(ctx, "MASTER_OCW2", &(pic->master_ocw2));
-    v3_chkpt_save_8(ctx, "MASTER_OCW3", &(pic->master_ocw3));
-    v3_chkpt_save_8(ctx, "SLAVE_OCW2", &(pic->slave_ocw2));
-    v3_chkpt_save_8(ctx, "SLAVE_OCW3", &(pic->slave_ocw3));
+    v3_chkpt_save_8(ctx, "SLAVE_ICW1",       &(pic->slave_icw1));
+    v3_chkpt_save_8(ctx, "SLAVE_ICW2",       &(pic->slave_icw2));
+    v3_chkpt_save_8(ctx, "SLAVE_ICW3",       &(pic->slave_icw3));
+    v3_chkpt_save_8(ctx, "SLAVE_ICW4",       &(pic->slave_icw4));
 
-    v3_chkpt_save_8(ctx, "MASTER_STATE", &(pic->master_state));
-    v3_chkpt_save_8(ctx, "SLAVE_STATE", &(pic->slave_state));
+
+    v3_chkpt_save_8(ctx, "MASTER_IMR",       &(pic->master_imr));
+    v3_chkpt_save_8(ctx, "SLAVE_IMR",        &(pic->slave_imr));
+    v3_chkpt_save_8(ctx, "MASTER_OCW2",      &(pic->master_ocw2));
+    v3_chkpt_save_8(ctx, "MASTER_OCW3",      &(pic->master_ocw3));
+    v3_chkpt_save_8(ctx, "SLAVE_OCW2",       &(pic->slave_ocw2));
+    v3_chkpt_save_8(ctx, "SLAVE_OCW3",       &(pic->slave_ocw3));
+
+    v3_chkpt_save_8(ctx, "MASTER_STATE",     &(pic->master_state));
+    v3_chkpt_save_8(ctx, "SLAVE_STATE",      &(pic->slave_state));
 
     
     return 0;
 
 }
 
-static int pic_load(struct v3_chkpt_ctx * ctx, void * private_data) {
+static int 
+pic_load(struct v3_chkpt_ctx * ctx, 
+	 void                * private_data) 
+{
     struct pic_internal * pic = (struct pic_internal *)private_data;
 
    
-    v3_chkpt_load_8(ctx, "MASTER_IRR", &(pic->master_irr));
-    v3_chkpt_load_8(ctx, "SLAVE_IRR", &(pic->slave_irr));
-  
-    v3_chkpt_load_8(ctx, "MASTER_ISR", &(pic->master_isr));
-    v3_chkpt_load_8(ctx, "SLAVE_ISR", &(pic->slave_isr));
+    v3_chkpt_load_8(ctx, "MASTER_IRR",       &(pic->master_irr));
+    v3_chkpt_load_8(ctx, "SLAVE_IRR",        &(pic->slave_irr));
 
-    v3_chkpt_load_8(ctx, "MASTER_ELCR", &(pic->master_elcr));
-    v3_chkpt_load_8(ctx, "SLAVE_ELCR", &(pic->slave_elcr));
+    v3_chkpt_load_8(ctx, "MASTER_ISR",       &(pic->master_isr));
+    v3_chkpt_load_8(ctx, "SLAVE_ISR",        &(pic->slave_isr));
+
+    v3_chkpt_load_8(ctx, "MASTER_ELCR",      &(pic->master_elcr));
+    v3_chkpt_load_8(ctx, "SLAVE_ELCR",       &(pic->slave_elcr));
     v3_chkpt_load_8(ctx, "MASTER_ELCR_MASK", &(pic->master_elcr_mask));
-    v3_chkpt_load_8(ctx, "SLAVE_ELCR_MASK", &(pic->slave_elcr_mask));
+    v3_chkpt_load_8(ctx, "SLAVE_ELCR_MASK",  &(pic->slave_elcr_mask));
 
-    v3_chkpt_load_8(ctx, "MASTER_ICW1", &(pic->master_icw1));
-    v3_chkpt_load_8(ctx, "MASTER_ICW2", &(pic->master_icw2));
-    v3_chkpt_load_8(ctx, "MASTER_ICW3", &(pic->master_icw3));
-    v3_chkpt_load_8(ctx, "MASTER_ICW4", &(pic->master_icw4));
+    v3_chkpt_load_8(ctx, "MASTER_ICW1",      &(pic->master_icw1));
+    v3_chkpt_load_8(ctx, "MASTER_ICW2",      &(pic->master_icw2));
+    v3_chkpt_load_8(ctx, "MASTER_ICW3",      &(pic->master_icw3));
+    v3_chkpt_load_8(ctx, "MASTER_ICW4",      &(pic->master_icw4));
+
+    v3_chkpt_load_8(ctx, "SLAVE_ICW1",       &(pic->slave_icw1));
+    v3_chkpt_load_8(ctx, "SLAVE_ICW2",       &(pic->slave_icw2));
+    v3_chkpt_load_8(ctx, "SLAVE_ICW3",       &(pic->slave_icw3));
+    v3_chkpt_load_8(ctx, "SLAVE_ICW4",       &(pic->slave_icw4));
 
 
-    v3_chkpt_load_8(ctx, "SLAVE_ICW1", &(pic->slave_icw1));
-    v3_chkpt_load_8(ctx, "SLAVE_ICW2", &(pic->slave_icw2));
-    v3_chkpt_load_8(ctx, "SLAVE_ICW3", &(pic->slave_icw3));
-    v3_chkpt_load_8(ctx, "SLAVE_ICW4", &(pic->slave_icw4));
+    v3_chkpt_load_8(ctx, "MASTER_IMR",       &(pic->master_imr));
+    v3_chkpt_load_8(ctx, "SLAVE_IMR",        &(pic->slave_imr));
+    v3_chkpt_load_8(ctx, "MASTER_OCW2",      &(pic->master_ocw2));
+    v3_chkpt_load_8(ctx, "MASTER_OCW3",      &(pic->master_ocw3));
+    v3_chkpt_load_8(ctx, "SLAVE_OCW2",       &(pic->slave_ocw2));
+    v3_chkpt_load_8(ctx, "SLAVE_OCW3",       &(pic->slave_ocw3));
 
-
-    v3_chkpt_load_8(ctx, "MASTER_IMR", &(pic->master_imr));
-    v3_chkpt_load_8(ctx, "SLAVE_IMR", &(pic->slave_imr));
-    v3_chkpt_load_8(ctx, "MASTER_OCW2", &(pic->master_ocw2));
-    v3_chkpt_load_8(ctx, "MASTER_OCW3", &(pic->master_ocw3));
-    v3_chkpt_load_8(ctx, "SLAVE_OCW2", &(pic->slave_ocw2));
-    v3_chkpt_load_8(ctx, "SLAVE_OCW3", &(pic->slave_ocw3));
-
-    v3_chkpt_load_8(ctx, "MASTER_STATE", &(pic->master_state));
-    v3_chkpt_load_8(ctx, "SLAVE_STATE", &(pic->slave_state));
+    v3_chkpt_load_8(ctx, "MASTER_STATE",     &(pic->master_state));
+    v3_chkpt_load_8(ctx, "SLAVE_STATE",      &(pic->slave_state));
 
     return 0;
 }
@@ -938,14 +1025,17 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int pic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
-    struct pic_internal * state = NULL;
-    char * dev_id = v3_cfg_val(cfg, "ID");
-    int ret = 0;
+static int
+pic_init(struct v3_vm_info * vm, 
+	 v3_cfg_tree_t     * cfg)
+{
+    struct pic_internal * state  = NULL;
+    char                * dev_id = v3_cfg_val(cfg, "ID");
 
     // PIC is only usable in non-multicore environments
     // just hardcode the core context
-    struct v3_core_info * core = &(vm->cores[0]);
+    struct v3_core_info * core   = &(vm->cores[0]);
+    int ret = 0;
 	
     state = (struct pic_internal *)V3_Malloc(sizeof(struct pic_internal));
 
@@ -962,47 +1052,46 @@ static int pic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	return -1;
     }
 
-    state->core = core;
+    state->core              = core;
 
     state->controller_handle = v3_register_intr_controller(core, &intr_ops, state);
-    state->router_handle = v3_register_intr_router(vm, &router_ops, state);
+    state->router_handle     = v3_register_intr_router(vm, &router_ops, state);
 
-    state->master_irr = 0;
-    state->master_isr = 0;
-    state->master_elcr = 0;
-    state->master_elcr_mask = 0xf8;
-    state->master_icw1 = 0;
-    state->master_icw2 = 0;
-    state->master_icw3 = 0;
-    state->master_icw4 = 0;
-    state->master_imr = 0;
-    state->master_ocw2 = 0;
-    state->master_ocw3 = 0x02;
-    state->master_state = ICW1;
+    state->master_irr        = 0;
+    state->master_isr        = 0;
+    state->master_elcr       = 0;
+    state->master_elcr_mask  = 0xf8;
+    state->master_icw1       = 0;
+    state->master_icw2       = 0;
+    state->master_icw3       = 0;
+    state->master_icw4       = 0;
+    state->master_imr        = 0;
+    state->master_ocw2       = 0;
+    state->master_ocw3       = 0x02;
+    state->master_state      = ICW1;
 
 
-    state->slave_irr = 0;
-    state->slave_isr = 0;
-    state->slave_elcr = 0;
-    state->slave_elcr_mask = 0xde;
-    state->slave_icw1 = 0;
-    state->slave_icw2 = 0;
-    state->slave_icw3 = 0;
-    state->slave_icw4 = 0;
-    state->slave_imr = 0;
-    state->slave_ocw2 = 0;
-    state->slave_ocw3 = 0x02;
-    state->slave_state = ICW1;
+    state->slave_irr         = 0;
+    state->slave_isr         = 0;
+    state->slave_elcr        = 0;
+    state->slave_elcr_mask   = 0xde;
+    state->slave_icw1        = 0;
+    state->slave_icw2        = 0;
+    state->slave_icw3        = 0;
+    state->slave_icw4        = 0;
+    state->slave_imr         = 0;
+    state->slave_ocw2        = 0;
+    state->slave_ocw3        = 0x02;
+    state->slave_state       = ICW1;
 
 
     ret |= v3_dev_hook_io(dev, MASTER_PORT1, &read_master_port1, &write_master_port1);
     ret |= v3_dev_hook_io(dev, MASTER_PORT2, &read_master_port2, &write_master_port2);
-    ret |= v3_dev_hook_io(dev, SLAVE_PORT1, &read_slave_port1, &write_slave_port1);
-    ret |= v3_dev_hook_io(dev, SLAVE_PORT2, &read_slave_port2, &write_slave_port2);
+    ret |= v3_dev_hook_io(dev, SLAVE_PORT1,  &read_slave_port1,  &write_slave_port1);
+    ret |= v3_dev_hook_io(dev, SLAVE_PORT2,  &read_slave_port2,  &write_slave_port2);
 
-
-    ret |= v3_dev_hook_io(dev, ELCR1_PORT, &read_elcr_port, &write_elcr_port);
-    ret |= v3_dev_hook_io(dev, ELCR2_PORT, &read_elcr_port, &write_elcr_port);
+    ret |= v3_dev_hook_io(dev, ELCR1_PORT,   &read_elcr_port,    &write_elcr_port);
+    ret |= v3_dev_hook_io(dev, ELCR2_PORT,   &read_elcr_port,    &write_elcr_port);
 
     if (ret != 0) {
 	PrintError("Error hooking io ports\n");

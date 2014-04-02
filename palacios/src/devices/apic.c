@@ -161,12 +161,12 @@ struct apic_msr {
     union {
 	uint64_t value;
 	struct {
-	    uint8_t rsvd;
-	    uint8_t bootstrap_cpu : 1;
-	    uint8_t rsvd2         : 2;
-	    uint8_t apic_enable   : 1;
-	    uint64_t base_addr    : 40;
-	    uint32_t rsvd3        : 12;
+	    uint8_t  rsvd;
+	    uint8_t  bootstrap_cpu : 1;
+	    uint8_t  rsvd2         : 2;
+	    uint8_t  apic_enable   : 1;
+	    uint64_t base_addr     : 40;
+	    uint32_t rsvd3         : 12;
 	} __attribute__((packed));
     } __attribute__((packed));
 } __attribute__((packed));
@@ -177,7 +177,7 @@ struct apic_msr {
 
 struct irq_queue_entry {
     uint32_t vector;
-    uint8_t trigger_mode; 
+    uint8_t  trigger_mode; 
 
     int (*ack)(struct v3_core_info * core, uint32_t irq, void * private_data);
     void * private_data;
@@ -205,27 +205,27 @@ struct apic_state {
 
     /* memory map registers */
 
-    struct lapic_id_reg lapic_id;
-    struct apic_ver_reg apic_ver;
-    struct ext_apic_ctrl_reg ext_apic_ctrl;
-    struct local_vec_tbl_reg local_vec_tbl;
-    struct tmr_vec_tbl_reg tmr_vec_tbl;
-    struct tmr_div_cfg_reg tmr_div_cfg;
-    struct lint_vec_tbl_reg lint0_vec_tbl;
-    struct lint_vec_tbl_reg lint1_vec_tbl;
+    struct lapic_id_reg             lapic_id;
+    struct apic_ver_reg             apic_ver;
+    struct ext_apic_ctrl_reg        ext_apic_ctrl;
+    struct local_vec_tbl_reg        local_vec_tbl;
+    struct tmr_vec_tbl_reg          tmr_vec_tbl;
+    struct tmr_div_cfg_reg          tmr_div_cfg;
+    struct lint_vec_tbl_reg         lint0_vec_tbl;
+    struct lint_vec_tbl_reg         lint1_vec_tbl;
     struct perf_ctr_loc_vec_tbl_reg perf_ctr_loc_vec_tbl;
-    struct therm_loc_vec_tbl_reg therm_loc_vec_tbl;
-    struct err_vec_tbl_reg err_vec_tbl;
-    struct err_status_reg err_status;
-    struct spurious_int_reg spurious_int;
-    struct int_cmd_reg int_cmd;
-    struct log_dst_reg log_dst;
-    struct dst_fmt_reg dst_fmt;
-    struct arb_prio_reg arb_prio;
-    struct task_prio_reg task_prio;
-    struct proc_prio_reg proc_prio;
-    struct ext_apic_feature_reg ext_apic_feature;
-    struct spec_eoi_reg spec_eoi;
+    struct therm_loc_vec_tbl_reg    therm_loc_vec_tbl;
+    struct err_vec_tbl_reg          err_vec_tbl;
+    struct err_status_reg           err_status;
+    struct spurious_int_reg         spurious_int;
+    struct int_cmd_reg              int_cmd;
+    struct log_dst_reg              log_dst;
+    struct dst_fmt_reg              dst_fmt;
+    struct arb_prio_reg             arb_prio;
+    struct task_prio_reg            task_prio;
+    struct proc_prio_reg            proc_prio;
+    struct ext_apic_feature_reg     ext_apic_feature;
+    struct spec_eoi_reg             spec_eoi;
   
 
     uint32_t tmr_cur_cnt;
@@ -291,17 +291,24 @@ static int is_apic_bsp(struct apic_state * apic) {
 }
 
 
-int v3_apic_is_bsp(struct v3_core_info * core, void * dev_data) {
+int 
+v3_apic_is_bsp(struct v3_core_info * core, 
+	       void                * dev_data) 
+{
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)
 	(((struct vm_device *)dev_data)->private_data);
-   struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]);
-   
-   return is_apic_bsp(apic);
+    
+    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]);
+    
+    return is_apic_bsp(apic);
 }
 
 
 // No lcoking done
-static int init_apic_state(struct apic_state * apic, uint32_t id) {
+static int 
+init_apic_state(struct apic_state * apic, 
+		uint32_t            id) 
+{
     apic->base_addr = DEFAULT_BASE_ADDR;
 
     if (id == 0) { 
@@ -315,51 +322,52 @@ static int init_apic_state(struct apic_state * apic, uint32_t id) {
     // same base address regardless of ap or main
     apic->base_addr_msr.value |= ((uint64_t)DEFAULT_BASE_ADDR); 
 
-    PrintDebug("apic %u: (init_apic_state): msr=0x%llx\n",id, apic->base_addr_msr.value);
+    PrintDebug("apic %u: (init_apic_state): msr=0x%llx\n",
+	       id, apic->base_addr_msr.value);
 
     PrintDebug("apic %u: (init_apic_state): Sizeof Interrupt Request Register %d, should be 32\n",
 	       id, (uint_t)sizeof(apic->int_req_reg));
 
-    memset(apic->int_req_reg, 0, sizeof(apic->int_req_reg));
-    memset(apic->int_svc_reg, 0, sizeof(apic->int_svc_reg));
-    memset(apic->int_en_reg, 0xff, sizeof(apic->int_en_reg));
-    memset(apic->trig_mode_reg, 0, sizeof(apic->trig_mode_reg));
+    memset(apic->int_req_reg,   0,    sizeof(apic->int_req_reg));
+    memset(apic->int_svc_reg,   0,    sizeof(apic->int_svc_reg));
+    memset(apic->int_en_reg,    0xff, sizeof(apic->int_en_reg));
+    memset(apic->trig_mode_reg, 0,    sizeof(apic->trig_mode_reg));
 
-    apic->eoi = 0x00000000;
-    apic->rem_rd_data = 0x00000000;
-    apic->tmr_init_cnt = 0x00000000;
-    apic->tmr_cur_cnt = 0x00000000;
-    apic->missed_ints = 0;
+    apic->eoi                      = 0x00000000;
+    apic->rem_rd_data              = 0x00000000;
+    apic->tmr_init_cnt             = 0x00000000;
+    apic->tmr_cur_cnt              = 0x00000000;
+    apic->missed_ints              = 0;
 
     // note that it's the *lower* 24 bits that are
     // reserved, not the upper 24.  
-    apic->lapic_id.val = 0;
-    apic->lapic_id.apic_id = id;
+    apic->lapic_id.val             = 0;
+    apic->lapic_id.apic_id         = id;
     
-    apic->ipi_state = INIT_ST;
+    apic->ipi_state                = INIT_ST;
 
     // The P6 has 6 LVT entries, so we set the value to (6-1)...
-    apic->apic_ver.val = 0x80050010;
+    apic->apic_ver.val             = 0x80050010;
 
-    apic->task_prio.val = 0x00000000;
-    apic->arb_prio.val = 0x00000000;
-    apic->proc_prio.val = 0x00000000;
-    apic->log_dst.val = 0x00000000;
-    apic->dst_fmt.val = 0xffffffff;
-    apic->spurious_int.val = 0x000000ff;
-    apic->err_status.val = 0x00000000;
-    apic->int_cmd.val = 0x0000000000000000LL;
-    apic->tmr_vec_tbl.val = 0x00010000;
-    apic->therm_loc_vec_tbl.val = 0x00010000;
+    apic->task_prio.val            = 0x00000000;
+    apic->arb_prio.val             = 0x00000000;
+    apic->proc_prio.val            = 0x00000000;
+    apic->log_dst.val              = 0x00000000;
+    apic->dst_fmt.val              = 0xffffffff;
+    apic->spurious_int.val         = 0x000000ff;
+    apic->err_status.val           = 0x00000000;
+    apic->int_cmd.val              = 0x0000000000000000LL;
+    apic->tmr_vec_tbl.val          = 0x00010000;
+    apic->therm_loc_vec_tbl.val    = 0x00010000;
     apic->perf_ctr_loc_vec_tbl.val = 0x00010000;
-    apic->lint0_vec_tbl.val = 0x00010000;
-    apic->lint1_vec_tbl.val = 0x00010000;
-    apic->err_vec_tbl.val = 0x00010000;
-    apic->tmr_div_cfg.val = 0x00000000;
-    //apic->ext_apic_feature.val = 0x00000007;
-    apic->ext_apic_feature.val = 0x00040007;
-    apic->ext_apic_ctrl.val = 0x00000000;
-    apic->spec_eoi.val = 0x00000000;
+    apic->lint0_vec_tbl.val        = 0x00010000;
+    apic->lint1_vec_tbl.val        = 0x00010000;
+    apic->err_vec_tbl.val          = 0x00010000;
+    apic->tmr_div_cfg.val          = 0x00000000;
+    //apic->ext_apic_feature.val     = 0x00000007;
+    apic->ext_apic_feature.val     = 0x00040007;
+    apic->ext_apic_ctrl.val        = 0x00000000;
+    apic->spec_eoi.val             = 0x00000000;
 
 
 
@@ -395,9 +403,14 @@ static int init_apic_state(struct apic_state * apic, uint32_t id) {
 
 
 
-static int read_apic_msr(struct v3_core_info * core, uint_t msr, v3_msr_t * dst, void * priv_data) {
+static int 
+read_apic_msr(struct v3_core_info * core, 
+	      uint_t                msr, 
+	      v3_msr_t            * dst, 
+	      void                * priv_data) 
+{
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)priv_data;
-    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]);
+    struct apic_state     * apic     = &(apic_dev->apics[core->vcpu_id]);
 
     PrintDebug("apic %u: core %u: MSR read\n", apic->lapic_id.val, core->vcpu_id);
 
@@ -407,10 +420,15 @@ static int read_apic_msr(struct v3_core_info * core, uint_t msr, v3_msr_t * dst,
 }
 
 
-static int write_apic_msr(struct v3_core_info * core, uint_t msr, v3_msr_t src, void * priv_data) {
+static int 
+write_apic_msr(struct v3_core_info * core, 
+	       uint_t                msr, 
+	       v3_msr_t              src, 
+	       void                * priv_data)
+{
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)priv_data;
-    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]);
-    struct v3_mem_region * old_reg = v3_get_mem_region(core->vm_info, core->vcpu_id, apic->base_addr);
+    struct apic_state     * apic     = &(apic_dev->apics[core->vcpu_id]);
+    struct v3_mem_region  * old_reg  = v3_get_mem_region(core->vm_info, core->vcpu_id, apic->base_addr);
 
 
     PrintDebug("apic %u: core %u: MSR write\n", apic->lapic_id.val, core->vcpu_id);
@@ -446,13 +464,18 @@ static int write_apic_msr(struct v3_core_info * core, uint_t msr, v3_msr_t src, 
 
 
 // irq_num is the bit offset into a 256 bit buffer...
-static int activate_apic_irq(struct apic_state * apic, struct  irq_queue_entry * entry) {
+static int
+activate_apic_irq(struct apic_state       * apic, 
+		  struct  irq_queue_entry * entry) 
+{
     uint32_t irq_num = entry->vector;
     int major_offset = (irq_num & ~0x00000007) >> 3;
-    int minor_offset = irq_num & 0x00000007;
-    uint8_t * req_location = apic->int_req_reg + major_offset;
-    uint8_t * en_location = apic->int_en_reg + major_offset;
+    int minor_offset = (irq_num &  0x00000007);
+
+    uint8_t * req_location  = apic->int_req_reg   + major_offset;
+    uint8_t * en_location   = apic->int_en_reg    + major_offset;
     uint8_t * trig_location = apic->trig_mode_reg + major_offset;
+
     uint8_t flag = 0x1 << minor_offset;
 
 
@@ -467,12 +490,12 @@ static int activate_apic_irq(struct apic_state * apic, struct  irq_queue_entry *
 	*req_location |= flag;
 	
 	if (entry->trigger_mode) {
-	    *trig_location |= flag;
+	    *trig_location |=  flag;
 	} else {
 	    *trig_location &= ~flag;
 	}
 
-	apic->irq_ack_cbs[irq_num].ack = entry->ack;
+	apic->irq_ack_cbs[irq_num].ack          = entry->ack;
 	apic->irq_ack_cbs[irq_num].private_data = entry->private_data;
 
 	return 1;
@@ -486,10 +509,14 @@ static int activate_apic_irq(struct apic_state * apic, struct  irq_queue_entry *
 
 
 /* trigger: level=1, edge=0 */
-static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num, uint8_t trigger, 
-			      int (*ack)(struct v3_core_info * core, uint32_t irq, void * private_data),
-			      void * private_data) {
-    unsigned int flags = 0;
+static int 
+add_apic_irq_entry(struct apic_state * apic, 
+		   uint32_t            irq_num, 
+		   uint8_t             trigger, 
+		   int                 (*ack)(struct v3_core_info * core, uint32_t irq, void * private_data),
+		   void              * private_data)
+{
+    unsigned int             flags = 0;
     struct irq_queue_entry * entry = NULL;
 
     if (irq_num <= 15) {
@@ -508,9 +535,9 @@ static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num, uint8_
 
     entry = list_first_entry(&(apic->irq_queue.free_list), struct irq_queue_entry, list_node);
 
-    entry->vector = irq_num;
+    entry->vector       = irq_num;
     entry->trigger_mode = trigger;
-    entry->ack = ack;
+    entry->ack          = ack;
     entry->private_data = private_data;
 
     list_move_tail(&(entry->list_node), &(apic->irq_queue.entries));
@@ -521,10 +548,12 @@ static int add_apic_irq_entry(struct apic_state * apic, uint32_t irq_num, uint8_
     return 0;
 }
 
-static void drain_irq_entries(struct apic_state * apic) {
+static void 
+drain_irq_entries(struct apic_state * apic) 
+{
  
     while (1) {
-	unsigned int flags = 0;
+	unsigned int             flags = 0;
 	struct irq_queue_entry * entry = NULL;
     
 	flags = v3_spin_lock_irqsave(apic->irq_queue.lock);
@@ -539,9 +568,9 @@ static void drain_irq_entries(struct apic_state * apic) {
 	activate_apic_irq(apic, entry);
 
 	// paranoia: Clear IRQ for next use
-	entry->vector = 0;
+	entry->vector       = 0;
 	entry->trigger_mode = 0;
-	entry->ack = NULL;
+	entry->ack          = NULL;
 	entry->private_data = NULL;
 	
 
@@ -555,7 +584,9 @@ static void drain_irq_entries(struct apic_state * apic) {
 
 
 
-static int get_highest_isr(struct apic_state * apic) {
+static int 
+get_highest_isr(struct apic_state * apic) 
+{
     int i = 0, j = 0;
 
     // We iterate backwards to find the highest priority in-service request
@@ -577,13 +608,15 @@ static int get_highest_isr(struct apic_state * apic) {
  
 
 
-static int get_highest_irr(struct apic_state * apic) {
+static int 
+get_highest_irr(struct apic_state * apic) 
+{
     int i = 0, j = 0;
 
     // We iterate backwards to find the highest priority enabled requested interrupt
     for (i = 31; i >= 0; i--) {
-	uint8_t  * req_major = apic->int_req_reg + i;
-	uint8_t  * en_major = apic->int_en_reg + i;
+	uint8_t * req_major = apic->int_req_reg + i;
+	uint8_t * en_major  = apic->int_en_reg  + i;
 	
 	if ((*req_major) & 0xff) {
 	    for (j = 7; j >= 0; j--) {
@@ -601,14 +634,17 @@ static int get_highest_irr(struct apic_state * apic) {
 
 
 
-static int apic_do_eoi(struct v3_core_info * core, struct apic_state * apic) {
+static int 
+apic_do_eoi(struct v3_core_info * core,
+	    struct apic_state   * apic) 
+{
     int isr_irq = get_highest_isr(apic);
 
     if (isr_irq != -1) {
-	int major_offset = (isr_irq & ~0x00000007) >> 3;
-	int minor_offset = isr_irq & 0x00000007;
-	uint8_t flag = 0x1 << minor_offset;
+	int       major_offset = (isr_irq & ~0x00000007) >> 3;
+	int       minor_offset = (isr_irq & 0x00000007);
 	uint8_t * svc_location = apic->int_svc_reg + major_offset;
+	uint8_t   flag         = (0x1 << minor_offset);
 	
 	PrintDebug("apic %u: core ?: Received APIC EOI for IRQ %d\n", apic->lapic_id.val,isr_irq);
 	
@@ -620,8 +656,8 @@ static int apic_do_eoi(struct v3_core_info * core, struct apic_state * apic) {
 
 #ifdef V3_CONFIG_CRAY_XT
 	
-	if ((isr_irq == 238) || 
-	    (isr_irq == 239)) {
+	if ( (isr_irq == 238) || 
+	     (isr_irq == 239) ) {
 	    PrintDebug("apic %u: core ?: Acking IRQ %d\n", apic->lapic_id.val,isr_irq);
 	}
 	
@@ -637,49 +673,52 @@ static int apic_do_eoi(struct v3_core_info * core, struct apic_state * apic) {
 }
  
 
-static int activate_internal_irq(struct apic_state * apic, apic_irq_type_t int_type) {
-    uint32_t vec_num = 0;
+static int 
+activate_internal_irq(struct apic_state * apic, 
+		      apic_irq_type_t     int_type)
+{
+    uint32_t vec_num  = 0;
     uint32_t del_mode = 0;
-    uint8_t trigger = 0;
-    int masked = 0;
+    uint8_t  trigger  = 0;
+    int      masked   = 0;
 
 
     switch (int_type) {
 	case APIC_TMR_INT:
-	    vec_num = apic->tmr_vec_tbl.vec;
-	    del_mode = IPI_FIXED;
-	    masked = apic->tmr_vec_tbl.mask;
-	    trigger = 0;
+	    vec_num   = apic->tmr_vec_tbl.vec;
+	    del_mode  = IPI_FIXED;
+	    masked    = apic->tmr_vec_tbl.mask;
+	    trigger   = 0;
 	    break;
 	case APIC_THERM_INT:
-	    vec_num = apic->therm_loc_vec_tbl.vec;
-	    del_mode = apic->therm_loc_vec_tbl.msg_type;
-	    masked = apic->therm_loc_vec_tbl.mask;
-	    trigger = 0;
+	    vec_num   = apic->therm_loc_vec_tbl.vec;
+	    del_mode  = apic->therm_loc_vec_tbl.msg_type;
+	    masked    = apic->therm_loc_vec_tbl.mask;
+	    trigger   = 0;
 	    break;
 	case APIC_PERF_INT:
-	    vec_num = apic->perf_ctr_loc_vec_tbl.vec;
-	    del_mode = apic->perf_ctr_loc_vec_tbl.msg_type;
-	    masked = apic->perf_ctr_loc_vec_tbl.mask;
-	    trigger = 0;
+	    vec_num   = apic->perf_ctr_loc_vec_tbl.vec;
+	    del_mode  = apic->perf_ctr_loc_vec_tbl.msg_type;
+	    masked    = apic->perf_ctr_loc_vec_tbl.mask;
+	    trigger   = 0;
 	    break;
 	case APIC_LINT0_INT:
-	    vec_num = apic->lint0_vec_tbl.vec;
-	    del_mode = apic->lint0_vec_tbl.msg_type;
-	    masked = apic->lint0_vec_tbl.mask;
-	    trigger = apic->lint0_vec_tbl.trig_mode;
+	    vec_num   = apic->lint0_vec_tbl.vec;
+	    del_mode  = apic->lint0_vec_tbl.msg_type;
+	    masked    = apic->lint0_vec_tbl.mask;
+	    trigger   = apic->lint0_vec_tbl.trig_mode;
 	    break;
 	case APIC_LINT1_INT:
-	    vec_num = apic->lint1_vec_tbl.vec;
-	    del_mode = apic->lint1_vec_tbl.msg_type;
-	    masked = apic->lint1_vec_tbl.mask;
-	    trigger = apic->lint1_vec_tbl.trig_mode;
+	    vec_num   = apic->lint1_vec_tbl.vec;
+	    del_mode  = apic->lint1_vec_tbl.msg_type;
+	    masked    = apic->lint1_vec_tbl.mask;
+	    trigger   = apic->lint1_vec_tbl.trig_mode;
 	    break;
 	case APIC_ERR_INT:
-	    vec_num = apic->err_vec_tbl.vec;
-	    del_mode = IPI_FIXED;
-	    masked = apic->err_vec_tbl.mask;
-	    trigger = 0;
+	    vec_num   = apic->err_vec_tbl.vec;
+	    del_mode  = IPI_FIXED;
+	    masked    = apic->err_vec_tbl.mask;
+	    trigger   = 0;
 	    break;
 	default:
 	    PrintError("apic %u: core ?: Invalid APIC interrupt type\n", apic->lapic_id.val);
@@ -703,15 +742,17 @@ static int activate_internal_irq(struct apic_state * apic, apic_irq_type_t int_t
 
 
 
-static inline int should_deliver_cluster_ipi(struct apic_dev_state * apic_dev,
-					     struct v3_core_info * dst_core, 
-					     struct apic_state * dst_apic, uint8_t mda) {
-
+static inline int 
+should_deliver_cluster_ipi(struct apic_dev_state * apic_dev,
+			   struct v3_core_info   * dst_core, 
+			   struct apic_state     * dst_apic, 
+			   uint8_t                 mda) 
+{
     int ret = 0;
 
 
-    if 	( ((mda & 0xf0) == (dst_apic->log_dst.dst_log_id & 0xf0)) &&  /* (I am in the cluster and */
-	  ((mda & 0x0f) & (dst_apic->log_dst.dst_log_id & 0x0f)) ) {  /*  I am in the set)        */
+    if 	( ((mda & 0xf0) == (dst_apic->log_dst.dst_log_id & 0xf0)) &&   /* (I am in the cluster and */
+	  ((mda & 0x0f)  & (dst_apic->log_dst.dst_log_id & 0x0f)) ) {  /*  I am in the set)        */
 	ret = 1;
     } else {
 	ret = 0;
@@ -720,11 +761,15 @@ static inline int should_deliver_cluster_ipi(struct apic_dev_state * apic_dev,
 
     if (ret == 1) {
 	PrintDebug("apic %u core %u: accepting clustered IRQ (mda 0x%x == log_dst 0x%x)\n",
-		   dst_apic->lapic_id.val, dst_core->vcpu_id, mda, 
+		   dst_apic->lapic_id.val,
+		   dst_core->vcpu_id, 
+		   mda, 
 		   dst_apic->log_dst.dst_log_id);
     } else {
 	PrintDebug("apic %u core %u: rejecting clustered IRQ (mda 0x%x != log_dst 0x%x)\n",
-		   dst_apic->lapic_id.val, dst_core->vcpu_id, mda, 
+		   dst_apic->lapic_id.val, 
+		   dst_core->vcpu_id,
+		   mda, 
 		   dst_apic->log_dst.dst_log_id);
     }
 
@@ -732,10 +777,12 @@ static inline int should_deliver_cluster_ipi(struct apic_dev_state * apic_dev,
 
 }
 
-static inline int should_deliver_flat_ipi(struct apic_dev_state * apic_dev,
-					  struct v3_core_info * dst_core,
-					  struct apic_state * dst_apic, uint8_t mda) {
-
+static inline int 
+should_deliver_flat_ipi(struct apic_dev_state * apic_dev,
+			struct v3_core_info   * dst_core,
+			struct apic_state     * dst_apic,
+			uint8_t                 mda) 
+{
     int ret = 0;
 
 
@@ -748,11 +795,15 @@ static inline int should_deliver_flat_ipi(struct apic_dev_state * apic_dev,
 
     if (ret == 1) {
 	PrintDebug("apic %u core %u: accepting flat IRQ (mda 0x%x == log_dst 0x%x)\n",
-		   dst_apic->lapic_id.val, dst_core->vcpu_id, mda, 
+		   dst_apic->lapic_id.val,
+		   dst_core->vcpu_id,
+		   mda, 
 		   dst_apic->log_dst.dst_log_id);
     } else {
 	PrintDebug("apic %u core %u: rejecting flat IRQ (mda 0x%x != log_dst 0x%x)\n",
-		   dst_apic->lapic_id.val, dst_core->vcpu_id, mda, 
+		   dst_apic->lapic_id.val, 
+		   dst_core->vcpu_id,
+		   mda, 
 		   dst_apic->log_dst.dst_log_id);
     }
 
@@ -762,35 +813,38 @@ static inline int should_deliver_flat_ipi(struct apic_dev_state * apic_dev,
 
 
 
-static int should_deliver_ipi(struct apic_dev_state * apic_dev, 
-			      struct v3_core_info * dst_core, 
-			      struct apic_state * dst_apic, uint8_t mda) {
+static int 
+should_deliver_ipi(struct apic_dev_state * apic_dev, 
+		   struct v3_core_info   * dst_core, 
+		   struct apic_state     * dst_apic, 
+		   uint8_t                 mda) 
+{
     addr_t flags = 0;
-    int ret = 0;
+    int    ret   = 0;
 
     flags = v3_spin_lock_irqsave(apic_dev->state_lock);
-
-    if (dst_apic->dst_fmt.model == 0xf) {
-
-	if (mda == 0xff) {
-	    /* always deliver broadcast */
-	    ret = 1;
+    {
+	if (dst_apic->dst_fmt.model == 0xf) {
+	    
+	    if (mda == 0xff) {
+		/* always deliver broadcast */
+		ret = 1;
+	    } else {
+		ret = should_deliver_flat_ipi(apic_dev, dst_core, dst_apic, mda);
+	    }
+	} else if (dst_apic->dst_fmt.model == 0x0) {
+	    
+	    if (mda == 0xff) {
+		/*  always deliver broadcast */
+		ret = 1;
+	    } else {
+		ret = should_deliver_cluster_ipi(apic_dev, dst_core, dst_apic, mda);
+	    }
+	    
 	} else {
-	    ret = should_deliver_flat_ipi(apic_dev, dst_core, dst_apic, mda);
+	    ret = -1;
 	}
-    } else if (dst_apic->dst_fmt.model == 0x0) {
-
-	if (mda == 0xff) {
-	    /*  always deliver broadcast */
-	    ret = 1;
-	} else {
-	    ret = should_deliver_cluster_ipi(apic_dev, dst_core, dst_apic, mda);
-	}
-
-    } else {
-	ret = -1;
     }
-    
     v3_spin_unlock_irqrestore(apic_dev->state_lock, flags);
 
 
@@ -806,11 +860,11 @@ static int should_deliver_ipi(struct apic_dev_state * apic_dev,
 
 
 // Only the src_apic pointer is used
-static int deliver_ipi(struct apic_state * src_apic, 
-		       struct apic_state * dst_apic, 
-		       struct v3_gen_ipi * ipi) {
-
-
+static int 
+deliver_ipi(struct apic_state * src_apic, 
+	    struct apic_state * dst_apic, 
+	    struct v3_gen_ipi * ipi) 
+{
     struct v3_core_info * dst_core = dst_apic->core;
     //   struct apic_dev_state * dev_state = src_apic->dev_state;
 
@@ -862,7 +916,7 @@ static int deliver_ipi(struct apic_state * src_apic,
 		// We need to do this under barrier lock....
 		v3_raise_barrier(dst_core->vm_info, src_apic->core);
 		dst_core->core_run_state = CORE_STOPPED;
-		dst_apic->ipi_state = INIT_ST;
+		dst_apic->ipi_state      = INIT_ST;
 		v3_lower_barrier(dst_core->vm_info);
 
 	    } 
@@ -897,7 +951,7 @@ static int deliver_ipi(struct apic_state * src_apic,
 	    
 	    // We transition the target core to SIPI state
 	    dst_core->core_run_state = CORE_RUNNING;  // note: locking should not be needed here
-	    dst_apic->ipi_state = STARTED;
+	    dst_apic->ipi_state      = STARTED;
 	    
 	    // As with INIT, we should not need to do anything else
 	    
@@ -926,20 +980,22 @@ static int deliver_ipi(struct apic_state * src_apic,
     
 }
 
-static struct apic_state * find_physical_apic(struct apic_dev_state * apic_dev, uint32_t dst_idx) {
+static struct apic_state * 
+find_physical_apic(struct apic_dev_state * apic_dev, 
+		   uint32_t                dst_idx) 
+{
     struct apic_state * dst_apic = NULL;
-    addr_t flags;
-    int i;
+    addr_t flags = 0;
+    int    i     = 0;
 
     flags = v3_spin_lock_irqsave(apic_dev->state_lock);
-
-
-    for (i = 0; i < apic_dev->num_apics; i++) { 
-	if (apic_dev->apics[i].lapic_id.apic_id == dst_idx) { 
-	    dst_apic =  &(apic_dev->apics[i]);
+    {
+	for (i = 0; i < apic_dev->num_apics; i++) { 
+	    if (apic_dev->apics[i].lapic_id.apic_id == dst_idx) { 
+		dst_apic =  &(apic_dev->apics[i]);
+	    }
 	}
     }
-
     v3_spin_unlock_irqrestore(apic_dev->state_lock, flags);
 
     return dst_apic;
@@ -948,9 +1004,11 @@ static struct apic_state * find_physical_apic(struct apic_dev_state * apic_dev, 
 
 
 
-static int route_ipi(struct apic_dev_state * apic_dev,
-		     struct apic_state * src_apic, 
-		     struct v3_gen_ipi * ipi) {
+static int 
+route_ipi(struct apic_dev_state * apic_dev,
+	  struct apic_state     * src_apic, 
+	  struct v3_gen_ipi     * ipi) 
+{
     struct apic_state * dest_apic = NULL;
 
 
@@ -986,8 +1044,8 @@ static int route_ipi(struct apic_dev_state * apic_dev,
 	    } else if (ipi->logical == APIC_DEST_LOGICAL) {
 		
 		if (ipi->mode != IPI_LOWEST_PRIO) { 
-		    int i;
 		    uint8_t mda = ipi->dst;
+		    int i;
 
 		    // logical, but not lowest priority
 		    // we immediately trigger
@@ -998,8 +1056,7 @@ static int route_ipi(struct apic_dev_state * apic_dev,
 			int del_flag = 0;
 			
 			dest_apic = &(apic_dev->apics[i]);
-			
-			del_flag = should_deliver_ipi(apic_dev, dest_apic->core, dest_apic, mda);
+			del_flag  = should_deliver_ipi(apic_dev, dest_apic->core, dest_apic, mda);
 			
 			if (del_flag == -1) {
 
@@ -1024,8 +1081,7 @@ static int route_ipi(struct apic_dev_state * apic_dev,
 			int del_flag = 0;
 
 			dest_apic = &(apic_dev->apics[i]);
-			
-			del_flag = should_deliver_ipi(apic_dev, dest_apic->core, dest_apic, mda);
+			del_flag  = should_deliver_ipi(apic_dev, dest_apic->core, dest_apic, mda);
 			
 			if (del_flag == -1) {
 			    PrintError("apic: Error checking delivery mode\n");
@@ -1117,12 +1173,19 @@ static int route_ipi(struct apic_dev_state * apic_dev,
 
 
 // External function, expected to acquire lock on apic
-static int apic_read(struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data) {
+static int 
+apic_read(struct v3_core_info * core,
+	  addr_t                guest_addr, 
+	  void                * dst, 
+	  uint_t                length, 
+	  void                * priv_data)
+{
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(priv_data);
-    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]);
-    addr_t reg_addr  = guest_addr - apic->base_addr;
-    struct apic_msr * msr = (struct apic_msr *)&(apic->base_addr_msr.value);
-    uint32_t val = 0;
+    struct apic_state     * apic     = &(apic_dev->apics[core->vcpu_id]);
+    struct apic_msr       * msr      = (struct apic_msr *)&(apic->base_addr_msr.value);
+
+    addr_t   reg_addr = guest_addr - apic->base_addr;
+    uint32_t val      = 0;
 
 
     PrintDebug("apic %u: core %u: at %p: Read apic address space (%p)\n",
@@ -1349,15 +1412,16 @@ static int apic_read(struct v3_core_info * core, addr_t guest_addr, void * dst, 
 
 
     if (length == 1) {
-	uint_t byte_addr = reg_addr & 0x3;
-	uint8_t * val_ptr = (uint8_t *)dst;
+	uint_t    byte_addr = reg_addr & 0x3;
+	uint8_t * val_ptr   = (uint8_t *)dst;
     
 	*val_ptr = *(((uint8_t *)&val) + byte_addr);
 
-    } else if ((length == 2) && 
-	       ((reg_addr & 0x3) != 0x3)) {
-	uint_t byte_addr = reg_addr & 0x3;
-	uint16_t * val_ptr = (uint16_t *)dst;
+    } else if ( (length == 2) && 
+	        ((reg_addr & 0x3) != 0x3) ) {
+	uint_t     byte_addr = reg_addr & 0x3;
+	uint16_t * val_ptr   = (uint16_t *)dst;
+
 	*val_ptr = *(((uint16_t *)&val) + byte_addr);
 
     } else if (length == 4) {
@@ -1380,16 +1444,21 @@ static int apic_read(struct v3_core_info * core, addr_t guest_addr, void * dst, 
 /**
  *
  */
-static int apic_write(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data) {
+static int 
+apic_write(struct v3_core_info * core, 
+	   addr_t                guest_addr, 
+	   void                * src, 
+	   uint_t                length, 
+	   void                * priv_data) 
+{
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(priv_data);
-    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
-    addr_t reg_addr  = guest_addr - apic->base_addr;
-    struct apic_msr * msr = (struct apic_msr *)&(apic->base_addr_msr.value);
-    uint32_t op_val = *(uint32_t *)src;
-    addr_t flags = 0;
+    struct apic_state     * apic     = &(apic_dev->apics[core->vcpu_id]); 
+    struct apic_msr       * msr      = (struct apic_msr *)&(apic->base_addr_msr.value);
 
-    PrintDebug("apic %u: core %u: at %p and priv_data is at %p\n",
-	       apic->lapic_id.val, core->vcpu_id, apic, priv_data);
+    addr_t   reg_addr = guest_addr - apic->base_addr;
+    uint32_t op_val   = *(uint32_t *)src;
+    addr_t   flags    = 0;
+
 
     PrintDebug("apic %u: core %u: write to address space (%p) (val=%x)\n", 
 	       apic->lapic_id.val, core->vcpu_id, (void *)guest_addr, *(uint32_t *)src);
@@ -1448,58 +1517,62 @@ static int apic_write(struct v3_core_info * core, addr_t guest_addr, void * src,
 	    //V3_Print("apic %u: core %u: my id is being changed to %u\n", 
 	    //       apic->lapic_id.val, core->vcpu_id, op_val);
 
-	    apic->lapic_id.val = op_val;
+	    apic->lapic_id.val              = op_val;
 	    break;
 	case TPR_OFFSET:
-	    apic->task_prio.val = op_val;
+	    apic->task_prio.val             = op_val;
 	    break;
 	case LDR_OFFSET:
 	    PrintDebug("apic %u: core %u: setting log_dst.val to 0x%x\n",
 		       apic->lapic_id.val, core->vcpu_id, op_val);
 	    flags = v3_spin_lock_irqsave(apic_dev->state_lock);
-	    apic->log_dst.val = op_val;
+	    {
+		apic->log_dst.val           = op_val;
+	    }
 	    v3_spin_unlock_irqrestore(apic_dev->state_lock, flags);
 	    break;
 	case DFR_OFFSET:
 	    flags = v3_spin_lock_irqsave(apic_dev->state_lock);
-	    apic->dst_fmt.val = op_val;
+	    {
+		apic->dst_fmt.val           = op_val;
+	    }
 	    v3_spin_unlock_irqrestore(apic_dev->state_lock, flags);
 	    break;
 	case SPURIOUS_INT_VEC_OFFSET:
-	    apic->spurious_int.val = op_val;
+	    apic->spurious_int.val          = op_val;
 	    break;
 	case ESR_OFFSET:
-	    apic->err_status.val = op_val;
+	    apic->err_status.val            = op_val;
 	    break;
 	case TMR_LOC_VEC_TBL_OFFSET:
-	    apic->tmr_vec_tbl.val = op_val;
+	    apic->tmr_vec_tbl.val           = op_val;
 	    break;
 	case THERM_LOC_VEC_TBL_OFFSET:
-	    apic->therm_loc_vec_tbl.val = op_val;
+	    apic->therm_loc_vec_tbl.val     = op_val;
 	    break;
 	case PERF_CTR_LOC_VEC_TBL_OFFSET:
-	    apic->perf_ctr_loc_vec_tbl.val = op_val;
+	    apic->perf_ctr_loc_vec_tbl.val  = op_val;
 	    break;
 	case LINT0_VEC_TBL_OFFSET:
-	    apic->lint0_vec_tbl.val = op_val;
+	    apic->lint0_vec_tbl.val         = op_val;
 	    break;
 	case LINT1_VEC_TBL_OFFSET:
-	    apic->lint1_vec_tbl.val = op_val;
+	    apic->lint1_vec_tbl.val         = op_val;
 	    break;
 	case ERR_VEC_TBL_OFFSET:
-	    apic->err_vec_tbl.val = op_val;
+	    apic->err_vec_tbl.val           = op_val;
 	    break;
 	case TMR_INIT_CNT_OFFSET:
-	    apic->tmr_init_cnt = op_val;
-	    apic->tmr_cur_cnt = op_val;
+	    apic->tmr_init_cnt              = op_val;
+	    apic->tmr_cur_cnt               = op_val;
 	    break;
 	case TMR_CUR_CNT_OFFSET:
-	    apic->tmr_cur_cnt = op_val;
+	    apic->tmr_cur_cnt               = op_val;
 	    break;
 	case TMR_DIV_CFG_OFFSET:
 	    PrintDebug("apic %u: core %u: setting tmr_div_cfg to 0x%x\n",
 		       apic->lapic_id.val, core->vcpu_id, op_val);
-	    apic->tmr_div_cfg.val = op_val;
+	    apic->tmr_div_cfg.val           = op_val;
 	    break;
 
 
@@ -1530,16 +1603,16 @@ static int apic_write(struct v3_core_info * core, addr_t guest_addr, void * src,
 	    break;
 
 	case EXT_INT_LOC_VEC_TBL_OFFSET0:
-	    apic->ext_intr_vec_tbl[0].val = op_val;
+	    apic->ext_intr_vec_tbl[0].val     = op_val;
 	    break;
 	case EXT_INT_LOC_VEC_TBL_OFFSET1:
-	    apic->ext_intr_vec_tbl[1].val = op_val;
+	    apic->ext_intr_vec_tbl[1].val     = op_val;
 	    break;
 	case EXT_INT_LOC_VEC_TBL_OFFSET2:
-	    apic->ext_intr_vec_tbl[2].val = op_val;
+	    apic->ext_intr_vec_tbl[2].val     = op_val;
 	    break;
 	case EXT_INT_LOC_VEC_TBL_OFFSET3:
-	    apic->ext_intr_vec_tbl[3].val = op_val;
+	    apic->ext_intr_vec_tbl[3].val     = op_val;
 	    break;
 
 
@@ -1555,17 +1628,17 @@ static int apic_write(struct v3_core_info * core, addr_t guest_addr, void * src,
 
 	    struct v3_gen_ipi tmp_ipi;
 
-	    apic->int_cmd.lo = op_val;
+	    apic->int_cmd.lo      = op_val;
 
-	    tmp_ipi.vector = apic->int_cmd.vec;
-	    tmp_ipi.mode = apic->int_cmd.del_mode;
-	    tmp_ipi.logical = apic->int_cmd.dst_mode;
-	    tmp_ipi.trigger_mode = apic->int_cmd.trig_mode;
+	    tmp_ipi.vector        = apic->int_cmd.vec;
+	    tmp_ipi.mode          = apic->int_cmd.del_mode;
+	    tmp_ipi.logical       = apic->int_cmd.dst_mode;
+	    tmp_ipi.trigger_mode  = apic->int_cmd.trig_mode;
 	    tmp_ipi.dst_shorthand = apic->int_cmd.dst_shorthand;
-	    tmp_ipi.dst = apic->int_cmd.dst;
+	    tmp_ipi.dst           = apic->int_cmd.dst;
 		
-	    tmp_ipi.ack = NULL;
-	    tmp_ipi.private_data = NULL;
+	    tmp_ipi.ack           = NULL;
+	    tmp_ipi.private_data  = NULL;
 	    
 
 	    v3_telemetry_inc_core_counter(core, "APIC_XMIT_IPI");
@@ -1608,9 +1681,12 @@ static int apic_write(struct v3_core_info * core, addr_t guest_addr, void * src,
 /* Interrupt Controller Functions */
 
 
-static int apic_intr_pending(struct v3_core_info * core, void * private_data) {
+static int 
+apic_intr_pending(struct v3_core_info * core, 
+		  void                * private_data) 
+{
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(private_data);
-    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
+    struct apic_state     * apic     = &(apic_dev->apics[core->vcpu_id]); 
     int req_irq = 0;    
     int svc_irq = 0;
 
@@ -1633,9 +1709,12 @@ static int apic_intr_pending(struct v3_core_info * core, void * private_data) {
 
 
 
-static int apic_get_intr_number(struct v3_core_info * core, void * private_data) {
+static int 
+apic_get_intr_number(struct v3_core_info * core, 
+		     void                * private_data) 
+{
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(private_data);
-    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
+    struct apic_state     * apic     = &(apic_dev->apics[core->vcpu_id]); 
     int req_irq = get_highest_irr(apic);
     int svc_irq = get_highest_isr(apic);
 
@@ -1650,9 +1729,13 @@ static int apic_get_intr_number(struct v3_core_info * core, void * private_data)
 
 
 
-int v3_apic_send_ipi(struct v3_vm_info * vm, struct v3_gen_ipi * ipi, void * dev_data) {
-    struct apic_dev_state * apic_dev = (struct apic_dev_state *)
-	(((struct vm_device *)dev_data)->private_data);
+int 
+v3_apic_send_ipi(struct v3_vm_info * vm, 
+		 struct v3_gen_ipi * ipi, 
+		 void              * dev_data) 
+{
+    struct vm_device      * vm_dev   = dev_data;
+    struct apic_dev_state * apic_dev = (struct apic_dev_state *)(vm_dev->private_data);
 
     return route_ipi(apic_dev, NULL, ipi);
 }
@@ -1660,19 +1743,24 @@ int v3_apic_send_ipi(struct v3_vm_info * vm, struct v3_gen_ipi * ipi, void * dev
 
 
 
-static int apic_begin_irq(struct v3_core_info * core, void * private_data, int irq) {
+static int 
+apic_begin_irq(struct v3_core_info * core, 
+	       void                * private_data, 
+	       int                   irq)
+{
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(private_data);
-    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
-    int major_offset = (irq & ~0x00000007) >> 3;
-    int minor_offset = irq & 0x00000007;
-    uint8_t *req_location = apic->int_req_reg + major_offset;
-    uint8_t *svc_location = apic->int_svc_reg + major_offset;
+    struct apic_state     * apic     = &(apic_dev->apics[core->vcpu_id]); 
+
+    int major_offset       = (irq & ~0x00000007) >> 3;
+    int minor_offset       = irq & 0x00000007;
+    uint8_t * req_location = apic->int_req_reg + major_offset;
+    uint8_t * svc_location = apic->int_svc_reg + major_offset;
     uint8_t flag = 0x01 << minor_offset;
 
     if (*req_location & flag) {
 	// we will only pay attention to a begin irq if we
 	// know that we initiated it!
-	*svc_location |= flag;
+	*svc_location |=  flag;
 	*req_location &= ~flag;
     } else {
 	// do nothing... 
@@ -1686,10 +1774,13 @@ static int apic_begin_irq(struct v3_core_info * core, void * private_data, int i
 
 /* Timer Functions */
 
-static void apic_inject_timer_intr(struct v3_core_info *core,
-			           void * priv_data) {
+static void 
+apic_inject_timer_intr(struct v3_core_info * core,
+		       void                * priv_data)
+{
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(priv_data);
-    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
+    struct apic_state     * apic     = &(apic_dev->apics[core->vcpu_id]); 
+
     // raise irq
     PrintDebug("apic %u: core %u: Raising APIC Timer interrupt (periodic=%d) (icnt=%d)\n",
 	       apic->lapic_id.val, core->vcpu_id,
@@ -1714,11 +1805,14 @@ static void apic_inject_timer_intr(struct v3_core_info *core,
 
 
 
-static void apic_update_time(struct v3_core_info * core, 
-			     uint64_t cpu_cycles, uint64_t cpu_freq, 
-			     void * priv_data) {
+static void 
+apic_update_time(struct v3_core_info * core, 
+		 uint64_t              cpu_cycles,
+		 uint64_t              cpu_freq, 
+		 void                * priv_data)
+{
     struct apic_dev_state * apic_dev = (struct apic_dev_state *)(priv_data);
-    struct apic_state * apic = &(apic_dev->apics[core->vcpu_id]); 
+    struct apic_state     * apic     = &(apic_dev->apics[core->vcpu_id]); 
 
     // The 32 bit GCC runtime is a pile of shit
 #ifdef __V3_64BIT__
@@ -1727,7 +1821,7 @@ static void apic_update_time(struct v3_core_info * core,
     uint32_t tmr_ticks = 0;
 #endif
 
-    uint8_t tmr_div = *(uint8_t *)&(apic->tmr_div_cfg.val);
+    uint8_t tmr_div  = *(uint8_t *)&(apic->tmr_div_cfg.val);
     uint_t shift_num = 0;
 
 
@@ -1736,7 +1830,7 @@ static void apic_update_time(struct v3_core_info * core,
     //      and doesn't just blitz interrupts to the CPU
     if ((apic->tmr_init_cnt == 0) || 
 	( (apic->tmr_vec_tbl.tmr_mode == APIC_TMR_ONESHOT) &&
-	  (apic->tmr_cur_cnt == 0))) {
+	  (apic->tmr_cur_cnt          == 0)) ) {
 	//PrintDebug("apic %u: core %u: APIC timer not yet initialized\n",apic->lapic_id.val,info->vcpu_id);
 	return;
     }
@@ -1778,24 +1872,27 @@ static void apic_update_time(struct v3_core_info * core,
 
     if (tmr_ticks < apic->tmr_cur_cnt) {
 	apic->tmr_cur_cnt -= tmr_ticks;
+
 #ifdef V3_CONFIG_APIC_ENQUEUE_MISSED_TMR_IRQS
 	if (apic->missed_ints && !apic_intr_pending(core, priv_data)) {
 	    PrintDebug("apic %u: core %u: Injecting queued APIC timer interrupt.\n",
 		       apic->lapic_id.val, core->vcpu_id);
+
 	    apic_inject_timer_intr(core, priv_data);
 	    apic->missed_ints--;
 	}
 #endif /* CONFIG_APIC_ENQUEUE_MISSED_TMR_IRQS */ 
+
     } else {
-	tmr_ticks -= apic->tmr_cur_cnt;
-	apic->tmr_cur_cnt = 0;
+	tmr_ticks         -= apic->tmr_cur_cnt;
+	apic->tmr_cur_cnt  = 0;
 
 	apic_inject_timer_intr(core, priv_data);
 
 	if (apic->tmr_vec_tbl.tmr_mode == APIC_TMR_PERIODIC) {
-	    int queued_ints = tmr_ticks / apic->tmr_init_cnt;
-	    tmr_ticks = tmr_ticks % apic->tmr_init_cnt;
-	    apic->tmr_cur_cnt = apic->tmr_init_cnt - tmr_ticks;
+	    int queued_ints    = tmr_ticks / apic->tmr_init_cnt;
+	    tmr_ticks          = tmr_ticks % apic->tmr_init_cnt;
+	    apic->tmr_cur_cnt  = apic->tmr_init_cnt - tmr_ticks;
 	    apic->missed_ints += queued_ints;
 	}
     }
@@ -1804,25 +1901,27 @@ static void apic_update_time(struct v3_core_info * core,
 }
 
 static struct intr_ctrl_ops intr_ops = {
-    .intr_pending = apic_intr_pending,
+    .intr_pending    = apic_intr_pending,
     .get_intr_number = apic_get_intr_number,
-    .begin_irq = apic_begin_irq,
+    .begin_irq       = apic_begin_irq,
 };
 
 
 static struct v3_timer_ops timer_ops = {
-    .update_timer = apic_update_time,
+    .update_timer    = apic_update_time,
 };
 
 
 
 
-static int apic_free(struct apic_dev_state * apic_dev) {
-    int i = 0;
+static int 
+apic_free(struct apic_dev_state * apic_dev) 
+{
     struct v3_vm_info * vm = NULL;
+    int i = 0;
 
     for (i = 0; i < apic_dev->num_apics; i++) {
-	struct apic_state * apic = &(apic_dev->apics[i]);
+	struct apic_state   * apic = &(apic_dev->apics[i]);
 	struct v3_core_info * core = apic->core;
 	
 	vm = core->vm_info;
@@ -1844,7 +1943,10 @@ static int apic_free(struct apic_dev_state * apic_dev) {
 }
 
 #ifdef V3_CONFIG_CHECKPOINT
-static int apic_save(struct v3_chkpt_ctx * ctx, void * private_data) {
+static int
+apic_save(struct v3_chkpt_ctx * ctx,
+	  void                * private_data)
+{
     struct apic_dev_state * apic_state = (struct apic_dev_state *)private_data;
     int i = 0;
 
@@ -1892,8 +1994,11 @@ static int apic_save(struct v3_chkpt_ctx * ctx, void * private_data) {
     return 0;
 }
 
-static int apic_load(struct v3_chkpt_ctx * ctx, void * private_data) {
-    struct apic_dev_state *apic_state = (struct apic_dev_state *)private_data;
+static int 
+apic_load(struct v3_chkpt_ctx * ctx, 
+	  void                * private_data) 
+{
+    struct apic_dev_state * apic_state = (struct apic_dev_state *)private_data;
     int i = 0;
 
     V3_CHKPT_STD_LOAD(ctx,apic_state->num_apics);
@@ -1950,8 +2055,11 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int apic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
-    char * dev_id = v3_cfg_val(cfg, "ID");
+static int 
+apic_init(struct v3_vm_info * vm,
+	  v3_cfg_tree_t     * cfg) 
+{
+    char                  * dev_id   = v3_cfg_val(cfg, "ID");
     struct apic_dev_state * apic_dev = NULL;
     int i = 0;
 
@@ -1979,17 +2087,16 @@ static int apic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
     
     for (i = 0; i < vm->num_cores; i++) {
-	struct apic_state * apic = &(apic_dev->apics[i]);
+	struct apic_state   * apic = &(apic_dev->apics[i]);
 	struct v3_core_info * core = &(vm->cores[i]);
 
-	apic->core = core;
+	apic->core      = core;
 	apic->dev_state = apic_dev;
 
 	init_apic_state(apic, i);
 
     	apic->controller_handle = v3_register_intr_controller(core, &intr_ops, apic_dev);
-
-    	apic->timer = v3_add_timer(core, &timer_ops, apic_dev);
+    	apic->timer             = v3_add_timer(core, &timer_ops, apic_dev);
 
 	if (apic->timer == NULL) {
 	    PrintError("APIC: Failed to attach timer to core %d\n", i);

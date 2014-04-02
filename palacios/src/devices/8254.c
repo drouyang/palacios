@@ -42,11 +42,11 @@
 #define CHANNEL0_PORT 0x40
 #define CHANNEL1_PORT 0x41
 #define CHANNEL2_PORT 0x42
-#define COMMAND_PORT 0x43
-#define SPEAKER_PORT 0x61
+#define COMMAND_PORT  0x43
+#define SPEAKER_PORT  0x61
 
 
-#define PIT_INTR_NUM 0
+#define PIT_INTR_NUM     0
 #define PIT_SPEAKER_GATE 0x01
 
 /* The order of these typedefs is important because the numerical values correspond to the 
@@ -54,41 +54,48 @@
  */
 typedef enum {NOT_RUNNING, PENDING, RUNNING} channel_run_state_t;
 typedef enum {NOT_WAITING, WAITING_LOBYTE, WAITING_HIBYTE} channel_access_state_t;
-typedef enum {LATCH_COUNT = 0, LOBYTE_ONLY = 1, HIBYTE_ONLY = 2, LOBYTE_HIBYTE = 3} channel_access_mode_t;
-typedef enum {IRQ_ON_TERM_CNT = 0, ONE_SHOT = 1, RATE_GEN = 2, SQR_WAVE = 3, SW_STROBE = 4, HW_STROBE = 5} channel_op_mode_t;
+
+typedef enum {LATCH_COUNT     = 0, 
+	      LOBYTE_ONLY     = 1,
+	      HIBYTE_ONLY     = 2, 
+	      LOBYTE_HIBYTE   = 3} channel_access_mode_t;
+
+typedef enum {IRQ_ON_TERM_CNT = 0, 
+	      ONE_SHOT        = 1, 
+	      RATE_GEN        = 2,
+	      SQR_WAVE        = 3, 
+	      SW_STROBE       = 4,
+	      HW_STROBE       = 5} channel_op_mode_t;
 
 
 struct channel {
-    channel_access_mode_t access_mode;
+    channel_access_mode_t  access_mode;
     channel_access_state_t access_state;
-    channel_run_state_t run_state;
+    channel_run_state_t    run_state;
 
-    channel_op_mode_t op_mode;
+    channel_op_mode_t      op_mode;
 
 
     // Time til interrupt trigger 
 
-    ushort_t counter;
-    ushort_t reload_value;
-
-    ushort_t latched_value;
+    uint16_t counter;
+    uint16_t reload_value;
+    uint16_t latched_value;
   
     enum {NOTLATCHED, LATCHED} latch_state;
+    enum {LSB, MSB}            read_state;
 
-    enum {LSB, MSB} read_state;
-
-    uint_t output_pin : 1;
+    uint_t output_pin     : 1;
     uint_t gate_input_pin : 1;
 };
 
 
 struct pit {
 
-    ullong_t pit_counter;
-    ullong_t pit_reload;
+    uint64_t pit_counter;
+    uint64_t pit_reload;
 
-    struct v3_timer * timer;
-
+    struct v3_timer   * timer;
     struct v3_vm_info * vm;
 
     struct channel ch_0;
@@ -129,7 +136,11 @@ struct pit_rdb_status_word {
  * This should call out to handle_SQR_WAVE_tics, etc... 
  */
 // Returns true if the the output signal changed state
-static int handle_crystal_tics(struct pit * pit, struct channel * ch, uint_t oscillations) {
+static int 
+handle_crystal_tics(struct pit     * pit, 
+		    struct channel * ch, 
+		    uint_t           oscillations) 
+{
     uint_t channel_cycles = 0;
     uint_t output_changed = 0;
   
@@ -163,18 +174,19 @@ static int handle_crystal_tics(struct pit * pit, struct channel * ch, uint_t osc
 	//   (unsigned int)ch->counter, oscillations);
 	return output_changed;
     } else {
-	ushort_t reload_val = ch->reload_value; 
+	uint16_t reload_val = ch->reload_value; 
 
-	if ((ch->op_mode == SW_STROBE) || (ch->op_mode == IRQ_ON_TERM_CNT)) {
+	if ( (ch->op_mode == SW_STROBE) || 
+	     (ch->op_mode == IRQ_ON_TERM_CNT) ) {
 	    reload_val = 0xffff;
 	}
 
-	oscillations -= ch->counter;
-	ch->counter = 0;
+	oscillations  -= ch->counter;
+	ch->counter    = 0;
 	channel_cycles = 1;
 
 	if (ch->op_mode == SQR_WAVE) {
-	    reload_val -= reload_val % 2;
+	    reload_val -= (reload_val % 2);
 	}
 
 	if (reload_val == 0) {
@@ -185,9 +197,9 @@ static int handle_crystal_tics(struct pit * pit, struct channel * ch, uint_t osc
 	}
 
 	channel_cycles += oscillations / reload_val;
-	oscillations = oscillations % reload_val;
+	oscillations    = oscillations % reload_val;
 
-	ch->counter = reload_val - oscillations;
+	ch->counter     = reload_val - oscillations;
 	//	PrintDebug("8254 PIT: Counter reset to %u.\n", 
 	//   (unsigned int)ch->counter);
 
@@ -255,11 +267,16 @@ static int handle_crystal_tics(struct pit * pit, struct channel * ch, uint_t osc
 
 #include <palacios/vm.h>
 
-static void pit_update_timer(struct v3_core_info * core, ullong_t cpu_cycles, ullong_t cpu_freq, void * private_data) {
-    struct pit * state = (struct pit *)private_data;
-    //  ullong_t tmp_ctr = state->pit_counter;
-    ullong_t tmp_cycles;
-    uint_t oscillations = 0;
+static void 
+pit_update_timer(struct v3_core_info  * core, 
+		 uint64_t               cpu_cycles, 
+		 uint64_t               cpu_freq, 
+		 void                 * private_data) 
+{
+    struct pit  * state        = (struct pit *)private_data;
+    uint64_t      tmp_cycles   = 0;
+    uint_t        oscillations = 0;
+    //  uint64_t tmp_ctr = state->pit_counter;
 
 
     /*
@@ -280,11 +297,11 @@ static void pit_update_timer(struct v3_core_info * core, ullong_t cpu_cycles, ul
 	// Easy...
 	state->pit_counter -= cpu_cycles;
     } else {
-	ushort_t reload_val = state->pit_reload;
+	uint16_t reload_val = state->pit_reload;
 	// Take off the first part
-	cpu_cycles -= state->pit_counter;
+	cpu_cycles        -= state->pit_counter;
 	state->pit_counter = 0;
-	oscillations = 1;
+	oscillations       = 1;
     
 	if (cpu_cycles > state->pit_reload) {
 	    // how many full oscillations
@@ -298,16 +315,13 @@ static void pit_update_timer(struct v3_core_info * core, ullong_t cpu_cycles, ul
 		reload_val = 1;
 	    }
 
-	    tmp_cycles = cpu_cycles;
-
-      
+	    tmp_cycles    = cpu_cycles;     
 #ifdef __V3_64BIT__
-	    cpu_cycles = tmp_cycles % state->pit_reload;
-	    tmp_cycles = tmp_cycles / state->pit_reload;
+	    cpu_cycles    = tmp_cycles % state->pit_reload;
+	    tmp_cycles    = tmp_cycles / state->pit_reload;
 #else
-	    cpu_cycles = do_divll(tmp_cycles, state->pit_reload);
+	    cpu_cycles    = do_divll(tmp_cycles, state->pit_reload);
 #endif
-	
 	    oscillations += tmp_cycles;
 	}
 
@@ -315,12 +329,12 @@ static void pit_update_timer(struct v3_core_info * core, ullong_t cpu_cycles, ul
 	state->pit_counter = state->pit_reload - cpu_cycles;    
 
 	if (oscillations) {
-	    //    PrintDebug("8254 PIT: Handling %d crystal tics\n", oscillations);
 
 	    if (handle_crystal_tics(state, &(state->ch_0), oscillations) == 1) {
-	        // raise interrupt
 	        PrintDebug("8254 PIT: Injecting Timer interrupt to guest (run_state = %d)\n",
 			   state->ch_0.run_state);
+
+	        /* raise interrupt */
 	        v3_raise_irq(core->vm_info, 0);
 	    }
 
@@ -334,17 +348,21 @@ static void pit_update_timer(struct v3_core_info * core, ullong_t cpu_cycles, ul
 
 /* This should call out to handle_SQR_WAVE_write, etc...
  */
-static int handle_channel_write(struct channel * ch, char val) {
+static int 
+handle_channel_write(struct channel * ch, 
+		     uint8_t          val) 
+{
 
     switch (ch->access_state) {      
 	case WAITING_HIBYTE:
 	    {
-		ushort_t tmp_val = ((ushort_t)val) << 8;
+		uint16_t tmp_val = ((uint16_t)val) << 8;
 		ch->reload_value &= 0x00ff;
 		ch->reload_value |= tmp_val;
 	
 
-		if ((ch->op_mode != RATE_GEN) || (ch->run_state != RUNNING)){
+		if (( ch->op_mode   != RATE_GEN ) || 
+		    ( ch->run_state != RUNNING  )) {
 		    ch->run_state = PENDING;  
 		}
 	
@@ -353,7 +371,7 @@ static int handle_channel_write(struct channel * ch, char val) {
 		}
 
 		PrintDebug("8254 PIT: updated channel counter: %d\n", ch->reload_value); 	
-		PrintDebug("8254 PIT: Channel Run State=%d\n", ch->run_state);
+		PrintDebug("8254 PIT: Channel Run State=%d\n",        ch->run_state);
 		break;
 	    }
 	case WAITING_LOBYTE:
@@ -362,12 +380,14 @@ static int handle_channel_write(struct channel * ch, char val) {
       
 	    if (ch->access_mode == LOBYTE_HIBYTE) {
 		ch->access_state = WAITING_HIBYTE;
-	    } else if ((ch->op_mode != RATE_GEN) || (ch->run_state != RUNNING)) {
+
+	    } else if (( ch->op_mode   != RATE_GEN ) || 
+		       ( ch->run_state != RUNNING  )) {
 		ch->run_state = PENDING;
 	    }
       
 	    PrintDebug("8254 PIT: updated channel counter: %d\n", ch->reload_value);
-	    PrintDebug("8254 PIT: Channel Run State=%d\n", ch->run_state);
+	    PrintDebug("8254 PIT: Channel Run State=%d\n",        ch->run_state);
 	    break;
 	default:
 	    PrintError("Invalid Access state\n");
@@ -402,9 +422,12 @@ static int handle_channel_write(struct channel * ch, char val) {
 }
 
 
-static int handle_channel_read(struct channel * ch, char * val) {
+static int 
+handle_channel_read(struct channel * ch, 
+		    uint8_t        * val) 
+{
 
-    ushort_t * myval;
+    uint16_t * myval = NULL;
 
     if (ch->latch_state == NOTLATCHED) { 
 	myval = &(ch->counter);
@@ -413,11 +436,13 @@ static int handle_channel_read(struct channel * ch, char * val) {
     }
 
     if (ch->read_state == LSB) { 
-	*val = ((char*)myval)[0];  // little endian
+	*val           = ((uint8_t *)myval)[0];  // little endian
 	ch->read_state = MSB;
+
     } else {
-	*val = ((char*)myval)[1];
+	*val           = ((uint8_t *)myval)[1];
 	ch->read_state = LSB;
+
 	if (ch->latch_state == LATCHED) { 
 	    ch->latch_state = NOTLATCHED;
 	}
@@ -427,22 +452,33 @@ static int handle_channel_read(struct channel * ch, char * val) {
 
 }
 
-static int handle_speaker_read(uint8_t *speaker, struct channel * ch, char * val) {
+static int 
+handle_speaker_read(uint8_t        * speaker, 
+		    struct channel * ch, 
+		    uint8_t        * val) 
+{
     *val = *speaker;
 
-    if ((*speaker & PIT_SPEAKER_GATE)) {
+    if ( *speaker & PIT_SPEAKER_GATE ) {
     	*val |= (ch->output_pin << 5);
     }
     
     return 0;
 }
 
-static int handle_speaker_write(uint8_t *speaker, struct channel * ch, char val) {
+static int 
+handle_speaker_write(uint8_t        * speaker, 
+		     struct channel * ch, 
+		     uint8_t          val) 
+{
     *speaker = (val & ~0x20);
     return 0;
 }
 
-static int handle_channel_cmd(struct channel * ch, struct pit_cmd_word cmd) {
+static int 
+handle_channel_cmd(struct channel      * ch, 
+		   struct pit_cmd_word   cmd) 
+{
 
     if (cmd.op_mode != ch->op_mode) {
 	PrintDebug("8254 PIT: Changing channel from op mode %d to op mode %d.\n", 
@@ -450,7 +486,7 @@ static int handle_channel_cmd(struct channel * ch, struct pit_cmd_word cmd) {
     }
 
     if (cmd.access_mode != 0) {
-      ch->op_mode = cmd.op_mode;
+	ch->op_mode = cmd.op_mode;
     }
 
     if (cmd.access_mode != ch->access_mode) {
@@ -463,7 +499,7 @@ static int handle_channel_cmd(struct channel * ch, struct pit_cmd_word cmd) {
 	case LATCH_COUNT:
 	    if (ch->latch_state == NOTLATCHED) { 
 		ch->latched_value = ch->counter;
-		ch->latch_state = LATCHED;
+		ch->latch_state   = LATCHED;
 	    }
 	    break;
 	case HIBYTE_ONLY:
@@ -504,9 +540,15 @@ static int handle_channel_cmd(struct channel * ch, struct pit_cmd_word cmd) {
 
 
 
-static int pit_read_channel(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int 
+pit_read_channel(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * dst, 
+		 uint_t                length, 
+		 void                * priv_data) 
+{
     struct pit * state = (struct pit *)priv_data;
-    char * val = (char *)dst;
+    uint8_t    * val   = (uint8_t *)dst;
 
     if (length != 1) {
 	PrintError("8254 PIT: Invalid Read Write length \n");
@@ -550,16 +592,24 @@ static int pit_read_channel(struct v3_core_info * core, ushort_t port, void * ds
 
 
 
-static int pit_write_channel(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int 
+pit_write_channel(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * src, 
+		  uint_t                length, 
+		  void                * priv_data) 
+{
     struct pit * state = (struct pit *)priv_data;
-    char val = *(char *)src;
+    uint8_t      val   = *(uint8_t *)src;
 
     if (length != 1) {
 	PrintError("8254 PIT: Invalid Write Length\n");
 	return -1;
     }
 
-    PrintDebug("8254 PIT: Write to PIT Channel %d (%x)\n", port - CHANNEL0_PORT, *(char*)src);
+    PrintDebug("8254 PIT: Write to PIT Channel %d (%x)\n", 
+	       port - CHANNEL0_PORT,
+	       *(uint8_t *)src);
 
 
     switch (port) {
@@ -598,12 +648,22 @@ static int pit_write_channel(struct v3_core_info * core, ushort_t port, void * s
 
 
 
-static int pit_write_command(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
-    struct pit * state = (struct pit *)priv_data;
-    struct pit_cmd_word * cmd = (struct pit_cmd_word *)src;
+static int 
+pit_write_command(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * src, 
+		  uint_t                length, 
+		  void                * priv_data) 
+{
+    struct pit          * state = (struct pit *)priv_data;
+    struct pit_cmd_word * cmd   = (struct pit_cmd_word *)src;
 
     PrintDebug("8254 PIT: Write to PIT Command port\n");
-    PrintDebug("8254 PIT: Writing to channel %d (access_mode = %d, op_mode = %d)\n", cmd->channel, cmd->access_mode, cmd->op_mode);
+    PrintDebug("8254 PIT: Writing to channel %d (access_mode = %d, op_mode = %d)\n", 
+	       cmd->channel,
+	       cmd->access_mode, 
+	       cmd->op_mode);
+
     if (length != 1) {
 	PrintError("8254 PIT: Write of Invalid length to command port\n");
 	return -1;
@@ -649,20 +709,22 @@ static struct v3_timer_ops timer_ops = {
 };
 
 
-static void init_channel(struct channel * ch) {
-    ch->run_state = NOT_RUNNING;
-    ch->access_state = NOT_WAITING;
-    ch->access_mode = 0;
-    ch->op_mode = 0;
+static void 
+init_channel(struct channel * ch) 
+{
+    ch->run_state      = NOT_RUNNING;
+    ch->access_state   = NOT_WAITING;
+    ch->access_mode    = 0;
+    ch->op_mode        = 0;
 
-    ch->counter = 0;
-    ch->reload_value = 0;
-    ch->output_pin = 0;
+    ch->counter        = 0;
+    ch->reload_value   = 0;
+    ch->output_pin     = 0;
     ch->gate_input_pin = 0;
 
-    ch->latched_value = 0;
-    ch->latch_state = NOTLATCHED;
-    ch->read_state = LSB;
+    ch->latched_value  = 0;
+    ch->latch_state    = NOTLATCHED;
+    ch->read_state     = LSB;
 
     return;
 }
@@ -670,9 +732,11 @@ static void init_channel(struct channel * ch) {
 
 
 
-static int pit_free(void * private_data) {
-    struct pit * state = (struct pit *)private_data;
-    struct v3_core_info * core = &(state->vm->cores[0]);
+static int 
+pit_free(void * private_data) 
+{
+    struct pit          * state = (struct pit *)private_data;
+    struct v3_core_info * core  = &(state->vm->cores[0]);
 
 
     if (state->timer) {
@@ -683,8 +747,12 @@ static int pit_free(void * private_data) {
     return 0;
 }
 
+
 #ifdef V3_CONFIG_CHECKPOINT
-static int pit_save(struct v3_chkpt_ctx * ctx, void * private_data) {
+static int 
+pit_save(struct v3_chkpt_ctx * ctx, 
+	 void                * private_data) 
+{
     struct pit * pit_state = (struct pit *)private_data; 
 
     V3_CHKPT_STD_SAVE(ctx, pit_state->pit_counter);
@@ -697,7 +765,10 @@ static int pit_save(struct v3_chkpt_ctx * ctx, void * private_data) {
     return 0;
 }
 
-static int pit_load(struct v3_chkpt_ctx * ctx, void * private_data) {
+static int 
+pit_load(struct v3_chkpt_ctx * ctx, 
+	 void                * private_data) 
+{
     struct pit * pit_state = (struct pit *)private_data;
 
     V3_CHKPT_STD_LOAD(ctx, pit_state->pit_counter);
@@ -721,20 +792,23 @@ static struct v3_device_ops dev_ops = {
 
 #include <palacios/vm.h>
 
-static int pit_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
-    struct pit * pit_state = NULL;
-    struct vm_device * dev = NULL;
-    char * dev_id = v3_cfg_val(cfg, "ID");
+static int
+pit_init(struct v3_vm_info * vm, 
+	 v3_cfg_tree_t     * cfg) 
+{
+    struct pit       * pit_state = NULL;
+    struct vm_device * dev       = NULL;
+    char             * dev_id    = v3_cfg_val(cfg, "ID");
     int ret = 0;
 
     // PIT is only usable in non-multicore environments
     // just hardcode the core context
-    struct v3_core_info * core = &(vm->cores[0]);
+    struct v3_core_info * core   = &(vm->cores[0]);
 
-    uint_t cpu_khz = core->time_state.guest_cpu_freq;
+    uint32_t cpu_khz    = core->time_state.guest_cpu_freq;
     uint64_t reload_val = (uint64_t)cpu_khz * 1000;
 
-    pit_state = (struct pit *)V3_Malloc(sizeof(struct pit));
+    pit_state           = (struct pit *)V3_Malloc(sizeof(struct pit));
 
     if (!pit_state) {
 	PrintError("Cannot allocate in init\n");
@@ -742,7 +816,7 @@ static int pit_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     }
 
     pit_state->speaker = 0;
-    pit_state->vm = vm;
+    pit_state->vm      = vm;
 
     dev = v3_add_device(vm, dev_id, &dev_ops, pit_state);
 
@@ -755,8 +829,8 @@ static int pit_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     ret |= v3_dev_hook_io(dev, CHANNEL0_PORT, &pit_read_channel, &pit_write_channel);
     ret |= v3_dev_hook_io(dev, CHANNEL1_PORT, &pit_read_channel, &pit_write_channel);
     ret |= v3_dev_hook_io(dev, CHANNEL2_PORT, &pit_read_channel, &pit_write_channel);
-    ret |= v3_dev_hook_io(dev, COMMAND_PORT, NULL, &pit_write_command);
-    ret |= v3_dev_hook_io(dev, SPEAKER_PORT, &pit_read_channel, &pit_write_channel);
+    ret |= v3_dev_hook_io(dev, COMMAND_PORT,  NULL,              &pit_write_command);
+    ret |= v3_dev_hook_io(dev, SPEAKER_PORT,  &pit_read_channel, &pit_write_channel);
 
     if (ret != 0) {
 	PrintError("8254 PIT: Failed to hook IO ports\n");
@@ -783,7 +857,7 @@ static int pit_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
     do_divll(reload_val, OSC_HZ);
     pit_state->pit_counter = reload_val;
-    pit_state->pit_reload = reload_val;
+    pit_state->pit_reload  = reload_val;
 
 
     init_channel(&(pit_state->ch_0));

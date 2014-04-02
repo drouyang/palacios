@@ -25,31 +25,35 @@
 
 #define BUF_SIZE 1024
 
-#define BOCHS_PORT1 0x400
-#define BOCHS_PORT2 0x401
-#define BOCHS_INFO_PORT 0x402
-#define BOCHS_DEBUG_PORT 0x403
-
+#define BOCHS_PORT1        0x400
+#define BOCHS_PORT2        0x401
+#define BOCHS_INFO_PORT    0x402
+#define BOCHS_DEBUG_PORT   0x403
 #define BOCHS_CONSOLE_PORT 0xe9
 
 
 struct debug_state {
-    char debug_buf[BUF_SIZE];
+    char   debug_buf[BUF_SIZE];
     uint_t debug_offset;
 
-    char info_buf[BUF_SIZE];
+    char   info_buf[BUF_SIZE];
     uint_t info_offset;
 
-    char cons_buf[BUF_SIZE];
+    char   cons_buf[BUF_SIZE];
     uint_t cons_offset;
 };
 
-static int handle_info_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int 
+handle_info_write(struct v3_core_info * core, 
+		  ushort_t              port, 
+		  void                * src, 
+		  uint_t                length, 
+		  void                * priv_data) 
+{
     struct debug_state * state = (struct debug_state *)priv_data;
+    state->info_buf[state->info_offset++] = *(char *)src;
 
-    state->info_buf[state->info_offset++] = *(char*)src;
-
-    if ((*(char*)src == 0xa) ||  (state->info_offset == (BUF_SIZE - 1))) {
+    if ((*(char *)src == 0xa) ||  (state->info_offset == (BUF_SIZE - 1))) {
 	PrintDebug("BOCHSINFO>%s", state->info_buf);
 	memset(state->info_buf, 0, BUF_SIZE);
 	state->info_offset = 0;
