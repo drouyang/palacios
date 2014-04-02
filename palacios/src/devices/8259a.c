@@ -197,7 +197,7 @@ struct pic_internal {
 };
 
 
-if 0
+#if 0
 static void 
 DumpPICState(struct pic_internal *p)
 {
@@ -511,7 +511,7 @@ read_master_port2(struct v3_core_info * core,
 	return -1;
     }
 
-    state           = (struct pic_internal *)priv_data
+    state           = (struct pic_internal *)priv_data;
     *(uint8_t *)dst = state->master_imr;
 
     return 1;
