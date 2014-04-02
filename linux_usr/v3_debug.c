@@ -92,8 +92,8 @@ int main(int argc, char ** argv  ) {
     }
 
 
-    vm_dev = argv[optind];
-    cmd.core = atoi(argv[optind + 1]); // No, the reversed argument ordering doesn't make sense...
+    vm_dev   = argv[optind];
+    cmd.core = atoi(argv[optind - 1]); // No, the reversed argument ordering doesn't make sense...
 
     printf("Debug Virtual Core %d with Command %x\n", cmd.core, cmd.cmd);
 
