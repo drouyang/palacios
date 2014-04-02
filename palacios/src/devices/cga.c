@@ -43,7 +43,7 @@
 
 
 #define START_ADDR 0xA0000
-#define END_ADDR 0xC0000
+#define END_ADDR   0xC0000
 
 #define FRAMEBUF_SIZE (END_ADDR - START_ADDR)
 
@@ -173,7 +173,7 @@ struct attrc_data_reg_attr_mode_control {
 
 struct video_internal {
     uint8_t * framebuf;
-    addr_t framebuf_pa;
+    addr_t    framebuf_pa;
 
     /* registers */
     struct misc_outp_reg misc_outp_reg;		// io port 3CC (R) / 3C2 (W)
@@ -193,14 +193,14 @@ struct video_internal {
     uint8_t dac_data_regs[DAC_REG_COUNT];	// io port 3C9
 
     /* auxilary fields derived from register values */
-    addr_t activefb_addr;
-    uint_t activefb_len;
+    addr_t   activefb_addr;
+    uint_t   activefb_len;
     uint16_t iorange;
-    uint_t vres;
-    uint_t hres;
-    uint_t vchars;
-    uint_t hchars;
-    int graphmode;
+    uint_t   vres;
+    uint_t   hres;
+    uint_t   vchars;
+    uint_t   hchars;
+    int      graphmode;
     
     /* status */
     int dirty;
@@ -224,7 +224,9 @@ struct video_internal {
 
 };
 
-static void refresh_screen(struct video_internal * state) {
+static void 
+refresh_screen(struct video_internal * state) 
+{
     uint_t screen_size;
     
     PrintDebug("Screen config: framebuf=0x%x-0x%x, gres=%dx%d, tres=%dx%d, %s mode\n", 
@@ -242,28 +244,41 @@ static void refresh_screen(struct video_internal * state) {
     if (state->reschanged) {
         /* resolution change message will trigger update */
 	state->reschanged = 0;
+
 	PrintDebug("Video: set_text_resolution(%d, %d)\n", 
     	    state->hchars, state->vchars);
-	if (state->ops && state->ops->set_text_resolution) {
+
+	if ( (state->ops) && 
+	     (state->ops->set_text_resolution) ) {
     	    state->ops->set_text_resolution(state->hchars, state->vchars, state->private_data);
     	}
     } else {
         /* send update for full buffer */
 	PrintDebug("Video: update_screen(0, 0, %d * %d * %d)\n", state->vchars, state->hchars, BYTES_PER_COL);
 	screen_size = state->vchars * state->hchars * BYTES_PER_COL;
-	if (state->ops) {
+
+	if ( (state->ops) && 
+	     (state->ops->update_screen) ) {
     	    state->ops->update_screen(0, 0, screen_size, state->private_data);
     	}
     }
 }
 
-static void registers_updated(struct video_internal * state) {
-    struct seq_data_reg_clocking_mode *cm;
-    struct graphc_data_reg_misc *misc;
-    struct crtc_data_reg_max_scan_line *msl;
-    struct crtc_data_reg_overflow *ovf;
-    int lines_per_char;
-    uint_t activefb_addr, activefb_len, hchars, vchars, vde, hres, vres;
+static void 
+registers_updated(struct video_internal * state) 
+{
+    struct seq_data_reg_clocking_mode  * cm   = NULL;
+    struct graphc_data_reg_misc        * misc = NULL;
+    struct crtc_data_reg_max_scan_line * msl  = NULL;
+    struct crtc_data_reg_overflow      * ovf  = NULL;
+    int    lines_per_char = 0;
+    uint_t activefb_addr  = 0;
+    uint_t activefb_len   = 0;
+    uint_t hchars         = 0;
+    uint_t vchars         = 0;
+    uint_t vde            = 0;
+    uint_t hres           = 0;
+    uint_t vres           = 0;
     
     /* framebuffer mapping address */
     misc = (struct graphc_data_reg_misc *)(state->graphc_data_regs + GRAPHC_REGIDX_MISC);
@@ -276,10 +291,12 @@ static void registers_updated(struct video_internal * state) {
     	activefb_len = (misc->mm == 1) ? 0x10000 : 0x20000;
     }
 
-    if ((state->activefb_addr != activefb_addr) || (state->activefb_len != activefb_len)) {
+    if ( (state->activefb_addr != activefb_addr) || 
+	 (state->activefb_len  != activefb_len) ) {
 	state->activefb_addr = activefb_addr;
-	state->activefb_len = activefb_len;
-	state->dirty = 1;
+	state->activefb_len  = activefb_len;
+	state->dirty         = 1;
+
 	PrintVerbose("Video: need refresh (activefb=0x%x-0x%x)\n", 
 	    activefb_addr, activefb_addr + activefb_len);
     } 
@@ -287,7 +304,7 @@ static void registers_updated(struct video_internal * state) {
     /* mode selection; may be inconclusive, keep old value in that case */
     if (state->graphmode != misc->gm) {
 	state->graphmode = misc->gm;
-	state->dirty = 1;
+	state->dirty     = 1;
 	PrintVerbose("Video: need refresh (graphmode=%d)\n", state->graphmode);
     }
 
@@ -303,9 +320,11 @@ static void registers_updated(struct video_internal * state) {
     }
     msl = (struct crtc_data_reg_max_scan_line *) (
 	state->crtc_data_regs + CRTC_REGIDX_MAX_SCAN_LINE);
+
     if (msl->dsc) vres /= 2;
+
     if (state->vres != vres) {
-	state->vres = vres;
+	state->vres       = vres;
 	state->reschanged = 1;
 	PrintVerbose("Video: need refresh (vres=%d)\n", vres);
     }
@@ -319,29 +338,36 @@ static void registers_updated(struct video_internal * state) {
 		hres = 640;
 		break;
     }
+
     cm = (struct seq_data_reg_clocking_mode *) (
-	state->seq_data_regs + SEQ_REGIDX_CLOCKING_MODE);
+	   state->seq_data_regs + SEQ_REGIDX_CLOCKING_MODE);
+
     if (cm->dc) hres /= 2;
+
     if (state->hres != hres) {
-	state->hres = hres;
-	state->reschanged = 1;
 	PrintVerbose("Video: need refresh (hres=%d)\n", hres);
+
+	state->hres       = hres;
+	state->reschanged = 1;
     }
 
     /* text resolution */
     ovf = (struct crtc_data_reg_overflow *) (state->crtc_data_regs + CRTC_REGIDX_OVERFLOW);
     
-    hchars = state->crtc_data_regs[CRTC_REGIDX_HORI_DISPLAY_ENABLE] + 1;
+    hchars         = state->crtc_data_regs[CRTC_REGIDX_HORI_DISPLAY_ENABLE] + 1;
     lines_per_char = msl->msl + 1;
-    vde = state->crtc_data_regs[CRTC_REGIDX_VERT_DISPLAY_ENABLE_END] |
-	(((unsigned) ovf->vde8) << 8) | 
-	(((unsigned) ovf->vde9) << 9);
-    vchars = (vde + 1) / lines_per_char;
-    if (state->hchars != hchars || state->vchars != vchars) {
-	state->hchars = hchars;
-	state->vchars = vchars;
-	state->reschanged = 1;
+    vde            = state->crtc_data_regs[CRTC_REGIDX_VERT_DISPLAY_ENABLE_END] |
+	             (((unsigned) ovf->vde8) << 8) | 
+	             (((unsigned) ovf->vde9) << 9);
+    vchars         = (vde + 1) / lines_per_char;
+   
+    if ( (state->hchars != hchars) || 
+	 (state->vchars != vchars) ) {
 	PrintVerbose("Video: need refresh (hchars=%d, vchars=%d)\n", hchars, vchars);
+
+	state->hchars     = hchars;
+	state->vchars     = vchars;
+	state->reschanged = 1;
     }
     
     /* resolution change implies refresh needed */
@@ -353,7 +379,9 @@ static void registers_updated(struct video_internal * state) {
     state->iorange = state->misc_outp_reg.ios ? 0x3d0 : 0x3b0;
 }
 
-static void registers_initialize(struct video_internal * state) {
+static void 
+registers_initialize(struct video_internal * state) 
+{
 
     /* initialize the registers; defaults taken from vgatables.h in the VGA 
      * BIOS, mode 3 (which is specified by IBM as the default mode)
@@ -385,35 +413,33 @@ static void registers_initialize(struct video_internal * state) {
     };
  
     /* general registers */
-    state->misc_outp_reg.ios = 1;
+    state->misc_outp_reg.ios  = 1;
     state->misc_outp_reg.eram = 1;
-    state->misc_outp_reg.cs = 1;
-    state->misc_outp_reg.hsp = 1;    
+    state->misc_outp_reg.cs   = 1;
+    state->misc_outp_reg.hsp  = 1;    
     
-    /* sequencer registers */
-    V3_ASSERT(sizeof(seq_defaults) == sizeof(state->seq_data_regs));
-    memcpy(state->seq_data_regs, seq_defaults, sizeof(state->seq_data_regs));    
-    
-    /* CRT controller registers */
-    V3_ASSERT(sizeof(crtc_defaults) == sizeof(state->crtc_data_regs));
-    memcpy(state->crtc_data_regs, crtc_defaults, sizeof(state->crtc_data_regs));    
-    
-    /* graphics controller registers */
+
+    V3_ASSERT(sizeof(seq_defaults)    == sizeof(state->seq_data_regs));
+    V3_ASSERT(sizeof(crtc_defaults)   == sizeof(state->crtc_data_regs));
     V3_ASSERT(sizeof(graphc_defaults) == sizeof(state->graphc_data_regs));
-    memcpy(state->graphc_data_regs, graphc_defaults, sizeof(state->graphc_data_regs));    
-    
-    /* attribute controller registers */
-    V3_ASSERT(sizeof(attrc_defaults) == sizeof(state->attrc_data_regs));
-    memcpy(state->attrc_data_regs, attrc_defaults, sizeof(state->attrc_data_regs));    
+    V3_ASSERT(sizeof(attrc_defaults)  == sizeof(state->attrc_data_regs));
+
+
+    memcpy(state->seq_data_regs,    seq_defaults,    sizeof(state->seq_data_regs));     /* sequencer registers */
+    memcpy(state->crtc_data_regs,   crtc_defaults,   sizeof(state->crtc_data_regs));    /* CRT controller registers */
+    memcpy(state->graphc_data_regs, graphc_defaults, sizeof(state->graphc_data_regs));  /* graphics controller registers */
+    memcpy(state->attrc_data_regs,  attrc_defaults,  sizeof(state->attrc_data_regs));   /* attribute controller registers */
     
     /* initialize auxilary fields */
     registers_updated(state);
 }
 
-static void passthrough_in(uint16_t port, void * src, uint_t length) {
+static void 
+passthrough_in(uint16_t port, void * src, uint_t length) 
+{
     switch (length) {
 	case 1:
-	    *(uint8_t *)src = v3_inb(port);
+	    *(uint8_t  *)src = v3_inb(port);
 	    break;
 	case 2:
 	    *(uint16_t *)src = v3_inw(port);
@@ -427,13 +453,15 @@ static void passthrough_in(uint16_t port, void * src, uint_t length) {
 }
 
 
-static void passthrough_out(uint16_t port, const void * src, uint_t length) {
+static void 
+passthrough_out(uint16_t port, const void * src, uint_t length) 
+{
     switch (length) {
 	case 1:
-	    v3_outb(port, *(uint8_t *)src);
+	    v3_outb(port,  *(uint8_t *)src);
 	    break;
 	case 2:
-	    v3_outw(port, *(uint16_t *)src);
+	    v3_outw(port,  *(uint16_t *)src);
 	    break;
 	case 4:
 	    v3_outdw(port, *(uint32_t *)src);
@@ -444,7 +472,9 @@ static void passthrough_out(uint16_t port, const void * src, uint_t length) {
 }
 
 #if V3_CONFIG_DEBUG_CGA >= 2
-static unsigned long get_value(const void *ptr, int len) {
+static unsigned long 
+get_value(const void *ptr, int len) 
+{
   unsigned long value = 0;
 
   if (len > sizeof(value)) len = sizeof(value);
@@ -453,25 +483,38 @@ static unsigned long get_value(const void *ptr, int len) {
   return value;
 }
 
-static char opsize_char(uint_t length) {
+static char 
+opsize_char(uint_t length) 
+{
     switch (length) {
-    case 1: return 'b'; 
-    case 2: return 'w'; 
-    case 4: return 'l'; 
-    case 8: return 'q';     
+    case 1:  return 'b'; 
+    case 2:  return 'w'; 
+    case 4:  return 'l'; 
+    case 8:  return 'q';     
     default: return '?'; 
     }
 }
 #endif
 
-static int video_write_mem(struct v3_core_info * core, addr_t guest_addr, void * dest, uint_t length, void * priv_data) {
-    struct vm_device * dev = (struct vm_device *)priv_data;
+static int 
+video_write_mem(struct v3_core_info * core, 
+		addr_t                guest_addr, 
+		void                * dest, 
+		uint_t                length, 
+		void                * priv_data) 
+{
+    struct vm_device      * dev   = (struct vm_device *)priv_data;
     struct video_internal * state = (struct video_internal *)dev->private_data;
-    uint_t length_adjusted, screen_pos, x, y;
-    addr_t framebuf_offset, framebuf_offset_screen, screen_offset;
+    addr_t framebuf_offset        = 0;
+    addr_t framebuf_offset_screen = 0;
+    addr_t screen_offset          = 0;
+    uint_t length_adjusted        = 0;
+    uint_t screen_pos             = 0;
+    uint_t x                      = 0;
+    uint_t y                      = 0;
     
     V3_ASSERT(guest_addr >= START_ADDR);
-    V3_ASSERT(guest_addr < END_ADDR);
+    V3_ASSERT(guest_addr <  END_ADDR);
     
     PrintVerbose("Video: write(%p, 0x%lx, %d)\n", 
        (void *)guest_addr, 
@@ -500,6 +543,7 @@ static int video_write_mem(struct v3_core_info * core, addr_t guest_addr, void *
      * write to avoid buffer overflows
      */
     length_adjusted = length;
+
     if (state->activefb_addr > guest_addr) {
     	uint_t diff = state->activefb_addr - guest_addr;
 
@@ -509,7 +553,7 @@ static int video_write_mem(struct v3_core_info * core, addr_t guest_addr, void *
 	    return length;
 	}
 
-    	guest_addr += diff;
+    	guest_addr      += diff;
     	length_adjusted -= diff;
     }
 
@@ -534,9 +578,9 @@ static int video_write_mem(struct v3_core_info * core, addr_t guest_addr, void *
     }
     
     /* translate to coordinates and pass to the frontend */
-    screen_pos = screen_offset / BYTES_PER_COL;
-    x = screen_pos % state->hchars;
-    y = screen_pos / state->hchars;
+    screen_pos = screen_offset /  BYTES_PER_COL;
+    x          = screen_pos    %  state->hchars;
+    y          = screen_pos    /  state->hchars;
 
     
     if (y >= state->vchars) {
@@ -550,23 +594,41 @@ static int video_write_mem(struct v3_core_info * core, addr_t guest_addr, void *
     return length;
 }
 
-static void debug_port(struct video_internal * video_state, const char *function, uint16_t port, uint_t length, uint_t maxlength)
+static void 
+debug_port(struct video_internal * video_state, 
+	   const char            * function, 
+	   uint16_t                port, 
+	   uint_t                  length, 
+	   uint_t                  maxlength)
 {
     uint16_t portrange = port & 0xfff0;
 
     /* report any unexpected guest behaviour, it may explain failures */
-    if (portrange != 0x3c0 && portrange != video_state->iorange) {
+    if ( (portrange != 0x3c0) && 
+	 (portrange != video_state->iorange) ) {
 	PrintError("Video %s: got bad port 0x%x\n", function, port);
     }
 
-    if (!video_state->passthrough && length > maxlength) {
+    if ( (!video_state->passthrough) && 
+	 (length > maxlength) ) {
     	PrintError("Video %s: got bad length %d\n", function, length);
     }
+
     V3_ASSERT(length >= 1);
 }
 
-static void handle_port_read(struct video_internal * video_state, const char *function, uint16_t port, void *dest, uint_t length, uint_t maxlength) {
-    PrintVerbose("Video %s: in%c(0x%x): 0x%lx\n", function, opsize_char(length), port, get_value(dest, length));
+static void 
+handle_port_read(struct video_internal * video_state, 
+		 const char            * function, 
+		 uint16_t                port, 
+		 void                  * dest, 
+		 uint_t                  length, 
+		 uint_t                  maxlength) 
+{
+    PrintVerbose("Video %s: in%c(0x%x): 0x%lx\n", 
+		 function, opsize_char(length), 
+		 port, get_value(dest, length));
+
     debug_port(video_state, function, port, length, maxlength);
 
     if (video_state->passthrough) {
@@ -574,8 +636,18 @@ static void handle_port_read(struct video_internal * video_state, const char *fu
     }
 }
 
-static void handle_port_write(struct video_internal * video_state, const char *function, uint16_t port, const void *src, uint_t length, uint_t maxlength) {
-    PrintVerbose("Video %s: out%c(0x%x, 0x%lx)\n", function, opsize_char(length), port, get_value(src, length));
+static void 
+handle_port_write(struct video_internal * video_state, 
+		  const char            * function, 
+		  uint16_t                port, 
+		  const void            * src, 
+		  uint_t                  length, 
+		  uint_t                  maxlength) 
+{
+    PrintVerbose("Video %s: out%c(0x%x, 0x%lx)\n", 
+		 function, opsize_char(length), 
+		 port, get_value(src, length));
+
     debug_port(video_state, function, port, length, maxlength);
 
     if (video_state->passthrough) {
@@ -583,84 +655,159 @@ static void handle_port_write(struct video_internal * video_state, const char *f
     }
 }
 
-static int notimpl_port_read(struct video_internal * video_state, const char *function, uint16_t port, void *dest, uint_t length) {
+static int 
+notimpl_port_read(struct video_internal * video_state, 
+		  const char            * function, 
+		  uint16_t                port, 
+		  void                  * dest, 
+		  uint_t                  length) 
+{
     memset(dest, 0xff, length);
+ 
     handle_port_read(video_state, function, port, dest, length, 1);
+    
     if (!video_state->passthrough) {
     	PrintError("Video %s: not implemented\n", function);
     }
+
     return length;
 }
 
-static int notimpl_port_write(struct video_internal * video_state, const char *function, uint16_t port, const void *src, uint_t length) {
+static int 
+notimpl_port_write(struct video_internal * video_state, 
+		   const char            * function, 
+		   uint16_t                port,
+		   const void            * src, 
+		   uint_t                  length) 
+{
     handle_port_write(video_state, function, port, src, length, 1);
+
     if (!video_state->passthrough) {
     	PrintError("Video %s: not implemented\n", function);
     }
+
     return length;
 }
 
 /* general registers */
-static int misc_outp_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+misc_outp_read(struct v3_core_info * core, 
+	       uint16_t              port, 
+	       void                * dest, 
+	       uint_t                length, 
+	       void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
 
-    *(struct misc_outp_reg *) dest = video_state->misc_outp_reg;
-
+    *(struct misc_outp_reg *)dest = video_state->misc_outp_reg;
+    
     handle_port_read(video_state, __FUNCTION__, port, dest, length, 1);
+
     return length;
 }
 
-static int misc_outp_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+misc_outp_write(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * src, 
+		uint_t                length, 
+		void                * priv_data)
+{
     struct video_internal * video_state = priv_data;
+
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
     PrintDebug("Video: misc_outp=0x%x\n", *(uint8_t *) src);
+
     video_state->misc_outp_reg = *(struct misc_outp_reg *) src;
     registers_updated(video_state);
 
     return length;
 }
 
-static int inp_status0_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+inp_status0_read(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * dest, 
+		 uint_t                length, 
+		 void                * priv_data)
+{
     return notimpl_port_read(priv_data, __FUNCTION__, port, dest, length);
 }
 
-static int inp_status1_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+inp_status1_read(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * dest, 
+		 uint_t                length, 
+		 void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
 
     /* next write to attrc selects the index rather than data */
-    video_state->attrc_index_flipflop = 0;
+    video_state->attrc_index_flipflop   = 0;
     memset(dest, 0x0, length);
 
     handle_port_read(priv_data, __FUNCTION__, port, dest, length, 1);
     return length;
 }
 
-static int feat_ctrl_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+feat_ctrl_read(struct v3_core_info * core, 
+	       uint16_t              port, 
+	       void                * dest, 
+	       uint_t                length, 
+	       void                * priv_data) 
+{
     return notimpl_port_read(priv_data, __FUNCTION__, port, dest, length);
 }
 
-static int feat_ctrl_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+feat_ctrl_write(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * src, 
+		uint_t                length, 
+		void                * priv_data) 
+{
     return notimpl_port_write(priv_data, __FUNCTION__, port, src, length);
 }
 
-static int video_enable_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+video_enable_read(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * dest, 
+		  uint_t                length, 
+		  void                * priv_data) 
+{
     return notimpl_port_read(priv_data, __FUNCTION__, port, dest, length);
 }
 
-static int video_enable_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+video_enable_write(struct v3_core_info * core, 
+		   uint16_t              port, 
+		   void                * src, 
+		   uint_t                length, 
+		   void                * priv_data) 
+{
     return notimpl_port_write(priv_data, __FUNCTION__, port, src, length);
 }
 
 /* sequencer registers */
-static int seq_data_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+seq_data_read(struct v3_core_info * core, 
+	      uint16_t              port, 
+	      void                * dest, 
+	      uint_t                length, 
+	      void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
-    int index = video_state->seq_index_reg;
+    int index                           = video_state->seq_index_reg;
 
     if (index < SEQ_REG_COUNT) {
     	*(uint8_t *) dest = video_state->seq_data_regs[index];
     } else {
-    	PrintError("Video %s: index %d out of range\n", __FUNCTION__, video_state->seq_index_reg);
+    	PrintError("Video %s: index %d out of range\n", 
+		   __FUNCTION__, video_state->seq_index_reg);
     	*(uint8_t *) dest = 0;
     }
 
@@ -668,40 +815,65 @@ static int seq_data_read(struct v3_core_info * core, uint16_t port, void * dest,
     return length;    
 }
 
-static int seq_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+seq_data_write(struct v3_core_info * core, 
+	       uint16_t              port, 
+	       void                * src, 
+	       uint_t                length, 
+	       void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
-    int index = video_state->seq_index_reg;
-    uint8_t val = *(uint8_t *) src;
+    int     index  = video_state->seq_index_reg;
+    uint8_t val    = *(uint8_t *) src;
+
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
     if (index < SEQ_REG_COUNT) {
     	PrintDebug("Video: seq[%d]=0x%x\n", index, val);
+
     	video_state->seq_data_regs[index] = val;
     	registers_updated(video_state);
     } else {
-    	PrintError("Video %s: index %d out of range\n", __FUNCTION__, video_state->seq_index_reg);
+    	PrintError("Video %s: index %d out of range\n", 
+		   __FUNCTION__, video_state->seq_index_reg);
     }
 
     return length;    
 }
 
-static int seq_index_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+seq_index_read(struct v3_core_info * core, 
+	       uint16_t              port, 
+	       void                * dest, 
+	       uint_t                length, 
+	       void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
-
-    *(uint8_t *) dest = video_state->seq_index_reg;
+    *(uint8_t *) dest                   = video_state->seq_index_reg;
 
     handle_port_read(video_state, __FUNCTION__, port, dest, length, 1);
     return length;
 }
 
-static int seq_index_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+seq_index_write(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * src, 
+		uint_t                length, 
+		void                * priv_data)
+{
     struct video_internal * video_state = priv_data;
+
     handle_port_write(video_state, __FUNCTION__, port, src, length, 2);
 
     video_state->seq_index_reg = *(uint8_t *) src;
 
     if (length > 1) {
-	if (seq_data_write(core, port + 1, (uint8_t *) src + 1, length - 1, priv_data) != length - 1) {
+	if (seq_data_write(core, 
+			   port           + 1, 
+			   (uint8_t *)src + 1, 
+			   length         - 1,
+			   priv_data)    != (length - 1)) {
 	    return -1;
 	}
     }
@@ -710,21 +882,35 @@ static int seq_index_write(struct v3_core_info * core, uint16_t port, void * src
 }
 
 /* CRT controller registers */
-static int crtc_data_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+crtc_data_read(struct v3_core_info * core, 
+	       uint16_t              port, 
+	       void                * dest, 
+	       uint_t                length, 
+	       void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->crtc_index_reg;
 
     handle_port_read(video_state, __FUNCTION__, port, dest, length, 1);
+
     return length;
 }
 
-static int crtc_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+crtc_data_write(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * src, 
+		uint_t                length, 
+		void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
-    uint8_t val = *(uint8_t *)src;
-    uint_t index = video_state->crtc_index_reg;
+    uint8_t val   = *(uint8_t *)src;
+    uint_t  index = video_state->crtc_index_reg;
 
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
+
     if (length != 1) {
 	PrintError("Invalid write length for port 0x%x\n", port);
 	return -1;
@@ -735,33 +921,43 @@ static int crtc_data_write(struct v3_core_info * core, uint16_t port, void * src
 
     switch (index) {
 
-	case CRTC_REGIDX_START_ADDR_HIGH: break; // Dealt by low-order byte write
-	case CRTC_REGIDX_START_ADDR_LOW: {  // Scroll low byte
-	    int diff, refresh;
-	    uint_t screen_offset;
+	case CRTC_REGIDX_START_ADDR_HIGH: 
+	    /* Dealt by low-order byte write */
+	    break; 
+	case CRTC_REGIDX_START_ADDR_LOW: {  /* Scroll low byte */
+	    int    diff          = 0; 
+	    int    refresh       = 0;
+	    uint_t screen_offset = 0;
 
 	    screen_offset =
 		((uint16_t) video_state->crtc_data_regs[CRTC_REGIDX_START_ADDR_HIGH] << 8) |
 		((uint16_t) video_state->crtc_data_regs[CRTC_REGIDX_START_ADDR_LOW]);
+
 	    if ((screen_offset - video_state->screen_offset) % video_state->hchars) {
 	        /* diff is not a multiple of column count, need full refresh */
-		diff = 0;
+		diff    = 0;
 		refresh = 1;
 	    } else {
 	        /* normal scroll (the common case) */
-	        diff = (screen_offset - video_state->screen_offset) / video_state->hchars;
+	        diff    = (screen_offset - video_state->screen_offset) / video_state->hchars;
 		refresh = 0;
 	    }
 	    PrintVerbose("Video: screen_offset=%d, video_state->screen_offset=%d, video_state->hchars=%d, diff=%d, refresh=%d\n",
-		screen_offset, video_state->screen_offset, video_state->hchars, diff, refresh);
+			 screen_offset, video_state->screen_offset, video_state->hchars, diff, refresh);
 
 	    // Update the true offset value
 	    video_state->screen_offset = screen_offset;
 
-	    if (refresh || video_state->dirty) {
+	    if ( (refresh) || 
+		 (video_state->dirty) ) {
+
 		refresh_screen(video_state);
-	    } else if (diff && video_state->ops) {
+
+	    } else if ( (diff)             && 
+			(video_state->ops) && 
+			(video_state->ops->scroll) ) {
 	        PrintVerbose("Video: scroll(%d)\n", diff);
+
 		if (video_state->ops->scroll(diff, video_state->private_data) == -1) {
 		    PrintError("Error sending scroll event\n");
 		    return -1;
@@ -769,25 +965,32 @@ static int crtc_data_write(struct v3_core_info * core, uint16_t port, void * src
 	    }
 	    break;
 	}
-	case CRTC_REGIDX_CURSOR_LOC_HIGH: break; // Dealt by low-order byte write
-	case CRTC_REGIDX_CURSOR_LOC_LOW: { // Cursor adjustment low byte
- 	    uint_t x;
-	    uint_t y;
+	case CRTC_REGIDX_CURSOR_LOC_HIGH: 
+	    /* Dealt by low-order byte write */
+	    break;
+	case CRTC_REGIDX_CURSOR_LOC_LOW: { /* Cursor adjustment low byte */
+ 	    uint_t x = 0;
+	    uint_t y = 0;
 	    
 	    video_state->cursor_offset =
 		((uint16_t) video_state->crtc_data_regs[CRTC_REGIDX_CURSOR_LOC_HIGH] << 8) |
 		((uint16_t) video_state->crtc_data_regs[CRTC_REGIDX_CURSOR_LOC_LOW]);
-	    x = video_state->cursor_offset % video_state->hchars;
+
+	    x = (video_state->cursor_offset % video_state->hchars);
 	    y = (video_state->cursor_offset - video_state->screen_offset) / video_state->hchars;
+
 	    PrintVerbose("Video: video_state->cursor_offset=%d, x=%d, y=%d\n",
-		video_state->cursor_offset, x, y);
+			 video_state->cursor_offset, x, y);
 
 	    if (video_state->dirty) {
 		refresh_screen(video_state);
 	    }
 	    
 	    PrintVerbose("Video: set cursor(%d, %d)\n", x, y);
-	    if (video_state->ops) {
+
+	    if ( (video_state->ops) &&
+		 (video_state->ops->update_cursor) ) {
+
 		if (video_state->ops->update_cursor(x, y, video_state->private_data) == -1) {
 		    PrintError("Error updating cursor\n");
 		    return -1;
@@ -808,19 +1011,32 @@ static int crtc_data_write(struct v3_core_info * core, uint16_t port, void * src
     return length;
 }
 
-static int crtc_index_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+crtc_index_read(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * dest, 
+		uint_t                length, 
+		void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->crtc_index_reg;
-
     handle_port_read(video_state, __FUNCTION__, port, dest, length, 1);
+
     return length;
 }
 
-static int crtc_index_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+crtc_index_write(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * src, 
+		 uint_t                length, 
+		 void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
 
     handle_port_write(video_state, __FUNCTION__, port, src, length, 2);
+
     if (length > 2) {
 	PrintError("Invalid write length for crtc index register port: %d (0x%x)\n",
 		   port, port);
@@ -836,7 +1052,11 @@ static int crtc_index_write(struct v3_core_info * core, uint16_t port, void * sr
     }
 
     if (length > 1) {
-	if (crtc_data_write(core, port + 1, (uint8_t *) src + 1, length - 1, priv_data) != length - 1) {
+	if (crtc_data_write(core, 
+			    port           + 1, 
+			    (uint8_t *)src + 1, 
+			    length         - 1, 
+			    priv_data)    != length - 1) {
 	    return -1;
 	}
     }
@@ -845,39 +1065,63 @@ static int crtc_index_write(struct v3_core_info * core, uint16_t port, void * sr
 }
 
 /* graphics controller registers */
-static int graphc_data_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+graphc_data_read(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * dest, 
+		 uint_t                length, 
+		 void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
-    int index = video_state->graphc_index_reg;
+    int                     index       = video_state->graphc_index_reg;
 
     if (index < GRAPHC_REG_COUNT) {
     	*(uint8_t *) dest = video_state->graphc_data_regs[index];
     } else {
-    	PrintError("Video %s: index %d out of range\n", __FUNCTION__, video_state->graphc_index_reg);
+    	PrintError("Video %s: index %d out of range\n", 
+		   __FUNCTION__, video_state->graphc_index_reg);
+
     	*(uint8_t *) dest = 0;
     }
 
     handle_port_read(video_state, __FUNCTION__, port, dest, length, 1);
+
     return length;    
 }
 
-static int graphc_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+graphc_data_write(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * src, 
+		  uint_t                length, 
+		  void                * priv_data)
+{
     struct video_internal * video_state = priv_data;
-    int index = video_state->graphc_index_reg;
-    uint8_t val = *(uint8_t *) src;
+    int     index = video_state->graphc_index_reg;
+    uint8_t val   = *(uint8_t *) src;
+
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
     if (index < GRAPHC_REG_COUNT) {
     	PrintDebug("Video: graphc[%d]=0x%x\n", index, val);
+
     	video_state->graphc_data_regs[index] = val;
     	registers_updated(video_state);
     } else {
-    	PrintError("Video %s: index %d out of range\n", __FUNCTION__, video_state->graphc_index_reg);
+    	PrintError("Video %s: index %d out of range\n",
+		   __FUNCTION__, video_state->graphc_index_reg);
     }
 
     return length;    
 }
 
-static int graphc_index_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+graphc_index_read(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * dest, 
+		  uint_t                length, 
+		  void                * priv_data)
+ {
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->graphc_index_reg;
@@ -886,14 +1130,25 @@ static int graphc_index_read(struct v3_core_info * core, uint16_t port, void * d
     return length;
 }
 
-static int graphc_index_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+graphc_index_write(struct v3_core_info * core, 
+		   uint16_t              port,
+		   void                * src, 
+		   uint_t                length, 
+		   void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
+
     handle_port_write(video_state, __FUNCTION__, port, src, length, 2);
 
     video_state->graphc_index_reg = *(uint8_t *) src;
 
     if (length > 1) {
-	if (graphc_data_write(core, port + 1, (uint8_t *) src + 1, length - 1, priv_data) != length - 1) {
+	if (graphc_data_write(core, 
+			      port           + 1, 
+			      (uint8_t *)src + 1, 
+			      length         - 1, 
+			      priv_data)    != length - 1) {
 	    return -1;
 	}
     }
@@ -902,14 +1157,22 @@ static int graphc_index_write(struct v3_core_info * core, uint16_t port, void * 
 }
 
 /* attribute controller registers */
-static int attrc_data_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+attrc_data_read(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * dest, 
+		uint_t                length, 
+		void                * priv_data)
+{
     struct video_internal * video_state = priv_data;
-    int index = video_state->attrc_index_reg;
+    int                     index       = video_state->attrc_index_reg;
 
     if (index < ATTRC_REG_COUNT) {
     	*(uint8_t *) dest = video_state->attrc_data_regs[index];
     } else {
-    	PrintError("Video %s: index %d out of range\n", __FUNCTION__, video_state->attrc_index_reg);
+    	PrintError("Video %s: index %d out of range\n",
+		   __FUNCTION__, video_state->attrc_index_reg);
+
     	*(uint8_t *) dest = 0;
     }
 
@@ -917,29 +1180,48 @@ static int attrc_data_read(struct v3_core_info * core, uint16_t port, void * des
     return length;    
 }
 
-static int attrc_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+attrc_data_write(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * src, 
+		 uint_t                length, 
+		 void                * priv_data)
+{
     struct video_internal * video_state = priv_data;
-    int index = video_state->attrc_index_reg;
-    uint8_t val = *(uint8_t *) src;
+    int     index = video_state->attrc_index_reg;
+    uint8_t val   = *(uint8_t *) src;
+
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
     if (index < ATTRC_REG_COUNT) {
     	PrintDebug("Video: attrc[%d]=0x%x\n", index, val);
+
     	video_state->attrc_data_regs[index] = val;
     } else {
-    	PrintError("Video %s: index %d out of range\n", __FUNCTION__, video_state->attrc_index_reg);
+    	PrintError("Video %s: index %d out of range\n", 
+		   __FUNCTION__, video_state->attrc_index_reg);
     }
 
     return length;    
 }
 
-static int attrc_index_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+attrc_index_read(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * dest, 
+		 uint_t                length, 
+		 void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->attrc_index_reg;
 
     if (length > 1) {
-	if (attrc_data_read(core, port + 1, (uint8_t *) dest + 1, length - 1, priv_data) != length - 1) {
+	if ( attrc_data_read(core, 
+			     port            + 1, 
+			     (uint8_t *)dest + 1, 
+			     length          - 1, 
+			     priv_data)     != (length - 1) ) {
 	    return -1;
 	}
     }
@@ -948,8 +1230,15 @@ static int attrc_index_read(struct v3_core_info * core, uint16_t port, void * de
     return length;
 }
 
-static int attrc_index_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+attrc_index_write(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * src,
+		  uint_t                length, 
+		  void                * priv_data)
+{
     struct video_internal * video_state = priv_data;
+
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
     video_state->attrc_index_reg = *(uint8_t *) src;
@@ -957,7 +1246,13 @@ static int attrc_index_write(struct v3_core_info * core, uint16_t port, void * s
     return length;    
 }
 
-static int attrc_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+attrc_write(struct v3_core_info * core, 
+	    uint16_t              port, 
+	    void                * src, 
+	    uint_t                length, 
+	    void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
 
     /* two registers in one, written in an alternating fashion */
@@ -971,7 +1266,13 @@ static int attrc_write(struct v3_core_info * core, uint16_t port, void * src, ui
 }
 
 /* video DAC palette registers */
-static int dac_indexw_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+dac_indexw_read(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * dest, 
+		uint_t                length, 
+		void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
 
     *(uint8_t *) dest = video_state->dac_indexw_reg;
@@ -980,39 +1281,61 @@ static int dac_indexw_read(struct v3_core_info * core, uint16_t port, void * des
     return length;
 }
 
-static int dac_indexw_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+dac_indexw_write(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * src, 
+		 uint_t                length, 
+		 void                * priv_data)
+{
     struct video_internal * video_state = priv_data;
+
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
-    video_state->dac_indexw_reg = *(uint8_t *) src;
+    video_state->dac_indexw_reg   = *(uint8_t *)src;
     video_state->dac_indexw_color = 0;
 
     return length;  
 }
 
-static int dac_indexr_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+dac_indexr_write(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * src, 
+		 uint_t                length,
+		 void                * priv_data)
+{
     struct video_internal * video_state = priv_data;
+
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
-    video_state->dac_indexr_reg = *(uint8_t *) src;
+    video_state->dac_indexr_reg   = *(uint8_t *) src;
     video_state->dac_indexr_color = 0;
 
     return length;  
 }
 
-static int dac_data_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+dac_data_read(struct v3_core_info * core, 
+	      uint16_t              port, 
+	      void                * dest,
+	      uint_t                length, 
+	      void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
-    unsigned index;
+    unsigned                index       = 0;
 
     /* update palette */
-    index = (unsigned) video_state->dac_indexr_reg * DAC_COLOR_COUNT + 
+    index = (unsigned) video_state->dac_indexr_reg * DAC_COLOR_COUNT + \
     	video_state->dac_indexr_color;
+
     V3_ASSERT(index < DAC_REG_COUNT);
+
     *(uint8_t *) dest = video_state->dac_data_regs[index];
     
     /* move on to next entry/color */
     if (++video_state->dac_indexr_color > DAC_COLOR_COUNT) {
-    	video_state->dac_indexr_reg++;
+    	video_state->dac_indexr_reg   += 1;
     	video_state->dac_indexr_color -= DAC_COLOR_COUNT;
     }
 
@@ -1020,52 +1343,82 @@ static int dac_data_read(struct v3_core_info * core, uint16_t port, void * dest,
     return length;
 }
 
-static int dac_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+dac_data_write(struct v3_core_info * core, 
+	       uint16_t              port, 
+	       void                * src, 
+	       uint_t                length, 
+	       void                * priv_data) 
+{
     struct video_internal * video_state = priv_data;
-    unsigned index;
+    unsigned                index       = 0;
+
     handle_port_write(video_state, __FUNCTION__, port, src, length, 1);
 
     /* update palette */
-    index = (unsigned) video_state->dac_indexw_reg * DAC_COLOR_COUNT + 
+    index = (unsigned) video_state->dac_indexw_reg * DAC_COLOR_COUNT + \
     	video_state->dac_indexw_color;
+
     V3_ASSERT(index < DAC_REG_COUNT);
+
     video_state->dac_data_regs[index] = *(uint8_t *) src;
     
     /* move on to next entry/color */
     if (++video_state->dac_indexw_color > DAC_COLOR_COUNT) {
-    	video_state->dac_indexw_reg++;
+    	video_state->dac_indexw_reg   += 1;
     	video_state->dac_indexw_color -= DAC_COLOR_COUNT;
     }
 
     return length;
 }
 
-static int dac_pelmask_read(struct v3_core_info * core, uint16_t port, void * dest, uint_t length, void * priv_data) {
+static int 
+dac_pelmask_read(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * dest, 
+		 uint_t                length, 
+		 void                * priv_data) 
+{
     return notimpl_port_read(priv_data, __FUNCTION__, port, dest, length);
 }
 
-static int dac_pelmask_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int 
+dac_pelmask_write(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * src, 
+		  uint_t                length, 
+		  void                * priv_data) 
+{
     return notimpl_port_write(priv_data, __FUNCTION__, port, src, length);
 }
 
 
-static int v3_cons_get_fb_graph(struct video_internal * state, uint8_t * dst, uint_t offset, uint_t length) {
-    char c, text[80];
-    uint_t textlength, textoffset, textsize;
+static int 
+v3_cons_get_fb_graph(struct video_internal * state, 
+		     uint8_t               * dst, 
+		     uint_t                  offset, 
+		     uint_t                  length) 
+{
+    uint_t textlength = 0;
+    uint_t textoffset = 0;
+    uint_t textsize   = 0;
+    char   c          = 0;
+    char   text[80];
 
     /* this call is not intended for graphics mode, tell the user this */
 
     /* center informative text on 10th line */
     snprintf(text, sizeof(text), "* * * GRAPHICS MODE %dx%d * * *",
-        state->hres, state->vres);
+	     state->hres, state->vres);
+
     textlength = strlen(text);
     textoffset = (state->hchars * 9 + (state->hchars - textlength) / 2) * BYTES_PER_COL;
-    textsize = textlength * BYTES_PER_COL;
+    textsize   = (textlength * BYTES_PER_COL);
 
     /* fill the buffer */
     while (length-- > 0) {
     	if (offset % BYTES_PER_COL) {
-	    c = 0; /* attribute byte */
+	    c =  0; /* attribute byte */
     	} else if (offset < textoffset || offset - textoffset >= textsize) {
 	    c = ' '; /* unused character byte */
     	} else {
@@ -1083,44 +1436,68 @@ static uint_t min_uint(uint_t x, uint_t y) {
     return (x < y) ? x : y;
 }
 
-int v3_cons_get_fb_text(struct video_internal * state, uint8_t * dst, uint_t offset, uint_t length) {
-    uint8_t *framebuf;
-    uint_t framebuf_offset, len1, len2;
-    uint_t screen_byte_offset = state->screen_offset * BYTES_PER_COL;
+int 
+v3_cons_get_fb_text(struct video_internal * state, 
+		    uint8_t               * dst, 
+		    uint_t                  offset, 
+		    uint_t                  length) 
+{
+    uint8_t * framebuf           = NULL;
+    uint_t    framebuf_offset    = 0;
+    uint_t    len1               = 0; 
+    uint_t    len2               = 0;
+    uint_t    screen_byte_offset = state->screen_offset * BYTES_PER_COL;
 
     PrintVerbose("Video: getfb o=%d l=%d so=%d aa=0x%x al=0x%x hc=%d vc=%d\n",
-    	offset, length, state->screen_offset, 
-    	(unsigned) state->activefb_addr, (unsigned) state->activefb_len,
-    	state->hchars, state->vchars);
-    V3_ASSERT(state->activefb_addr >= START_ADDR);
-    V3_ASSERT(state->activefb_addr + state->activefb_len <= END_ADDR);
+		 offset, 
+		 length, 
+		 state->screen_offset, 
+		 (unsigned) state->activefb_addr, 
+		 (unsigned) state->activefb_len,
+		 state->hchars, 
+		 state->vchars);
+    
+    V3_ASSERT((state->activefb_addr)                       >= START_ADDR);
+    V3_ASSERT((state->activefb_addr + state->activefb_len) <= END_ADDR);
 
     /* Copy memory with wrapping (should be configurable, but where else to get the data?) */
-    framebuf = state->framebuf + (state->activefb_addr - START_ADDR);
+    framebuf        = state->framebuf + (state->activefb_addr - START_ADDR);
     framebuf_offset = (screen_byte_offset + offset) % state->activefb_len;
+
     len1 = min_uint(length, state->activefb_len - framebuf_offset);
     len2 = length - len1;
-    if (len1 > 0) memcpy(dst, framebuf + framebuf_offset, len1);
-    if (len2 > 0) memcpy(dst + len1, framebuf, len2);
+
+    if (len1 > 0) memcpy(dst,        framebuf + framebuf_offset, len1);
+    if (len2 > 0) memcpy(dst + len1, framebuf,                   len2);
 
     return 0;
 }
 
-int v3_cons_get_fb(struct vm_device * frontend_dev, uint8_t * dst, uint_t offset, uint_t length) {
+int 
+v3_cons_get_fb(struct vm_device * frontend_dev, 
+	       uint8_t          * dst, 
+	       uint_t             offset, 
+	       uint_t             length) 
+{
     struct video_internal * state = (struct video_internal *)frontend_dev->private_data;
 
     /* Deal with call depending on mode */
     if (state->graphmode) {
 	return v3_cons_get_fb_graph(state, dst, offset, length);
     } else {
-	return v3_cons_get_fb_text(state, dst, offset, length);
+	return v3_cons_get_fb_text( state, dst, offset, length);
     }
 }
 
-static int cga_free(struct video_internal * video_state) {
+static int 
+cga_free(struct video_internal * video_state) 
+{
 
     if (video_state->framebuf_pa) {
-	PrintError("Freeing framebuffer PA %p\n", (void *)(video_state->framebuf_pa));
+
+	PrintError("Freeing framebuffer PA %p\n", 
+		   (void *)(video_state->framebuf_pa));
+
 	V3_FreePages((void *)(video_state->framebuf_pa), (FRAMEBUF_SIZE / 4096));
     }
 
@@ -1136,37 +1513,37 @@ static int cga_free(struct video_internal * video_state) {
 static int cga_save(struct v3_chkpt_ctx * ctx, void * private_data) {
     struct video_internal * cga = (struct video_internal *)private_data;
 
-    v3_chkpt_save(ctx, "FRAMEBUFFER", FRAMEBUF_SIZE, cga->framebuf);
+    v3_chkpt_save(ctx, "FRAMEBUFFER", FRAMEBUF_SIZE, cga->framebuf );
 
-    V3_CHKPT_STD_SAVE(ctx, cga->misc_outp_reg);
-    V3_CHKPT_STD_SAVE(ctx, cga->seq_index_reg);		
-    V3_CHKPT_STD_SAVE(ctx, cga->seq_data_regs[SEQ_REG_COUNT]);	
-    V3_CHKPT_STD_SAVE(ctx, cga->crtc_index_reg);		
-    V3_CHKPT_STD_SAVE(ctx, cga->crtc_data_regs[CRTC_REG_COUNT]);
-    V3_CHKPT_STD_SAVE(ctx, cga->graphc_index_reg);		
-    V3_CHKPT_STD_SAVE(ctx, cga->graphc_data_regs[GRAPHC_REG_COUNT]);
-    V3_CHKPT_STD_SAVE(ctx, cga->attrc_index_flipflop);
-    V3_CHKPT_STD_SAVE(ctx, cga->attrc_index_reg);	
-    V3_CHKPT_STD_SAVE(ctx, cga->attrc_data_regs[ATTRC_REG_COUNT]);	
-    V3_CHKPT_STD_SAVE(ctx, cga->dac_indexr_reg);	
-    V3_CHKPT_STD_SAVE(ctx, cga->dac_indexr_color);
-    V3_CHKPT_STD_SAVE(ctx, cga->dac_indexw_reg);		
-    V3_CHKPT_STD_SAVE(ctx, cga->dac_indexw_color);
-    V3_CHKPT_STD_SAVE(ctx, cga->dac_data_regs[DAC_REG_COUNT]);
+    V3_CHKPT_STD_SAVE(ctx, cga->misc_outp_reg                      );
+    V3_CHKPT_STD_SAVE(ctx, cga->seq_index_reg                      );		
+    V3_CHKPT_STD_SAVE(ctx, cga->seq_data_regs[SEQ_REG_COUNT]       );	
+    V3_CHKPT_STD_SAVE(ctx, cga->crtc_index_reg                     );		
+    V3_CHKPT_STD_SAVE(ctx, cga->crtc_data_regs[CRTC_REG_COUNT]     );
+    V3_CHKPT_STD_SAVE(ctx, cga->graphc_index_reg                   );		
+    V3_CHKPT_STD_SAVE(ctx, cga->graphc_data_regs[GRAPHC_REG_COUNT] );
+    V3_CHKPT_STD_SAVE(ctx, cga->attrc_index_flipflop               );
+    V3_CHKPT_STD_SAVE(ctx, cga->attrc_index_reg                    );	
+    V3_CHKPT_STD_SAVE(ctx, cga->attrc_data_regs[ATTRC_REG_COUNT]   );	
+    V3_CHKPT_STD_SAVE(ctx, cga->dac_indexr_reg                     );	
+    V3_CHKPT_STD_SAVE(ctx, cga->dac_indexr_color                   );
+    V3_CHKPT_STD_SAVE(ctx, cga->dac_indexw_reg                     );		
+    V3_CHKPT_STD_SAVE(ctx, cga->dac_indexw_color                   );
+    V3_CHKPT_STD_SAVE(ctx, cga->dac_data_regs[DAC_REG_COUNT]       );
 
-    V3_CHKPT_STD_SAVE(ctx, cga->activefb_addr);
-    V3_CHKPT_STD_SAVE(ctx, cga->activefb_len);
-    V3_CHKPT_STD_SAVE(ctx, cga->iorange);
-    V3_CHKPT_STD_SAVE(ctx, cga->vres);
-    V3_CHKPT_STD_SAVE(ctx, cga->hres);
-    V3_CHKPT_STD_SAVE(ctx, cga->vchars);
-    V3_CHKPT_STD_SAVE(ctx, cga->hchars);
-    V3_CHKPT_STD_SAVE(ctx, cga->graphmode);
+    V3_CHKPT_STD_SAVE(ctx, cga->activefb_addr                      );
+    V3_CHKPT_STD_SAVE(ctx, cga->activefb_len                       );
+    V3_CHKPT_STD_SAVE(ctx, cga->iorange                            );
+    V3_CHKPT_STD_SAVE(ctx, cga->vres                               );
+    V3_CHKPT_STD_SAVE(ctx, cga->hres                               );
+    V3_CHKPT_STD_SAVE(ctx, cga->vchars                             );
+    V3_CHKPT_STD_SAVE(ctx, cga->hchars                             );
+    V3_CHKPT_STD_SAVE(ctx, cga->graphmode                          );
 
-    V3_CHKPT_STD_SAVE(ctx, cga->dirty);
-    V3_CHKPT_STD_SAVE(ctx, cga->reschanged);
+    V3_CHKPT_STD_SAVE(ctx, cga->dirty                              );
+    V3_CHKPT_STD_SAVE(ctx, cga->reschanged                         );
 
-    V3_CHKPT_STD_SAVE(ctx, cga->passthrough);
+    V3_CHKPT_STD_SAVE(ctx, cga->passthrough                        );
 
     v3_chkpt_save_16(ctx, "SCREEN_OFFSET", &(cga->screen_offset));
     v3_chkpt_save_16(ctx, "CURSOR_OFFSET", &(cga->cursor_offset));
@@ -1177,38 +1554,38 @@ static int cga_save(struct v3_chkpt_ctx * ctx, void * private_data) {
 static int cga_load(struct v3_chkpt_ctx * ctx, void * private_data) {
     struct video_internal * cga = (struct video_internal *)private_data;
 
-    v3_chkpt_load(ctx, "FRAMEBUFFER", FRAMEBUF_SIZE, cga->framebuf);
+    v3_chkpt_load(ctx, "FRAMEBUFFER", FRAMEBUF_SIZE, cga->framebuf );
 
 
-    V3_CHKPT_STD_LOAD(ctx, cga->misc_outp_reg);
-    V3_CHKPT_STD_LOAD(ctx, cga->seq_index_reg);		
-    V3_CHKPT_STD_LOAD(ctx, cga->seq_data_regs[SEQ_REG_COUNT]);	
-    V3_CHKPT_STD_LOAD(ctx, cga->crtc_index_reg);		
-    V3_CHKPT_STD_LOAD(ctx, cga->crtc_data_regs[CRTC_REG_COUNT]);
-    V3_CHKPT_STD_LOAD(ctx, cga->graphc_index_reg);		
-    V3_CHKPT_STD_LOAD(ctx, cga->graphc_data_regs[GRAPHC_REG_COUNT]);
-    V3_CHKPT_STD_LOAD(ctx, cga->attrc_index_flipflop);
-    V3_CHKPT_STD_LOAD(ctx, cga->attrc_index_reg);	
-    V3_CHKPT_STD_LOAD(ctx, cga->attrc_data_regs[ATTRC_REG_COUNT]);	
-    V3_CHKPT_STD_LOAD(ctx, cga->dac_indexr_reg);	
-    V3_CHKPT_STD_LOAD(ctx, cga->dac_indexr_color);
-    V3_CHKPT_STD_LOAD(ctx, cga->dac_indexw_reg);		
-    V3_CHKPT_STD_LOAD(ctx, cga->dac_indexw_color);
-    V3_CHKPT_STD_LOAD(ctx, cga->dac_data_regs[DAC_REG_COUNT]);
+    V3_CHKPT_STD_LOAD(ctx, cga->misc_outp_reg                      );
+    V3_CHKPT_STD_LOAD(ctx, cga->seq_index_reg                      );		
+    V3_CHKPT_STD_LOAD(ctx, cga->seq_data_regs[SEQ_REG_COUNT]       );	
+    V3_CHKPT_STD_LOAD(ctx, cga->crtc_index_reg                     );		
+    V3_CHKPT_STD_LOAD(ctx, cga->crtc_data_regs[CRTC_REG_COUNT]     );
+    V3_CHKPT_STD_LOAD(ctx, cga->graphc_index_reg                   );		
+    V3_CHKPT_STD_LOAD(ctx, cga->graphc_data_regs[GRAPHC_REG_COUNT] );
+    V3_CHKPT_STD_LOAD(ctx, cga->attrc_index_flipflop               );
+    V3_CHKPT_STD_LOAD(ctx, cga->attrc_index_reg                    );	
+    V3_CHKPT_STD_LOAD(ctx, cga->attrc_data_regs[ATTRC_REG_COUNT]   );	
+    V3_CHKPT_STD_LOAD(ctx, cga->dac_indexr_reg                     );	
+    V3_CHKPT_STD_LOAD(ctx, cga->dac_indexr_color                   );
+    V3_CHKPT_STD_LOAD(ctx, cga->dac_indexw_reg                     );		
+    V3_CHKPT_STD_LOAD(ctx, cga->dac_indexw_color                   );
+    V3_CHKPT_STD_LOAD(ctx, cga->dac_data_regs[DAC_REG_COUNT]       );
 
-    V3_CHKPT_STD_LOAD(ctx, cga->activefb_addr);
-    V3_CHKPT_STD_LOAD(ctx, cga->activefb_len);
-    V3_CHKPT_STD_LOAD(ctx, cga->iorange);
-    V3_CHKPT_STD_LOAD(ctx, cga->vres);
-    V3_CHKPT_STD_LOAD(ctx, cga->hres);
-    V3_CHKPT_STD_LOAD(ctx, cga->vchars);
-    V3_CHKPT_STD_LOAD(ctx, cga->hchars);
-    V3_CHKPT_STD_LOAD(ctx, cga->graphmode);
+    V3_CHKPT_STD_LOAD(ctx, cga->activefb_addr                      );
+    V3_CHKPT_STD_LOAD(ctx, cga->activefb_len                       );
+    V3_CHKPT_STD_LOAD(ctx, cga->iorange                            );
+    V3_CHKPT_STD_LOAD(ctx, cga->vres                               );
+    V3_CHKPT_STD_LOAD(ctx, cga->hres                               );
+    V3_CHKPT_STD_LOAD(ctx, cga->vchars                             );
+    V3_CHKPT_STD_LOAD(ctx, cga->hchars                             );
+    V3_CHKPT_STD_LOAD(ctx, cga->graphmode                          );
 
-    V3_CHKPT_STD_LOAD(ctx, cga->dirty);
-    V3_CHKPT_STD_LOAD(ctx, cga->reschanged);
+    V3_CHKPT_STD_LOAD(ctx, cga->dirty                              );
+    V3_CHKPT_STD_LOAD(ctx, cga->reschanged                         );
 
-    V3_CHKPT_STD_LOAD(ctx, cga->passthrough);
+    V3_CHKPT_STD_LOAD(ctx, cga->passthrough                        );
 
     v3_chkpt_load_16(ctx, "SCREEN_OFFSET", &(cga->screen_offset));
     v3_chkpt_load_16(ctx, "CURSOR_OFFSET", &(cga->cursor_offset));
@@ -1229,11 +1606,14 @@ static struct v3_device_ops dev_ops = {
 
 };
 
-static int cga_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
+static int 
+cga_init(struct v3_vm_info * vm, 
+	 v3_cfg_tree_t     * cfg) 
+{
     struct video_internal * video_state = NULL;
-    char * dev_id = v3_cfg_val(cfg, "ID");
+    char * dev_id          = v3_cfg_val(cfg, "ID");
     char * passthrough_str = v3_cfg_val(cfg, "passthrough");
-    int ret = 0;
+    int    ret             = 0;
     
     PrintDebug("video: init_device\n");
 
@@ -1254,8 +1634,7 @@ static int cga_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	return -1;
     }
   
-    video_state->dev = dev;
-
+    video_state->dev         = dev;
     video_state->framebuf_pa = (addr_t)V3_AllocPages(FRAMEBUF_SIZE / 4096);
 
     if (!video_state->framebuf_pa) { 
@@ -1265,27 +1644,33 @@ static int cga_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     }
 
     video_state->framebuf = V3_VAddr((void *)(video_state->framebuf_pa));
-
     memset(video_state->framebuf, 0, FRAMEBUF_SIZE);
 
     PrintDebug("PA of array: %p\n", (void *)(video_state->framebuf_pa));
 
-    if ((passthrough_str != NULL) &&
-	(strcasecmp(passthrough_str, "enable") == 0)) {
+    if ( (passthrough_str                       != NULL) &&
+	 (strcasecmp(passthrough_str, "enable") == 0) ) {
 	video_state->passthrough = 1;
     }
 
 
     if (video_state->passthrough) {
 	PrintDebug("Enabling CGA Passthrough\n");
-	if (v3_hook_write_mem(vm, V3_MEM_CORE_ANY, START_ADDR, END_ADDR, 
-			      START_ADDR, &video_write_mem, dev) == -1) {
+
+	if (v3_hook_write_mem(vm, V3_MEM_CORE_ANY, 
+			      START_ADDR, END_ADDR, 
+			      START_ADDR,
+			      &video_write_mem, dev) == -1) {
+
 	    PrintError("\n\nVideo Hook failed.\n\n");
 	    return -1;
 	}
     } else {
-	if (v3_hook_write_mem(vm, V3_MEM_CORE_ANY, START_ADDR, END_ADDR, 
-			      video_state->framebuf_pa, &video_write_mem, dev) == -1) {
+	if (v3_hook_write_mem(vm, V3_MEM_CORE_ANY, 
+			      START_ADDR, END_ADDR, 
+			      video_state->framebuf_pa, 
+			      &video_write_mem, dev) == -1) {
+
 	    PrintError("\n\nVideo Hook failed.\n\n");
 	    return -1;
 	}
@@ -1294,36 +1679,36 @@ static int cga_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     /* registers according to http://www.mcamafia.de/pdf/ibm_vgaxga_trm2.pdf */
 
     /* general registers */
-    ret |= v3_dev_hook_io(dev, 0x3cc, &misc_outp_read, NULL);
-    ret |= v3_dev_hook_io(dev, 0x3c2, &inp_status0_read, &misc_outp_write);
-    ret |= v3_dev_hook_io(dev, 0x3ba, &inp_status1_read, &feat_ctrl_write);
-    ret |= v3_dev_hook_io(dev, 0x3da, &inp_status1_read, &feat_ctrl_write);
-    ret |= v3_dev_hook_io(dev, 0x3ca, &feat_ctrl_read, NULL);
+    ret |= v3_dev_hook_io(dev, 0x3cc, &misc_outp_read,    NULL);
+    ret |= v3_dev_hook_io(dev, 0x3c2, &inp_status0_read,  &misc_outp_write);
+    ret |= v3_dev_hook_io(dev, 0x3ba, &inp_status1_read,  &feat_ctrl_write);
+    ret |= v3_dev_hook_io(dev, 0x3da, &inp_status1_read,  &feat_ctrl_write);
+    ret |= v3_dev_hook_io(dev, 0x3ca, &feat_ctrl_read,    NULL);
     ret |= v3_dev_hook_io(dev, 0x3c3, &video_enable_read, &video_enable_write);
 
-    /* sequencer registers */
-    ret |= v3_dev_hook_io(dev, 0x3c4, &seq_index_read, &seq_index_write);
-    ret |= v3_dev_hook_io(dev, 0x3c5, &seq_data_read, &seq_data_write);
+    /* sequencer registers */ 
+    ret |= v3_dev_hook_io(dev, 0x3c4, &seq_index_read,    &seq_index_write);
+    ret |= v3_dev_hook_io(dev, 0x3c5, &seq_data_read,     &seq_data_write);
 
     /* CRT controller registers, both CGA and VGA ranges */
-    ret |= v3_dev_hook_io(dev, 0x3b4, &crtc_index_read, &crtc_index_write);
-    ret |= v3_dev_hook_io(dev, 0x3b5, &crtc_data_read, &crtc_data_write);
-    ret |= v3_dev_hook_io(dev, 0x3d4, &crtc_index_read, &crtc_index_write);
-    ret |= v3_dev_hook_io(dev, 0x3d5, &crtc_data_read, &crtc_data_write);
+    ret |= v3_dev_hook_io(dev, 0x3b4, &crtc_index_read,   &crtc_index_write);
+    ret |= v3_dev_hook_io(dev, 0x3b5, &crtc_data_read,    &crtc_data_write);
+    ret |= v3_dev_hook_io(dev, 0x3d4, &crtc_index_read,   &crtc_index_write);
+    ret |= v3_dev_hook_io(dev, 0x3d5, &crtc_data_read,    &crtc_data_write);
 
     /* graphics controller registers */
     ret |= v3_dev_hook_io(dev, 0x3ce, &graphc_index_read, &graphc_index_write);
-    ret |= v3_dev_hook_io(dev, 0x3cf, &graphc_data_read, &graphc_data_write);
+    ret |= v3_dev_hook_io(dev, 0x3cf, &graphc_data_read,  &graphc_data_write);
 
     /* attribute controller registers */
-    ret |= v3_dev_hook_io(dev, 0x3c0, &attrc_index_read, &attrc_write);
-    ret |= v3_dev_hook_io(dev, 0x3c1, &attrc_data_read, NULL);
+    ret |= v3_dev_hook_io(dev, 0x3c0, &attrc_index_read,  &attrc_write);
+    ret |= v3_dev_hook_io(dev, 0x3c1, &attrc_data_read,   NULL);
 
     /* video DAC palette registers */
-    ret |= v3_dev_hook_io(dev, 0x3c8, &dac_indexw_read, &dac_indexw_write);
-    ret |= v3_dev_hook_io(dev, 0x3c7, NULL, &dac_indexr_write);
-    ret |= v3_dev_hook_io(dev, 0x3c9, &dac_data_read, &dac_data_write);
-    ret |= v3_dev_hook_io(dev, 0x3c6, &dac_pelmask_read, &dac_pelmask_write);
+    ret |= v3_dev_hook_io(dev, 0x3c8, &dac_indexw_read,   &dac_indexw_write);
+    ret |= v3_dev_hook_io(dev, 0x3c7, NULL,               &dac_indexr_write);
+    ret |= v3_dev_hook_io(dev, 0x3c9, &dac_data_read,     &dac_data_write);
+    ret |= v3_dev_hook_io(dev, 0x3c6, &dac_pelmask_read,  &dac_pelmask_write);
 
     if (ret != 0) {
 	PrintError("Error allocating VGA IO ports\n");
@@ -1340,10 +1725,14 @@ static int cga_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 device_register("CGA_VIDEO", cga_init);
 
 
-int v3_console_register_cga(struct vm_device * cga_dev, struct v3_console_ops * ops, void * private_data) {
+int 
+v3_console_register_cga(struct vm_device      * cga_dev, 
+			struct v3_console_ops * ops, 
+			void                  * private_data) 
+{
     struct video_internal * video_state = (struct video_internal *)cga_dev->private_data;
     
-    video_state->ops = ops;
+    video_state->ops          = ops;
     video_state->private_data = private_data;
 
     return 0;
