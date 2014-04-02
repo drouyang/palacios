@@ -162,9 +162,6 @@ Init_V3(struct v3_os_hooks * hooks, char * cpu_mask, int num_cpus, char * option
     V3_init_extensions();
 
 
-#ifdef V3_CONFIG_SYMMOD
-    V3_init_symmod();
-#endif
 
 #ifdef V3_CONFIG_CHECKPOINT
     V3_init_checkpoint();
@@ -200,9 +197,6 @@ Shutdown_V3()
 
     V3_deinit_extensions();
 
-#ifdef V3_CONFIG_SYMMOD
-    V3_deinit_symmod();
-#endif
 
 #ifdef V3_CONFIG_CHECKPOINT
     V3_deinit_checkpoint();

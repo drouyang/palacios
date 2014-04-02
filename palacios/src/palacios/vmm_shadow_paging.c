@@ -36,9 +36,6 @@
 #include <palacios/vmm_telemetry.h>
 #endif
 
-#ifdef V3_CONFIG_SYMBIOTIC_SWAP
-#include <palacios/vmm_sym_swap.h>
-#endif
 
 #ifndef V3_CONFIG_DEBUG_SHADOW_PAGING
 #undef PrintDebug

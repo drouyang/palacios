@@ -566,9 +566,6 @@ v3_svm_config_tsc_virtualization(struct v3_core_info * core) {
  * CAUTION and DANGER!!! 
  * 
  * The VMCB CANNOT(!!) be accessed outside of the clgi/stgi calls inside this function
- * When exectuing a symbiotic call, the VMCB WILL be overwritten, so any dependencies 
- * on its contents will cause things to break. The contents at the time of the exit WILL 
- * change before the exit handler is executed.
  */
 int v3_svm_enter(struct v3_core_info * core) {
     vmcb_ctrl_t * guest_ctrl = GET_VMCB_CTRL_AREA((vmcb_t*)(core->vmm_data));
@@ -616,13 +613,9 @@ int v3_svm_enter(struct v3_core_info * core) {
     guest_state->rip = core->rip;
     guest_state->rsp = core->vm_regs.rsp;
 
-#ifdef V3_CONFIG_SYMCALL
-    if (core->sym_core_state.symcall_state.sym_call_active == 0) {
-	update_irq_entry_state(core);
-    }
-#else 
+
     update_irq_entry_state(core);
-#endif
+
 
 
     /* ** */
@@ -633,13 +626,6 @@ int v3_svm_enter(struct v3_core_info * core) {
       (void *)(addr_t)core->rip);
     */
 
-#ifdef V3_CONFIG_SYMCALL
-    if (core->sym_core_state.symcall_state.sym_call_active == 1) {
-	if (guest_ctrl->guest_ctrl.V_IRQ == 1) {
-	    V3_Print("!!! Injecting Interrupt during Sym call !!!\n");
-	}
-    }
-#endif
 
     v3_svm_config_tsc_virtualization(core);
 
@@ -704,13 +690,9 @@ int v3_svm_enter(struct v3_core_info * core) {
     exit_info1 = guest_ctrl->exit_info1;
     exit_info2 = guest_ctrl->exit_info2;
 
-#ifdef V3_CONFIG_SYMCALL
-    if (core->sym_core_state.symcall_state.sym_call_active == 0) {
-	update_irq_exit_state(core);
-    }
-#else
+
     update_irq_exit_state(core);
-#endif
+
 
     // reenable global interrupts after vm exit
     v3_stgi();

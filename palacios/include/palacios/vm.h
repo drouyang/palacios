@@ -52,10 +52,6 @@ struct v3_cfg_tree;
 #endif
 
 
-#ifdef V3_CONFIG_SYMBIOTIC
-#include <palacios/vmm_symbiotic.h>
-struct v3_sym_core_state;
-#endif
 
 
 
@@ -126,10 +122,6 @@ struct v3_core_info {
 
     void * decoder_state;
 
-#ifdef V3_CONFIG_SYMBIOTIC
-    /* Symbiotic state */
-    struct v3_sym_core_state sym_core_state;
-#endif
 
     /* Per-core config tree data. */
     v3_cfg_tree_t * core_cfg_data;
@@ -189,10 +181,6 @@ struct v3_vm_info {
     struct v3_barrier      barrier;
 
 
-#ifdef V3_CONFIG_SYMBIOTIC
-    /* Symbiotic state */
-    struct v3_sym_vm_state sym_vm_state;
-#endif
 
 #ifdef V3_CONFIG_TELEMETRY
     uint_t                    enable_telemetry;

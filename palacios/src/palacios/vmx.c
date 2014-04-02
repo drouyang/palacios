@@ -1029,10 +1029,7 @@ v3_vmx_config_tsc_virtualization(struct v3_core_info * core)
  * CAUTION and DANGER!!! 
  * 
  * The VMCS CANNOT(!!) be accessed outside of the cli/sti calls inside this function
- * When exectuing a symbiotic call, the VMCS WILL be overwritten, so any dependencies 
- * on its contents will cause things to break. The contents at the time of the exit WILL 
- * change before the exit handler is executed.
- */
+  */
 int 
 v3_vmx_enter(struct v3_core_info * core) 
 {
@@ -1066,13 +1063,7 @@ v3_vmx_enter(struct v3_core_info * core)
     v3_vmx_restore_vmcs(core, &hw_info);
 
 
-#ifdef V3_CONFIG_SYMCALL
-    if (core->sym_core_state.symcall_state.sym_call_active == 0) {
-	update_irq_entry_state(core);
-    }
-#else 
     update_irq_entry_state(core);
-#endif
 
     /*
     {
@@ -1187,13 +1178,7 @@ v3_vmx_enter(struct v3_core_info * core)
     exit_log[core->num_exits % 10] = exit_info;
     rip_log[core->num_exits % 10]  = get_addr_linear(core, core->rip, V3_SEG_CS);
 
-#ifdef V3_CONFIG_SYMCALL
-    if (core->sym_core_state.symcall_state.sym_call_active == 0) {
-	update_irq_exit_state(core);
-    }
-#else
     update_irq_exit_state(core);
-#endif
 
     if (exit_info.exit_reason == VMX_EXIT_INTR_WINDOW) {
 	// This is a special case whose only job is to inject an interrupt

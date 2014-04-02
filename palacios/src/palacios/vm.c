@@ -300,9 +300,6 @@ v3_init_vm(struct v3_vm_info * vm)
     v3_init_vm_debugging(vm);
 
 
-#ifdef V3_CONFIG_SYMBIOTIC
-    v3_init_symbiotic_vm(vm);
-#endif
 
     v3_init_dev_mgr(vm);
 
@@ -346,9 +343,6 @@ v3_free_vm_internal(struct v3_vm_info * vm)
 
 
 
-#ifdef V3_CONFIG_SYMBIOTIC
-    v3_deinit_symbiotic_vm(vm);
-#endif
 
     // init SVM/VMX
     switch (v3_mach_type) {
@@ -427,9 +421,6 @@ v3_init_core(struct v3_core_info * core)
     v3_init_decoder(core);
 
 
-#ifdef V3_CONFIG_SYMBIOTIC
-    v3_init_symbiotic_core(core);
-#endif
 
     // init SVM/VMX
 
@@ -470,9 +461,6 @@ v3_free_core(struct v3_core_info * core)
     extern v3_cpu_arch_t v3_mach_type;
 
     
-#ifdef V3_CONFIG_SYMBIOTIC
-    v3_deinit_symbiotic_core(core);
-#endif
 
     v3_deinit_decoder(core);
 
