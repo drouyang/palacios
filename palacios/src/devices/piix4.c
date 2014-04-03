@@ -86,7 +86,7 @@ struct piix4_internal {
 
     struct v3_southbridge southbridge;
 
-    struct pci_device * pm_subfunction;
+    struct pci_device   * pm_subfunction;
 
     // PM IO PORT registers
     uint16_t pmsts;     // pm status reg (offset = 0x00, len = 2)
@@ -398,34 +398,36 @@ struct piix4_config_space {
 
 } __attribute__((packed));
 
-static int reset_piix4(struct piix4_internal * piix4) {
-    struct v3_southbridge * southbridge = &(piix4->southbridge);
-    struct pci_device * pci_dev = southbridge->southbridge_pci;
-    struct piix4_config_space * piix4_cfg = (struct piix4_config_space *)(pci_dev->config_data);
+static int 
+reset_piix4(struct piix4_internal * piix4) 
+{
+    struct v3_southbridge     * southbridge = &(piix4->southbridge);
+    struct pci_device         * pci_dev     = southbridge->southbridge_pci;
+    struct piix4_config_space * piix4_cfg   = (struct piix4_config_space *)(pci_dev->config_data);
 
     pci_dev->config_header.command = 0x0007; // master, memory and I/O
-    pci_dev->config_header.status = 0x0200;
+    pci_dev->config_header.status  = 0x0200;
 
-    piix4_cfg->iort = 0x4d;
-    piix4_cfg->xbcs = 0x0003;
+    piix4_cfg->iort       = 0x4d;
+    piix4_cfg->xbcs       = 0x0003;
     piix4_cfg->pirq_rc[0] = 0x80;
     piix4_cfg->pirq_rc[1] = 0x80;
     piix4_cfg->pirq_rc[2] = 0x80;
     piix4_cfg->pirq_rc[3] = 0x80;
     piix4_cfg->top_of_mem = 0x02;
-    piix4_cfg->mbirq0 = 0x80;
-    piix4_cfg->mbdma0 = 0x0c;
-    piix4_cfg->mbdma1 = 0x0c;
-    piix4_cfg->pcsc = 0x0002;
-    piix4_cfg->apicbase = 0x00;
-    piix4_cfg->dlc = 0x00;
-    piix4_cfg->smicntl = 0x08;
-    piix4_cfg->smien = 0x0000;
-    piix4_cfg->see = 0x00000000;
-    piix4_cfg->ftmr = 0x0f;
-    piix4_cfg->smireq = 0x0000;
-    piix4_cfg->ctltmr = 0x00;
-    piix4_cfg->cthtmr = 0x00;
+    piix4_cfg->mbirq0     = 0x80;
+    piix4_cfg->mbdma0     = 0x0c;
+    piix4_cfg->mbdma1     = 0x0c;
+    piix4_cfg->pcsc       = 0x0002;
+    piix4_cfg->apicbase   = 0x00;
+    piix4_cfg->dlc        = 0x00;
+    piix4_cfg->smicntl    = 0x08;
+    piix4_cfg->smien      = 0x0000;
+    piix4_cfg->see        = 0x00000000;
+    piix4_cfg->ftmr       = 0x0f;
+    piix4_cfg->smireq     = 0x0000;
+    piix4_cfg->ctltmr     = 0x00;
+    piix4_cfg->cthtmr     = 0x00;
 
     return 0;
 }
@@ -447,7 +449,7 @@ struct piix4_pm_config_space {
     uint32_t gpictl;               // 0x4c - 0x4f
 
     uint32_t devres_d   : 24;      // 0x50 - 0x52
-    uint8_t rsvd1;                 // 0x53
+    uint8_t  rsvd1;                 // 0x53
 
     uint32_t devact_a;             // 0x54 - 0x57
     uint32_t devact_b;             // 0x58 - 0x5b
@@ -458,59 +460,61 @@ struct piix4_pm_config_space {
     uint32_t devres_e;             // 0x68 - 0x6a
     uint32_t devres_f;             // 0x6c - 0x6f
     uint32_t devres_g   : 24;      // 0x70 - 0x72
-    uint8_t rsvd2;                 // 0x73
+    uint8_t  rsvd2;                 // 0x73
     uint32_t devres_h;             // 0x74 - 0x77
     uint32_t devres_i;             // 0x78 - 0x7b
     uint32_t devres_j;             // 0x7c - 0x7f
 
-    uint8_t pm_reg_misc;           // 0x80
-    uint8_t rsvd3[15];             // 0x81 - 0x8f
+    uint8_t  pm_reg_misc;           // 0x80
+    uint8_t  rsvd3[15];             // 0x81 - 0x8f
 
     uint32_t smb_base_addr;        // 0x90 - 0x93
     
-    uint8_t rsvd4[62];             // 0x94 - 0xd1
+    uint8_t  rsvd4[62];             // 0x94 - 0xd1
 
-    uint8_t smb_hst_cfg;           // 0xd2
-    uint8_t smb_slv_cmd;           // 0xd3
-    uint8_t smb_shdw_1;            // 0xd4
-    uint8_t smb_shdw_2;            // 0xd5
-    uint8_t smb_rev;               // 0xd6
+    uint8_t  smb_hst_cfg;           // 0xd2
+    uint8_t  smb_slv_cmd;           // 0xd3
+    uint8_t  smb_shdw_1;            // 0xd4
+    uint8_t  smb_shdw_2;            // 0xd5
+    uint8_t  smb_rev;               // 0xd6
 
 } __attribute__((packed));
 
 
 
 
-static int reset_piix4_pm(struct piix4_internal * piix4) {
-    struct pci_device * pci_dev = piix4->pm_subfunction;
-    struct piix4_pm_config_space * pm_cfg = (struct piix4_pm_config_space *)(pci_dev->config_data);
+static int 
+reset_piix4_pm(struct piix4_internal * piix4) 
+{
+    struct pci_device            * pci_dev = piix4->pm_subfunction;
+    struct piix4_pm_config_space * pm_cfg  = (struct piix4_pm_config_space *)(pci_dev->config_data);
 
     pci_dev->config_header.command = 0x0007; // master, memory and I/O
-    pci_dev->config_header.status = 0x0200;
+    pci_dev->config_header.status  = 0x0200;
 
-    pm_cfg->io_port_base = 0xb001;
-    pm_cfg->cnta = 0;
-    pm_cfg->cntb = 0;
-    pm_cfg->gpictl = 0;
-    pm_cfg->devres_d = 0;
-    pm_cfg->devact_a = 0;
-    pm_cfg->devact_b = 0;
-    pm_cfg->devres_a = 0;
-    pm_cfg->devres_b = 0;
-    pm_cfg->devres_c = 0;
-    pm_cfg->devres_e = 0;
-    pm_cfg->devres_f = 0;
-    pm_cfg->devres_g = 0;
-    pm_cfg->devres_h = 0;
-    pm_cfg->devres_i = 0;
-    pm_cfg->devres_j = 0;
-    pm_cfg->pm_reg_misc = 0;
+    pm_cfg->io_port_base  = 0xb001;
+    pm_cfg->cnta          = 0;
+    pm_cfg->cntb          = 0;
+    pm_cfg->gpictl        = 0;
+    pm_cfg->devres_d      = 0;
+    pm_cfg->devact_a      = 0;
+    pm_cfg->devact_b      = 0;
+    pm_cfg->devres_a      = 0;
+    pm_cfg->devres_b      = 0;
+    pm_cfg->devres_c      = 0;
+    pm_cfg->devres_e      = 0;
+    pm_cfg->devres_f      = 0;
+    pm_cfg->devres_g      = 0;
+    pm_cfg->devres_h      = 0;
+    pm_cfg->devres_i      = 0;
+    pm_cfg->devres_j      = 0;
+    pm_cfg->pm_reg_misc   = 0;
     pm_cfg->smb_base_addr = 1;
-    pm_cfg->smb_hst_cfg = 0;
-    pm_cfg->smb_slv_cmd = 0;
-    pm_cfg->smb_shdw_1 = 0;
-    pm_cfg->smb_shdw_2 = 0;
-    pm_cfg->smb_rev = 0;
+    pm_cfg->smb_hst_cfg   = 0;
+    pm_cfg->smb_slv_cmd   = 0;
+    pm_cfg->smb_shdw_1    = 0;
+    pm_cfg->smb_shdw_2    = 0;
+    pm_cfg->smb_rev       = 0;
 
 
 
@@ -528,16 +532,22 @@ struct pirq_rc_reg {
 */
 
 
-static int raise_pci_irq(struct pci_device * pci_dev, void * dev_data, struct v3_irq * vec) {
-    struct v3_southbridge * southbridge = dev_data;
-    //    struct piix4_internal * piix4 = (struct piix4_internal *)container_of(southbridge, struct piix4_internal, southbridge);
-    struct pci_device * piix4_pci = southbridge->southbridge_pci;
-    struct piix4_config_space * piix4_cfg = (struct piix4_config_space *)(piix4_pci->config_data);
-    int intr_pin = pci_dev->config_header.intr_pin - 1;
+static int 
+raise_pci_irq(struct pci_device * pci_dev, 
+	      void              * dev_data, 
+	      struct v3_irq     * vec)
+ {
+    struct v3_southbridge     * southbridge = dev_data;
+    // struct piix4_internal     * piix4       = (struct piix4_internal *)container_of(southbridge, struct piix4_internal, southbridge);
+    struct pci_device         * piix4_pci   = southbridge->southbridge_pci;
+    struct piix4_config_space * piix4_cfg   = (struct piix4_config_space *)(piix4_pci->config_data);
+
+    int intr_pin  = pci_dev->config_header.intr_pin - 1;
     int irq_index = (intr_pin + pci_dev->dev_num - 1) & 0x3;
+
     struct v3_irq irq; // Make a copy of the irq state because we will switch the irq number
 
-    irq.ack = vec->ack;
+    irq.ack          = vec->ack;
     irq.private_data = vec->private_data;
 
     /*
@@ -580,16 +590,20 @@ static int raise_pci_irq(struct pci_device * pci_dev, void * dev_data, struct v3
 
 
 
-static int lower_pci_irq(struct pci_device * pci_dev, void * dev_data, struct v3_irq * vec) {
-    struct v3_southbridge * southbridge = dev_data;
-    //    struct piix4_internal * piix4 = (struct piix4_internal *)container_of(southbridge, struct piix4_internal, southbridge);
-    struct pci_device * piix4_pci = southbridge->southbridge_pci;
+static int 
+lower_pci_irq(struct pci_device * pci_dev,
+	      void              * dev_data, 
+	      struct v3_irq     * vec) 
+{
+    struct v3_southbridge     * southbridge = dev_data;
+    //struct piix4_internal     * piix4 = (struct piix4_internal *)container_of(southbridge, struct piix4_internal, southbridge);
+    struct pci_device         * piix4_pci = southbridge->southbridge_pci;
     struct piix4_config_space * piix4_cfg = (struct piix4_config_space *)(piix4_pci->config_data);
-    int intr_pin = pci_dev->config_header.intr_pin - 1;
+    int intr_pin  = pci_dev->config_header.intr_pin - 1;
     int irq_index = (intr_pin + pci_dev->dev_num - 1) & 0x3;
     struct v3_irq irq; // Make a copy of the irq state because we will switch the irq number
 
-    irq.ack = vec->ack;
+    irq.ack          = vec->ack;
     irq.private_data = vec->private_data;
 
     //    PrintDebug("Lowering PCI IRQ %d\n", piix4_cfg->pirq_rc[irq_index]);
@@ -626,17 +640,27 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int smi_read_port(struct v3_core_info * core, uint16_t port, 
-			void * dst, uint32_t length, void * priv_data) {
+static int 
+smi_read_port(struct v3_core_info * core, 
+	      uint16_t              port, 
+	      void                * dst, 
+	      uint32_t              length, 
+	      void                * priv_data) 
+{
     PrintError("PIIX4 SMI port read unsupported\n");
     return -1;
 }
 
 
-static int smi_write_port(struct v3_core_info * core, uint16_t port, 
-			 void * src, uint32_t length, void * priv_data) {
+static int 
+smi_write_port(struct v3_core_info * core, 
+	       uint16_t              port, 
+	       void                * src,
+	       uint32_t              length, 
+	       void                * priv_data) 
+{
     struct v3_southbridge * southbridge = priv_data;
-    struct piix4_internal * piix4 = container_of(southbridge, struct piix4_internal, southbridge);
+    struct piix4_internal * piix4       = container_of(southbridge, struct piix4_internal, southbridge);
 
     uint8_t val = *((uint8_t *)src);
 
@@ -663,11 +687,16 @@ static int smi_write_port(struct v3_core_info * core, uint16_t port,
 }
 
 
-static int pm_read_port(struct v3_core_info * core, uint16_t port, 
-			void * dst, uint32_t length, void * priv_data) {
+static int 
+pm_read_port(struct v3_core_info * core, 
+	     uint16_t              port, 
+	     void                * dst, 
+	     uint32_t              length, 
+	     void                * priv_data) 
+{
     struct v3_southbridge * southbridge = priv_data;
-    struct piix4_internal * piix4 = container_of(southbridge, struct piix4_internal, southbridge);
-    uint16_t port_offset = port - PIIX4_PM_BASE_PORT;
+    struct piix4_internal * piix4       = container_of(southbridge, struct piix4_internal, southbridge);
+    uint16_t                port_offset = port - PIIX4_PM_BASE_PORT;
     
 
     switch (port_offset) {
@@ -708,17 +737,17 @@ static int pm_read_port(struct v3_core_info * core, uint16_t port,
 	    // There is a disagreement between the spec and seabios about this port....
 	    // timer frequency = 3579545 HZ
 	    uint64_t cpu_cycles_per_sec = core->time_state.guest_cpu_freq * 1000;
-	    uint64_t tmr_ticks_per_sec = 3579545;
-	    uint64_t cycles_per_tick = cpu_cycles_per_sec / tmr_ticks_per_sec;
+	    uint64_t tmr_ticks_per_sec  = 3579545;
+	    uint64_t cycles_per_tick    = cpu_cycles_per_sec / tmr_ticks_per_sec;
 	  
 	    if (length != 4) {
 		PrintError("Invalid read length (%d) for PIIX4 PTMR port\n", length);
 		return -1;
 	    }
   
-	    *(uint32_t *)dst = v3_get_guest_time(&(core->time_state)) / cycles_per_tick;
+	    *(uint32_t *)dst  = v3_get_guest_time(&(core->time_state)) / cycles_per_tick;
 	    *(uint32_t *)dst &= 0x00ffffff;
-	    *(uint32_t *)dst = 0;
+	    *(uint32_t *)dst  = 0;
 
 	    break;
 	}
@@ -730,11 +759,16 @@ static int pm_read_port(struct v3_core_info * core, uint16_t port,
     return length;
 }
 
-static int pm_write_port(struct v3_core_info * core, uint16_t port, 
-			 void * src, uint32_t length, void * priv_data) {
+static int
+pm_write_port(struct v3_core_info * core, 
+	      uint16_t              port, 
+	      void                * src, 
+	      uint32_t              length, 
+	      void                * priv_data) 
+{
     struct v3_southbridge * southbridge = priv_data;
-    struct piix4_internal * piix4 = container_of(southbridge, struct piix4_internal, southbridge);
-    uint16_t port_offset = port - PIIX4_PM_BASE_PORT;
+    struct piix4_internal * piix4       = container_of(southbridge, struct piix4_internal, southbridge);
+    uint16_t                port_offset = port - PIIX4_PM_BASE_PORT;
     
 
     switch (port_offset) {
@@ -777,14 +811,17 @@ static int pm_write_port(struct v3_core_info * core, uint16_t port,
 
 }
 
-static int setup_pci(struct vm_device * dev) {
+static int 
+setup_pci(struct vm_device * dev) 
+{
     struct v3_southbridge * southbridge = dev->private_data;
-    struct piix4_internal * piix4 = container_of(southbridge, struct piix4_internal, southbridge);
-    struct pci_device * pci_dev = NULL;
-    struct pci_device * pm_dev = NULL;
+    struct piix4_internal * piix4       = container_of(southbridge, struct piix4_internal, southbridge);
+    struct pci_device     * pci_dev     = NULL;
+    struct pci_device     * pm_dev      = NULL;
     struct v3_pci_bar bars[6];
-    int i;
-    int ret = 0;
+
+    int i       = 0;
+    int ret     = 0;
     int bus_num = 0;
 
     for (i = 0; i < 6; i++) {
@@ -802,10 +839,10 @@ static int setup_pci(struct vm_device * dev) {
 
     pci_dev->config_header.vendor_id = 0x8086;
     pci_dev->config_header.device_id = 0x7110; 
-    pci_dev->config_header.class = PCI_CLASS_BRIDGE;
-    pci_dev->config_header.subclass = PCI_BRIDGE_SUBCLASS_PCI_ISA; 
+    pci_dev->config_header.class     = PCI_CLASS_BRIDGE;
+    pci_dev->config_header.subclass  = PCI_BRIDGE_SUBCLASS_PCI_ISA; 
 
-    southbridge->southbridge_pci = pci_dev;
+    southbridge->southbridge_pci     = pci_dev;
 
     v3_pci_set_irq_bridge(southbridge->pci_bus, bus_num, raise_pci_irq, lower_pci_irq, southbridge);
 
@@ -831,12 +868,11 @@ static int setup_pci(struct vm_device * dev) {
 
     pci_dev->config_header.vendor_id = 0x8086;
     pci_dev->config_header.device_id = 0x7113;  // PIIX4 PM subfunction
-    pci_dev->config_header.class = PCI_CLASS_BRIDGE;
-    pci_dev->config_header.subclass = PCI_BRIDGE_SUBCLASS_PCI_OTHER; 
-    pci_dev->config_header.revision = PCI_BRIDGE_SUBCLASS_PCI_OTHER; 
+    pci_dev->config_header.class     = PCI_CLASS_BRIDGE;
+    pci_dev->config_header.subclass  = PCI_BRIDGE_SUBCLASS_PCI_OTHER; 
+    pci_dev->config_header.revision  = PCI_BRIDGE_SUBCLASS_PCI_OTHER; 
 
-
-    piix4->pm_subfunction = pm_dev;
+    piix4->pm_subfunction            = pm_dev;
 
     reset_piix4_pm(piix4);
 
@@ -859,12 +895,15 @@ static int setup_pci(struct vm_device * dev) {
     return 0;
 }
 
-static int piix4_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
-    struct piix4_internal * piix4 = (struct piix4_internal *)V3_Malloc(sizeof(struct piix4_internal));
+static int 
+piix4_init(struct v3_vm_info * vm, 
+	   v3_cfg_tree_t     * cfg) 
+{
+    struct piix4_internal * piix4       = (struct piix4_internal *)V3_Malloc(sizeof(struct piix4_internal));
     struct v3_southbridge * southbridge = NULL;
-    struct vm_device * dev = NULL;
-    struct vm_device * pci = v3_find_dev(vm, v3_cfg_val(cfg, "bus"));
-    char * dev_id = v3_cfg_val(cfg, "ID");
+    struct vm_device      * dev         = NULL;
+    struct vm_device      * pci         = v3_find_dev(vm, v3_cfg_val(cfg, "bus"));
+    char                  * dev_id      = v3_cfg_val(cfg, "ID");
 
     if (!piix4) {
 	PrintError("Cannot allocate in init\n");
@@ -878,11 +917,10 @@ static int piix4_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	return -1;
     }
 
-    southbridge =  &(piix4->southbridge);
-   
+    southbridge          = &(piix4->southbridge);
     southbridge->pci_bus = pci;
-    southbridge->type = V3_SB_PIIX4;
-    southbridge->vm = vm;
+    southbridge->type    = V3_SB_PIIX4;
+    southbridge->vm      = vm;
     
     dev = v3_add_device(vm, dev_id, &dev_ops, southbridge);
 

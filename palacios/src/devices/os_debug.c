@@ -25,23 +25,30 @@
 
 #define BUF_SIZE 1024
 
-#define DEBUG_PORT1 0xc0c0
-#define HEARTBEAT_PORT 0x99
+#define DEBUG_PORT1    0xc0c0
+#define HEARTBEAT_PORT 0x0099
 
 struct debug_state {
-    char debug_buf[BUF_SIZE];
+    char   debug_buf[BUF_SIZE];
     uint_t debug_offset;
 
 };
 
 
-static int handle_gen_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int 
+handle_gen_write(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * src, 
+		 uint_t                length, 
+		 void                * priv_data)
+{
     struct debug_state * state = priv_data;
 
     state->debug_buf[state->debug_offset++] = *(char*)src;
 
-    if ((*(char*)src == 0xa) ||  (state->debug_offset == (BUF_SIZE - 1))) {
+    if ((*(char *)src == 0xa) || (state->debug_offset == (BUF_SIZE - 1))) {
 	PrintDebug("VM_CONSOLE>%s", state->debug_buf);
+
 	memset(state->debug_buf, 0, BUF_SIZE);
 	state->debug_offset = 0;
     }
@@ -49,11 +56,17 @@ static int handle_gen_write(struct v3_core_info * core, ushort_t port, void * sr
     return length;
 }
 
-static int handle_hb_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int 
+handle_hb_write(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * src, 
+		uint_t                length, 
+		void                * priv_data)
+{
     uint32_t val = 0;
 
     if (length == 1) {
-	val = *(uint8_t *)src;
+	val = *(uint8_t  *)src;
     } else if (length == 2) {
 	val = *(uint16_t *)src;
     } else {
@@ -65,12 +78,16 @@ static int handle_hb_write(struct v3_core_info * core, ushort_t port, void * src
     return length;
 }
 
-static int handle_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) {
+static int 
+handle_hcall(struct v3_core_info * core, 
+	     uint_t                hcall_id, 
+	     void                * priv_data) 
+{
     struct debug_state * state = (struct debug_state *)priv_data;
 
-    int msg_len = core->vm_regs.rcx;
-    addr_t msg_gpa = core->vm_regs.rbx;
-    int buf_is_va = core->vm_regs.rdx;
+    int    msg_len   = core->vm_regs.rcx;
+    addr_t msg_gpa   = core->vm_regs.rbx;
+    int    buf_is_va = core->vm_regs.rdx;
 
     if (msg_len >= BUF_SIZE) {
 	PrintError("Console message too large for buffer (len=%d)\n", msg_len);
@@ -98,7 +115,9 @@ static int handle_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv
 
 
 
-static int debug_free(struct debug_state * state) {
+static int 
+debug_free(struct debug_state * state) 
+{
 
     // unregister hypercall
 
@@ -107,7 +126,10 @@ static int debug_free(struct debug_state * state) {
 };
 
 #ifdef V3_CONFIG_CHECKPOINT
-static int debug_save(struct v3_chkpt_ctx * ctx, void * private_data) {
+static int 
+debug_save(struct v3_chkpt_ctx * ctx, 
+	   void                * private_data) 
+{
     struct debug_state * dbg = (struct debug_state *)private_data;
     
     V3_CHKPT_STD_SAVE(ctx, dbg->debug_buf);
@@ -117,7 +139,10 @@ static int debug_save(struct v3_chkpt_ctx * ctx, void * private_data) {
 }
 
 
-static int debug_load(struct v3_chkpt_ctx * ctx, void * private_data) {
+static int 
+debug_load(struct v3_chkpt_ctx * ctx, 
+	   void                * private_data) 
+{
     struct debug_state * dbg = (struct debug_state *)private_data;
     
     V3_CHKPT_STD_LOAD(ctx, dbg->debug_buf);
@@ -141,9 +166,12 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int debug_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
-    struct debug_state * state = NULL;
-    char * dev_id = v3_cfg_val(cfg, "ID");
+static int 
+debug_init(struct v3_vm_info * vm, 
+	   v3_cfg_tree_t     * cfg) 
+{
+    struct debug_state * state  = NULL;
+    char               * dev_id = v3_cfg_val(cfg, "ID");
 
     state = (struct debug_state *)V3_Malloc(sizeof(struct debug_state));
 
@@ -162,7 +190,7 @@ static int debug_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	return -1;
     }
 
-    if (v3_dev_hook_io(dev, DEBUG_PORT1,  NULL, &handle_gen_write) == -1) {
+    if (v3_dev_hook_io(dev, DEBUG_PORT1,   NULL, &handle_gen_write) == -1) {
 	PrintError("Error hooking OS debug IO port\n");
 	v3_remove_device(dev);
 	return -1;
