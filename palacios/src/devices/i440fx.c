@@ -31,12 +31,24 @@ struct i440_state {
 };
 
 
-static int io_read(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int 
+io_read(struct v3_core_info * core, 
+	uint16_t              port, 
+	void                * dst, 
+	uint_t                length, 
+	void                * priv_data) 
+{
     PrintError("Unhandled read on port %x\n", port);
     return -1;
 }
 
-static int io_write(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int 
+io_write(struct v3_core_info * core, 
+	 uint16_t              port, 
+	 void                * src, 
+	 uint_t                length, 
+	 void                * priv_data) 
+{
     PrintError("Unhandled write on port %x\n", port);
     return -1;
 }
@@ -45,7 +57,9 @@ static int io_write(struct v3_core_info * core, ushort_t port, void * src, uint_
 
 
 
-static int i440_free(struct i440_state * state) {
+static int 
+i440_free(struct i440_state * state) 
+{
 
     // unregister from PCI
 
@@ -62,14 +76,18 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int i440_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
+static int 
+i440_init(struct v3_vm_info * vm, 
+	  v3_cfg_tree_t     * cfg) 
+{
     struct pci_device * pci_dev = NULL;
-    struct v3_pci_bar bars[6];
-    int i;
-    struct i440_state * state = NULL;
-    struct vm_device * pci = v3_find_dev(vm, v3_cfg_val(cfg, "bus"));
+    struct v3_pci_bar   bars[6];
+    struct i440_state * state   = NULL;
+    struct vm_device  * pci     = v3_find_dev(vm, v3_cfg_val(cfg, "bus"));
+
     char * dev_id = v3_cfg_val(cfg, "ID");
-    int ret = 0;
+    int    ret    = 0;
+    int    i      = 0;
 
     if (!pci) {
 	PrintError("could not find PCI Device\n");
@@ -121,11 +139,10 @@ static int i440_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
     pci_dev->config_header.vendor_id = 0x8086;
     pci_dev->config_header.device_id = 0x1237;
-    pci_dev->config_header.revision = 0x02;
-    pci_dev->config_header.subclass = 0x00; //  SubClass: host2pci
-    pci_dev->config_header.class = PCI_CLASS_BRIDGE;    // Class: PCI bridge
-
-    pci_dev->config_space[0x72] = 0x02; // SMRAM (?)
+    pci_dev->config_header.revision  = 0x02;
+    pci_dev->config_header.subclass  = 0x00; //  SubClass: host2pci
+    pci_dev->config_header.class     = PCI_CLASS_BRIDGE;    // Class: PCI bridge
+    pci_dev->config_space[0x72]      = 0x02; // SMRAM (?)
 
     return 0;
 }

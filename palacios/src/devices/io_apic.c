@@ -36,13 +36,13 @@
 #define IO_APIC_BASE_ADDR 0xfec00000
 
 
-#define IOAPIC_ID_REG 0x00
-#define IOAPIC_VER_REG 0x01
-#define IOAPIC_ARB_REG 0x02
+#define IOAPIC_ID_REG          0x00
+#define IOAPIC_VER_REG         0x01
+#define IOAPIC_ARB_REG         0x02
 
-#define IOAPIC_REDIR_BASE_REG 0x10
+#define IOAPIC_REDIR_BASE_REG  0x10
 
-#define REDIR_LO_MASK  ~0x00005000
+#define REDIR_LO_MASK         ~0x00005000
 #define IOAPIC_REDIR_MASK_BIT  0x00010000
 
 struct ioapic_reg_sel {
@@ -137,14 +137,14 @@ struct ack_entry {
 
 
 struct io_apic_state {
-    addr_t base_addr;
+    addr_t   base_addr;
 
     uint32_t index_reg;
 
 
-    struct ioapic_id_reg ioapic_id;
-    struct ioapic_ver_reg ioapic_ver;
-    struct ioapic_arb_reg ioapic_arb_id;
+    struct ioapic_id_reg   ioapic_id;
+    struct ioapic_ver_reg  ioapic_ver;
+    struct ioapic_arb_reg  ioapic_arb_id;
   
     struct redir_tbl_entry redir_tbl[24];
 
@@ -169,20 +169,24 @@ struct io_apic_state {
 
 static int ioapic_eoi(struct v3_core_info * core, uint32_t irq, void * private_data);
 
-static void init_ioapic_state(struct io_apic_state * ioapic, uint32_t id) {
+static void 
+init_ioapic_state(struct io_apic_state * ioapic, 
+		  uint32_t               id) 
+{
     int i = 0;
+
     ioapic->base_addr = IO_APIC_BASE_ADDR;
     ioapic->index_reg = 0;
 
-    ioapic->ioapic_id.id = id;
-    ioapic->ioapic_ver.val = 0x00170011;
+    ioapic->ioapic_id.id      = id;
+    ioapic->ioapic_ver.val    = 0x00170011;
     ioapic->ioapic_arb_id.val = 0x00000000;
 
     for (i = 0; i < 24; i++) {
-	ioapic->redir_tbl[i].val = 0x0001000000000000LL;
+	ioapic->redir_tbl[i].val  = 0x0001000000000000LL;
 	// Mask all interrupts until they are enabled....
 	ioapic->redir_tbl[i].mask = 1;
-	ioapic->level_cnt[i] = 0;
+	ioapic->level_cnt[i]      = 0;
 	INIT_LIST_HEAD(&(ioapic->ack_tbl[i]));
     }
 
@@ -192,6 +196,7 @@ static void init_ioapic_state(struct io_apic_state * ioapic, uint32_t id) {
 
     for (i = 0; i < FREE_LIST_SIZE; i++) {
 	struct ack_entry * tmp_entry = V3_Malloc(sizeof(struct ack_entry));
+
 	memset(tmp_entry, 0, sizeof(struct ack_entry));
 	list_add(&(tmp_entry->node), &(ioapic->ack_free_list));
     }
@@ -202,10 +207,16 @@ static void init_ioapic_state(struct io_apic_state * ioapic, uint32_t id) {
 }
 
 
-static int ioapic_read(struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data) {
-    struct io_apic_state * ioapic = (struct io_apic_state *)(priv_data);
-    uint32_t reg_tgt = guest_addr - ioapic->base_addr;
-    uint32_t * op_val = (uint32_t *)dst;
+static int 
+ioapic_read(struct v3_core_info * core, 
+	    addr_t                guest_addr, 
+	    void                * dst, 
+	    uint_t                length, 
+	    void                * priv_data) 
+{
+    struct io_apic_state * ioapic  = (struct io_apic_state *)(priv_data);
+    uint32_t               reg_tgt = guest_addr - ioapic->base_addr;
+    uint32_t             * op_val  = (uint32_t *)dst;
 
     //    PrintDebug("ioapic %u: IOAPIC Read at %p\n", ioapic->ioapic_id.id, (void *)guest_addr);
 
@@ -225,12 +236,14 @@ static int ioapic_read(struct v3_core_info * core, addr_t guest_addr, void * dst
 		break;
 	    default: {
 		uint_t redir_index = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) >> 1;
-		uint_t hi_val = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) & 1;
+		uint_t hi_val      = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) &  1;
 		
-		PrintDebug("ioapic %u: Reading Redir TBL Entry %d (hi bits: %d)\n", ioapic->ioapic_id.id,redir_index, hi_val);
+		PrintDebug("ioapic %u: Reading Redir TBL Entry %d (hi bits: %d)\n", 
+			   ioapic->ioapic_id.id,redir_index, hi_val);
 		
 		if (redir_index > 0x3f) {
-		    PrintError("ioapic %u: Invalid redirection table entry 0x%x\n", ioapic->ioapic_id.id, (uint32_t)redir_index);
+		    PrintError("ioapic %u: Invalid redirection table entry 0x%x\n", 
+			       ioapic->ioapic_id.id, (uint32_t)redir_index);
 		    return -1;
 		}
 		
@@ -239,7 +252,8 @@ static int ioapic_read(struct v3_core_info * core, addr_t guest_addr, void * dst
 		} else {
 		    *op_val = ioapic->redir_tbl[redir_index].lo;
 		}
-		PrintDebug("ioapic %u: \t Read Value = 0x%x\n", ioapic->ioapic_id.id, *op_val);
+		PrintDebug("ioapic %u: \t Read Value = 0x%x\n", 
+			   ioapic->ioapic_id.id, *op_val);
 
 	    }
 	}
@@ -252,12 +266,16 @@ static int ioapic_read(struct v3_core_info * core, addr_t guest_addr, void * dst
     return length;
 }
 
-static int ioapic_send_ipi(struct v3_vm_info * vm, struct io_apic_state * ioapic, 
-			   struct redir_tbl_entry * irq_entry) {
+static int 
+ioapic_send_ipi(struct v3_vm_info      * vm,
+		struct io_apic_state   * ioapic, 
+		struct redir_tbl_entry * irq_entry) 
+{
     struct v3_gen_ipi ipi;
 
     if (irq_entry->mask == 1) {
-	PrintDebug("ioapic %u: Trying to raise masked irq (%d)\n", ioapic->ioapic_id.id, irq_entry->vec);
+	PrintDebug("ioapic %u: Trying to raise masked irq (%d)\n",
+		   ioapic->ioapic_id.id, irq_entry->vec);
 	return 0;
     }
 
@@ -265,16 +283,16 @@ static int ioapic_send_ipi(struct v3_vm_info * vm, struct io_apic_state * ioapic
 	       ioapic->ioapic_id.id, irq_entry->vec);
 
 
-    ipi.vector = irq_entry->vec;
-    ipi.mode = irq_entry->del_mode;
-    ipi.logical = irq_entry->dst_mode;
-    ipi.trigger_mode = irq_entry->trig_mode;
-    ipi.dst = irq_entry->dst_field;
+    ipi.vector        = irq_entry->vec;
+    ipi.mode          = irq_entry->del_mode;
+    ipi.logical       = irq_entry->dst_mode;
+    ipi.trigger_mode  = irq_entry->trig_mode;
+    ipi.dst           = irq_entry->dst_field;
     ipi.dst_shorthand = 0;
 
 
-    ipi.ack = ioapic_eoi;
-    ipi.private_data = ioapic;
+    ipi.ack           = ioapic_eoi;
+    ipi.private_data  = ioapic;
 
     if (irq_entry->trig_mode) {
 	irq_entry->rem_irr = 1;
@@ -292,10 +310,16 @@ static int ioapic_send_ipi(struct v3_vm_info * vm, struct io_apic_state * ioapic
 }
 
 
-static int ioapic_write(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data) {
-    struct io_apic_state * ioapic = (struct io_apic_state *)(priv_data);
-    uint32_t reg_tgt = guest_addr - ioapic->base_addr;
-    uint32_t op_val = *(uint32_t *)src;
+static int 
+ioapic_write(struct v3_core_info * core, 
+	     addr_t                guest_addr, 
+	     void                * src, 
+	     uint_t                length, 
+	     void                * priv_data) 
+{
+    struct io_apic_state * ioapic  = (struct io_apic_state *)(priv_data);
+    uint32_t               reg_tgt = guest_addr - ioapic->base_addr;
+    uint32_t               op_val  = *(uint32_t *)src;
 
     //  PrintDebug("ioapic %u: IOAPIC Write at %p (val = %d)\n",  ioapic->ioapic_id.id, (void *)guest_addr, *(uint32_t *)src);
 
@@ -318,43 +342,47 @@ static int ioapic_write(struct v3_core_info * core, addr_t guest_addr, void * sr
 		break;
 	    default: {
 		    uint_t redir_index = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) >> 1;
-		    uint_t hi_val = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) & 1;
+		    uint_t hi_val      = (ioapic->index_reg - IOAPIC_REDIR_BASE_REG) &  1;
+
+		    struct redir_tbl_entry * irq_entry   = &(ioapic->redir_tbl[redir_index]);
 
 		    /*	    PrintDebug("ioapic %u: Writing value 0x%x to redirection entry %u (%s)\n",
 		           ioapic->ioapic_id.id, op_val, redir_index, hi_val ? "hi" : "low");
 		    */
 
 		    if (redir_index > 0x3f) {
-			PrintError("ioapic %u: Invalid redirection table entry %x\n", ioapic->ioapic_id.id, (uint32_t)redir_index);
+			PrintError("ioapic %u: Invalid redirection table entry %x\n", 
+				   ioapic->ioapic_id.id, (uint32_t)redir_index);
 			return -1;
 		    }
 		    if (hi_val) {
-			PrintDebug("ioapic %u: Writing to hi of pin %d (val=0x%x)\n", ioapic->ioapic_id.id, redir_index, op_val);
+			PrintDebug("ioapic %u: Writing to hi of pin %d (val=0x%x)\n", 
+				   ioapic->ioapic_id.id, redir_index, op_val);
 
 			ioapic->redir_tbl[redir_index].hi = op_val;
 		    } else {
-			PrintDebug("ioapic %u: Writing to lo of pin %d (val=0x%x)\n", ioapic->ioapic_id.id, redir_index, op_val);
-			op_val &= REDIR_LO_MASK;
-			ioapic->redir_tbl[redir_index].lo &= ~REDIR_LO_MASK;
-			ioapic->redir_tbl[redir_index].lo |= op_val;
+			PrintDebug("ioapic %u: Writing to lo of pin %d (val=0x%x)\n", 
+				   ioapic->ioapic_id.id, redir_index, op_val);
+
+			op_val        &=  REDIR_LO_MASK;
+			irq_entry->lo &= ~REDIR_LO_MASK;
+			irq_entry->lo |=  op_val;
 
 			// send pending irqs after unmask
-                        if ((ioapic->redir_tbl[redir_index].lo
-                                & IOAPIC_REDIR_MASK_BIT) == 0) {
-                            struct redir_tbl_entry * irq_entry = 
-                                &(ioapic->redir_tbl[redir_index]);
-                                if (irq_entry->trig_mode) {
-                                    if (ioapic->level_cnt[redir_index] > 0) {
-                                        PrintDebug("  Resend pending IRQ\n");
-                                        if (ioapic_send_ipi(core->vm_info,
-                                                    ioapic, irq_entry) == -1) {
-                                            PrintError("Error: %s: ioapic %u,APIC vector=%d\n", 
-                                                    __func__, ioapic->ioapic_id.id, irq_entry->vec);
-                                        }
-                                    }
-                                }
-                        }
+
+                        if ( (irq_entry->mask                == 0) && 
+			     (irq_entry->trig_mode           == 1) && 
+			     (ioapic->level_cnt[redir_index] >  0) ) {
+
+			    PrintDebug("  Resend pending IRQ\n");
+			    
+			    if (ioapic_send_ipi(core->vm_info, ioapic, irq_entry) == -1) {
+				PrintError("Error: %s: ioapic %u,APIC vector=%d\n", 
+					   __func__, ioapic->ioapic_id.id, irq_entry->vec);
+			    }
+			}
 		    }
+                    
 		}
 	}
     }
@@ -365,10 +393,14 @@ static int ioapic_write(struct v3_core_info * core, addr_t guest_addr, void * sr
 
 
 
-static int ioapic_eoi(struct v3_core_info * core, uint32_t irq, void * private_data) {
-    struct io_apic_state * ioapic = (struct io_apic_state *)(private_data);  
+static int 
+ioapic_eoi(struct v3_core_info * core, 
+	   uint32_t              irq, 
+	   void                * private_data) 
+{
+    struct io_apic_state   * ioapic    = (struct io_apic_state *)(private_data);  
     struct redir_tbl_entry * irq_entry = NULL;
-    unsigned int flags = 0;
+    unsigned int             flags     = 0;
     int i = 0;
 
     
@@ -378,7 +410,9 @@ static int ioapic_eoi(struct v3_core_info * core, uint32_t irq, void * private_d
 
 	irq_entry = &(ioapic->redir_tbl[i]);
 
-	if (irq_entry->vec != irq)  continue;
+	if (irq_entry->vec != irq) {
+	    continue;
+	}
 
 	flags = v3_spin_lock_irqsave(ioapic->ack_tbl_lock);
 
@@ -388,9 +422,9 @@ static int ioapic_eoi(struct v3_core_info * core, uint32_t irq, void * private_d
 
 	    ack->ack(core, ack->irq, ack->private_data);
 
-	    ack->ack = NULL;
+	    ack->ack          = NULL;
 	    ack->private_data = NULL;
-	    ack->irq = 0;
+	    ack->irq          = 0;
 
 	    list_move_tail(&(ack->node), &(ioapic->ack_free_list));
 	}
@@ -416,10 +450,14 @@ static int ioapic_eoi(struct v3_core_info * core, uint32_t irq, void * private_d
 
 
 
-static int ioapic_raise_irq(struct v3_vm_info * vm, void * private_data, struct v3_irq * irq) {
-    struct io_apic_state * ioapic = (struct io_apic_state *)(private_data);  
+static int 
+ioapic_raise_irq(struct v3_vm_info * vm, 
+		 void              * private_data, 
+		 struct v3_irq     * irq) 
+{
+    struct io_apic_state   * ioapic    = (struct io_apic_state *)(private_data);  
     struct redir_tbl_entry * irq_entry = NULL;
-    uint8_t irq_num = irq->irq;
+    uint8_t                  irq_num   = irq->irq;
   
     if (irq_num == 0) { 
       // IRQ 0 being raised, in the Palacios context, means the PIT
@@ -452,7 +490,9 @@ static int ioapic_raise_irq(struct v3_vm_info * vm, void * private_data, struct 
 		   ioapic->ioapic_id.id, irq_num, ioapic->level_cnt[irq_num]);
 
 	flags = v3_spin_lock_irqsave(ioapic->lvl_cnt_lock);
-	ioapic->level_cnt[irq_num]++;
+	{
+	    ioapic->level_cnt[irq_num]++;
+	}
 	v3_spin_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
     }
 
@@ -462,33 +502,34 @@ static int ioapic_raise_irq(struct v3_vm_info * vm, void * private_data, struct 
 	unsigned int flags = 0;
 
 	flags = v3_spin_lock_irqsave(ioapic->ack_tbl_lock);	
+	{
+	    // scan for identical call sites, if one exists then this interrupt is ignored. 
+	    list_for_each_entry(tmp_ack_entry, &(ioapic->ack_tbl[irq_num]), node) {
 
-	// scan for identical call sites, if one exists then this interrupt is ignored. 
-	list_for_each_entry(tmp_ack_entry, &(ioapic->ack_tbl[irq_num]), node) {
-	    if ((tmp_ack_entry->ack == irq->ack) && 
-		(tmp_ack_entry->private_data == irq->private_data)) {
+		if ((tmp_ack_entry->ack          == irq->ack) && 
+		    (tmp_ack_entry->private_data == irq->private_data)) {
 		    
-		// Refire of a level triggered IRQ, safe to ignore
-		v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
-		return 0;
+		    // Refire of a level triggered IRQ, safe to ignore
+		    v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+		    return 0;
+		}
 	    }
+	    
+	    if (list_empty(&(ioapic->ack_free_list))) {
+		PrintError("Error: ioapic %u - Callback free list is exhausted...\n", ioapic->ioapic_id.id);
+		v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+		return -1;
+	    }
+	    
+	    // Add callback to ack_tbl
+	    tmp_ack_entry = list_first_entry(&(ioapic->ack_free_list), struct ack_entry, node);
+	    
+	    tmp_ack_entry->irq          = irq->irq;
+	    tmp_ack_entry->ack          = irq->ack;
+	    tmp_ack_entry->private_data = irq->private_data;
+	    
+	    list_move_tail(&(tmp_ack_entry->node), &(ioapic->ack_tbl[irq_num]));
 	}
-	    
-	if (list_empty(&(ioapic->ack_free_list))) {
-	    PrintError("Error: ioapic %u - Callback free list is exhausted...\n", ioapic->ioapic_id.id);
-	    v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
-	    return -1;
-	}
-
-	// Add callback to ack_tbl
-	tmp_ack_entry = list_first_entry(&(ioapic->ack_free_list), struct ack_entry, node);
-	    
-	tmp_ack_entry->irq = irq->irq;
-	tmp_ack_entry->ack = irq->ack;
-	tmp_ack_entry->private_data = irq->private_data;
-	    
-	list_move_tail(&(tmp_ack_entry->node), &(ioapic->ack_tbl[irq_num]));
-
 	v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
     }
 
@@ -504,12 +545,15 @@ static int ioapic_raise_irq(struct v3_vm_info * vm, void * private_data, struct 
     return 0;
 }
 
-/* I don't know if we can do anything here.... */
-static int ioapic_lower_irq(struct v3_vm_info * vm, void * private_data, struct v3_irq * irq) {
-    struct io_apic_state * ioapic = (struct io_apic_state *)(private_data);  
+static int 
+ioapic_lower_irq(struct v3_vm_info * vm, 
+		 void              * private_data, 
+		 struct v3_irq     * irq) 
+{
+    struct io_apic_state   * ioapic    = (struct io_apic_state *)(private_data);  
     struct redir_tbl_entry * irq_entry = NULL;
-    uint8_t irq_num = irq->irq;
-    unsigned int flags = 0;
+    uint8_t      irq_num = irq->irq;
+    unsigned int flags   = 0;
 
     if (irq_num == 0) { 
       // IRQ 0 being raised, in the Palacios context, means the PIT
@@ -532,21 +576,22 @@ static int ioapic_lower_irq(struct v3_vm_info * vm, void * private_data, struct 
     if (irq_entry->trig_mode) {
 	
 	flags = v3_spin_lock_irqsave(ioapic->lvl_cnt_lock);
-	
-	if (ioapic->level_cnt[irq_num] <= 0) {
-	    PrintError("Error: ioapic %u - No active IRQ line to lower (irq_num=%d) (lvl_cnt=%d)\n", 
-		       ioapic->ioapic_id.id,
-		       irq_num, ioapic->level_cnt[irq_num] );
-	    v3_spin_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
+	{	
+	    if (ioapic->level_cnt[irq_num] <= 0) {
+		PrintError("Error: ioapic %u - No active IRQ line to lower (irq_num=%d) (lvl_cnt=%d)\n", 
+			   ioapic->ioapic_id.id,
+			   irq_num, 
+			   ioapic->level_cnt[irq_num] );
+
+		v3_spin_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);		
+		return -1;
+	    }
 	    
-	    return -1;
+	    PrintDebug("ioapic %u: Decrementing lvl cnt for ioapic.irq=%d (prev_val=%d)\n", 
+		       ioapic->ioapic_id.id, irq_num, ioapic->level_cnt[irq_num]);
+	    
+	    ioapic->level_cnt[irq_num]--;
 	}
-	
-	PrintDebug("ioapic %u: Decrementing lvl cnt for ioapic.irq=%d (prev_val=%d)\n", 
-		   ioapic->ioapic_id.id, irq_num, ioapic->level_cnt[irq_num]);
-
-	ioapic->level_cnt[irq_num]--;
-
 	v3_spin_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
 
     }
@@ -562,7 +607,9 @@ static struct intr_router_ops router_ops = {
 
 
 
-static int io_apic_free(struct io_apic_state * ioapic) {
+static int
+io_apic_free(struct io_apic_state * ioapic) 
+{
     //    struct redir_tbl_entry * irq_entry = NULL;
     struct ack_entry * ack = NULL;
     struct ack_entry * tmp = NULL;    
@@ -593,7 +640,10 @@ static int io_apic_free(struct io_apic_state * ioapic) {
 }
 
 #ifdef V3_CONFIG_CHECKPOINT
-static int io_apic_save(struct v3_chkpt_ctx * ctx, void * private_data) {
+static int
+io_apic_save(struct v3_chkpt_ctx * ctx, 
+	     void                * private_data) 
+{
     struct io_apic_state * io_apic = (struct io_apic_state *)private_data;
 
     V3_CHKPT_STD_SAVE(ctx, io_apic->base_addr);
@@ -606,7 +656,10 @@ static int io_apic_save(struct v3_chkpt_ctx * ctx, void * private_data) {
     return 0;
 }
 
-static int io_apic_load(struct v3_chkpt_ctx * ctx, void * private_data) {
+static int 
+io_apic_load(struct v3_chkpt_ctx * ctx, 
+	     void                * private_data) 
+{
     struct io_apic_state * io_apic = (struct io_apic_state *)private_data;
 
     V3_CHKPT_STD_LOAD(ctx, io_apic->base_addr);
@@ -632,9 +685,12 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int ioapic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
+static int 
+ioapic_init(struct v3_vm_info * vm, 
+	    v3_cfg_tree_t     * cfg) 
+{
     struct vm_device * apic_dev = v3_find_dev(vm, v3_cfg_val(cfg, "apic"));
-    char * dev_id = v3_cfg_val(cfg, "ID");
+    char             * dev_id   = v3_cfg_val(cfg, "ID");
 
 
     PrintDebug("ioapic: Creating IO APIC\n");
@@ -657,11 +713,13 @@ static int ioapic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     }
 
     ioapic->router_handle = v3_register_intr_router(vm, &router_ops, ioapic);
-    ioapic->vm = vm;
+    ioapic->vm            = vm;
 
     init_ioapic_state(ioapic, vm->num_cores);
 
-    v3_hook_full_mem(vm, V3_MEM_CORE_ANY, ioapic->base_addr, ioapic->base_addr + PAGE_SIZE_4KB, 
+    v3_hook_full_mem(vm, V3_MEM_CORE_ANY, 
+		     ioapic->base_addr, 
+		     ioapic->base_addr + PAGE_SIZE_4KB, 
 		     ioapic_read, ioapic_write, ioapic);
   
     return 0;

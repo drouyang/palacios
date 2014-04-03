@@ -29,19 +29,28 @@
 #endif
 
 struct disk_state {
-    uint64_t capacity; // in bytes
-
+    uint64_t  capacity; // in bytes
     v3_file_t fd;
 };
 
 
 
-static int write_all(v3_file_t fd, char * buf, uint64_t offset, uint64_t length) {
+static int 
+write_all(v3_file_t   fd, 
+	  char      * buf, 
+	  uint64_t    offset, 
+	  uint64_t    length) 
+{
     uint64_t bytes_written = 0;
     
     PrintDebug("Writing %llu bytes\n", length - bytes_written);
+
     while (bytes_written < length) {
-	int tmp_bytes = v3_file_write(fd, buf + bytes_written, length - bytes_written, offset + bytes_written);
+	int tmp_bytes = v3_file_write(fd, 
+				      buf    + bytes_written, 
+				      length - bytes_written, 
+				      offset + bytes_written);
+
 	PrintDebug("Wrote %d bytes\n", tmp_bytes);
 	
 	if (tmp_bytes <= 0 ) {
@@ -56,12 +65,22 @@ static int write_all(v3_file_t fd, char * buf, uint64_t offset, uint64_t length)
 }
 
 
-static int read_all(v3_file_t fd, char * buf, uint64_t offset, uint64_t length) {
+static int 
+read_all(v3_file_t   fd, 
+	 char      * buf, 
+	 uint64_t    offset, 
+	 uint64_t    length) 
+{
     uint64_t bytes_read = 0;
     
     PrintDebug("Reading %llu bytes\n", length - bytes_read);
+
     while (bytes_read < length) {
-	int tmp_bytes = v3_file_read(fd, buf + bytes_read, length - bytes_read, offset + bytes_read);
+	int tmp_bytes = v3_file_read(fd, 
+				     buf    + bytes_read, 
+				     length - bytes_read, 
+				     offset + bytes_read);
+
 	PrintDebug("Read %d bytes\n", tmp_bytes);
 	
 	if (tmp_bytes <= 0) {
@@ -75,12 +94,20 @@ static int read_all(v3_file_t fd, char * buf, uint64_t offset, uint64_t length) 
     return 0;
 }
 
-static int read(uint8_t * buf, uint64_t lba, uint64_t num_bytes, void * private_data) {
+static int 
+read(uint8_t    * buf, 
+     uint64_t     lba, 
+     uint64_t     num_bytes, 
+     void       * private_data)
+{
     struct disk_state * disk = (struct disk_state *)private_data;
 
-    PrintDebug("Reading %llu bytes from %p to %p\n", num_bytes, (uint8_t *)(disk->disk_image + lba), buf);
+    PrintDebug("Reading %llu bytes from %p to %p\n", 
+	       num_bytes, 
+	       (uint8_t *)(disk->disk_image + lba), 
+	       buf);
 
-    if (lba + num_bytes > disk->capacity) {
+    if ((lba + num_bytes) > disk->capacity) {
 	PrintError("Out of bounds read: lba=%llu, num_bytes=%llu, capacity=%llu\n",
 		   lba, num_bytes, disk->capacity);
 	return -1;
@@ -90,12 +117,20 @@ static int read(uint8_t * buf, uint64_t lba, uint64_t num_bytes, void * private_
 }
 
 
-static int write(uint8_t * buf, uint64_t lba, uint64_t num_bytes, void * private_data) {
+static int 
+write(uint8_t   * buf,
+      uint64_t    lba, 
+      uint64_t    num_bytes, 
+      void      * private_data) 
+{
     struct disk_state * disk = (struct disk_state *)private_data;
 
-    PrintDebug("Writing %llu bytes from %p to %p\n", num_bytes,  buf, (uint8_t *)(disk->disk_image + lba));
+    PrintDebug("Writing %llu bytes from %p to %p\n", 
+	       num_bytes,  
+	       buf, 
+	       (uint8_t *)(disk->disk_image + lba));
 
-    if (lba + num_bytes > disk->capacity) {
+    if ((lba + num_bytes) > disk->capacity) {
 	PrintError("Out of bounds read: lba=%llu, num_bytes=%llu, capacity=%llu\n",
 		   lba, num_bytes, disk->capacity);
 	return -1;
@@ -106,7 +141,9 @@ static int write(uint8_t * buf, uint64_t lba, uint64_t num_bytes, void * private
 }
 
 
-static uint64_t get_capacity(void * private_data) {
+static uint64_t 
+get_capacity(void * private_data) 
+{
     struct disk_state * disk = (struct disk_state *)private_data;
 
     PrintDebug("Querying FILEDISK capacity %llu\n", disk->capacity);
@@ -115,15 +152,17 @@ static uint64_t get_capacity(void * private_data) {
 }
 
 static struct v3_dev_blk_ops blk_ops = {
-    .read = read, 
-    .write = write,
+    .read         = read, 
+    .write        = write,
     .get_capacity = get_capacity,
 };
 
 
 
 
-static int disk_free(struct disk_state * disk) {
+static int 
+disk_free(struct disk_state * disk) 
+{
     v3_file_close(disk->fd);
     
     V3_Free(disk);
@@ -137,13 +176,16 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int disk_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
-    struct disk_state * disk = NULL;
-    char * path = v3_cfg_val(cfg, "path");
-    char * dev_id = v3_cfg_val(cfg, "ID");
-    char * writable = v3_cfg_val(cfg, "writable");
-    v3_cfg_tree_t * frontend_cfg = v3_cfg_subtree(cfg, "frontend");
-    int flags = FILE_OPEN_MODE_READ;
+static int 
+disk_init(struct v3_vm_info * vm, 
+	  v3_cfg_tree_t     * cfg) 
+{
+    struct disk_state * disk         = NULL;
+    char              * path         = v3_cfg_val(cfg, "path");
+    char              * dev_id       = v3_cfg_val(cfg, "ID");
+    char              * writable     = v3_cfg_val(cfg, "writable");
+    v3_cfg_tree_t     * frontend_cfg = v3_cfg_subtree(cfg, "frontend");
+    int                 flags        = FILE_OPEN_MODE_READ;
 
     if ( (writable) && (writable[0] == '1') ) {
 	flags |= FILE_OPEN_MODE_WRITE;
@@ -190,6 +232,7 @@ static int disk_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 			   &blk_ops, frontend_cfg, disk) == -1) {
 	PrintError("Could not connect %s to frontend %s\n", 
 		   dev_id, v3_cfg_val(frontend_cfg, "tag"));
+
 	v3_remove_device(dev);
 	return -1;
     }

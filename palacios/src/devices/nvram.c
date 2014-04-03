@@ -110,11 +110,11 @@ struct nvram_internal {
     uint8_t       mem_state[NVRAM_REG_MAX];
     uint8_t       reg_map[NVRAM_REG_MAX / 8];
 
-    struct vm_device * ide;
+    struct vm_device  * ide;
 
     struct v3_vm_info * vm;
     
-    struct v3_timer   *timer;
+    struct v3_timer   * timer;
 
     v3_spinlock_t nvram_lock;
 
@@ -163,27 +163,41 @@ struct bcd_num {
 
 
 
-static void set_reg_num(struct nvram_internal * nvram, uint8_t reg_num) {
-    int major = (reg_num / 8);
+static void 
+set_reg_num(struct nvram_internal * nvram, 
+	    uint8_t                 reg_num) 
+{
+    int major = reg_num / 8;
     int minor = reg_num % 8;
 
     nvram->reg_map[major] |= (0x1 << minor);
 }
 
-static int is_reg_set(struct nvram_internal * nvram, uint8_t reg_num) {
-    int major = (reg_num / 8);
+static int 
+is_reg_set(struct nvram_internal * nvram, 
+	   uint8_t                 reg_num) 
+{
+    int major = reg_num / 8;
     int minor = reg_num % 8;
     
     return (nvram->reg_map[major] & (0x1 << minor)) ? 1 : 0;
 }
 
 
-static void set_memory(struct nvram_internal * nvram, uint8_t reg, uint8_t val) {
+static void 
+set_memory(struct nvram_internal * nvram, 
+	   uint8_t                 reg, 
+	   uint8_t                 val) 
+{
     set_reg_num(nvram, reg);
     nvram->mem_state[reg] = val;
 }
 
-static int get_memory(struct nvram_internal * nvram, uint8_t reg, uint8_t * val) {
+static int 
+get_memory(struct nvram_internal * nvram, 
+	   uint8_t                 reg, 
+	   uint8_t               * val) 
+{
 
     if (!is_reg_set(nvram, reg)) {
 	*val = 0;
@@ -195,7 +209,11 @@ static int get_memory(struct nvram_internal * nvram, uint8_t reg, uint8_t * val)
 }
 
 
-static uint8_t add_to(uint8_t * left, uint8_t * right, uint8_t bcd) {
+static uint8_t 
+add_to(uint8_t * left, 
+       uint8_t * right, 
+       uint8_t   bcd) 
+{
     uint8_t temp;
 
     if (bcd) { 
@@ -204,16 +222,16 @@ static uint8_t add_to(uint8_t * left, uint8_t * right, uint8_t bcd) {
 	uint8_t carry = 0;
 
 	bl->bot += br->bot;
-	carry = bl->bot / 0xa;
+	carry    = bl->bot / 0xa;
 	bl->bot %= 0xa;
 
 	bl->top += carry + br->top;
-	carry = bl->top / 0xa;
+	carry    = bl->top / 0xa;
 	bl->top %= 0xa;
 
 	return carry;
     } else {
-	temp = *left;
+	temp   = *left;
 	*left += *right;
 
 	if (*left < temp) { 
@@ -225,7 +243,10 @@ static uint8_t add_to(uint8_t * left, uint8_t * right, uint8_t bcd) {
 }
 
 
-static uint8_t days_in_month(uint8_t month, uint8_t bcd) {
+static uint8_t 
+days_in_month(uint8_t month, 
+	      uint8_t bcd) 
+{
     // This completely ignores Julian / Gregorian stuff right now
 
     if (bcd) { 
@@ -283,11 +304,15 @@ static uint8_t days_in_month(uint8_t month, uint8_t bcd) {
 }
 
 
-static void update_time(struct nvram_internal * data, uint64_t period_us) {
+static void 
+update_time(struct nvram_internal * data, 
+	    uint64_t                period_us) 
+{
     struct rtc_stata * stata = (struct rtc_stata *)&((data->mem_state[NVRAM_REG_STAT_A]));
     struct rtc_statb * statb = (struct rtc_statb *)&((data->mem_state[NVRAM_REG_STAT_B]));
     struct rtc_statc * statc = (struct rtc_statc *)&((data->mem_state[NVRAM_REG_STAT_C]));
     //struct rtc_statd *statd = (struct rtc_statd *) &((data->mem_state[NVRAM_REG_STAT_D]));
+
     uint8_t * sec      = (uint8_t *)&(data->mem_state[NVRAM_REG_SEC]);
     uint8_t * min      = (uint8_t *)&(data->mem_state[NVRAM_REG_MIN]);
     uint8_t * hour     = (uint8_t *)&(data->mem_state[NVRAM_REG_HOUR]);
@@ -300,23 +325,23 @@ static void update_time(struct nvram_internal * data, uint64_t period_us) {
     uint8_t * seca     = (uint8_t *)&(data->mem_state[NVRAM_REG_SEC_ALARM]);
     uint8_t * mina     = (uint8_t *)&(data->mem_state[NVRAM_REG_MIN_ALARM]);
     uint8_t * houra    = (uint8_t *)&(data->mem_state[NVRAM_REG_HOUR_ALARM]);
-    uint8_t hour24;
+    uint8_t   hour24;
 
-    uint8_t bcd = (statb->dm == 0);
-    uint8_t carry = 0;
-    uint8_t nextday = 0;
-    uint32_t  periodic_period;
+    uint8_t  bcd     = (statb->dm == 0);
+    uint8_t  carry   = 0;
+    uint8_t  nextday = 0;
+    uint32_t periodic_period;
 
     PrintDebug("nvram: update_time by %llu microseocnds\n",period_us);
   
     // We will set these flags on exit
     statc->irq = 0;
-    statc->pf = 0;
-    statc->af = 0;
-    statc->uf = 0;
+    statc->pf  = 0;
+    statc->af  = 0;
+    statc->uf  = 0;
 
     // We will reset us after one second
-    data->us += period_us;
+    data->us  += period_us;
     // We will reset pus after one periodic_period
     data->pus += period_us;
 
@@ -328,21 +353,22 @@ static void update_time(struct nvram_internal * data, uint64_t period_us) {
 	    PrintError("nvram: somehow managed to get a carry in second update\n"); 
 	}
 
-	if ( (bcd && (*sec == 0x60)) || 
-	     ((!bcd) && (*sec == 60))) { 
+	if ( (( bcd) && (*sec == 0x60)) || 
+	     ((!bcd) && (*sec ==   60)) ) { 
   
 	    *sec = 0;
 
 	    carry = 1;
 	    carry = add_to(min, &carry, bcd);
+
 	    if (carry) { 
 		PrintError("nvram: somehow managed to get a carry in minute update\n"); 
 	    }
 
-	    if ( (bcd && (*min == 0x60)) || 
-		 ((!bcd) && (*min == 60))) { 
+	    if ( (( bcd) && (*min == 0x60)) || 
+		 ((!bcd) && (*min ==   60)) ) { 
 
-		*min = 0;
+		*min   = 0;
 		hour24 = *hour;
 
 		if (!(statb->h24)) { 
@@ -356,25 +382,26 @@ static void update_time(struct nvram_internal * data, uint64_t period_us) {
 
 		carry = 1;
 		carry = add_to(&hour24, &carry, bcd);
+
 		if (carry) { 
 		    PrintError("nvram: somehow managed to get a carry in hour update\n"); 
 		}
 
-		if ( (bcd && (hour24 == 0x24)) || 
-		     ((!bcd) && (hour24 == 24))) { 
-		    carry = 1;
+		if ( (( bcd) && (hour24 == 0x24)) || 
+		     ((!bcd) && (hour24 ==   24)) ) { 
+		    carry   = 1;
 		    nextday = 1;
-		    hour24 = 0;
+		    hour24  = 0;
 		} else {
-		    carry = 0;
+		    carry   = 0;
 		}
 
 
 		if (statb->h24) { 
 		    *hour = hour24;
 		} else {
-		    if ( (bcd && (hour24 < 0x12)) || 
-			 ((!bcd) && (hour24 < 12))) { 
+		    if ( (( bcd) && (hour24 < 0x12)) || 
+			 ((!bcd) && (hour24 <   12))) { 
 			*hour = hour24;
 
 		    } else {
@@ -411,17 +438,17 @@ static void update_time(struct nvram_internal * data, uint64_t period_us) {
 			carry = 1;
 			add_to(month, &carry, bcd);
 
-			if ( (bcd && (*month == 0x13)) || 
-			     ((!bcd) && (*month == 13))) { 
+			if ( (( bcd) && (*month == 0x13)) || 
+			     ((!bcd) && (*month ==   13))) { 
 			    *month = 1; // same for both 
 
 			    carry = 1;
 			    carry = add_to(year, &carry, bcd);
 
-			    if ( (bcd && carry) || 
-				 ((!bcd) && (*year == 100))) { 
-				*year = 0;
-				carry = 1;
+			    if ( (( bcd) && (carry)) || 
+				 ((!bcd) && (*year == 100)) ) { 
+				*year     = 0;
+				carry     = 1;
 				add_to(cent, &carry, bcd);
 				*cent_ps2 = *cent;
 			    }
@@ -435,7 +462,9 @@ static void update_time(struct nvram_internal * data, uint64_t period_us) {
 	data->us -= 1000000;
 	// OK, now check for the alarm, if it is set to interrupt
 	if (statb->ai) { 
-	    if ((*sec == *seca) && (*min == *mina) && (*hour == *houra)) { 
+	    if ( (*sec == *seca) && 
+		 (*min == *mina) && 
+		 (*hour == *houra) ) { 
 		statc->af = 1;
 		PrintDebug("nvram: interrupt on alarm\n");
 	    }
@@ -444,8 +473,9 @@ static void update_time(struct nvram_internal * data, uint64_t period_us) {
 
     if (statb->pi) { 
 	periodic_period = 1000000 / (65536 / (0x1 << stata->rate));
+
 	if (data->pus >= periodic_period) { 
-	    statc->pf = 1;
+	    statc->pf  = 1;
 	    data->pus -= periodic_period;
 	    PrintDebug("nvram: interrupt on periodic\n");
 	}
@@ -458,7 +488,8 @@ static void update_time(struct nvram_internal * data, uint64_t period_us) {
 
     statc->irq = (statc->pf || statc->af || statc->uf);
   
-    PrintDebug("nvram: time is now: YMDHMS: 0x%x:0x%x:0x%x:0x%x:0x%x,0x%x bcd=%d\n", *year, *month, *monthday, *hour, *min, *sec,bcd);
+    PrintDebug("nvram: time is now: YMDHMS: 0x%x:0x%x:0x%x:0x%x:0x%x,0x%x bcd=%d\n", 
+	       *year, *month, *monthday, *hour, *min, *sec, bcd);
   
     // Interrupt associated VM, if needed
     if (statc->irq) { 
@@ -468,24 +499,27 @@ static void update_time(struct nvram_internal * data, uint64_t period_us) {
 }
 
 
-static void nvram_update_timer(struct v3_core_info *vm,
-			       ullong_t           cpu_cycles,
-			       ullong_t           cpu_freq,
-			       void              *priv_data)
+static void 
+nvram_update_timer(struct v3_core_info * vm,
+		   uint64_t              cpu_cycles,
+		   uint64_t              cpu_freq,
+		   void                * priv_data)
 {
-    struct nvram_internal *nvram_state = (struct nvram_internal *)priv_data;
-    uint64_t period_us;
+    struct nvram_internal * nvram_state = (struct nvram_internal *)priv_data;
+    uint64_t                period_us;
 
     
     // cpu freq in khz
-    period_us = (1000*cpu_cycles/cpu_freq);
+    period_us = (1000 * cpu_cycles / cpu_freq);
 
-    update_time(nvram_state,period_us);
-
+    update_time(nvram_state, period_us);
 }
 
 
-static void set_memory_size(struct nvram_internal * nvram, addr_t bytes) {
+static void 
+set_memory_size(struct nvram_internal * nvram, 
+		addr_t                  bytes) 
+{
     // 1. Conventional Mem: 0-640k in K
     // 2. Extended Mem: 0-16MB in K
     // 3. Big Mem: 0-4G in 64K
@@ -502,7 +536,7 @@ static void set_memory_size(struct nvram_internal * nvram, addr_t bytes) {
 	}
 
 	set_memory(nvram, NVRAM_REG_BASE_MEMORY_HIGH, (memk >> 8) & 0x00ff);
-	set_memory(nvram, NVRAM_REG_BASE_MEMORY_LOW, memk & 0x00ff);
+	set_memory(nvram, NVRAM_REG_BASE_MEMORY_LOW,   memk       & 0x00ff);
     }
 
     // set extended memory - first 1 MB is lost to 640K chunk
@@ -515,10 +549,10 @@ static void set_memory_size(struct nvram_internal * nvram, addr_t bytes) {
 	    memk = (bytes - (1024 * 1024)) / 1024;
 	}
 	
-	set_memory(nvram, NVRAM_REG_EXT_MEMORY_HIGH, (memk >> 8) & 0x00ff);
-	set_memory(nvram, NVRAM_REG_EXT_MEMORY_LOW, memk & 0x00ff);
+	set_memory(nvram, NVRAM_REG_EXT_MEMORY_HIGH,     (memk >> 8) & 0x00ff);
+	set_memory(nvram, NVRAM_REG_EXT_MEMORY_LOW,       memk       & 0x00ff);
 	set_memory(nvram, NVRAM_REG_EXT_MEMORY_2ND_HIGH, (memk >> 8) & 0x00ff);
-	set_memory(nvram, NVRAM_REG_EXT_MEMORY_2ND_LOW, memk & 0x00ff);
+	set_memory(nvram, NVRAM_REG_EXT_MEMORY_2ND_LOW,   memk       & 0x00ff);
     }
 
     // Set the extended memory beyond 16 MB in 64k chunks
@@ -549,7 +583,7 @@ static void set_memory_size(struct nvram_internal * nvram, addr_t bytes) {
 
 	
 	set_memory(nvram, NVRAM_REG_AMI_BIG_MEMORY_HIGH, (mem_chunks >> 8) & 0x00ff);
-	set_memory(nvram, NVRAM_REG_AMI_BIG_MEMORY_LOW, mem_chunks & 0x00ff);
+	set_memory(nvram, NVRAM_REG_AMI_BIG_MEMORY_LOW,   mem_chunks       & 0x00ff);
     }
 
     // Set high (>4GB) memory size
@@ -561,8 +595,8 @@ static void set_memory_size(struct nvram_internal * nvram, addr_t bytes) {
 	    high_mem_chunks = (bytes - (1024LL * 1024LL * 1024LL * 4LL))  / (1024 * 64);
 	}
 
-	set_memory(nvram, NVRAM_REG_HIGHMEM_LOW, high_mem_chunks & 0xff);
-	set_memory(nvram, NVRAM_REG_HIGHMEM_MID, (high_mem_chunks >> 8) & 0xff);
+	set_memory(nvram, NVRAM_REG_HIGHMEM_LOW,   high_mem_chunks        & 0xff);
+	set_memory(nvram, NVRAM_REG_HIGHMEM_MID,  (high_mem_chunks >> 8)  & 0xff);
 	set_memory(nvram, NVRAM_REG_HIGHMEM_HIGH, (high_mem_chunks >> 16) & 0xff);
     }
 
@@ -571,14 +605,16 @@ static void set_memory_size(struct nvram_internal * nvram, addr_t bytes) {
 
 
 
-static void init_harddrives(struct nvram_internal * nvram) {
-    uint8_t hd_data = 0;
-    uint32_t cyls;
-    uint32_t sects;
-    uint32_t heads;
-    int i = 0;
-    int info_base_reg = 0x1b;
-    int type_reg = 0x19;
+static void 
+init_harddrives(struct nvram_internal * nvram) 
+{
+    uint8_t  hd_data = 0;
+    uint32_t cyls    = 0;
+    uint32_t sects   = 0;
+    uint32_t heads   = 0;
+    int      i       = 0;
+    int      info_base_reg = 0x1b;
+    int      type_reg      = 0x19;
 
     // 0x19 == first drive type
     // 0x1a == second drive type
@@ -594,9 +630,9 @@ static void init_harddrives(struct nvram_internal * nvram) {
 
 	    set_memory(nvram, type_reg + i, 0x2f);
 
-	    set_memory(nvram, info_reg, cyls & 0xff);
+	    set_memory(nvram, info_reg,      cyls       & 0xff);
 	    set_memory(nvram, info_reg + 1, (cyls >> 8) & 0xff);
-	    set_memory(nvram, info_reg + 2, heads & 0xff);
+	    set_memory(nvram, info_reg + 2,  heads      & 0xff);
 
 	    // Write precomp cylinder (1 and 2)
 	    set_memory(nvram, info_reg + 3, 0xff);
@@ -605,10 +641,10 @@ static void init_harddrives(struct nvram_internal * nvram) {
 	    // harddrive control byte 
 	    set_memory(nvram, info_reg + 5, 0xc0 | ((heads > 8) << 3));
 
-	    set_memory(nvram, info_reg + 6, cyls & 0xff);
+	    set_memory(nvram, info_reg + 6,  cyls       & 0xff);
 	    set_memory(nvram, info_reg + 7, (cyls >> 8) & 0xff);
 
-	    set_memory(nvram, info_reg + 8, sects & 0xff);
+	    set_memory(nvram, info_reg + 8,  sects      & 0xff);
 	    
 	    hd_data |= (0xf0 >> (i * 4));
 	}
@@ -625,7 +661,7 @@ static void init_harddrives(struct nvram_internal * nvram) {
 	uint8_t trans = 0;
 
 	for (i = 0; i < 4; i++) {
-	    int chan_num = i / 2;
+	    int chan_num  = i / 2;
 	    int drive_num = i % 2;
 	    uint32_t tmp[3];
 
@@ -638,10 +674,12 @@ static void init_harddrives(struct nvram_internal * nvram) {
     }
 }
 
-static uint16_t compute_checksum(struct nvram_internal * nvram) {
+static uint16_t 
+compute_checksum(struct nvram_internal * nvram) 
+{
     uint16_t checksum = 0;
-    uint8_t reg = 0;
-    uint8_t val = 0;
+    uint8_t  reg      = 0;
+    uint8_t  val      = 0;
     
     /* add all fields between the RTC and the checksum fields */
     for (reg = CHECKSUM_REGION_FIRST_BYTE; reg < CHECKSUM_REGION_LAST_BYTE; reg++) {
@@ -653,11 +691,14 @@ static uint16_t compute_checksum(struct nvram_internal * nvram) {
     return checksum;
 }
 
-static int init_nvram_state(struct v3_vm_info * vm, struct nvram_internal * nvram) {
+static int 
+init_nvram_state(struct v3_vm_info     * vm, 
+		 struct nvram_internal * nvram) 
+{
     uint16_t checksum = 0;
 
-    memset(nvram->mem_state, 0, NVRAM_REG_MAX);
-    memset(nvram->reg_map, 0, NVRAM_REG_MAX / 8);
+    memset(nvram->mem_state, 0, NVRAM_REG_MAX    );
+    memset(nvram->reg_map,   0, NVRAM_REG_MAX / 8);
 
     v3_spinlock_init(&(nvram->nvram_lock));
 
@@ -665,73 +706,73 @@ static int init_nvram_state(struct v3_vm_info * vm, struct nvram_internal * nvra
     // 2 1.44 MB floppy drives
     //
 #if 1
-    set_memory(nvram, NVRAM_REG_FLOPPY_TYPE, 0x44);
+    set_memory(nvram, NVRAM_REG_FLOPPY_TYPE,        0x44);
 #else
-    set_memory(nvram, NVRAM_REG_FLOPPY_TYPE, 0x00);
+    set_memory(nvram, NVRAM_REG_FLOPPY_TYPE,        0x00);
 #endif
 
     //
     // For old boot sequence style, do floppy first
     //
-    set_memory(nvram, NVRAM_REG_BOOTSEQ_OLD, 0x10);
+    set_memory(nvram, NVRAM_REG_BOOTSEQ_OLD,        0x10);
 
 #if 0
     // For new boot sequence style, do floppy, cd, then hd
-    set_memory(nvram, NVRAM_REG_BOOTSEQ_NEW_FIRST, 0x31);
+    set_memory(nvram, NVRAM_REG_BOOTSEQ_NEW_FIRST,  0x31);
     set_memory(nvram, NVRAM_REG_BOOTSEQ_NEW_SECOND, 0x20);
 #endif
 
     // For new boot sequence style, do cd, hd, floppy
-    set_memory(nvram, NVRAM_REG_BOOTSEQ_NEW_FIRST, 0x23);
+    set_memory(nvram, NVRAM_REG_BOOTSEQ_NEW_FIRST,  0x23);
     set_memory(nvram, NVRAM_REG_BOOTSEQ_NEW_SECOND, 0x10);
   
   
     // Set equipment byte to note 2 floppies, vga display, keyboard,math,floppy
-    set_memory(nvram, NVRAM_REG_EQUIPMENT_BYTE, 0x4f);
+    set_memory(nvram, NVRAM_REG_EQUIPMENT_BYTE,     0x4f);
     // set_memory(nvram, NVRAM_REG_EQUIPMENT_BYTE, 0xf);
   
 
     // Set the shutdown status gently
-    // soft reset
-    set_memory(nvram, NVRAM_REG_SHUTDOWN_STATUS, 0x0);
+    // soft reset 
+    set_memory(nvram, NVRAM_REG_SHUTDOWN_STATUS,    0x00);
 
 
     // RTC status A
     // 00100110 = no update in progress, base=32768 Hz, rate = 1024 Hz
-    set_memory(nvram, NVRAM_REG_STAT_A, 0x26); 
+    set_memory(nvram, NVRAM_REG_STAT_A,             0x26); 
 
     // RTC status B
     // 00000010 = not setting, no interrupts, blocked rect signal, bcd mode (bit 3 = 0), 24 hour, normal time
-    set_memory(nvram, NVRAM_REG_STAT_B, 0x02); 
+    set_memory(nvram, NVRAM_REG_STAT_B,             0x02); 
 
 
     // RTC status C
     // No IRQ requested, result not do to any source
-    set_memory(nvram, NVRAM_REG_STAT_C, 0x00);
+    set_memory(nvram, NVRAM_REG_STAT_C,             0x00);
 
     // RTC status D
     // Battery is OK
-    set_memory(nvram, NVRAM_REG_STAT_D, 0x80);
+    set_memory(nvram, NVRAM_REG_STAT_D,             0x80);
 
 
     // january 1, 2008, 00:00:00
-    set_memory(nvram, NVRAM_REG_SEC, 0x00);
-    set_memory(nvram, NVRAM_REG_SEC_ALARM, 0x00);
-    set_memory(nvram, NVRAM_REG_MIN, 0x00);
-    set_memory(nvram, NVRAM_REG_MIN_ALARM, 0x00);
-    set_memory(nvram, NVRAM_REG_HOUR, 0x00);
-    set_memory(nvram, NVRAM_REG_HOUR_ALARM, 0x00);
+    set_memory(nvram, NVRAM_REG_SEC,                  0x00);
+    set_memory(nvram, NVRAM_REG_SEC_ALARM,            0x00);
+    set_memory(nvram, NVRAM_REG_MIN,                  0x00);
+    set_memory(nvram, NVRAM_REG_MIN_ALARM,            0x00);
+    set_memory(nvram, NVRAM_REG_HOUR,                 0x00);
+    set_memory(nvram, NVRAM_REG_HOUR_ALARM,           0x00);
 
-    set_memory(nvram, NVRAM_REG_MONTH, 0x01);
-    set_memory(nvram, NVRAM_REG_MONTH_DAY, 0x1);
-    set_memory(nvram, NVRAM_REG_WEEK_DAY, 0x1);
-    set_memory(nvram, NVRAM_REG_YEAR, 0x08);
-    set_memory(nvram, NVRAM_REG_IBM_CENTURY_BYTE, 0x20);
+    set_memory(nvram, NVRAM_REG_MONTH,                0x01);
+    set_memory(nvram, NVRAM_REG_MONTH_DAY,            0x01);
+    set_memory(nvram, NVRAM_REG_WEEK_DAY,             0x01);
+    set_memory(nvram, NVRAM_REG_YEAR,                 0x08);
+    set_memory(nvram, NVRAM_REG_IBM_CENTURY_BYTE,     0x20);
     set_memory(nvram, NVRAM_REG_IBM_PS2_CENTURY_BYTE, 0x20);
 
-    set_memory(nvram, NVRAM_REG_DIAGNOSTIC_STATUS, 0x00);
+    set_memory(nvram, NVRAM_REG_DIAGNOSTIC_STATUS,    0x00);
     
-    nvram->us = 0;
+    nvram->us  = 0;
     nvram->pus = 0;
 
     set_memory_size(nvram, vm->mem_size);
@@ -742,12 +783,12 @@ static int init_nvram_state(struct v3_vm_info * vm, struct nvram_internal * nvra
     /* compute checksum (must follow all assignments here) */
     checksum = compute_checksum(nvram);
     set_memory(nvram, NVRAM_REG_CSUM_HIGH, (checksum >> 8) & 0xff);
-    set_memory(nvram, NVRAM_REG_CSUM_LOW, checksum & 0xff);
+    set_memory(nvram, NVRAM_REG_CSUM_LOW,   checksum       & 0xff);
 
     
     
     nvram->dev_state = NVRAM_READY;
-    nvram->thereg = 0;
+    nvram->thereg    = 0;
 
     return 0;
 }
@@ -757,12 +798,17 @@ static int init_nvram_state(struct v3_vm_info * vm, struct nvram_internal * nvra
 
 
 
-static int nvram_write_reg_port(struct v3_core_info * core, uint16_t port,
-				void * src, uint_t length, void * priv_data) {
-    uint8_t reg;
+static int
+nvram_write_reg_port(struct v3_core_info * core,
+		     uint16_t              port,
+		     void                * src,
+		     uint_t                length, 
+		     void                * priv_data) 
+{
     struct nvram_internal * data = priv_data;
+    uint8_t reg;
 
-    memcpy(&reg,src,1);
+    memcpy(&reg, src, 1);
 
     data->thereg = reg & 0x7f;  //discard NMI bit if it's there
     
@@ -771,40 +817,51 @@ static int nvram_write_reg_port(struct v3_core_info * core, uint16_t port,
     return 1;
 }
 
-static int nvram_read_data_port(struct v3_core_info * core, uint16_t port,
-				void * dst, uint_t length, void * priv_data) {
+static int 
+nvram_read_data_port(struct v3_core_info * core, 
+		     uint16_t              port,
+		     void                * dst, 
+		     uint_t                length, 
+		     void                * priv_data) 
+{
 
     struct nvram_internal * data = priv_data;
 
     addr_t irq_state = v3_spin_lock_irqsave(data->nvram_lock);
+    {
 
-    if (get_memory(data, data->thereg, (uint8_t *)dst) == -1) {
-	PrintError("nvram: Register %d (0x%x) Not set - POSSIBLE BUG IN MACHINE INIT - CONTINUING\n", data->thereg, data->thereg);
-
-    } 
-
-    PrintDebug("nvram: nvram_read_data_port(0x%x)  =  0x%x\n", data->thereg, *(uint8_t *)dst);
-
-    // hack
-    if (data->thereg == NVRAM_REG_STAT_A) { 
-	data->mem_state[data->thereg] ^= 0x80;  // toggle Update in progess
+	if (get_memory(data, data->thereg, (uint8_t *)dst) == -1) {
+	    PrintError("nvram: Register %d (0x%x) Not set - POSSIBLE BUG IN MACHINE INIT - CONTINUING\n", 
+		       data->thereg, data->thereg);
+	} 
+	
+	PrintDebug("nvram: nvram_read_data_port(0x%x)  =  0x%x\n", data->thereg, *(uint8_t *)dst);
+	
+	// hack
+	if (data->thereg == NVRAM_REG_STAT_A) { 
+	    data->mem_state[data->thereg] ^= 0x80;  // toggle Update in progess
+	}
     }
-
     v3_spin_unlock_irqrestore(data->nvram_lock, irq_state);
 
     return 1;
 }
 
 
-static int nvram_write_data_port(struct v3_core_info * core, uint16_t port,
-				 void * src, uint_t length, void * priv_data) {
-
+static int 
+nvram_write_data_port(struct v3_core_info * core, 
+		      uint16_t              port,
+		      void                * src,
+		      uint_t                length, 
+		      void                * priv_data)
+{
+    
     struct nvram_internal * data = priv_data;
 
     addr_t irq_state = v3_spin_lock_irqsave(data->nvram_lock);
-
-    set_memory(data, data->thereg, *(uint8_t *)src);
-
+    {
+	set_memory(data, data->thereg, *(uint8_t *)src);
+    }
     v3_spin_unlock_irqrestore(data->nvram_lock, irq_state);
 
     PrintDebug("nvram: nvram_write_data_port(0x%x) = 0x%x\n", 
@@ -816,7 +873,9 @@ static int nvram_write_data_port(struct v3_core_info * core, uint16_t port,
 
 
 
-static int nvram_free(struct nvram_internal * nvram_state) {
+static int 
+nvram_free(struct nvram_internal * nvram_state) 
+{
     
     // unregister host events
     struct v3_core_info *info = &(nvram_state->vm->cores[0]);
@@ -844,10 +903,13 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int nvram_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
+static int 
+nvram_init(struct v3_vm_info * vm, 
+	   v3_cfg_tree_t     * cfg) 
+{
     struct nvram_internal * nvram_state = NULL;
-    struct vm_device * ide = v3_find_dev(vm, v3_cfg_val(cfg, "storage"));
-    char * dev_id = v3_cfg_val(cfg, "ID");
+    struct vm_device      * ide         = v3_find_dev(vm, v3_cfg_val(cfg, "storage"));
+    char                  * dev_id      = v3_cfg_val(cfg, "ID");
     int ret = 0;
 
     if (!ide) {
@@ -866,7 +928,7 @@ static int nvram_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     PrintDebug("nvram: internal at %p\n", (void *)nvram_state);
 
     nvram_state->ide = ide;
-    nvram_state->vm = vm;
+    nvram_state->vm  = vm;
 
     struct vm_device * dev = v3_add_device(vm, dev_id, &dev_ops, nvram_state);
 
@@ -879,7 +941,7 @@ static int nvram_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     init_nvram_state(vm, nvram_state);
 
     // hook ports
-    ret |= v3_dev_hook_io(dev, NVRAM_REG_PORT, NULL, &nvram_write_reg_port);
+    ret |= v3_dev_hook_io(dev, NVRAM_REG_PORT,  NULL,                  &nvram_write_reg_port);
     ret |= v3_dev_hook_io(dev, NVRAM_DATA_PORT, &nvram_read_data_port, &nvram_write_data_port);
   
     if (ret != 0) {

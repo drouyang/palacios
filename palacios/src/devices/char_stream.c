@@ -27,30 +27,37 @@
 
 
 struct stream_state {
-    struct v3_stream * stream;
-
-    struct v3_dev_char_ops char_ops;
-
-    struct v3_vm_info * vm;
-
-    void * push_fn_arg;
+    struct v3_stream       * stream;
+    struct v3_dev_char_ops   char_ops;
+    struct v3_vm_info      * vm;
+    void                   * push_fn_arg;
 };
 
 
-static uint64_t  stream_input(struct v3_stream * stream, uint8_t * buf, uint64_t len) {
+static uint64_t 
+stream_input(struct v3_stream * stream, 
+	     uint8_t          * buf, 
+	     uint64_t           len) 
+{
     struct stream_state * state = stream->guest_stream_data;
 
     return state->char_ops.input(state->vm, buf, len, state->push_fn_arg);
-
 }
 
-static uint64_t  stream_output(uint8_t * buf, uint64_t length, void * private_data) {
+
+static uint64_t  
+stream_output(uint8_t   * buf, 
+	      uint64_t    length, 
+	      void      * private_data) 
+{
     struct stream_state * state = (struct stream_state *)private_data;
    
     return v3_stream_output(state->stream, buf, length);
 }
 
-static int stream_free(struct stream_state * state) {
+static int 
+stream_free(struct stream_state * state) 
+{
     v3_stream_close(state->stream);
 
     // detach host event
@@ -65,12 +72,14 @@ static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))stream_free,
 };
 
-static int stream_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
-    char * dev_id = v3_cfg_val(cfg, "ID");
-    char * stream_name = v3_cfg_val(cfg, "name");
-    struct stream_state * state = NULL;
-
+static int 
+stream_init(struct v3_vm_info * vm, 
+	    v3_cfg_tree_t     * cfg) 
+{
+    char          * dev_id       = v3_cfg_val(cfg, "ID");
+    char          * stream_name  = v3_cfg_val(cfg, "name");
     v3_cfg_tree_t * frontend_cfg = v3_cfg_subtree(cfg, "frontend");
+    struct stream_state * state  = NULL;
 
     state = (struct stream_state *)V3_Malloc(sizeof(struct stream_state));
 
@@ -98,7 +107,7 @@ static int stream_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	return -1;
     }
 
-    state->vm = vm;
+    state->vm              = vm;
     state->char_ops.output = stream_output;
 
     if (v3_dev_connect_char(vm, v3_cfg_val(frontend_cfg, "tag"), 

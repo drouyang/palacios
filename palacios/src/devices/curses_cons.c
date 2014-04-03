@@ -39,28 +39,33 @@
 #define BYTES_PER_COL 2
 
 struct cons_state {
-    v3_console_t cons;
-    int rows;
-    int cols;
-    uint8_t * framebuf;
+    v3_console_t       cons;
+    int                rows;
+    int                cols;
+    uint8_t          * framebuf;
     struct vm_device * frontend_dev;
 };
 
 static int screen_update(uint_t x, uint_t y, uint_t length, void *private_data);
 
-static int screen_update_all(void * private_data) {
-    struct vm_device *dev = (struct vm_device *) private_data;
-    struct cons_state *state = (struct cons_state *)dev->private_data;
+static int 
+screen_update_all(void * private_data) 
+{
+    struct vm_device  * dev   = (struct vm_device *) private_data;
+    struct cons_state * state = (struct cons_state *)dev->private_data;
     uint_t screen_size;
 
     screen_size = state->cols * state->rows * BYTES_PER_COL;
     return screen_update(0, 0, screen_size, private_data);
 }
 
-static int cursor_update(uint_t x, uint_t y, void *private_data) 
+static int 
+cursor_update(uint_t   x, 
+	      uint_t   y, 
+	      void   * private_data) 
 {
-    struct vm_device *dev = (struct vm_device *) private_data;
-    struct cons_state *state = (struct cons_state *) dev->private_data;
+    struct vm_device  * dev   = (struct vm_device  *) private_data;
+    struct cons_state * state = (struct cons_state *) dev->private_data;
     uint_t offset;
 
     PrintDebug("cursor_update(%d, %d, %p)\n", x, y, private_data);
@@ -68,8 +73,10 @@ static int cursor_update(uint_t x, uint_t y, void *private_data)
     /* avoid out-of-range coordinates */
     if (x < 0) x = 0;
     if (y < 0) y = 0;
+
     if (x >= state->cols) x = state->cols - 1;
     if (y >= state->rows) y = state->rows - 1;
+
     offset = (x + y * state->cols) * BYTES_PER_COL;
     
     /* adjust cursor */	
@@ -87,13 +94,19 @@ static int cursor_update(uint_t x, uint_t y, void *private_data)
     return 0;
 }
 
-static int screen_update(uint_t x, uint_t y, uint_t length, void * private_data) {
-    struct vm_device * dev = (struct vm_device *)private_data;
+static int 
+screen_update(uint_t   x, 
+	      uint_t   y, 
+	      uint_t   length, 
+	      void   * private_data) 
+{
+    struct vm_device  * dev   = (struct vm_device  *)private_data;
     struct cons_state * state = (struct cons_state *)dev->private_data;
+
     uint_t offset = (x + y * state->cols) * BYTES_PER_COL;
-    int i;
-    uint_t cur_x = x;
-    uint_t cur_y = y;
+    uint_t cur_x  = x;
+    uint_t cur_y  = y;
+    int    i      = 0;
     
     if (length > (state->rows * state->cols * BYTES_PER_COL)) {
 	PrintError("Screen update larger than curses framebuffer\n");
@@ -107,7 +120,7 @@ static int screen_update(uint_t x, uint_t y, uint_t length, void * private_data)
     
     /* update the screen */
     for (i = 0; i < length; i += 2) {
-	uint_t col_index = i;
+	uint_t  col_index = i;
 	uint8_t col[2];
 	
 	col[0] = state->framebuf[col_index];     // Character
@@ -122,8 +135,8 @@ static int screen_update(uint_t x, uint_t y, uint_t length, void * private_data)
 	
 	// CAUTION: the order of these statements is critical
 	// cur_y depends on the previous value of cur_x
-	cur_y = cur_y + ((cur_x + 1) / state->cols);
-	cur_x = (cur_x + 1) % state->cols;
+	cur_y += ((cur_x + 1) / state->cols);
+	cur_x  = ((cur_x + 1) % state->cols);
     }
     
     /* done with console update */
@@ -135,9 +148,12 @@ static int screen_update(uint_t x, uint_t y, uint_t length, void * private_data)
     return 0;
 }
 
-static int scroll(int rows, void * private_data) {
-    struct vm_device *dev = (struct vm_device *)private_data;
-    struct cons_state *state = (struct cons_state *)dev->private_data;
+static int 
+scroll(int    rows, 
+       void * private_data) 
+{
+    struct vm_device  * dev   = (struct vm_device  *)private_data;
+    struct cons_state * state = (struct cons_state *)dev->private_data;
 
     PrintDebug("scroll(%d, %p)\n", rows, private_data);
 
@@ -163,15 +179,20 @@ static int scroll(int rows, void * private_data) {
     return 0;
 }
 
-static int set_text_resolution(int cols, int rows, void * private_data) {
-    struct vm_device *dev = (struct vm_device *)private_data;
-    struct cons_state *state = (struct cons_state *)dev->private_data;
+static int 
+set_text_resolution(int    cols, 
+		    int    rows, 
+		    void * private_data) 
+{
+    struct vm_device  * dev   = (struct vm_device  *)private_data;
+    struct cons_state * state = (struct cons_state *)dev->private_data;
 
     PrintDebug("set_text_resolution(%d, %d, %p)\n", cols, rows, private_data);
 
     /* store resolution for internal use */
     V3_ASSERT(cols >= 1);
     V3_ASSERT(rows >= 1);
+
     state->cols = cols;
     state->rows = rows;
 
@@ -185,7 +206,9 @@ static int set_text_resolution(int cols, int rows, void * private_data) {
     return screen_update_all(private_data);
 }
 
-static int cons_free(struct cons_state * state) {
+static int 
+cons_free(struct cons_state * state) 
+{
     v3_console_close(state->cons);
 
     // remove host event
@@ -195,16 +218,18 @@ static int cons_free(struct cons_state * state) {
     return 0;
 }
 
-static int console_event_handler(struct v3_vm_info * vm, 
-				 struct v3_console_event * evt, 
-				 void * priv_data) {
+static int 
+console_event_handler(struct v3_vm_info       * vm, 
+		      struct v3_console_event * evt, 
+		      void                    * priv_data) 
+{
     return screen_update_all(priv_data);
 }
 
 static struct v3_console_ops cons_ops = {
-    .update_screen = screen_update, 
-    .update_cursor = cursor_update,
-    .scroll = scroll,
+    .update_screen       = screen_update, 
+    .update_cursor       = cursor_update,
+    .scroll              = scroll,
     .set_text_resolution = set_text_resolution,
 };
 
@@ -212,28 +237,33 @@ static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))cons_free,
 };
 
-static int cons_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) 
+static int 
+cons_init(struct v3_vm_info * vm, 
+	  v3_cfg_tree_t     * cfg)
 {
-    struct cons_state * state = NULL;
-    v3_cfg_tree_t * frontend_cfg;
-    const char * frontend_tag;
-    struct vm_device * frontend;
-    char * dev_id = v3_cfg_val(cfg, "ID");
+    struct cons_state * state        = NULL;
+    v3_cfg_tree_t     * frontend_cfg = NULL;
+    const char        * frontend_tag = NULL;
+    struct vm_device  * frontend     = NULL;
+    char              * dev_id       = v3_cfg_val(cfg, "ID");
 
     /* read configuration */
     frontend_cfg = v3_cfg_subtree(cfg, "frontend");
+
     if (!frontend_cfg) {
 	PrintError("No frontend specification for curses console.\n");
 	return -1;
     }
 
     frontend_tag = v3_cfg_val(frontend_cfg, "tag");
+
     if (!frontend_tag) {
 	PrintError("No frontend device tag specified for curses console.\n");
 	return -1;
     }
 
     frontend = v3_find_dev(vm, frontend_tag);
+
     if (!frontend) {
 	PrintError("Could not find frontend device %s for curses console.\n",
 		  frontend_tag);
@@ -250,9 +280,9 @@ static int cons_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg)
     }
 
     state->frontend_dev = frontend;
-    state->cols = 80;
-    state->rows = 25;
-    state->framebuf = V3_Malloc(state->cols * state->rows * BYTES_PER_COL);
+    state->cols         = 80;
+    state->rows         = 25;
+    state->framebuf     = V3_Malloc(state->cols * state->rows * BYTES_PER_COL);
 
     if (!state->framebuf) {
 	PrintError("Cannot allocate frame buffer\n");

@@ -92,9 +92,8 @@ struct piix4_internal {
     uint16_t pmsts;     // pm status reg (offset = 0x00, len = 2)
     uint16_t pmen;      // pm enable reg (offset = 0x02, len = 2)
     struct pm_control_reg pmcntrl;   // pm cntrl reg  (offset = 0x04, len = 2)
-    uint32_t pmtmr;     // pm timer reg  (offset = 0x08, len = 3)
+    
 
-    uint64_t init_tsc; 
 };
 
 
@@ -514,7 +513,6 @@ static int reset_piix4_pm(struct piix4_internal * piix4) {
     pm_cfg->smb_rev = 0;
 
 
-    rdtscll(piix4->init_tsc);
 
     return 0;
 }
@@ -704,29 +702,23 @@ static int pm_read_port(struct v3_core_info * core, uint16_t port,
 	    *(uint16_t *)dst = piix4->pmcntrl.value;
 
 	    break;
-	case PIIX4_PM_PMTMR_PORT: {
+	case PIIX4_PM_PMTMR_PORT: { 
+	    // pm timer reg  (offset = 0x08, len = 3)
+	    
 	    // There is a disagreement between the spec and seabios about this port....
 	    // timer frequency = 3579545 HZ
-	    uint64_t cur_tsc = 0;
-	    //uint64_t cpu_cycles_per_sec = core->time_state.guest_cpu_freq * 1000;
-	    // uint64_t tmr_ticks_per_sec = 3579545;
-	    uint64_t cycle_window = 0;
-	    // Multiply by 1000 to increase accuracy by capturing the remainder
-	    // We will divide by the same later
-	    //  uint64_t shifted_ratio = (cpu_cycles_per_sec * 1000) / tmr_ticks_per_sec;
-
+	    uint64_t cpu_cycles_per_sec = core->time_state.guest_cpu_freq * 1000;
+	    uint64_t tmr_ticks_per_sec = 3579545;
+	    uint64_t cycles_per_tick = cpu_cycles_per_sec / tmr_ticks_per_sec;
+	  
 	    if (length != 4) {
 		PrintError("Invalid read length (%d) for PIIX4 PTMR port\n", length);
 		return -1;
 	    }
-	    
-	    rdtscll(cur_tsc);
-	    cycle_window = cur_tsc - piix4->init_tsc; 
-	    cycle_window *= 1000;
-	    
-	    
-
-	    *(uint32_t *)dst = piix4->pmtmr;
+  
+	    *(uint32_t *)dst = v3_get_guest_time(&(core->time_state)) / cycles_per_tick;
+	    *(uint32_t *)dst &= 0x00ffffff;
+	    *(uint32_t *)dst = 0;
 
 	    break;
 	}
@@ -841,6 +833,8 @@ static int setup_pci(struct vm_device * dev) {
     pci_dev->config_header.device_id = 0x7113;  // PIIX4 PM subfunction
     pci_dev->config_header.class = PCI_CLASS_BRIDGE;
     pci_dev->config_header.subclass = PCI_BRIDGE_SUBCLASS_PCI_OTHER; 
+    pci_dev->config_header.revision = PCI_BRIDGE_SUBCLASS_PCI_OTHER; 
+
 
     piix4->pm_subfunction = pm_dev;
 
