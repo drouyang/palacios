@@ -18,7 +18,7 @@ struct palacios_file {
     u64 file_handle;
 
     char * path;
-    int mode;
+    int    mode;
     
     spinlock_t lock;
 
@@ -41,13 +41,21 @@ static int palacios_file_mkdir(const char * pathname, unsigned short perms, int 
 /*     return -1; */
 /* } */
 
-static int palacios_file_mkdir(const char * pathname, unsigned short perms, int recurse) {
+static int 
+palacios_file_mkdir(const char    * pathname,
+		    unsigned short  perms, 
+		    int             recurse) 
+{
     return -1;
 }
 
-static void * palacios_file_open(const char * path, int mode, void * private_data) {
-    struct v3_guest * guest = (struct v3_guest *)private_data;
-    struct palacios_file * pfile = NULL;	
+static void * 
+palacios_file_open(const char * path, 
+		   int          mode, 
+		   void       * private_data) 
+{
+    struct v3_guest      * guest    = (struct v3_guest *)private_data;
+    struct palacios_file * pfile    = NULL;	
     struct vm_file_state * vm_state = NULL;
 
     if (guest != NULL) {
@@ -110,7 +118,9 @@ static void * palacios_file_open(const char * path, int mode, void * private_dat
     return pfile;
 }
 
-static int palacios_file_close(void * file_ptr) {
+static int 
+palacios_file_close(void * file_ptr) 
+{
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
 
     pisces_file_close(pfile->file_handle);
@@ -123,23 +133,71 @@ static int palacios_file_close(void * file_ptr) {
     return 0;
 }
 
-static unsigned long long palacios_file_size(void * file_ptr) {
+static unsigned long long 
+palacios_file_size(void * file_ptr) 
+{
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
 
     return pisces_file_size(pfile->file_handle);
 }
 
-static unsigned long long palacios_file_read(void * file_ptr, void * buffer, unsigned long long length, unsigned long long offset){
+static unsigned long long 
+palacios_file_read(void               * file_ptr, 
+		   void               * buffer, 
+		   unsigned long long   length, 
+		   unsigned long long   offset)
+{
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
    
     return pisces_file_read(pfile->file_handle, buffer, length, offset);
 }
 
 
-static unsigned long long palacios_file_write(void * file_ptr, void * buffer, unsigned long long length, unsigned long long offset) {
+static unsigned long long 
+palacios_file_write(void               * file_ptr, 
+		    void               * buffer,
+		    unsigned long long   length, 
+		    unsigned long long   offset) 
+{
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
 
     return pisces_file_write(pfile->file_handle, buffer, length, offset);
+}
+
+static unsigned long long 
+palacios_file_readv(void               * file_ptr,
+		    v3_iov_t           * iov_arr, 
+		    unsigned int         iov_len,
+		    unsigned long long   offset)
+{
+    struct palacios_file * pfile  = (struct palacios_file *)file_ptr;
+    unsigned long long     length = 0;
+    int i = 0;
+
+    for (i = 0; i < iov_len; i++) {
+	length += pisces_file_read(pfile->file_handle, iov_arr[i].iov_base, iov_arr[i].iov_len, offset + length);
+    }
+
+    return length;
+}
+
+
+static unsigned long long 
+palacios_file_writev(void               * file_ptr,
+		     v3_iov_t           * iov_arr, 
+		     unsigned int         iov_len,
+		     unsigned long long   offset) 
+{
+    struct palacios_file * pfile  = (struct palacios_file *)file_ptr;
+    unsigned long long     length = 0;
+    int i = 0;
+
+    for (i = 0; i < iov_len; i++) {
+	length += pisces_file_write(pfile->file_handle, iov_arr[i].iov_base, iov_arr[i].iov_len, offset + length);
+    }
+
+    return length;
+
 }
 
 
@@ -148,6 +206,8 @@ static struct v3_file_hooks palacios_file_hooks = {
 	.close		= palacios_file_close,
 	.read		= palacios_file_read,
 	.write		= palacios_file_write,
+	.readv          = palacios_file_readv,
+	.writev         = palacios_file_writev,
 	.size		= palacios_file_size,
 	.mkdir          = palacios_file_mkdir,
 };
