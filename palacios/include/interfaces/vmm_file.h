@@ -22,13 +22,12 @@
 #define __VMM_FILE_H__
 
 #include <palacios/vmm.h>
-
+#include <palacios/vmm_types.h>
 
 #ifdef __V3VEE__
 typedef void * v3_file_t;
 
 int v3_mkdir(char * path, uint16_t permissions, uint8_t recursive);
-
 
 v3_file_t v3_file_open(struct v3_vm_info * vm, char * path, uint8_t mode);
 int v3_file_close(v3_file_t file);
@@ -37,23 +36,42 @@ uint64_t v3_file_size(v3_file_t file);
 uint64_t v3_file_read(v3_file_t file, uint8_t * buf, uint64_t len, uint64_t off);
 uint64_t v3_file_write(v3_file_t file, uint8_t * buf, uint64_t len, uint64_t off);
 
+uint64_t v3_file_writev(v3_file_t file, v3_iov_t * iov_arr, uint32_t iov_len, uint64_t off);
+uint64_t v3_file_readv(v3_file_t file, v3_iov_t * iov_arr, uint32_t iov_len, uint64_t off);
+
 #endif
 
 #define FILE_OPEN_MODE_READ	(1 << 0)
-#define FILE_OPEN_MODE_WRITE	(1 << 1)
-#define FILE_OPEN_MODE_CREATE        (1 << 2)
+#define FILE_OPEN_MODE_WRITE    (1 << 1)
+#define FILE_OPEN_MODE_CREATE   (1 << 2)
+
+
+
+
 
 struct v3_file_hooks {
     int (*mkdir)(const char * path, unsigned short perms, int recursive);
 
     void * (*open)(const char * path, int mode, void * host_data);
-    int (*close)(void * fd);
+    int    (*close)(void * fd);
 
     unsigned long long (*size)(void * fd);
 
     // blocking reads and writes
     unsigned long long (*read)(void * fd, void * buffer, unsigned long long length, unsigned long long offset);
     unsigned long long (*write)(void * fd, void * buffer, unsigned long long length, unsigned long long offset);
+    
+
+    unsigned long long (*readv)(void             * fd, 
+				v3_iov_t         * iov_arr, 
+				unsigned int       iov_len, 
+				unsigned long long offset);
+
+
+    unsigned long long (*writev)(void             * fd, 
+				 v3_iov_t         * iov_arr, 
+				 unsigned int       iov_len, 
+				 unsigned long long offset);
 
 };
 

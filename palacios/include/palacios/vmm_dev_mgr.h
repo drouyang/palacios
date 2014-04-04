@@ -171,11 +171,14 @@ struct v3_device_info {
 void v3_print_dev_mgr(struct v3_vm_info * vm);
 
 
+
 struct v3_dev_blk_ops {
     uint64_t (*get_capacity)(void * private_data);
-    // Reads always operate on 2048 byte blocks
+
     int (*read)(uint8_t * buf, uint64_t lba, uint64_t num_bytes, void * private_data);
     int (*write)(uint8_t * buf, uint64_t lba, uint64_t num_bytes, void * private_data);
+    int (*readv)(v3_iov_t * iov_arr, uint32_t iov_len, uint64_t lba, void * private_data);
+    int (*writev)(v3_iov_t * iov_arr, uint32_t iov_len, uint64_t lba, void * private_data);
 };
 
 

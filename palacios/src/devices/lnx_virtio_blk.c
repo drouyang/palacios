@@ -289,10 +289,11 @@ _handle_kick(struct virtio_blk_state * blk_state)
         struct shadow_vring_desc * buf_desc    = NULL;
         struct shadow_vring_desc * status_desc = NULL;
 
-        uint16_t desc_idx = q->avail->ring[idx % QUEUE_SIZE];
-        int      desc_cnt = get_desc_count(q, desc_idx);
-        uint64_t req_len  = 0;
-        uint8_t  status   = BLK_STATUS_OK;
+        uint16_t   desc_idx = q->avail->ring[idx % QUEUE_SIZE];
+        int        desc_cnt = get_desc_count(q, desc_idx);
+        uint64_t   req_len  = 0;
+        uint8_t    status   = BLK_STATUS_OK;
+	v3_iov_t * iov_arr  = NULL;
 
         struct blk_op_hdr hdr;
 	int ret = 0;
@@ -316,50 +317,55 @@ _handle_kick(struct virtio_blk_state * blk_state)
         //        (void *)hdr_desc->addr_hva, hdr.type, (void *)hdr.sector);
 
         desc_idx = hdr_desc->next;
-
+	
+	iov_arr = V3_Malloc(sizeof(v3_iov_t) * (desc_cnt - 2));
+	memset(iov_arr, 0,  sizeof(v3_iov_t) * (desc_cnt - 2));
 
         for (i = 0; i < desc_cnt - 2; i++) {
             buf_desc = &(blk_state->shadow_desc[desc_idx]);
 
+	    iov_arr[i].iov_base = (void *)buf_desc->addr_hva;
+	    iov_arr[i].iov_len  = buf_desc->length;
+
             PrintDebug("Buffer Descriptor (ptr=%p) hva=%p, len=%d, flags=%x, next=%d\n", buf_desc, 
 		       (void *)(buf_desc->addr_hva), buf_desc->length, buf_desc->flags, buf_desc->next);
 
-            if (hdr.type == BLK_IN_REQ) {
-                PrintDebug("Issue read\n");
-
-                ret = blk_state->ops->read((uint8_t *) buf_desc->addr_hva,
-					   hdr.sector * SECTOR_SIZE,
-					   buf_desc->length, 
-					   blk_state->backend_data);
-
-                if (ret < 0) {
-                    PrintError("Read Error\n");
-                    status = BLK_STATUS_ERR;
-                    break;
-                }
-            } else if (hdr.type == BLK_OUT_REQ) {
-                PrintDebug("Issue write\n");
-
-                ret = blk_state->ops->write((uint8_t *) buf_desc->addr_hva,
-					    hdr.sector * SECTOR_SIZE,
-					    buf_desc->length, 
-					    blk_state->backend_data);
-		
-                if (ret < 0) {
-                    PrintError("Write Error\n");
-                    status = BLK_STATUS_ERR;
-                    break;
-                }
-            } else {
-                PrintDebug("Unsupported\n");
-                status = BLK_STATUS_NOT_SUPPORTED;
-                break;
-            }
-
             req_len    += buf_desc->length;
-	    hdr.sector += (buf_desc->length / SECTOR_SIZE);
             desc_idx    = buf_desc->next;
-        }
+
+	}
+
+	if (hdr.type == BLK_IN_REQ) {
+	    PrintDebug("Issue read\n");
+
+	    ret = blk_state->ops->readv(iov_arr,
+					desc_cnt - 2,
+					hdr.sector * SECTOR_SIZE,
+					blk_state->backend_data);
+
+	    if (ret < 0) {
+		PrintError("Read Error\n");
+		status = BLK_STATUS_ERR;
+	    }
+	} else if (hdr.type == BLK_OUT_REQ) {
+	    PrintDebug("Issue write\n");
+
+	    ret = blk_state->ops->writev(iov_arr,
+					 desc_cnt - 2,
+					 hdr.sector * SECTOR_SIZE,
+					 blk_state->backend_data);
+		
+	    if (ret < 0) {
+		PrintError("Write Error\n");
+		status = BLK_STATUS_ERR;
+	    }
+	} else {
+	    PrintDebug("Unsupported\n");
+	    status = BLK_STATUS_NOT_SUPPORTED;
+	}
+
+	V3_Free(iov_arr);
+
 
         status_desc                         = &(blk_state->shadow_desc[desc_idx]);
         req_len                            += status_desc->length;

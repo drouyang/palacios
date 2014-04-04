@@ -10,6 +10,7 @@
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
 #include <linux/module.h>
+#include <linux/uio.h>
 
 #include "palacios.h"
 #include "mm.h"
@@ -25,14 +26,14 @@ struct palacios_file {
     struct file * filp;
 
     char * path;
-    int mode;
+    int    mode;
     
     spinlock_t lock;
 
     struct v3_guest * guest;
     
 
-    struct list_head file_node;
+    struct list_head  file_node;
 };
 
 
@@ -45,10 +46,13 @@ struct vm_file_state {
 
 static int palacios_file_mkdir(const char * pathname, unsigned short perms, int recurse);
 
-static int mkdir_recursive(const char * path, unsigned short perms) {
-    char * tmp_str = NULL;
-    char * dirname_ptr;
-    char * tmp_iter;
+static int
+mkdir_recursive(const char     * path, 
+		unsigned short   perms) 
+{
+    char * tmp_str      = NULL;
+    char * dirname_ptr  = NULL;
+    char * tmp_iter     = NULL;
 
     tmp_str = palacios_kmalloc(strlen(path) + 1, GFP_KERNEL);
     if (!tmp_str) { 
@@ -56,11 +60,11 @@ static int mkdir_recursive(const char * path, unsigned short perms) {
 	return -1;
     }
 
-    memset(tmp_str, 0, strlen(path) + 1);
+    memset( tmp_str, 0,    strlen(path) + 1);
     strncpy(tmp_str, path, strlen(path));
 
     dirname_ptr = tmp_str;
-    tmp_iter = tmp_str;
+    tmp_iter    = tmp_str;
 
     // parse path string, call palacios_file_mkdir recursively.
 
@@ -68,8 +72,8 @@ static int mkdir_recursive(const char * path, unsigned short perms) {
     while (dirname_ptr != NULL) {
 	int done = 0;
 
-	while ((*tmp_iter != '/') && 
-	       (*tmp_iter != '\0')) {
+	while ( (*tmp_iter != '/') && 
+		(*tmp_iter != '\0') ) {
 
 	    if ( (!isprint(*tmp_iter))) {
 		ERROR("Invalid character in path name (%d)\n", *tmp_iter);
@@ -111,7 +115,11 @@ static int mkdir_recursive(const char * path, unsigned short perms) {
     return 0;
 }
 
-static int palacios_file_mkdir(const char * pathname, unsigned short perms, int recurse) {
+static int 
+palacios_file_mkdir(const char     * pathname,
+		    unsigned short   perms, 
+		    int              recurse) 
+{
     /* Welcome to the jungle... */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,41)
@@ -120,8 +128,8 @@ static int palacios_file_mkdir(const char * pathname, unsigned short perms, int 
     struct path tmp_path; 
 #endif
 
-    struct path * path_ptr = NULL;
-    struct dentry * dentry;
+    struct path   * path_ptr = NULL;
+    struct dentry * dentry   = NULL;
     int ret = 0;
 
 
@@ -144,7 +152,7 @@ static int palacios_file_mkdir(const char * pathname, unsigned short perms, int 
 	    return 0;
 	}
 
-	if (path_lookup(pathname, LOOKUP_PARENT | LOOKUP_FOLLOW, &nd) != 0) {
+	if (path_lookup(pathname, LOOKUP_PARENT    | LOOKUP_FOLLOW, &nd) != 0) {
 	    return -1;
 	}
 #endif
@@ -155,7 +163,7 @@ static int palacios_file_mkdir(const char * pathname, unsigned short perms, int 
 	    return -1;
 	}
 	
-	dentry = lookup_create(&nd, 1);
+	dentry   = lookup_create(&nd, 1);
 	path_ptr = &(nd.path);
     }
 #else 
@@ -182,9 +190,13 @@ static int palacios_file_mkdir(const char * pathname, unsigned short perms, int 
 }
 
 
-static void * palacios_file_open(const char * path, int mode, void * private_data) {
-    struct v3_guest * guest = (struct v3_guest *)private_data;
-    struct palacios_file * pfile = NULL;	
+static void * 
+palacios_file_open(const char * path,
+		   int          mode, 
+		   void       * private_data) 
+{
+    struct v3_guest      * guest    = (struct v3_guest *)private_data;
+    struct palacios_file * pfile    = NULL;	
     struct vm_file_state * vm_state = NULL;
 
     if (guest != NULL) {
@@ -250,7 +262,9 @@ static void * palacios_file_open(const char * path, int mode, void * private_dat
     return pfile;
 }
 
-static int palacios_file_close(void * file_ptr) {
+static int 
+palacios_file_close(void * file_ptr) 
+{
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
 
     filp_close(pfile->filp, NULL);
@@ -263,9 +277,11 @@ static int palacios_file_close(void * file_ptr) {
     return 0;
 }
 
-static unsigned long long palacios_file_size(void * file_ptr) {
+static unsigned long long 
+palacios_file_size(void * file_ptr) 
+{
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
-    struct file * filp = pfile->filp;
+    struct file          * filp  = pfile->filp;
     struct kstat s;
     int ret;
     
@@ -283,11 +299,16 @@ static unsigned long long palacios_file_size(void * file_ptr) {
     return s.size;
 }
 
-static unsigned long long palacios_file_read(void * file_ptr, void * buffer, unsigned long long length, unsigned long long offset){
+static unsigned long long 
+palacios_file_read(void               * file_ptr, 
+		   void               * buffer, 
+		   unsigned long long   length, 
+		   unsigned long long   offset)
+{
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
-    struct file * filp = pfile->filp;
-    ssize_t ret;
+    struct file          * filp  = pfile->filp;
     mm_segment_t old_fs;
+    ssize_t      ret = 0;;
 	
     old_fs = get_fs();
     set_fs(get_ds());
@@ -304,11 +325,16 @@ static unsigned long long palacios_file_read(void * file_ptr, void * buffer, uns
 }
 
 
-static unsigned long long palacios_file_write(void * file_ptr, void * buffer, unsigned long long length, unsigned long long offset) {
+static unsigned long long 
+palacios_file_write(void               * file_ptr, 
+		    void               * buffer, 
+		    unsigned long long   length,
+		    unsigned long long   offset) 
+{
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
-    struct file * filp = pfile->filp;
+    struct file          * filp  = pfile->filp;
     mm_segment_t old_fs;
-    ssize_t ret;
+    ssize_t      ret = 0;
 
     old_fs = get_fs();
     set_fs(get_ds());
@@ -326,18 +352,116 @@ static unsigned long long palacios_file_write(void * file_ptr, void * buffer, un
 }
 
 
+
+
+
+static unsigned long long 
+palacios_file_readv(void               * file_ptr, 
+		    v3_iov_t           * iov_arr, 
+		    unsigned int         iov_len,
+		    unsigned long long   offset)
+{
+    struct palacios_file * pfile   = (struct palacios_file *)file_ptr;
+    struct file          * filp    = pfile->filp;
+    struct iovec         * lnx_iov = NULL;        
+
+    u64          total_len = 0;
+    mm_segment_t old_fs;
+    ssize_t      ret = 0;
+    int          i   = 0;
+
+    lnx_iov = palacios_kmalloc(sizeof(struct iovec) * iov_len, GFP_KERNEL);
+
+    if (!lnx_iov) {
+	return 0;
+    }
+    
+    for (i = 0; i < iov_len; i++) {
+	lnx_iov[i].iov_base = iov_arr[i].iov_base;
+	lnx_iov[i].iov_len  = iov_arr[i].iov_len;
+	total_len          += iov_arr[i].iov_len;
+    }
+
+    old_fs = get_fs();
+    set_fs(get_ds());
+	
+    ret = vfs_readv(filp, lnx_iov, iov_len, &offset);
+	
+    set_fs(old_fs);
+
+    palacios_kfree(lnx_iov);
+	
+    if (ret <= 0) {
+	ERROR("vfs_readv of %p for %llu bytes at offset %llu failed (ret=%ld)\n", filp, total_len, offset, ret);
+    }
+	
+    return ret;
+}
+
+
+static unsigned long long 
+palacios_file_writev(void               * file_ptr, 
+		     v3_iov_t           * iov_arr, 
+		     unsigned int         iov_len,
+		     unsigned long long   offset) 
+{
+    struct palacios_file * pfile   = (struct palacios_file *)file_ptr;
+    struct file          * filp    = pfile->filp;
+    struct iovec         * lnx_iov = NULL;       
+
+    u64          total_len = 0; 
+    mm_segment_t old_fs;
+    ssize_t      ret = 0;
+    int          i   = 0;
+
+    lnx_iov = palacios_kmalloc(sizeof(struct iovec) * iov_len, GFP_KERNEL);
+
+    if (!lnx_iov) {
+	return 0;
+    }
+    
+    for (i = 0; i < iov_len; i++) {
+	lnx_iov[i].iov_base = iov_arr[i].iov_base;
+	lnx_iov[i].iov_len  = iov_arr[i].iov_len;
+	total_len          += iov_arr[i].iov_len;
+    }
+    
+
+    old_fs = get_fs();
+    set_fs(get_ds());
+
+    ret = vfs_writev(filp, lnx_iov, iov_len, &offset);
+	
+    set_fs(old_fs);
+
+    palacios_kfree(lnx_iov);
+
+    if (ret <= 0) {
+	ERROR("sys_write for %llu bytes at offset %llu failed (ret=%ld)\n", total_len, offset, ret);
+    }
+	
+    return ret;
+}
+
+
+
+
 static struct v3_file_hooks palacios_file_hooks = {
+	.mkdir          = palacios_file_mkdir,
+	.size		= palacios_file_size,
 	.open		= palacios_file_open,
 	.close		= palacios_file_close,
 	.read		= palacios_file_read,
 	.write		= palacios_file_write,
-	.size		= palacios_file_size,
-	.mkdir          = palacios_file_mkdir,
+	.readv          = palacios_file_readv,
+	.writev         = palacios_file_writev
 };
 
 
 
-static int file_init( void ) {
+static int
+file_init( void ) 
+{
     INIT_LIST_HEAD(&(global_files));
 
     V3_Init_File(&palacios_file_hooks);
@@ -346,9 +470,11 @@ static int file_init( void ) {
 }
 
 
-static int file_deinit( void ) {
+static int 
+file_deinit( void )
+{
     struct palacios_file * pfile = NULL;
-    struct palacios_file * tmp = NULL;
+    struct palacios_file * tmp   = NULL;
     
     list_for_each_entry_safe(pfile, tmp, &(global_files), file_node) { 
         filp_close(pfile->filp, NULL);
@@ -360,7 +486,10 @@ static int file_deinit( void ) {
     return 0;
 }
 
-static int guest_file_init(struct v3_guest * guest, void ** vm_data) {
+static int 
+guest_file_init(struct v3_guest  * guest, 
+		void            ** vm_data) 
+{
     struct vm_file_state * state = palacios_kmalloc(sizeof(struct vm_file_state), GFP_KERNEL);
 
     if (!state) {
@@ -378,10 +507,13 @@ static int guest_file_init(struct v3_guest * guest, void ** vm_data) {
 }
 
 
-static int guest_file_deinit(struct v3_guest * guest, void * vm_data) {
+static int 
+guest_file_deinit(struct v3_guest * guest, 
+		  void            * vm_data) 
+{
     struct vm_file_state * state = (struct vm_file_state *)vm_data;
     struct palacios_file * pfile = NULL;
-    struct palacios_file * tmp = NULL;
+    struct palacios_file * tmp   = NULL;
     
     list_for_each_entry_safe(pfile, tmp, &(state->open_files), file_node) { 
         filp_close(pfile->filp, NULL);
@@ -396,10 +528,10 @@ static int guest_file_deinit(struct v3_guest * guest, void * vm_data) {
 
 
 static struct linux_ext file_ext = {
-    .name = "FILE_INTERFACE",
-    .init = file_init, 
-    .deinit = file_deinit,
-    .guest_init = guest_file_init,
+    .name         = "FILE_INTERFACE",
+    .init         = file_init, 
+    .deinit       = file_deinit,
+    .guest_init   = guest_file_init,
     .guest_deinit = guest_file_deinit
 };
 

@@ -74,4 +74,12 @@ typedef ulong_t addr_t;
 typedef ullong_t v3_reg_t;
 #endif /* ! __V3VEE__ */
 
+
+typedef struct {
+    void   * iov_base;
+    uint64_t iov_len;
+} v3_iov_t;
+
+
+
 #endif

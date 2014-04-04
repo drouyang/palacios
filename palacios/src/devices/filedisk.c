@@ -141,6 +141,69 @@ write(uint8_t   * buf,
 }
 
 
+static int
+readv(v3_iov_t * iov_arr, 
+      uint32_t   iov_len,
+      uint64_t   lba, 
+      void     * private_data)
+{
+    struct disk_state * disk = (struct disk_state *)private_data;
+    uint64_t total_len       = 0;
+    uint64_t bytes_read      = 0;
+    int      i = 0;
+
+    for (i = 0; i < iov_len; i++) {
+	total_len += iov_arr[i].iov_len;
+    }
+		 
+    if (total_len > disk->capacity) {
+	PrintError("Out of bounds readv: lba=%llu, num_bytes=%llu, capacity=%llu\n",
+		   lba, total_len, disk->capacity);
+	return -1;	
+    }
+
+    bytes_read = v3_file_readv(disk->fd, iov_arr, iov_len, lba);
+
+    if (bytes_read != total_len) {
+	return -1;
+    }
+
+    return 0;
+}
+
+
+static int 
+writev(v3_iov_t * iov_arr, 
+       uint32_t   iov_len, 
+       uint64_t   lba, 
+       void     * private_data)
+{
+    struct disk_state * disk = (struct disk_state *)private_data;
+    uint64_t total_len       = 0;
+    uint64_t bytes_written   = 0;
+    int      i = 0;
+
+    for (i = 0; i < iov_len; i++) {
+	total_len += iov_arr[i].iov_len;
+    }
+		 
+    if (total_len > disk->capacity) {
+	PrintError("Out of bounds readv: lba=%llu, num_bytes=%llu, capacity=%llu\n",
+		   lba, total_len, disk->capacity);
+	return -1;	
+    }
+
+    bytes_written = v3_file_writev(disk->fd, iov_arr, iov_len, lba);
+
+    if (bytes_written != total_len) {
+	return -1;
+    }
+
+    return 0;
+}
+
+
+
 static uint64_t 
 get_capacity(void * private_data) 
 {
@@ -154,6 +217,8 @@ get_capacity(void * private_data)
 static struct v3_dev_blk_ops blk_ops = {
     .read         = read, 
     .write        = write,
+    .readv        = readv,
+    .writev       = writev,
     .get_capacity = get_capacity,
 };
 
