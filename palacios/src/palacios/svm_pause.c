@@ -24,9 +24,11 @@
 #include <palacios/vmm_intr.h>
 
 
-int v3_handle_svm_pause(struct v3_core_info * core) {
+int 
+v3_handle_svm_pause(struct v3_core_info * core)
+{
     // handled as a nop
-    core->rip+=2;
+    core->rip += 2;
 
     return 0;
 }

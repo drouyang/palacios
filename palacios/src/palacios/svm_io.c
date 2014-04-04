@@ -30,12 +30,18 @@
 #endif
 
 
-static int update_map(struct v3_vm_info * vm, uint16_t port, int hook_read, int hook_write) {
-    uchar_t * bitmap = (uint8_t *)(vm->io_map.arch_data);;
-    int major = port / 8;
-    int minor = port % 8;
+static int 
+update_map(struct v3_vm_info * vm, 
+	   uint16_t            port, 
+	   int                 hook_read,
+	   int                 hook_write) 
+{
+    uint8_t * bitmap = (uint8_t *)(vm->io_map.arch_data);
+    int       major  = port / 8;
+    int       minor  = port % 8;
 
-    if ((hook_read == 0) && (hook_write == 0)) {
+    if ( (hook_read  == 0) && 
+	 (hook_write == 0) ) {
 	*(bitmap + major) &= ~(0x1 << minor);
     } else {
 	*(bitmap + major) |= (0x1 << minor);
@@ -45,29 +51,31 @@ static int update_map(struct v3_vm_info * vm, uint16_t port, int hook_read, int 
 }
 
 
-int v3_init_svm_io_map(struct v3_vm_info * vm) {
-    void *temp;
+int 
+v3_init_svm_io_map(struct v3_vm_info * vm) 
+{
+    addr_t map_page_pa = 0;;
 
     vm->io_map.update_map = update_map;
-
-    temp = V3_AllocPages(3);
+    map_page_pa           = (addr_t)V3_AllocPages(3);
     
-    if (!temp) { 
+    if (!map_page_pa) { 
 	PrintError("Cannot allocate io bitmap\n");
 	return -1;
     }
 
-    vm->io_map.arch_data = V3_VAddr(temp);
+    vm->io_map.arch_data = V3_VAddr((void *)map_page_pa);
 
     memset(vm->io_map.arch_data, 0xff, PAGE_SIZE_4KB * 3);
-
 
     v3_refresh_io_map(vm);
 
     return 0;
 }
 
-int v3_deinit_svm_io_map(struct v3_vm_info * vm) {
+int 
+v3_deinit_svm_io_map(struct v3_vm_info * vm) 
+{
     V3_FreePages(V3_PAddr(vm->io_map.arch_data), 3);
     return 0;
 }
@@ -75,9 +83,12 @@ int v3_deinit_svm_io_map(struct v3_vm_info * vm) {
 
 
 // This should package up an IO request and call vmm_handle_io
-int v3_handle_svm_io_in(struct v3_core_info * core, struct svm_io_info * io_info) {
-    struct v3_io_hook * hook = v3_get_io_hook(core->vm_info, io_info->port);
-    int read_size = 0;
+int 
+v3_handle_svm_io_in(struct v3_core_info * core,
+		    struct svm_io_info  * io_info) 
+{
+    struct v3_io_hook * hook      = v3_get_io_hook(core->vm_info, io_info->port);
+    int                 read_size = 0;
 
     if (io_info->sz8) { 
 	read_size = 1;
@@ -113,21 +124,23 @@ int v3_handle_svm_io_in(struct v3_core_info * core, struct svm_io_info * io_info
 /* We might not handle wrap around of the RDI register correctly...
  * In that if we do wrap around the effect will manifest in the higher bits of the register
  */
-int v3_handle_svm_io_ins(struct v3_core_info * core, struct svm_io_info * io_info) {
-    struct v3_io_hook * hook = v3_get_io_hook(core->vm_info, io_info->port);
-    int read_size = 0;
-    addr_t dst_addr = 0;
-    uint_t rep_num = 1;
-    ullong_t mask = 0;
-    v3_seg_type_t theseg = V3_SEG_ES; // default is ES
-    addr_t inst_ptr = 0;
+int 
+v3_handle_svm_io_ins(struct v3_core_info * core, 
+		     struct svm_io_info  * io_info) 
+{
+    struct v3_io_hook * hook   = v3_get_io_hook(core->vm_info, io_info->port);
+    struct rflags     * flags  = (struct rflags *)&(core->ctrl_regs.rflags);  
+    v3_seg_type_t       theseg = V3_SEG_ES; // default is ES
+    addr_t    dst_addr  = 0;
+    uint_t    rep_num   = 1;
+    uint64_t  mask      = 0;
+    addr_t    inst_ptr  = 0;
+    int       read_size = 0;
 
-
-    // This is kind of hacky...
-    // direction can equal either 1 or -1
-    // We will multiply the final added offset by this value to go the correct direction
-    int direction = 1;
-    struct rflags * flags = (struct rflags *)&(core->ctrl_regs.rflags);  
+    int       direction = 1;    /* This is kind of hacky...
+				 * direction can equal either 1 or -1
+				 * We will multiply the final added offset by this value to go the correct direction
+				 */
 
     if (flags->df) {
 	direction = -1;
@@ -181,11 +194,11 @@ int v3_handle_svm_io_ins(struct v3_core_info * core, struct svm_io_info * io_inf
 
   
     if (io_info->addr16) {
-	mask = 0xffff;
+	mask = 0x000000000000ffffULL;
     } else if (io_info->addr32) {
-	mask = 0xffffffff;
+	mask = 0x00000000ffffffffULL;
     } else if (io_info->addr64) {
-	mask = 0xffffffffffffffffLL;
+	mask = 0xffffffffffffffffULL;
     } else {
 	// This value should be set depending on the host register size...
 	mask = get_gpr_mask(core);
@@ -205,6 +218,7 @@ int v3_handle_svm_io_ins(struct v3_core_info * core, struct svm_io_info * io_inf
 
     while (rep_num > 0) {
 	addr_t host_addr;
+
 	dst_addr = get_addr_linear(core, (core->vm_regs.rdi & mask), theseg);
     
 	//	PrintDebug("Writing 0x%p\n", (void *)dst_addr);
@@ -217,10 +231,10 @@ int v3_handle_svm_io_ins(struct v3_core_info * core, struct svm_io_info * io_inf
 
 	if (hook == NULL) {
 	    PrintDebug("INS operation on unhooked IO port 0x%x - returning zeros\n", io_info->port);
-	    memset((char*)host_addr, 0, read_size);
+	    memset((uint8_t *)host_addr, 0, read_size);
 	    
 	} else {
-	    if (hook->read(core, io_info->port, (char *)host_addr, read_size, hook->priv_data) != read_size) {
+	    if (hook->read(core, io_info->port, (uint8_t *)host_addr, read_size, hook->priv_data) != read_size) {
 		// not sure how we handle errors.....
 		PrintError("Read Failure for ins on port 0x%x\n", io_info->port);
 		return -1;
@@ -239,9 +253,12 @@ int v3_handle_svm_io_ins(struct v3_core_info * core, struct svm_io_info * io_inf
     return 0;
 }
 
-int v3_handle_svm_io_out(struct v3_core_info * core, struct svm_io_info * io_info) {
-    struct v3_io_hook * hook = v3_get_io_hook(core->vm_info, io_info->port);
-    int write_size = 0;
+int 
+v3_handle_svm_io_out(struct v3_core_info * core,
+		     struct svm_io_info  * io_info) 
+{
+    struct v3_io_hook * hook       = v3_get_io_hook(core->vm_info, io_info->port);
+    int                 write_size = 0;
 
     if (io_info->sz8) { 
 	write_size = 1;
@@ -272,22 +289,25 @@ int v3_handle_svm_io_out(struct v3_core_info * core, struct svm_io_info * io_inf
  * In that if we do wrap around the effect will manifest in the higher bits of the register
  */
 
-int v3_handle_svm_io_outs(struct v3_core_info * core, struct svm_io_info * io_info) {
+int 
+v3_handle_svm_io_outs(struct v3_core_info * core, 
+		      struct svm_io_info  * io_info)
+{
  
-    struct v3_io_hook * hook = v3_get_io_hook(core->vm_info, io_info->port);
-    int write_size = 0;
-    addr_t dst_addr = 0;
-    uint_t rep_num = 1;
-    ullong_t mask = 0;
-    addr_t inst_ptr;
-    v3_seg_type_t theseg = V3_SEG_DS; // default is DS
+    struct v3_io_hook * hook   = v3_get_io_hook(core->vm_info, io_info->port);
+    struct rflags     * flags  = (struct rflags *)&(core->ctrl_regs.rflags); 
+    v3_seg_type_t       theseg = V3_SEG_DS; // default is DS
+    addr_t   dst_addr   = 0;
+    uint_t   rep_num    = 1;
+    uint64_t mask       = 0;
+    addr_t   inst_ptr   = 0;
+    int      write_size = 0;
 
-    // This is kind of hacky...
-    // direction can equal either 1 or -1
-    // We will multiply the final added offset by this value to go the correct direction
-    int direction = 1;
-    struct rflags * flags = (struct rflags *)&(core->ctrl_regs.rflags);  
-
+    int      direction  = 1;    /* This is kind of hacky...
+				 * direction can equal either 1 or -1
+				 * We will multiply the final added offset by this value to go the correct direction
+				 */
+ 
     if (flags->df) {
 	direction = -1;
     }
@@ -304,11 +324,11 @@ int v3_handle_svm_io_outs(struct v3_core_info * core, struct svm_io_info * io_in
 
 
     if (io_info->addr16) {
-	mask = 0xffff;
+	mask = 0x000000000000ffffULL;
     } else if (io_info->addr32) {
-	mask = 0xffffffff;
+	mask = 0x00000000ffffffffULL;
     } else if (io_info->addr64) {
-	mask = 0xffffffffffffffffLL;
+	mask = 0xffffffffffffffffULL;
     } else {
 	// This value should be set depending on the host register size...
 	mask = get_gpr_mask(core);

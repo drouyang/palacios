@@ -91,7 +91,8 @@ v3_handle_cr0_write(struct v3_core_info * core)
 // The hardware does a format check to make sure the high bits are zero
 // Because of this we can ignore the high 32 bits here
 static int 
-handle_mov_to_cr0(struct v3_core_info * core, struct x86_instr * dec_instr) 
+handle_mov_to_cr0(struct v3_core_info * core,
+		  struct x86_instr    * dec_instr) 
 {
     // 32 bit registers
     struct cr0_32 * shadow_cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
@@ -185,7 +186,8 @@ handle_mov_to_cr0(struct v3_core_info * core, struct x86_instr * dec_instr)
 
 
 static int 
-handle_clts(struct v3_core_info * core, struct x86_instr * dec_instr) 
+handle_clts(struct v3_core_info * core, 
+	    struct x86_instr    * dec_instr) 
 {
     // CLTS
 
@@ -208,7 +210,8 @@ handle_clts(struct v3_core_info * core, struct x86_instr * dec_instr)
 
 
 static int 
-handle_lmsw(struct v3_core_info * core, struct x86_instr * dec_instr) 
+handle_lmsw(struct v3_core_info * core,
+	    struct x86_instr    * dec_instr) 
 {
     struct cr0_real * real_cr0  = (struct cr0_real *)&(core->ctrl_regs.cr0);
     // XED is a mess, and basically reverses the operand order for an LMSW
@@ -582,7 +585,10 @@ v3_handle_cr4_write(struct v3_core_info * core)
 
 
 int 
-v3_handle_efer_read(struct v3_core_info * core, uint_t msr, struct v3_msr * dst, void * priv_data) 
+v3_handle_efer_read(struct v3_core_info * core, 
+		    uint_t                msr, 
+		    struct v3_msr       * dst,
+		    void                * priv_data) 
 {
     PrintDebug("EFER Read (Val=%p)\n", (void *)core->shdw_pg_state.guest_efer.value);
     
@@ -593,7 +599,10 @@ v3_handle_efer_read(struct v3_core_info * core, uint_t msr, struct v3_msr * dst,
 
 
 int 
-v3_handle_efer_write(struct v3_core_info * core, uint_t msr, struct v3_msr src, void * priv_data) 
+v3_handle_efer_write(struct v3_core_info * core, 
+		     uint_t                msr, 
+		     struct v3_msr         src, 
+		     void                * priv_data) 
 {
     struct v3_msr  * vm_efer     = &(core->shdw_pg_state.guest_efer);
     struct efer_64 * hw_efer     = (struct efer_64 *)&(core->ctrl_regs.efer);
@@ -641,7 +650,10 @@ v3_handle_efer_write(struct v3_core_info * core, uint_t msr, struct v3_msr src, 
 }
 
 int 
-v3_handle_vm_cr_read(struct v3_core_info * core, uint_t msr, struct v3_msr * dst, void * priv_data) 
+v3_handle_vm_cr_read(struct v3_core_info * core, 
+		     uint_t                msr,
+		     struct v3_msr       * dst, 
+		     void                * priv_data) 
 {
     /* tell the guest that the BIOS disabled SVM, that way it doesn't get 
      * confused by the fact that CPUID reports SVM as available but it still
@@ -653,7 +665,10 @@ v3_handle_vm_cr_read(struct v3_core_info * core, uint_t msr, struct v3_msr * dst
 }
 
 int 
-v3_handle_vm_cr_write(struct v3_core_info * core, uint_t msr, struct v3_msr src, void * priv_data) 
+v3_handle_vm_cr_write(struct v3_core_info * core, 
+		      uint_t                msr, 
+		      struct v3_msr         src,
+		      void                * priv_data) 
 {
     PrintDebug("VM_CR Write Value=%p\n", (void *)src.value);
 

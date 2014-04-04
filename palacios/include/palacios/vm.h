@@ -213,8 +213,8 @@ v3_mem_mode_t v3_get_vm_mem_mode(struct v3_core_info * core);
 
 int v3_is_core_bsp(struct v3_core_info * core);
 
-const uchar_t * v3_cpu_mode_to_str(v3_cpu_mode_t mode);
-const uchar_t * v3_mem_mode_to_str(v3_mem_mode_t mode);
+const char * v3_cpu_mode_to_str(v3_cpu_mode_t mode);
+const char * v3_mem_mode_to_str(v3_mem_mode_t mode);
 
 
 

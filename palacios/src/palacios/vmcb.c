@@ -24,7 +24,9 @@
 
 
 void 
-v3_set_vmcb_segment(struct vmcb_selector * vmcb_seg, struct v3_segment * seg, v3_seg_type_t seg_type) 
+v3_set_vmcb_segment(struct vmcb_selector * vmcb_seg,
+		    struct v3_segment    * seg,
+		    v3_seg_type_t          seg_type) 
 {
     vmcb_seg->selector           = seg->selector;
     vmcb_seg->limit              = seg->limit;
@@ -44,7 +46,9 @@ v3_set_vmcb_segment(struct vmcb_selector * vmcb_seg, struct v3_segment * seg, v3
 
 
 void 
-v3_get_vmcb_segment(struct vmcb_selector * vmcb_seg, struct v3_segment * seg, v3_seg_type_t seg_type) 
+v3_get_vmcb_segment(struct vmcb_selector * vmcb_seg, 
+		    struct v3_segment    * seg, 
+		    v3_seg_type_t          seg_type) 
 {
     seg->selector    = vmcb_seg->selector;
     seg->limit       = vmcb_seg->limit;
@@ -75,7 +79,8 @@ v3_get_vmcb_segment(struct vmcb_selector * vmcb_seg, struct v3_segment * seg, v3
 
 
 void 
-v3_set_vmcb_segments(vmcb_t * vmcb, struct v3_segments * segs) 
+v3_set_vmcb_segments(vmcb_t             * vmcb,
+		     struct v3_segments * segs) 
 {
     vmcb_saved_state_t * guest_area = GET_VMCB_SAVE_STATE_AREA(vmcb);
 
@@ -93,7 +98,8 @@ v3_set_vmcb_segments(vmcb_t * vmcb, struct v3_segments * segs)
 
 
 void 
-v3_get_vmcb_segments(vmcb_t * vmcb, struct v3_segments * segs) 
+v3_get_vmcb_segments(vmcb_t             * vmcb,
+		     struct v3_segments * segs) 
 {
     vmcb_saved_state_t * guest_area = GET_VMCB_SAVE_STATE_AREA(vmcb);
 
@@ -219,20 +225,20 @@ v3_print_vmcb(vmcb_t * vmcb)
 
     /* Guest Controls */
     V3_Print("Guest Control Bitmap: %x (at 0x%p)\n", 
-	       *(uint_t *)&(ctrl_area->guest_ctrl), 
-	        (void   *)&(ctrl_area->guest_ctrl));
-    V3_Print("\tV_TPR:               %d\n", ctrl_area->guest_ctrl.V_TPR);
-    V3_Print("\tV_IRQ:               %d\n", ctrl_area->guest_ctrl.V_IRQ);
-    V3_Print("\tV_INTR_PRIO:         %d\n", ctrl_area->guest_ctrl.V_INTR_PRIO);
-    V3_Print("\tV_IGN_TPR:           %d\n", ctrl_area->guest_ctrl.V_IGN_TPR);
-    V3_Print("\tV_INTR_MASKING:      %d\n", ctrl_area->guest_ctrl.V_INTR_MASKING);
-    V3_Print("\tV_INTR_VECTOR:       %d\n", ctrl_area->guest_ctrl.V_INTR_VECTOR);
+	      *(uint_t *)&(ctrl_area->guest_ctrl), 
+	       (void   *)&(ctrl_area->guest_ctrl));
+    V3_Print("\tV_TPR:               %d\n",   ctrl_area->guest_ctrl.V_TPR);
+    V3_Print("\tV_IRQ:               %d\n",   ctrl_area->guest_ctrl.V_IRQ);
+    V3_Print("\tV_INTR_PRIO:         %d\n",   ctrl_area->guest_ctrl.V_INTR_PRIO);
+    V3_Print("\tV_IGN_TPR:           %d\n",   ctrl_area->guest_ctrl.V_IGN_TPR);
+    V3_Print("\tV_INTR_MASKING:      %d\n",   ctrl_area->guest_ctrl.V_INTR_MASKING);
+    V3_Print("\tV_INTR_VECTOR:       %d\n",   ctrl_area->guest_ctrl.V_INTR_VECTOR);
 
     /* Exit Information */
-    V3_Print("Interrupt_shadow:    %d\n",   ctrl_area->interrupt_shadow);
-    V3_Print("exit_code:           %llu\n", ctrl_area->exit_code);
-    V3_Print("exit_info1:          %llu\n", ctrl_area->exit_info1);
-    V3_Print("exit_info2:          %llu\n", ctrl_area->exit_info2);
+    V3_Print("Interrupt_shadow:      %d\n",   ctrl_area->interrupt_shadow);
+    V3_Print("exit_code:             %llu\n", ctrl_area->exit_code);
+    V3_Print("exit_info1:            %llu\n", ctrl_area->exit_info1);
+    V3_Print("exit_info2:            %llu\n", ctrl_area->exit_info2);
 
 
     /* Interrupt Injection State */

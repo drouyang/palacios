@@ -91,10 +91,14 @@ v3_init_cpuid_map(struct v3_vm_info * vm)
 }
 
 
-void fixup_cpuid(struct v3_core_info * core, 
-		 uint32_t cpuid, 
-		 uint32_t * eax, uint32_t * ebx, 
-		 uint32_t * ecx, uint32_t * edx) {
+void 
+fixup_cpuid(struct v3_core_info * core, 
+	    uint32_t              cpuid, 
+	    uint32_t            * eax, 
+	    uint32_t            * ebx, 
+	    uint32_t            * ecx,
+	    uint32_t            * edx) 
+{
 
 
     switch (cpuid) {
@@ -102,7 +106,7 @@ void fixup_cpuid(struct v3_core_info * core,
 
 	    // Update OSXSAVE enabled flag based on CR4 OSXSAVE value
 	    if (core->ctrl_regs.cr4 & 0x40000) {
-		*ecx |= (1 << 27);
+		*ecx |=  (1 << 27);
 	    } else {
 		*ecx &= ~(1 << 27);
 	    }
@@ -142,7 +146,8 @@ v3_deinit_cpuid_map(struct v3_vm_info * vm)
 
 
 static inline struct v3_cpuid_hook * 
-__insert_cpuid_hook(struct v3_vm_info * vm, struct v3_cpuid_hook * hook) 
+__insert_cpuid_hook(struct v3_vm_info    * vm, 
+		    struct v3_cpuid_hook * hook) 
 {
   struct rb_node      ** p        = &(vm->cpuid_map.map.rb_node);
   struct rb_node       * parent   = NULL;
@@ -168,7 +173,8 @@ __insert_cpuid_hook(struct v3_vm_info * vm, struct v3_cpuid_hook * hook)
 
 
 static inline struct v3_cpuid_hook * 
-insert_cpuid_hook(struct v3_vm_info * vm, struct v3_cpuid_hook * hook) 
+insert_cpuid_hook(struct v3_vm_info    * vm, 
+		  struct v3_cpuid_hook * hook) 
 {
   struct v3_cpuid_hook * ret;
 
@@ -184,7 +190,8 @@ insert_cpuid_hook(struct v3_vm_info * vm, struct v3_cpuid_hook * hook)
 
 
 static struct v3_cpuid_hook * 
-get_cpuid_hook(struct v3_vm_info * vm, uint32_t cpuid) 
+get_cpuid_hook(struct v3_vm_info * vm, 
+	       uint32_t            cpuid) 
 {
   struct rb_node       * n    = vm->cpuid_map.map.rb_node;
   struct v3_cpuid_hook * hook = NULL;
@@ -207,10 +214,13 @@ get_cpuid_hook(struct v3_vm_info * vm, uint32_t cpuid)
 
 
 static int 
-mask_hook(struct v3_core_info * core, uint32_t cpuid, 
-	  uint32_t * eax, uint32_t * ebx, 
-	  uint32_t * ecx, uint32_t * edx,
-	  void * priv_data) 
+mask_hook(struct v3_core_info * core, 
+	  uint32_t              cpuid, 
+	  uint32_t            * eax, 
+	  uint32_t            * ebx, 
+	  uint32_t            * ecx, 
+	  uint32_t            * edx,
+	  void                * priv_data) 
 {
     struct masked_cpuid * mask = (struct masked_cpuid *)priv_data;
 
@@ -241,17 +251,22 @@ mask_hook(struct v3_core_info * core, uint32_t cpuid,
  * The values of the reserved bits are  returned to the guest, when it reads the cpuid
  */ 
 int 
-v3_cpuid_add_fields(struct v3_vm_info * vm, uint32_t cpuid, 
-		    uint32_t rax_mask, uint32_t rax,
-		    uint32_t rbx_mask, uint32_t rbx, 
-		    uint32_t rcx_mask, uint32_t rcx, 
-		    uint32_t rdx_mask, uint32_t rdx) 
+v3_cpuid_add_fields(struct v3_vm_info * vm, 
+		    uint32_t            cpuid, 
+		    uint32_t            rax_mask, 
+		    uint32_t            rax,
+		    uint32_t            rbx_mask, 
+		    uint32_t            rbx, 
+		    uint32_t            rcx_mask, 
+		    uint32_t            rcx, 
+		    uint32_t            rdx_mask, 
+		    uint32_t            rdx) 
 {
     struct v3_cpuid_hook * hook = get_cpuid_hook(vm, cpuid);
 
 
-    if ((~rax_mask & rax) || (~rbx_mask & rbx) ||
-	(~rcx_mask & rcx) || (~rdx_mask & rdx)) {
+    if ( (~rax_mask & rax) || (~rbx_mask & rbx) ||
+	 (~rcx_mask & rcx) || (~rdx_mask & rdx) ) {
 	PrintError("Invalid cpuid reg value (mask overrun)\n");
 	return -1;
     }
@@ -320,7 +335,8 @@ v3_cpuid_add_fields(struct v3_vm_info * vm, uint32_t cpuid,
 }
 
 int 
-v3_unhook_cpuid(struct v3_vm_info * vm, uint32_t cpuid) 
+v3_unhook_cpuid(struct v3_vm_info * vm,
+		uint32_t            cpuid) 
 {
     struct v3_cpuid_hook * hook = get_cpuid_hook(vm, cpuid);
 
@@ -337,12 +353,13 @@ v3_unhook_cpuid(struct v3_vm_info * vm, uint32_t cpuid)
 }
 
 int 
-v3_hook_cpuid(struct v3_vm_info * vm, uint32_t cpuid, 
+v3_hook_cpuid(struct v3_vm_info * vm, 
+	      uint32_t            cpuid, 
 	      int (*hook_fn)(struct v3_core_info * core, uint32_t cpuid, \
 			     uint32_t * eax, uint32_t * ebx,		\
 			     uint32_t * ecx, uint32_t * edx,		\
 			     void * private_data), 
-	      void * private_data) 
+	      void              * private_data) 
 {
     struct v3_cpuid_hook * hook = NULL;
 

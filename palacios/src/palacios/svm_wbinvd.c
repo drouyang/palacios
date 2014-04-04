@@ -28,10 +28,13 @@
 // should raise #GP if CPL is not zero
 // Otherwise execute
 
-int v3_handle_svm_wbinvd(struct v3_core_info * core) {
+int 
+v3_handle_svm_wbinvd(struct v3_core_info * core) 
+{
 
     if (core->cpl != 0) { 
 	PrintDebug("WBINVD: cpl != 0, injecting GPF\n");
+
 	v3_raise_exception(core, GPF_EXCEPTION);
     } else {
 	core->rip += 2;

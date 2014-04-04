@@ -126,7 +126,10 @@ v3_add_cpu(int cpu_id)
 
 
 void 
-Init_V3(struct v3_os_hooks * hooks, char * cpu_mask, int num_cpus, char * options) 
+Init_V3(struct v3_os_hooks * hooks, 
+	char               * cpu_mask, 
+	int                  num_cpus,
+	char               * options) 
 {
     int minor = 0;
     int major = 0;
@@ -223,7 +226,9 @@ v3_get_cpu_type(int cpu_id)
 
 
 struct v3_vm_info * 
-v3_create_vm(void * cfg, void * priv_data, char * name) 
+v3_create_vm(void * cfg, 
+	     void * priv_data, 
+	     char * name) 
 {
     struct v3_vm_info * vm = v3_config_guest(cfg, priv_data);
 
@@ -320,7 +325,8 @@ start_core(void * p)
 
 
 int 
-v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask)
+v3_start_vm(struct v3_vm_info * vm,
+	    unsigned int        cpu_mask)
 {
     uint8_t * core_mask   = (uint8_t *)&cpu_mask; // This is to make future expansion easier
     uint32_t  avail_cores = 0;
@@ -336,7 +342,7 @@ v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask)
     /// CHECK IF WE ARE MULTICORE ENABLED....
 
     V3_Print("V3 --  Starting VM (%u cores)\n", vm->num_cores);
-    V3_Print("CORE 0 RIP=%p\n", (void *)(addr_t)(vm->cores[0].rip));
+    V3_Print("CORE 0 RIP=%p\n",                 (void *)(addr_t)(vm->cores[0].rip));
 
 
     // Check that enough cores are present in the mask to handle vcores
@@ -433,7 +439,8 @@ v3_start_vm(struct v3_vm_info * vm, unsigned int cpu_mask)
 
 
 int 
-v3_reset_vm_core(struct v3_core_info * core, addr_t rip) 
+v3_reset_vm_core(struct v3_core_info * core, 
+		 addr_t                rip) 
 {
     
     switch (v3_cpu_types[core->pcpu_id]) {
@@ -463,11 +470,14 @@ v3_reset_vm_core(struct v3_core_info * core, addr_t rip)
 
 /* move a virtual core to different physical core */
 int 
-v3_move_vm_core(struct v3_vm_info * vm, int vcore_id, int target_cpu) 
+v3_move_vm_core(struct v3_vm_info * vm,
+		int                 vcore_id, 
+		int                 target_cpu) 
 {
     struct v3_core_info * core = NULL;
 
-    if ((vcore_id < 0) || (vcore_id >= vm->num_cores)) {
+    if ( (vcore_id <  0) || 
+	 (vcore_id >= vm->num_cores) ) {
 	PrintError("Attempted to migrate invalid virtual core (%d)\n", vcore_id);
 	return -1;
     }
@@ -612,7 +622,8 @@ v3_continue_vm(struct v3_vm_info * vm)
 
 
 static int 
-sim_callback(struct v3_core_info * core, void * private_data) 
+sim_callback(struct v3_core_info * core, 
+	     void                * private_data) 
 {
     struct v3_bitmap * timeout_map = private_data;
 
@@ -631,7 +642,8 @@ sim_callback(struct v3_core_info * core, void * private_data)
 
 
 int 
-v3_simulate_vm(struct v3_vm_info * vm, unsigned int msecs) 
+v3_simulate_vm(struct v3_vm_info * vm, 
+	       unsigned int        msecs) 
 {
     struct v3_bitmap timeout_map;
     int              all_blocked = 0;
@@ -810,7 +822,8 @@ v3_get_host_cpu_mode()
 
 
 void 
-v3_yield_cond(struct v3_core_info * core, int usec) 
+v3_yield_cond(struct v3_core_info * core,
+	      int                   usec) 
 {
     uint64_t cur_cycle = 0;
 
@@ -851,7 +864,8 @@ v3_yield_cond(struct v3_core_info * core, int usec)
  * usec >=0 => the timed yield is used, which also usually implies interruptible
  */ 
 void 
-v3_yield(struct v3_core_info * core, int usec) 
+v3_yield(struct v3_core_info * core,
+	 int                   usec) 
 {
     
 
@@ -888,7 +902,9 @@ v3_print_cond(const char * fmt, ...)
 
 
 void 
-v3_interrupt_cpu(struct v3_vm_info * vm, int logical_cpu, int vector) 
+v3_interrupt_cpu(struct v3_vm_info * vm,
+		 int                 logical_cpu, 
+		 int                 vector) 
 {
     extern struct v3_os_hooks * os_hooks;
 

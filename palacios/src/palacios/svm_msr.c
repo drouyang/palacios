@@ -36,16 +36,24 @@
 
 
 
-static int get_bitmap_index(uint_t msr) {
+static int
+get_bitmap_index(uint_t msr) 
+{
     if ((msr >= PENTIUM_MSRS_START) && 
 	(msr <= PENTIUM_MSRS_END)) {
-	return (PENTIUM_MSRS_INDEX + (msr - PENTIUM_MSRS_START));
+
+	return (PENTIUM_MSRS_INDEX     + (msr - PENTIUM_MSRS_START));
+
     } else if ((msr >= AMD_6_GEN_MSRS_START) && 
 	       (msr <= AMD_6_GEN_MSRS_END)) {
-	return (AMD_6_GEN_MSRS_INDEX + (msr - AMD_6_GEN_MSRS_START));
+
+	return (AMD_6_GEN_MSRS_INDEX   + (msr - AMD_6_GEN_MSRS_START));
+
     } else if ((msr >= AMD_7_8_GEN_MSRS_START) && 
 	       (msr <= AMD_7_8_GEN_MSRS_END)) {
+
 	return (AMD_7_8_GEN_MSRS_INDEX + (msr - AMD_7_8_GEN_MSRS_START));
+
     } else {
 	PrintError("MSR out of range (MSR=0x%x)\n", msr);
 	return -1;
@@ -53,13 +61,18 @@ static int get_bitmap_index(uint_t msr) {
 }
 
 
-static int update_map(struct v3_vm_info * vm, uint_t msr, int hook_reads, int hook_writes) {
-    int index = get_bitmap_index(msr);
-    uint_t major = index / 4;
-    uint_t minor = (index % 4) * 2;
-    uint8_t val = 0;
-    uint8_t mask = 0x3;
+static int 
+update_map(struct v3_vm_info * vm,
+	   uint_t              msr,
+	   int                 hook_reads, 
+	   int                 hook_writes) 
+{
     uint8_t * bitmap = (uint8_t *)(vm->msr_map.arch_data);
+    int       index  = get_bitmap_index(msr);
+    uint_t    major  = (index / 4);
+    uint_t    minor  = (index % 4) * 2;
+    uint8_t   val    = 0;
+    uint8_t   mask   = 0x3;
 
     if (index == -1) {
 	PrintError("MSR (0x%x) out of bitmap range\n", msr);
@@ -75,26 +88,27 @@ static int update_map(struct v3_vm_info * vm, uint_t msr, int hook_reads, int ho
     }
 
     *(bitmap + major) &= ~(mask << minor);
-    *(bitmap + major) |= (val << minor);
+    *(bitmap + major) |=  (val  << minor);
 
     return 0;
 }
 
 
-int v3_init_svm_msr_map(struct v3_vm_info * vm) {
-    void *temp;
-    struct v3_msr_map * msr_map = &(vm->msr_map);
+int 
+v3_init_svm_msr_map(struct v3_vm_info * vm) 
+{
+    struct v3_msr_map * msr_map     = &(vm->msr_map);
+    addr_t              map_page_pa = 0;;
   
     msr_map->update_map = update_map;
-
-    temp = V3_AllocPages(2);
+    map_page_pa         = (addr_t)V3_AllocPages(2);
     
-    if (!temp) { 
+    if (!map_page_pa) { 
 	PrintError("Cannot allocate msr bitmap\n");
 	return -1;
     }
 
-    msr_map->arch_data = V3_VAddr(temp);
+    msr_map->arch_data  = V3_VAddr((void *)map_page_pa);
 
     memset(msr_map->arch_data, 0xff, PAGE_SIZE_4KB * 2);
 
@@ -103,7 +117,9 @@ int v3_init_svm_msr_map(struct v3_vm_info * vm) {
     return 0;
 }
 
-int v3_deinit_svm_msr_map(struct v3_vm_info * vm) {
+int 
+v3_deinit_svm_msr_map(struct v3_vm_info * vm) 
+{
     V3_FreePages(V3_PAddr(vm->msr_map.arch_data), 2);
     return 0;
 }

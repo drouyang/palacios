@@ -192,8 +192,8 @@
 /******************************************/
 
 
-int v3_handle_svm_exit(struct v3_core_info * core, addr_t exit_code, 
-		       addr_t exit_info1, addr_t exit_info2);
+int v3_handle_svm_exit(struct v3_core_info * core, uint64_t exit_code, 
+		       uint64_t exit_info1, uint64_t exit_info2);
 
 const char * 
 v3_svm_exit_code_to_str(uint_t exit_code);

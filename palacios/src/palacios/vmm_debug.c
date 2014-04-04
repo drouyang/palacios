@@ -39,7 +39,8 @@
 
 
 static int 
-core_handler(struct v3_core_info * core, uint32_t cmd) 
+core_handler(struct v3_core_info * core,
+	     uint32_t              cmd) 
 {
 
 

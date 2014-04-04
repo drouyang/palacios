@@ -20,10 +20,12 @@
 #include <palacios/vm_guest_mem.h>
 
 
-static int pre_config_pc_core(struct v3_core_info * core, v3_cfg_tree_t * cfg) { 
+static int 
+pre_config_pc_core(struct v3_core_info * core, 
+		   v3_cfg_tree_t       * cfg) 
+{ 
 
-    core->mem_mode = PHYSICAL_MEM;
-
+    core->mem_mode    = PHYSICAL_MEM;
 
     core->vm_regs.rdi = 0;
     core->vm_regs.rsi = 0;
@@ -37,15 +39,21 @@ static int pre_config_pc_core(struct v3_core_info * core, v3_cfg_tree_t * cfg) {
     return 0;
 }
 
-static int post_config_pc_core(struct v3_core_info * core, v3_cfg_tree_t * cfg) { 
+static int 
+post_config_pc_core(struct v3_core_info * core, 
+		    v3_cfg_tree_t       * cfg) 
+{ 
 
     v3_print_mem_map(core->vm_info);
     return 0;
 }
 
-static int post_config_pc(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
+static int 
+post_config_pc(struct v3_vm_info * vm, 
+	       v3_cfg_tree_t     * cfg)
+{
 
-#define VGABIOS_START 0x000c0000
+#define VGABIOS_START  0x000c0000
 #define ROMBIOS_START  0x000e0000
 
     /* layout vgabios */

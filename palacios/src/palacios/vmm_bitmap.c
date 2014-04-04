@@ -22,7 +22,8 @@
 
 
 int 
-v3_bitmap_init(struct v3_bitmap * bitmap, int num_bits) 
+v3_bitmap_init(struct v3_bitmap * bitmap, 
+	       int                num_bits) 
 {
     int num_bytes = (num_bits / 8) + ((num_bits % 8) > 0);
 
@@ -61,7 +62,8 @@ v3_bitmap_reset(struct v3_bitmap * bitmap)
 }
 
 int 
-v3_bitmap_set(struct v3_bitmap * bitmap, int index) 
+v3_bitmap_set(struct v3_bitmap * bitmap, 
+	      int                index) 
 {
     int major   = index / 8;
     int minor   = index % 8;
@@ -87,7 +89,8 @@ v3_bitmap_set(struct v3_bitmap * bitmap, int index)
 
 
 int 
-v3_bitmap_clear(struct v3_bitmap * bitmap, int index) 
+v3_bitmap_clear(struct v3_bitmap * bitmap, 
+		int                index) 
 {
     int major   = index / 8;
     int minor   = index % 8;
@@ -111,7 +114,8 @@ v3_bitmap_clear(struct v3_bitmap * bitmap, int index)
 }
 
 int 
-v3_bitmap_check(struct v3_bitmap * bitmap, int index) 
+v3_bitmap_check(struct v3_bitmap * bitmap, 
+		int                index) 
 {
     int major = index / 8;
     int minor = index % 8;
@@ -149,7 +153,8 @@ v3_bitmap_count(struct v3_bitmap * bitmap)
 }
 
 int 
-v3_bitmap_copy(struct v3_bitmap * dst, struct v3_bitmap * src) 
+v3_bitmap_copy(struct v3_bitmap * dst, 
+	       struct v3_bitmap * src) 
 {
     
     if (src->num_bits != dst->num_bits) {

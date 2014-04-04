@@ -43,7 +43,7 @@ v3_get_vm_cpu_mode(struct v3_core_info * core)
     struct v3_segment * cs   = &(core->segments.cs);
 
 
-    if (core->shdw_pg_mode == SHADOW_PAGING) 
+    if (core->shdw_pg_mode      == SHADOW_PAGING) 
     {
 	cr0  = (struct cr0_32  *)&(core->shdw_pg_state.guest_cr0);
 	efer = (struct efer_64 *)&(core->shdw_pg_state.guest_efer);
@@ -114,14 +114,14 @@ v3_get_addr_width(struct v3_core_info * core)
 }
 
 
-static const uchar_t REAL_STR[]           = "Real";
-static const uchar_t PROTECTED_STR[]      = "Protected";
-static const uchar_t PROTECTED_PAE_STR[]  = "Protected+PAE";
-static const uchar_t LONG_STR[]           = "Long";
-static const uchar_t LONG_32_COMPAT_STR[] = "32bit Compat";
-static const uchar_t LONG_16_COMPAT_STR[] = "16bit Compat";
+static const char REAL_STR[]           = "Real";
+static const char PROTECTED_STR[]      = "Protected";
+static const char PROTECTED_PAE_STR[]  = "Protected+PAE";
+static const char LONG_STR[]           = "Long";
+static const char LONG_32_COMPAT_STR[] = "32bit Compat";
+static const char LONG_16_COMPAT_STR[] = "16bit Compat";
 
-const uchar_t * 
+const char * 
 v3_cpu_mode_to_str(v3_cpu_mode_t mode) 
 {
     switch (mode) {
@@ -169,10 +169,10 @@ v3_get_vm_mem_mode(struct v3_core_info * core)
     }
 }
 
-static const uchar_t PHYS_MEM_STR[] = "Physical Memory";
-static const uchar_t VIRT_MEM_STR[] = "Virtual Memory";
+static const char PHYS_MEM_STR[] = "Physical Memory";
+static const char VIRT_MEM_STR[] = "Virtual Memory";
 
-const uchar_t * 
+const char * 
 v3_mem_mode_to_str(v3_mem_mode_t mode) 
 {
     switch (mode) {
@@ -215,7 +215,10 @@ v3_is_core_bsp(struct v3_core_info* core)
 
 #include <palacios/vmcs.h>
 #include <palacios/vmcb.h>
-static int info_hcall(struct v3_core_info * core, uint_t hcall_id, void * priv_data) 
+static int 
+info_hcall(struct v3_core_info * core, 
+	   uint_t                hcall_id, 
+	   void                * priv_data) 
 {
     extern v3_cpu_arch_t v3_mach_type;
     int cpu_valid = 0;
@@ -467,10 +470,12 @@ v3_free_core(struct v3_core_info * core)
     v3_deinit_intr_controllers(core);
     v3_deinit_time_core(core);
 
-    if (core->shdw_pg_mode == SHADOW_PAGING) {
+    if (core->shdw_pg_mode      == SHADOW_PAGING) {
 	v3_deinit_shdw_pg_state(core);
 	v3_free_passthrough_pts(core);
-    } else if (core->shdw_pg_mode == NESTED_PAGING) {
+    } 
+    else if (core->shdw_pg_mode == NESTED_PAGING)
+    {
 	v3_free_nested_pts(core);
     }
 

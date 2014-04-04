@@ -62,7 +62,8 @@ static int setup_devices   (struct v3_vm_info * vm, v3_cfg_tree_t * cfg);
 
 
 char * 
-v3_cfg_val(v3_cfg_tree_t * tree, char * tag) 
+v3_cfg_val(v3_cfg_tree_t * tree, 
+	   char          * tag) 
 {
     char          * attrib      = (char *)v3_xml_attr(tree, tag);
     v3_cfg_tree_t * child_entry = v3_xml_child(tree, tag);
@@ -87,7 +88,8 @@ v3_cfg_val(v3_cfg_tree_t * tree, char * tag)
 }
 
 v3_cfg_tree_t * 
-v3_cfg_subtree(v3_cfg_tree_t * tree, char * tag) 
+v3_cfg_subtree(v3_cfg_tree_t * tree,
+	       char          * tag) 
 {
     return v3_xml_child(tree, tag);
 }
@@ -101,7 +103,8 @@ v3_cfg_next_branch(v3_cfg_tree_t * tree)
 
 
 struct v3_cfg_file * 
-v3_cfg_get_file(struct v3_vm_info * vm, char * tag) 
+v3_cfg_get_file(struct v3_vm_info * vm,
+		char              * tag) 
 {
     struct v3_cfg_file * file = NULL;
 
@@ -244,7 +247,8 @@ get_alignment(char * align_str)
 
 
 static int 
-pre_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * vm_cfg) 
+pre_config_vm(struct v3_vm_info * vm, 
+	      v3_cfg_tree_t     * vm_cfg) 
 {
     char * memory_str      = v3_cfg_val(vm_cfg, "memory");
     char * schedule_hz_str = v3_cfg_val(vm_cfg, "schedule_hz");
@@ -313,7 +317,8 @@ pre_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * vm_cfg)
 
 
 static int 
-determine_paging_mode(struct v3_core_info * core, v3_cfg_tree_t * core_cfg) 
+determine_paging_mode(struct v3_core_info * core, 
+		      v3_cfg_tree_t       * core_cfg) 
 {
     extern v3_cpu_arch_t v3_mach_type;
 
@@ -359,7 +364,8 @@ determine_paging_mode(struct v3_core_info * core, v3_cfg_tree_t * core_cfg)
 }
 
 static int 
-pre_config_core(struct v3_core_info * core, v3_cfg_tree_t * core_cfg) 
+pre_config_core(struct v3_core_info * core, 
+		v3_cfg_tree_t       * core_cfg) 
 {
     if (determine_paging_mode(core, core_cfg) != 0) {
 	return -1;
@@ -386,7 +392,8 @@ pre_config_core(struct v3_core_info * core, v3_cfg_tree_t * core_cfg)
 
 
 static int 
-post_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) 
+post_config_vm(struct v3_vm_info * vm, 
+	       v3_cfg_tree_t     * cfg) 
 {
     
 
@@ -445,7 +452,8 @@ post_config_vm(struct v3_vm_info * vm, v3_cfg_tree_t * cfg)
 
 
 static int 
-post_config_core(struct v3_core_info * core, v3_cfg_tree_t * cfg) 
+post_config_core(struct v3_core_info * core, 
+		 v3_cfg_tree_t       * cfg) 
 {
 
  
@@ -498,7 +506,10 @@ allocate_guest(int num_cores)
 
 
 
-struct v3_vm_info * v3_config_guest(void * cfg_blob, void * priv_data) {
+struct v3_vm_info * 
+v3_config_guest(void * cfg_blob, 
+		void * priv_data)
+{
     extern v3_cpu_arch_t   v3_mach_type;
     struct v3_config     * cfg_data     = NULL;
     struct v3_vm_info    * vm           = NULL;
@@ -614,7 +625,8 @@ v3_free_config(struct v3_vm_info * vm)
 
 
 static int 
-setup_memory_map(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) 
+setup_memory_map(struct v3_vm_info * vm, 
+		 v3_cfg_tree_t     * cfg) 
 {
     v3_cfg_tree_t * mem_region = v3_cfg_subtree(v3_cfg_subtree(cfg, "memmap"), "region");
 
@@ -640,7 +652,8 @@ setup_memory_map(struct v3_vm_info * vm, v3_cfg_tree_t * cfg)
 
 
 static int 
-setup_extensions(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) 
+setup_extensions(struct v3_vm_info * vm, 
+		 v3_cfg_tree_t     * cfg) 
 {
     v3_cfg_tree_t * extension = v3_cfg_subtree(v3_cfg_subtree(cfg, "extensions"), "extension");
 
@@ -667,7 +680,8 @@ setup_extensions(struct v3_vm_info * vm, v3_cfg_tree_t * cfg)
 
 
 static int 
-setup_devices(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) 
+setup_devices(struct v3_vm_info * vm,
+	      v3_cfg_tree_t     * cfg) 
 {
     v3_cfg_tree_t * device = v3_cfg_subtree(v3_cfg_subtree(cfg, "devices"), "device");
 

@@ -46,7 +46,8 @@ v3_deinit_barrier(struct v3_vm_info * vm_info)
 }
 
 int 
-v3_raise_barrier_nowait(struct v3_vm_info * vm_info, struct v3_core_info * local_core) 
+v3_raise_barrier_nowait(struct v3_vm_info   * vm_info, 
+			struct v3_core_info * local_core) 
 {
     struct v3_barrier * barrier    = &(vm_info->barrier);
     int                 acquired   = 0;
@@ -94,7 +95,8 @@ v3_raise_barrier_nowait(struct v3_vm_info * vm_info, struct v3_core_info * local
 }
 
 int 
-v3_wait_for_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local_core) 
+v3_wait_for_barrier(struct v3_vm_info   * vm_info, 
+		    struct v3_core_info * local_core) 
 {
     struct v3_barrier * barrier     = &(vm_info->barrier);
     int                 all_blocked = 0;
@@ -146,7 +148,8 @@ v3_wait_for_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local_cor
  */
 
 int 
-v3_raise_barrier(struct v3_vm_info * vm_info, struct v3_core_info * local_core) 
+v3_raise_barrier(struct v3_vm_info   * vm_info, 
+		 struct v3_core_info * local_core) 
 {
     int ret = 0;
 
