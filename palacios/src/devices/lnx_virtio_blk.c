@@ -112,10 +112,13 @@ struct virtio_blk_state {
     uint16_t shadow_avail_idx;
     uint16_t shadow_used_idx;
 
-    /* async IO request queue */
-    int           async_enabled;
-    void        * io_thread;
     v3_spinlock_t isr_lock;
+
+    /* async IO request queue */
+    int    async_enabled;
+    int    async_thread_should_stop;
+    void * async_thread;
+
 };
 
 
@@ -386,7 +389,7 @@ io_dispatcher(void * arg)
 
     PrintDebug("Start io_dispatcher\n");
 
-    while (1) {
+    while (blk_state->async_thread_should_stop == 0) {
         if (blk_state->shadow_used_idx == blk_state->shadow_avail_idx) {
             v3_yield(NULL, -1);
             continue;
@@ -395,6 +398,8 @@ io_dispatcher(void * arg)
         PrintDebug("%s: handle_kick\n", __func__);
         _handle_kick(blk_state);
     }
+
+    blk_state->async_thread = NULL;
 
     return 0;
 }
@@ -640,6 +645,14 @@ virtio_free(struct virtio_dev_state * virtio)
     struct virtio_blk_state * blk_state = NULL;
     struct virtio_blk_state * tmp       = NULL;
 
+    blk_state->async_thread_should_stop = 1;
+
+    while (blk_state->async_thread != NULL) {
+	v3_yield(NULL, -1);
+	__asm__ __volatile__ ("":::"memory");
+    }
+
+
     list_for_each_entry_safe(blk_state, tmp, &(virtio->dev_list), dev_link) {
 
 	// unregister from PCI
@@ -790,7 +803,7 @@ connect_fn(struct v3_vm_info     * vm,
 
     if (blk_state->async_enabled) {
         V3_Print("virtio-blk: creating IO thread\n");
-        blk_state->io_thread = V3_CREATE_THREAD_ON_CPU(0, io_dispatcher, blk_state, "virtio-blkd");
+        blk_state->async_thread = V3_CREATE_THREAD_ON_CPU(0, io_dispatcher, blk_state, "virtio-blkd");
     }
 
     return 0;
