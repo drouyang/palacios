@@ -23,7 +23,9 @@
 
 
 static int 
-hcall_test(struct v3_core_info * core, hcall_id_t hcall_id, void * private_data) 
+hcall_test(struct v3_core_info * core, 
+	   hcall_id_t            hcall_id, 
+	   void                * private_data) 
 {
     core->vm_regs.rbx = 0x1111;
     core->vm_regs.rcx = 0x2222;
@@ -43,7 +45,8 @@ struct hypercall {
     struct rb_node tree_node;
 };
 
-static int free_hypercall(struct v3_vm_info * vm, struct hypercall * hcall);
+static int free_hypercall(struct v3_vm_info * vm, 
+			  struct hypercall  * hcall);
 
 void 
 v3_init_hypercall_map(struct v3_vm_info * vm) 
@@ -81,7 +84,8 @@ v3_deinit_hypercall_map(struct v3_vm_info * vm)
 
 
 static inline struct hypercall * 
-__insert_hypercall(struct v3_vm_info * vm, struct hypercall * hcall) 
+__insert_hypercall(struct v3_vm_info * vm, 
+		   struct hypercall  * hcall) 
 {
     struct rb_node  ** p         = &(vm->hcall_map.rb_node);
     struct rb_node   * parent    = NULL;
@@ -107,7 +111,8 @@ __insert_hypercall(struct v3_vm_info * vm, struct hypercall * hcall)
 
 
 static inline struct hypercall *
-insert_hypercall(struct v3_vm_info * vm, struct hypercall * hcall) 
+insert_hypercall(struct v3_vm_info * vm, 
+		 struct hypercall  * hcall) 
 {
     struct hypercall * ret = NULL;
 
@@ -122,7 +127,8 @@ insert_hypercall(struct v3_vm_info * vm, struct hypercall * hcall)
 
 
 static struct hypercall * 
-get_hypercall(struct v3_vm_info * vm, hcall_id_t id) 
+get_hypercall(struct v3_vm_info * vm, 
+	      hcall_id_t          id) 
 {
     struct rb_node   * n     = vm->hcall_map.rb_node;
     struct hypercall * hcall = NULL;
@@ -144,9 +150,10 @@ get_hypercall(struct v3_vm_info * vm, hcall_id_t id)
 
 
 int 
-v3_register_hypercall(struct v3_vm_info * vm, hcall_id_t hypercall_id, 
-		      int (*hypercall)(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data), 
-		      void * priv_data) 
+v3_register_hypercall(struct v3_vm_info * vm,
+		      hcall_id_t          hypercall_id, 
+		      int               (*hypercall)(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data), 
+		      void              * priv_data) 
 {
 
     struct hypercall * hcall = (struct hypercall *)V3_Malloc(sizeof(struct hypercall));
@@ -174,7 +181,8 @@ v3_register_hypercall(struct v3_vm_info * vm, hcall_id_t hypercall_id,
 
 
 static int 
-free_hypercall(struct v3_vm_info * vm, struct hypercall * hcall) 
+free_hypercall(struct v3_vm_info * vm, 
+	       struct hypercall  * hcall) 
 {
     v3_rb_erase(&(hcall->tree_node), &(vm->hcall_map));
     V3_Free(hcall);
@@ -183,7 +191,8 @@ free_hypercall(struct v3_vm_info * vm, struct hypercall * hcall)
 }
 
 int 
-v3_remove_hypercall(struct v3_vm_info * vm, hcall_id_t hypercall_id) 
+v3_remove_hypercall(struct v3_vm_info * vm, 
+		    hcall_id_t          hypercall_id) 
 {
     struct hypercall * hcall = get_hypercall(vm, hypercall_id);
 

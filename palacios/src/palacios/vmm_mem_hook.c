@@ -45,7 +45,8 @@ struct mem_hook {
 
 
 
-static int free_hook(struct v3_vm_info * vm, struct mem_hook * hook);
+static int free_hook(struct v3_vm_info * vm,
+		     struct mem_hook   * hook);
 
 static uint_t mem_hash_fn(addr_t key) {
     return v3_hash_long(key, sizeof(void *) * 8);
@@ -118,7 +119,9 @@ v3_deinit_mem_hooks(struct v3_vm_info * vm)
 
 
 static inline int 
-get_op_length(struct x86_instr * instr, struct x86_operand * operand, addr_t tgt_addr) 
+get_op_length(struct x86_instr   * instr, 
+	      struct x86_operand * operand, 
+	      addr_t               tgt_addr) 
 {
 
     if (instr->is_str_op) {
@@ -136,8 +139,11 @@ get_op_length(struct x86_instr * instr, struct x86_operand * operand, addr_t tgt
 
 
 static int 
-handle_mem_hook(struct v3_core_info * core, addr_t guest_va, addr_t guest_pa, 
-		struct v3_mem_region * reg, pf_error_t access_info) 
+handle_mem_hook(struct v3_core_info  * core,
+		addr_t                 guest_va, 
+		addr_t                 guest_pa, 
+		struct v3_mem_region * reg, 
+		pf_error_t             access_info) 
 {
     struct v3_mem_hooks * hooks     = &(core->vm_info->mem_hooks);
     struct x86_instr      instr;
@@ -351,10 +357,13 @@ handle_mem_hook(struct v3_core_info * core, addr_t guest_va, addr_t guest_pa,
 
 
 int 
-v3_hook_write_mem(struct v3_vm_info * vm, uint16_t core_id,
-		  addr_t guest_addr_start, addr_t guest_addr_end, addr_t host_addr,
+v3_hook_write_mem(struct v3_vm_info * vm, 
+		  uint16_t            core_id,
+		  addr_t              guest_addr_start, 
+		  addr_t              guest_addr_end, 
+		  addr_t              host_addr,
 		  int (*write)(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data),
-		  void * priv_data) 
+		  void              * priv_data) 
 {
     struct v3_mem_region * entry = NULL;
     struct mem_hook      * hook  = V3_Malloc(sizeof(struct mem_hook));
@@ -402,11 +411,13 @@ v3_hook_write_mem(struct v3_vm_info * vm, uint16_t core_id,
 
 
 int 
-v3_hook_full_mem(struct v3_vm_info * vm, uint16_t core_id, 
-		 addr_t guest_addr_start, addr_t guest_addr_end,
-		 int (*read)(struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data),
+v3_hook_full_mem(struct v3_vm_info * vm, 
+		 uint16_t            core_id, 
+		 addr_t              guest_addr_start, 
+		 addr_t              guest_addr_end,
+		 int (*read)( struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * priv_data),
 		 int (*write)(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * priv_data),
-		 void * priv_data) 
+		 void              * priv_data) 
 {
   
     struct v3_mem_region * entry = NULL;
@@ -453,15 +464,17 @@ v3_hook_full_mem(struct v3_vm_info * vm, uint16_t core_id,
 
 
 int 
-v3_hook_access_mem(struct v3_vm_info * vm, uint16_t core_id, 
-		   addr_t guest_addr_start, addr_t guest_addr_end,
+v3_hook_access_mem(struct v3_vm_info * vm, 
+		   uint16_t            core_id, 
+		   addr_t              guest_addr_start, 
+		   addr_t              guest_addr_end,
 		   int (*access)(struct v3_core_info  * core, 
 				 addr_t                 guest_va, 
 				 addr_t                 guest_pa, 
 				 struct v3_mem_region * reg, 
 				 pf_error_t             access_info, 
 				 void                 * priv_data),
-		   void * priv_data) 
+		   void              * priv_data) 
 {
   
     struct v3_mem_region * entry = NULL;
@@ -506,7 +519,8 @@ v3_hook_access_mem(struct v3_vm_info * vm, uint16_t core_id,
 
 
 static int 
-free_hook(struct v3_vm_info * vm, struct mem_hook * hook) 
+free_hook(struct v3_vm_info * vm, 
+	  struct mem_hook   * hook) 
 { 
     v3_delete_mem_region(vm, hook->region);
     list_del(&(hook->hook_node));
@@ -520,7 +534,9 @@ free_hook(struct v3_vm_info * vm, struct mem_hook * hook)
 // This will unhook the memory hook registered at start address
 // We do not support unhooking subregions
 int 
-v3_unhook_mem(struct v3_vm_info * vm, uint16_t core_id, addr_t guest_addr_start) 
+v3_unhook_mem(struct v3_vm_info * vm, 
+	      uint16_t            core_id, 
+	      addr_t              guest_addr_start) 
 {
     struct v3_mem_region * reg   = v3_get_mem_region(vm, core_id, guest_addr_start);
     struct v3_mem_hooks  * hooks = &(vm->mem_hooks);

@@ -148,7 +148,8 @@ v3_free_vm_devices(struct v3_vm_info * vm)
 #ifdef V3_CONFIG_CHECKPOINT
 
 int 
-v3_save_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt) 
+v3_save_vm_devices(struct v3_vm_info * vm, 
+		   struct v3_chkpt   * chkpt) 
 {
     struct vmm_dev_mgr  * mgr         = &(vm->dev_mgr);
     struct vm_device    * dev         = NULL;
@@ -236,7 +237,8 @@ v3_save_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt)
 
 
 int 
-v3_load_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt) 
+v3_load_vm_devices(struct v3_vm_info * vm, 
+		   struct v3_chkpt   * chkpt) 
 {
     struct vm_device    * dev         = NULL;
     struct v3_chkpt_ctx * dev_mgr_ctx = NULL;
@@ -314,7 +316,8 @@ v3_load_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt)
 
 #endif
 
-static int free_frontends(struct v3_vm_info * vm, struct vmm_dev_mgr * mgr);
+static int free_frontends(struct v3_vm_info  * vm,
+			  struct vmm_dev_mgr * mgr);
 
 int 
 v3_deinit_dev_mgr(struct v3_vm_info * vm) 
@@ -333,7 +336,9 @@ v3_deinit_dev_mgr(struct v3_vm_info * vm)
 
 
 int 
-v3_create_device(struct v3_vm_info * vm, const char * dev_name, v3_cfg_tree_t * cfg) 
+v3_create_device(struct v3_vm_info * vm, 
+		 const char        * dev_name, 
+		 v3_cfg_tree_t     * cfg) 
 {
     int (*dev_init)(struct v3_vm_info * vm, void * cfg_data);
 
@@ -357,7 +362,8 @@ v3_create_device(struct v3_vm_info * vm, const char * dev_name, v3_cfg_tree_t * 
 
 
 struct vm_device * 
-v3_find_dev(struct v3_vm_info * vm, const char * dev_name) 
+v3_find_dev(struct v3_vm_info * vm,
+	    const char        * dev_name) 
 {
     struct vmm_dev_mgr * mgr = &(vm->dev_mgr);
 
@@ -385,7 +391,9 @@ struct dev_rsrc {
 
 
 static int 
-add_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t rsrc_id) 
+add_resource(struct vm_device * dev, 
+	     dev_rsrc_type_t    type, 
+	     uint64_t           rsrc_id) 
 {
     struct dev_rsrc * resource = NULL;
 
@@ -404,7 +412,9 @@ add_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t rsrc_id)
 }
 
 static int 
-free_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t rsrc_id) 
+free_resource(struct vm_device * dev, 
+	      dev_rsrc_type_t    type, 
+	      uint64_t           rsrc_id) 
 {
     struct dev_rsrc * resource = NULL;
     struct dev_rsrc * tmp;
@@ -425,7 +435,8 @@ free_resource(struct vm_device * dev, dev_rsrc_type_t type, uint64_t rsrc_id)
 
 
 int 
-v3_dev_hook_io(struct vm_device * dev, uint16_t port,
+v3_dev_hook_io(struct vm_device * dev, 
+	       uint16_t           port,
 	       int (*read) (struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
 	       int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data)) 
 {
@@ -451,7 +462,8 @@ v3_dev_hook_io(struct vm_device * dev, uint16_t port,
 
 
 int 
-v3_dev_unhook_io(struct vm_device * dev, uint16_t port) 
+v3_dev_unhook_io(struct vm_device * dev, 
+		 uint16_t           port) 
 {
     if (free_resource(dev, DEV_IO_HOOK, port) == 0) {
 	return v3_unhook_io_port(dev->vm, port);	   
@@ -462,7 +474,8 @@ v3_dev_unhook_io(struct vm_device * dev, uint16_t port)
 
 
 int 
-v3_dev_hook_msr(struct vm_device * dev, uint32_t msr,
+v3_dev_hook_msr(struct vm_device * dev, 
+		uint32_t           msr,
 		int (*read) (struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
 		int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr   src, void * priv_data)) 
 {
@@ -483,7 +496,8 @@ v3_dev_hook_msr(struct vm_device * dev, uint32_t msr,
 }
 		  
 int 
-v3_dev_unhook_msr(struct vm_device * dev, uint32_t msr) 
+v3_dev_unhook_msr(struct vm_device * dev, 
+		  uint32_t           msr) 
 {
     if (free_resource(dev, DEV_MSR_HOOK, msr) == 0) {
 	return v3_unhook_msr(dev->vm, msr);
@@ -602,13 +616,14 @@ struct blk_frontend {
 
 
 int 
-v3_dev_add_blk_frontend(struct v3_vm_info * vm, char * name, 
-			int (*connect)(struct v3_vm_info     * vm, 
-				       void                  * frontend_data, 
-				       struct v3_dev_blk_ops * ops, 
-				       v3_cfg_tree_t         * cfg, 
-				       void                  * priv_data), 
-			void * priv_data) 
+v3_dev_add_blk_frontend(struct v3_vm_info * vm, 
+			char              * name, 
+			int              (*connect)(struct v3_vm_info     * vm, 
+						    void                  * frontend_data, 
+						    struct v3_dev_blk_ops * ops, 
+						    v3_cfg_tree_t         * cfg, 
+						    void                  * priv_data), 
+			void              * priv_data) 
 {
 
     struct blk_frontend * frontend = NULL;
@@ -674,13 +689,14 @@ struct net_frontend {
 
 
 int 
-v3_dev_add_net_frontend(struct v3_vm_info * vm, char * name, 
-			int (*connect)(struct v3_vm_info     * vm, 
-				       void                  * frontend_data, 
-				       struct v3_dev_net_ops * ops, 
-				       v3_cfg_tree_t         * cfg, 
-				       void                  * private_data), 
-			void * priv_data)
+v3_dev_add_net_frontend(struct v3_vm_info * vm,
+			char              * name, 
+			int              (*connect)(struct v3_vm_info     * vm, 
+						    void                  * frontend_data, 
+						    struct v3_dev_net_ops * ops, 
+						    v3_cfg_tree_t         * cfg, 
+						    void                  * private_data), 
+			void              * priv_data)
 {
     struct net_frontend * frontend = NULL;
 
@@ -743,13 +759,14 @@ struct cons_frontend {
 };
 
 int 
-v3_dev_add_console_frontend(struct v3_vm_info * vm, char * name, 
-			    int (*connect)(struct v3_vm_info         * vm, 
-					   void                      * frontend_data, 
-					   struct v3_dev_console_ops * ops, 
-					   v3_cfg_tree_t             * cfg, 
-					   void                      * private_data), 
-			    void * priv_data)
+v3_dev_add_console_frontend(struct v3_vm_info * vm, 
+			    char              * name, 
+			    int              (*connect)(struct v3_vm_info         * vm, 
+							void                      * frontend_data, 
+							struct v3_dev_console_ops * ops, 
+							v3_cfg_tree_t             * cfg, 
+							void                      * private_data), 
+			    void              * priv_data)
 {
     struct cons_frontend * frontend = NULL;
 
@@ -812,14 +829,15 @@ struct char_frontend {
 };
 
 int 
-v3_dev_add_char_frontend(struct v3_vm_info * vm, char * name, 
-			 int (*connect)(struct v3_vm_info      * vm, 
-					void                   * frontend_data, 
-					struct v3_dev_char_ops * ops, 
-					v3_cfg_tree_t          * cfg, 
-					void                   * private_data, 
-					void                  ** push_fn_arg), 
-			 void * priv_data)
+v3_dev_add_char_frontend(struct v3_vm_info * vm, 
+			 char              * name, 
+			 int              (*connect)(struct v3_vm_info      * vm, 
+						     void                   * frontend_data, 
+						     struct v3_dev_char_ops * ops, 
+						     v3_cfg_tree_t          * cfg, 
+						     void                   * private_data, 
+						     void                  ** push_fn_arg), 
+			 void              * priv_data)
 {
     struct char_frontend * frontend = NULL;
 
@@ -871,7 +889,8 @@ v3_dev_connect_char(struct v3_vm_info      * vm,
 
 
 static int 
-free_frontends(struct v3_vm_info * vm, struct vmm_dev_mgr * mgr) 
+free_frontends(struct v3_vm_info  * vm,
+	       struct vmm_dev_mgr * mgr) 
 {
     struct char_frontend * chr       = NULL;
     struct char_frontend * tmp_chr   = NULL;

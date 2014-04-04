@@ -27,10 +27,10 @@
 
 
 static int 
-get_ex_ctrl_caps(struct vmx_hw_info               * hw_info, 
-			    struct vmx_ctrl_field * field, 
-			    uint32_t                old_msr, 
-			    uint32_t                true_msr) 
+get_ex_ctrl_caps(struct vmx_hw_info    * hw_info, 
+		 struct vmx_ctrl_field * field, 
+		 uint32_t                old_msr, 
+		 uint32_t                true_msr) 
 {
     uint32_t old_0  = 0;  /* Bit is 1 => MB1 */
     uint32_t old_1  = 0;  /* Bit is 0 => MBZ */

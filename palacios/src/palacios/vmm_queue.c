@@ -58,7 +58,8 @@ v3_deinit_queue(struct v3_queue * queue)
 
 
 void 
-v3_enqueue(struct v3_queue * queue, addr_t entry) 
+v3_enqueue(struct v3_queue * queue,
+	   addr_t            entry) 
 {
     struct v3_queue_entry * q_entry = V3_Malloc(sizeof(struct v3_queue_entry));
     unsigned int            flags   = 0;

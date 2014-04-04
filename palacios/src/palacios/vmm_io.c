@@ -31,8 +31,8 @@
 
 static int free_hook(struct v3_vm_info * vm, struct v3_io_hook * hook);
 
-static int default_write(struct v3_core_info * core, uint16_t port, void *src, uint_t length, void * priv_data);
-static int default_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data);
+static int default_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data);
+static int default_read( struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data);
 
 
 void 
@@ -67,7 +67,8 @@ v3_deinit_io_map(struct v3_vm_info * vm)
 
 
 static inline struct v3_io_hook * 
-__insert_io_hook(struct v3_vm_info * vm, struct v3_io_hook * hook) 
+__insert_io_hook(struct v3_vm_info * vm, 
+		 struct v3_io_hook * hook) 
 {
     struct rb_node   ** p        = &(vm->io_map.map.rb_node);
     struct rb_node    * parent   = NULL;
@@ -93,7 +94,8 @@ __insert_io_hook(struct v3_vm_info * vm, struct v3_io_hook * hook)
 
 
 static inline struct v3_io_hook * 
-insert_io_hook(struct v3_vm_info * vm, struct v3_io_hook * hook) 
+insert_io_hook(struct v3_vm_info * vm, 
+	       struct v3_io_hook * hook) 
 {
     struct v3_io_hook * ret = NULL;
 
@@ -108,7 +110,8 @@ insert_io_hook(struct v3_vm_info * vm, struct v3_io_hook * hook)
 
 
 struct v3_io_hook * 
-v3_get_io_hook(struct v3_vm_info * vm, uint16_t port) 
+v3_get_io_hook(struct v3_vm_info * vm,
+	       uint16_t            port) 
 {
     struct rb_node    * n    = vm->io_map.map.rb_node;
     struct v3_io_hook * hook = NULL;
@@ -133,10 +136,11 @@ v3_get_io_hook(struct v3_vm_info * vm, uint16_t port)
 
 
 int 
-v3_hook_io_port(struct v3_vm_info * vm, uint16_t port, 
-		int (*read)(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
+v3_hook_io_port(struct v3_vm_info * vm, 
+		uint16_t            port, 
+		int (*read)( struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data),
 		int (*write)(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data), 
-		void * priv_data) 
+		void              * priv_data) 
 {
     struct v3_io_hook * io_hook = (struct v3_io_hook *)V3_Malloc(sizeof(struct v3_io_hook));
 
@@ -183,7 +187,8 @@ v3_hook_io_port(struct v3_vm_info * vm, uint16_t port,
 
 
 static int 
-free_hook(struct v3_vm_info * vm, struct v3_io_hook * hook) 
+free_hook(struct v3_vm_info * vm, 
+	  struct v3_io_hook * hook) 
 {
     v3_rb_erase(&(hook->tree_node), &(vm->io_map.map));
 
@@ -198,7 +203,8 @@ free_hook(struct v3_vm_info * vm, struct v3_io_hook * hook)
 }
 
 int 
-v3_unhook_io_port(struct v3_vm_info * vm, uint16_t port) 
+v3_unhook_io_port(struct v3_vm_info * vm, 
+		  uint16_t            port) 
 {
     struct v3_io_hook * hook = v3_get_io_hook(vm, port);
 
@@ -259,7 +265,8 @@ v3_print_io_map(struct v3_vm_info * vm)
 /*
  * Write a byte to an I/O port.
  */
-void v3_outb(uint16_t port, uint8_t value) {
+void v3_outb(uint16_t port, 
+	     uint8_t  value) {
     __asm__ __volatile__ (
 			  "outb %b0, %w1"
 			  :
@@ -285,7 +292,8 @@ uint8_t v3_inb(uint16_t port) {
 /*
  * Write a word to an I/O port.
  */
-void v3_outw(uint16_t port, uint16_t value) {
+void v3_outw(uint16_t port, 
+	     uint16_t value) {
     __asm__ __volatile__ (
 			  "outw %w0, %w1"
 			  :
@@ -311,7 +319,8 @@ uint16_t v3_inw(uint16_t port) {
 /*
  * Write a double word to an I/O port.
  */
-void v3_outdw(uint16_t port, uint_t value) {
+void v3_outdw(uint16_t port, 
+	      uint_t   value) {
     __asm__ __volatile__ (
 			  "outl %0, %1"
 			  :
@@ -338,7 +347,12 @@ uint_t v3_indw(uint16_t port) {
 
 
 /* FIX ME */
-static int default_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+static int default_write(struct v3_core_info * core, 
+			 uint16_t              port, 
+			 void                * src, 
+			 uint_t                length, 
+			 void                * priv_data) 
+{
     if (length == 1) {
 	v3_outb(port,  *(uint8_t  *)src);
     } else if (length == 2) {
@@ -352,7 +366,12 @@ static int default_write(struct v3_core_info * core, uint16_t port, void * src, 
     return length;
 }
 
-static int default_read(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
+static int default_read(struct v3_core_info * core, 
+			uint16_t              port, 
+			void                * dst, 
+			uint_t                length, 
+			void                * priv_data) 
+{
     if (length == 1) {
 	*(uint8_t *)dst  = v3_inb(port);
     } else if (length == 2) {

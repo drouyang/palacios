@@ -146,7 +146,9 @@ v3_deinit_ext_manager(struct v3_vm_info * vm)
 
 
 int 
-v3_add_extension(struct v3_vm_info * vm, const char * name, v3_cfg_tree_t * cfg) 
+v3_add_extension(struct v3_vm_info * vm, 
+		 const char        * name, 
+		 v3_cfg_tree_t     * cfg) 
 {
     struct v3_extension_impl * impl = NULL;
     struct v3_extension      * ext  = NULL;
@@ -235,7 +237,8 @@ v3_deinit_core_extensions (struct v3_core_info * core)
 
 
 void * 
-v3_get_extension_state(struct v3_vm_info * vm, const char * name) 
+v3_get_extension_state(struct v3_vm_info * vm, 
+		       const char        * name) 
 {
     struct v3_extension * ext = NULL;
 
@@ -250,7 +253,8 @@ v3_get_extension_state(struct v3_vm_info * vm, const char * name)
 
 
 void * 
-v3_get_ext_core_state (struct v3_core_info * core, const char * name) 
+v3_get_ext_core_state (struct v3_core_info * core,
+		       const char          * name) 
 {
     struct v3_extension * ext   = NULL;
     struct v3_vm_info   * vm    = core->vm_info;

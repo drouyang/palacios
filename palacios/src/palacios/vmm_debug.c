@@ -89,7 +89,9 @@ clear_counters(struct v3_core_info * core)
 
 
 static int 
-evt_handler(struct v3_vm_info * vm, struct v3_debug_event * evt, void * priv_data) 
+evt_handler(struct v3_vm_info     * vm, 
+	    struct v3_debug_event * evt, 
+	    void                  * priv_data) 
 {
     int i = 0;
 
@@ -126,7 +128,9 @@ evt_handler(struct v3_vm_info * vm, struct v3_debug_event * evt, void * priv_dat
 
 
 static int 
-debug_hcall(struct v3_core_info * core, hcall_id_t hcall_id, void * priv_data) 
+debug_hcall(struct v3_core_info * core, 
+	    hcall_id_t            hcall_id, 
+	    void                * priv_data) 
 {
     uint32_t cmd = core->vm_regs.rbx;
 
@@ -200,7 +204,9 @@ v3_print_ctrl_regs(struct v3_core_info * core)
 
 #if 0
 static int 
-safe_gva_to_hva(struct v3_core_info * core, addr_t linear_addr, addr_t * host_addr) 
+safe_gva_to_hva(struct v3_core_info * core, 
+		addr_t                linear_addr, 
+		addr_t              * host_addr) 
 {
     /* select the proper translation based on guest mode */
     if (core->mem_mode == PHYSICAL_MEM) {

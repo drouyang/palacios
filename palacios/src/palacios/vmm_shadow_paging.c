@@ -112,7 +112,11 @@ int V3_deinit_shdw_paging() {
 
 
 #ifdef V3_CONFIG_SHADOW_PAGING_TELEMETRY
-static void telemetry_cb(struct v3_vm_info * vm, void * private_data, char * hdr) {
+static void 
+telemetry_cb(struct v3_vm_info * vm, 
+	     void              * private_data, 
+	     char              * hdr) 
+{
     int i = 0;
 
     for (i = 0; i < vm->num_cores; i++) {
@@ -125,7 +129,9 @@ static void telemetry_cb(struct v3_vm_info * vm, void * private_data, char * hdr
 
 
 
-int v3_init_shdw_pg_state(struct v3_core_info * core) {
+int 
+v3_init_shdw_pg_state(struct v3_core_info * core) 
+{
     struct v3_shdw_pg_state * state = &(core->shdw_pg_state);
     struct v3_shdw_pg_impl  * impl  = core->vm_info->shdw_impl.current_impl;
   
@@ -255,7 +261,9 @@ v3_invalidate_shadow_pts(struct v3_core_info * core)
 
 
 int 
-v3_handle_shadow_pagefault(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) 
+v3_handle_shadow_pagefault(struct v3_core_info * core, 
+			   addr_t                fault_addr, 
+			   pf_error_t            error_code) 
 {
     
     if (v3_get_vm_mem_mode(core) == PHYSICAL_MEM) {
@@ -332,7 +340,9 @@ v3_handle_shadow_invlpg(struct v3_core_info * core)
 
 
 int 
-v3_inject_guest_pf(struct v3_core_info * core, addr_t fault_addr, pf_error_t error_code) 
+v3_inject_guest_pf(struct v3_core_info * core, 
+		   addr_t                fault_addr, 
+		   pf_error_t            error_code) 
 {
     core->ctrl_regs.cr2 = fault_addr;
 
@@ -344,7 +354,8 @@ v3_inject_guest_pf(struct v3_core_info * core, addr_t fault_addr, pf_error_t err
 }
 
 
-int v3_is_guest_pf(pt_access_status_t guest_access, pt_access_status_t shadow_access) {
+int v3_is_guest_pf(pt_access_status_t guest_access, 
+		   pt_access_status_t shadow_access) {
     /* basically the reasoning is that there can be multiple reasons for a page fault:
        If there is a permissions failure for a page present in the guest _BUT_
        the reason for the fault was that the page is not present in the shadow,
@@ -357,8 +368,8 @@ int v3_is_guest_pf(pt_access_status_t guest_access, pt_access_status_t shadow_ac
     if (guest_access != PT_ACCESS_OK) {
 	// Guest Access Error
 
-	if ((shadow_access != PT_ACCESS_NOT_PRESENT) &&
-	    (guest_access != PT_ACCESS_NOT_PRESENT)) {
+	if ( (shadow_access != PT_ACCESS_NOT_PRESENT) &&
+	     (guest_access  != PT_ACCESS_NOT_PRESENT) ) {
 	    // aka (guest permission error)
 	    return 1;
 	}

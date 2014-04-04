@@ -31,9 +31,12 @@
 
 
 static int 
-run_op(struct v3_core_info * core, v3_op_type_t op_type, 
-       addr_t src_addr, addr_t dst_addr, 
-       int src_op_size, int dst_op_size) 
+run_op(struct v3_core_info * core, 
+       v3_op_type_t          op_type, 
+       addr_t                src_addr, 
+       addr_t                dst_addr, 
+       int                   src_op_size, 
+       int                   dst_op_size) 
 {
 
     if (src_op_size == 1) {
@@ -308,9 +311,12 @@ run_op(struct v3_core_info * core, v3_op_type_t op_type,
 
 /* Returns the number of bytes written, or -1 if there is an error */
 static int 
-run_str_op(struct v3_core_info * core, struct x86_instr * instr, 
-	   addr_t src_addr, addr_t dst_addr, 
-	   int op_size, int rep_cnt) 
+run_str_op(struct v3_core_info * core, 
+	   struct x86_instr    * instr, 
+	   addr_t                src_addr, 
+	   addr_t                dst_addr, 
+	   int                   op_size, 
+	   int                   rep_cnt) 
 {
 
     addr_t tmp_rcx            = rep_cnt;
@@ -389,8 +395,11 @@ run_str_op(struct v3_core_info * core, struct x86_instr * instr,
 
 
 int 
-v3_emulate(struct v3_core_info * core, struct x86_instr * instr, 
-	   int mem_op_size, addr_t mem_hva_src, addr_t mem_hva_dst) 
+v3_emulate(struct v3_core_info * core,
+	   struct x86_instr    * instr, 
+	   int                   mem_op_size, 
+	   addr_t                mem_hva_src, 
+	   addr_t                mem_hva_dst) 
 {
 
     addr_t src_hva = 0;
@@ -426,7 +435,7 @@ v3_emulate(struct v3_core_info * core, struct x86_instr * instr,
 	int rep_cnt = 0;
 
 	/* Both src and dst operand sizes should be identical */
-	rep_cnt = mem_op_size / instr->src_operand.size;
+	rep_cnt     = mem_op_size / instr->src_operand.size;
 
 	return run_str_op(core, instr, src_hva, dst_hva, instr->src_operand.size, rep_cnt);
     }

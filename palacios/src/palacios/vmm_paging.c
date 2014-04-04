@@ -28,13 +28,13 @@ static pt_entry_type_t pde32_lookup(pde32_t * pd, addr_t addr, addr_t * entry);
 static pt_entry_type_t pte32_lookup(pte32_t * pt, addr_t addr, addr_t * entry);
 
 static pt_entry_type_t pdpe32pae_lookup(pdpe32pae_t * pdp, addr_t addr, addr_t * entry);
-static pt_entry_type_t pde32pae_lookup(pde32pae_t * pd, addr_t addr, addr_t * entry);
-static pt_entry_type_t pte32pae_lookup(pte32pae_t * pt, addr_t addr, addr_t * entry);
+static pt_entry_type_t pde32pae_lookup(pde32pae_t   * pd,  addr_t addr, addr_t * entry);
+static pt_entry_type_t pte32pae_lookup(pte32pae_t   * pt,  addr_t addr, addr_t * entry);
 
 static pt_entry_type_t pml4e64_lookup(pml4e64_t * pml, addr_t addr, addr_t * entry);
-static pt_entry_type_t pdpe64_lookup(pdpe64_t * pdp, addr_t addr, addr_t * entry);
-static pt_entry_type_t pde64_lookup(pde64_t * pd, addr_t addr, addr_t * entry);
-static pt_entry_type_t pte64_lookup(pte64_t * pt, addr_t addr, addr_t * entry);
+static pt_entry_type_t pdpe64_lookup(pdpe64_t   * pdp, addr_t addr, addr_t * entry);
+static pt_entry_type_t pde64_lookup(pde64_t     * pd,  addr_t addr, addr_t * entry);
+static pt_entry_type_t pte64_lookup(pte64_t     * pt,  addr_t addr, addr_t * entry);
 
 
 
@@ -158,7 +158,12 @@ v3_delete_pgtables_64(pml4e64_t * pml4)
 
 
 static int 
-translate_pt_32_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) 
+translate_pt_32_cb(struct v3_core_info * core, 
+		   page_type_t           type, 
+		   addr_t                vaddr,
+		   addr_t                page_ptr, 
+		   addr_t                page_pa, 
+		   void                * private_data) 
 {
     addr_t * paddr = (addr_t *)private_data;
 
@@ -179,7 +184,12 @@ translate_pt_32_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, a
 }
 
 static int 
-translate_pt_32pae_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) 
+translate_pt_32pae_cb(struct v3_core_info * core, 
+		      page_type_t           type, 
+		      addr_t                vaddr, 
+		      addr_t                page_ptr, 
+		      addr_t                page_pa,
+		      void                * private_data) 
 {
     addr_t * paddr = (addr_t *)private_data;
   
@@ -201,7 +211,12 @@ translate_pt_32pae_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr
 }
 
 static int 
-translate_pt_64_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) 
+translate_pt_64_cb(struct v3_core_info * core, 
+		   page_type_t           type, 
+		   addr_t                vaddr, 
+		   addr_t                page_ptr, 
+		   addr_t                page_pa, 
+		   void                * private_data) 
 {
     addr_t * paddr = (addr_t *)private_data;
 
@@ -227,26 +242,59 @@ translate_pt_64_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, a
 }
 
 
-int v3_translate_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, addr_t * paddr) {
+int 
+v3_translate_host_pt_32(struct v3_core_info * core, 
+			v3_reg_t              host_cr3, 
+			addr_t                vaddr, 
+			addr_t              * paddr) 
+{
     return v3_drill_host_pt_32(core, host_cr3, vaddr, translate_pt_32_cb, paddr);
 }
-int v3_translate_guest_pt_32(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, addr_t * paddr) {
+
+int 
+v3_translate_guest_pt_32(struct v3_core_info * core, 
+			 v3_reg_t              guest_cr3, 
+			 addr_t                vaddr, 
+			 addr_t              * paddr) 
+{
     return v3_drill_guest_pt_32(core, guest_cr3, vaddr, translate_pt_32_cb, paddr);
 }
 
 
-int v3_translate_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, addr_t * paddr) {
+int 
+v3_translate_host_pt_32pae(struct v3_core_info * core, 
+			   v3_reg_t              host_cr3, 
+			   addr_t                vaddr, 
+			   addr_t              * paddr) 
+{
     return v3_drill_host_pt_32pae(core, host_cr3, vaddr, translate_pt_32pae_cb, paddr);
 }
-int v3_translate_guest_pt_32pae(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, addr_t * paddr) {
+
+int 
+v3_translate_guest_pt_32pae(struct v3_core_info * core, 
+			    v3_reg_t              guest_cr3, 
+			    addr_t                vaddr, 
+			    addr_t              * paddr) 
+{
     return v3_drill_guest_pt_32pae(core, guest_cr3, vaddr, translate_pt_32pae_cb, paddr);
 }
 
 
-int v3_translate_host_pt_64(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, addr_t * paddr) {
+int 
+v3_translate_host_pt_64(struct v3_core_info * core, 
+			v3_reg_t              host_cr3, 
+			addr_t                vaddr, 
+			addr_t              * paddr) 
+{
     return v3_drill_host_pt_64(core, host_cr3, vaddr, translate_pt_64_cb, paddr);
 }
-int v3_translate_guest_pt_64(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, addr_t * paddr) {
+
+int 
+v3_translate_guest_pt_64(struct v3_core_info * core, 
+			 v3_reg_t              guest_cr3, 
+			 addr_t                vaddr, 
+			 addr_t              * paddr) 
+{
     return v3_drill_guest_pt_64(core, guest_cr3, vaddr, translate_pt_64_cb, paddr);
 }
 
@@ -259,8 +307,12 @@ struct pt_find_data {
 };
 
 static int 
-find_pt_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, 
-	   addr_t page_ptr, addr_t page_pa, void * private_data) 
+find_pt_cb(struct v3_core_info * core, 
+	   page_type_t           type, 
+	   addr_t                vaddr, 
+	   addr_t                page_ptr, 
+	   addr_t                page_pa, 
+	   void                * private_data) 
 {
     struct pt_find_data * pt_data = (struct pt_find_data *)private_data;
 
@@ -279,8 +331,12 @@ find_pt_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr,
 
 
 int 
-v3_find_host_pt_32_page(struct v3_core_info * core, v3_reg_t host_cr3, page_type_t type, addr_t vaddr, 
-			addr_t * page_ptr, addr_t * page_pa) 
+v3_find_host_pt_32_page(struct v3_core_info * core, 
+			v3_reg_t              host_cr3, 
+			page_type_t           type, 
+			addr_t                vaddr, 
+			addr_t              * page_ptr, 
+			addr_t              * page_pa) 
 {
     struct pt_find_data data;
 
@@ -292,8 +348,12 @@ v3_find_host_pt_32_page(struct v3_core_info * core, v3_reg_t host_cr3, page_type
 }
 
 int 
-v3_find_host_pt_32pae_page(struct v3_core_info * core, v3_reg_t host_cr3, page_type_t type, addr_t vaddr, 
-			   addr_t * page_ptr, addr_t * page_pa) 
+v3_find_host_pt_32pae_page(struct v3_core_info * core, 
+			   v3_reg_t              host_cr3, 
+			   page_type_t           type, 
+			   addr_t                vaddr, 
+			   addr_t              * page_ptr, 
+			   addr_t              * page_pa) 
 {
     struct pt_find_data data;
 
@@ -305,8 +365,12 @@ v3_find_host_pt_32pae_page(struct v3_core_info * core, v3_reg_t host_cr3, page_t
 }
 
 int 
-v3_find_host_pt_64_page(struct v3_core_info * core, v3_reg_t host_cr3, page_type_t type, addr_t vaddr, 
-			addr_t * page_ptr, addr_t * page_pa) 
+v3_find_host_pt_64_page(struct v3_core_info * core, 
+			v3_reg_t              host_cr3, 
+			page_type_t           type, 
+			addr_t                vaddr, 
+			addr_t              * page_ptr, 
+			addr_t              * page_pa) 
 {
     struct pt_find_data data;
 
@@ -318,8 +382,12 @@ v3_find_host_pt_64_page(struct v3_core_info * core, v3_reg_t host_cr3, page_type
 }
 
 int 
-v3_find_guest_pt_32_page(struct v3_core_info * core, v3_reg_t guest_cr3, page_type_t type, addr_t vaddr, 
-			 addr_t * page_ptr, addr_t * page_pa) 
+v3_find_guest_pt_32_page(struct v3_core_info * core, 
+			 v3_reg_t              guest_cr3, 
+			 page_type_t           type, 
+			 addr_t                vaddr, 
+			 addr_t              * page_ptr, 
+			 addr_t              * page_pa) 
 {
     struct pt_find_data data;
 
@@ -331,8 +399,12 @@ v3_find_guest_pt_32_page(struct v3_core_info * core, v3_reg_t guest_cr3, page_ty
 }
 
 int 
-v3_find_guest_pt_32pae_page(struct v3_core_info * core, v3_reg_t guest_cr3, page_type_t type, addr_t vaddr, 
-			    addr_t * page_ptr, addr_t * page_pa) 
+v3_find_guest_pt_32pae_page(struct v3_core_info * core, 
+			    v3_reg_t              guest_cr3, 
+			    page_type_t           type, 
+			    addr_t                vaddr, 
+			    addr_t              * page_ptr, 
+			    addr_t              * page_pa) 
 {
     struct pt_find_data data;
 
@@ -344,8 +416,12 @@ v3_find_guest_pt_32pae_page(struct v3_core_info * core, v3_reg_t guest_cr3, page
 }
 
 int 
-v3_find_guest_pt_64_page(struct v3_core_info * core, v3_reg_t guest_cr3, page_type_t type, addr_t vaddr, 
-			 addr_t * page_ptr, addr_t * page_pa) 
+v3_find_guest_pt_64_page(struct v3_core_info * core, 
+			 v3_reg_t              guest_cr3, 
+			 page_type_t           type, 
+			 addr_t                vaddr, 
+			 addr_t              * page_ptr, 
+			 addr_t              * page_pa) 
 {
     struct pt_find_data data;
 
@@ -370,7 +446,12 @@ struct pt_check_data {
 };
 
 static int 
-check_pt_32_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) 
+check_pt_32_cb(struct v3_core_info * core,
+	       page_type_t           type, 
+	       addr_t                vaddr, 
+	       addr_t                page_ptr, 
+	       addr_t                page_pa, 
+	       void                * private_data) 
 {
     struct pt_check_data * chk_data = (struct pt_check_data *)private_data;
 
@@ -398,7 +479,12 @@ check_pt_32_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_
 
 
 static int 
-check_pt_32pae_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) 
+check_pt_32pae_cb(struct v3_core_info * core, 
+		  page_type_t           type, 
+		  addr_t                vaddr, 
+		  addr_t                page_ptr, 
+		  addr_t                page_pa, 
+		  void                * private_data) 
 {
     struct pt_check_data * chk_data = (struct pt_check_data *)private_data;
 
@@ -429,7 +515,12 @@ check_pt_32pae_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, ad
 
 
 static int 
-check_pt_64_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) 
+check_pt_64_cb(struct v3_core_info * core, 
+	       page_type_t           type, 
+	       addr_t                vaddr, 
+	       addr_t                page_ptr, 
+	       addr_t                page_pa,
+	       void                * private_data) 
 {
     struct pt_check_data * chk_data = (struct pt_check_data *)private_data;
 
@@ -465,7 +556,11 @@ check_pt_64_cb(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_
 
 
 int 
-v3_check_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, pf_error_t access_type, pt_access_status_t * access_status) 
+v3_check_host_pt_32(struct v3_core_info * core, 
+		    v3_reg_t              host_cr3, 
+		    addr_t                vaddr, 
+		    pf_error_t            access_type, 
+		    pt_access_status_t  * access_status) 
 {
     struct pt_check_data access_data;
 
@@ -476,7 +571,11 @@ v3_check_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr,
 }
 
 int 
-v3_check_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, pf_error_t access_type, pt_access_status_t * access_status) 
+v3_check_host_pt_32pae(struct v3_core_info * core, 
+		       v3_reg_t              host_cr3, 
+		       addr_t                vaddr, 
+		       pf_error_t            access_type,
+		       pt_access_status_t  * access_status) 
 {
     struct pt_check_data access_data;
 
@@ -489,7 +588,11 @@ v3_check_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vad
 
 
 int 
-v3_check_host_pt_64(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, pf_error_t access_type, pt_access_status_t * access_status) 
+v3_check_host_pt_64(struct v3_core_info * core, 
+		    v3_reg_t              host_cr3, 
+		    addr_t                vaddr, 
+		    pf_error_t            access_type,
+		    pt_access_status_t  * access_status) 
 {
     struct pt_check_data access_data;
 
@@ -502,8 +605,11 @@ v3_check_host_pt_64(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr,
 
 
 int 
-v3_check_guest_pt_32(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, 
-		     pf_error_t access_type, pt_access_status_t * access_status) 
+v3_check_guest_pt_32(struct v3_core_info * core, 
+		     v3_reg_t              guest_cr3, 
+		     addr_t                vaddr, 
+		     pf_error_t            access_type, 
+		     pt_access_status_t  * access_status) 
 {
     struct pt_check_data access_data;
 
@@ -518,8 +624,11 @@ v3_check_guest_pt_32(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vadd
 
 
 int 
-v3_check_guest_pt_32pae(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, 
-			pf_error_t access_type, pt_access_status_t * access_status) 
+v3_check_guest_pt_32pae(struct v3_core_info * core, 
+			v3_reg_t              guest_cr3, 
+			addr_t                vaddr, 
+			pf_error_t            access_type, 
+			pt_access_status_t  * access_status) 
 {
     struct pt_check_data access_data;
 
@@ -532,8 +641,11 @@ v3_check_guest_pt_32pae(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t v
 
 
 int 
-v3_check_guest_pt_64(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, 
-		     pf_error_t access_type, pt_access_status_t * access_status) 
+v3_check_guest_pt_64(struct v3_core_info * core,
+		     v3_reg_t              guest_cr3, 
+		     addr_t                vaddr, 
+		     pf_error_t            access_type, 
+		     pt_access_status_t  * access_status) 
 {
     struct pt_check_data access_data;
 
@@ -545,8 +657,12 @@ v3_check_guest_pt_64(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vadd
 
 
 static int 
-get_data_page_type_cb(struct v3_core_info * core, page_type_t type, 
-		      addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data) 
+get_data_page_type_cb(struct v3_core_info * core,
+		      page_type_t           type, 
+		      addr_t                vaddr, 
+		      addr_t                page_ptr, 
+		      addr_t                page_pa, 
+		      void                * private_data) 
 {
     switch (type) {
 	case PAGE_4KB:
@@ -561,22 +677,51 @@ get_data_page_type_cb(struct v3_core_info * core, page_type_t type,
 
 
 
-page_type_t v3_get_guest_data_page_type_32(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+page_type_t 
+v3_get_guest_data_page_type_32(struct v3_core_info * core, 
+			       v3_reg_t              cr3, 
+			       addr_t                vaddr) 
+{
     return v3_drill_guest_pt_32(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
-page_type_t v3_get_guest_data_page_type_32pae(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+
+page_type_t 
+v3_get_guest_data_page_type_32pae(struct v3_core_info * core,
+				  v3_reg_t              cr3, 
+				  addr_t                vaddr) 
+{
     return v3_drill_guest_pt_32pae(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
-page_type_t v3_get_guest_data_page_type_64(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+
+page_type_t 
+v3_get_guest_data_page_type_64(struct v3_core_info * core, 
+			       v3_reg_t              cr3, 
+			       addr_t                vaddr) 
+{
     return v3_drill_guest_pt_64(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
-page_type_t v3_get_host_data_page_type_32(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+
+page_type_t 
+v3_get_host_data_page_type_32(struct v3_core_info * core, 
+			      v3_reg_t              cr3, 
+			      addr_t                vaddr) 
+{
     return v3_drill_host_pt_32(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
-page_type_t v3_get_host_data_page_type_32pae(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+
+page_type_t 
+v3_get_host_data_page_type_32pae(struct v3_core_info * core, 
+				 v3_reg_t              cr3, 
+				 addr_t                vaddr) 
+{
     return v3_drill_host_pt_32pae(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
-page_type_t v3_get_host_data_page_type_64(struct v3_core_info * core, v3_reg_t cr3, addr_t vaddr) {
+
+page_type_t 
+v3_get_host_data_page_type_64(struct v3_core_info * core, 
+			      v3_reg_t              cr3, 
+			      addr_t                vaddr) 
+{
     return v3_drill_host_pt_64(core, cr3, vaddr, get_data_page_type_cb, NULL);
 }
 
@@ -595,7 +740,9 @@ page_type_t v3_get_host_data_page_type_64(struct v3_core_info * core, v3_reg_t c
  **/
 
 static pt_entry_type_t 
-pde32_lookup(pde32_t * pd, addr_t addr, addr_t * entry) 
+pde32_lookup(pde32_t * pd, 
+	     addr_t    addr, 
+	     addr_t  * entry) 
 {
     pde32_t * pde_entry = &(pd[PDE32_INDEX(addr)]);
 
@@ -621,7 +768,9 @@ pde32_lookup(pde32_t * pd, addr_t addr, addr_t * entry)
 /* Takes a virtual addr (addr) and returns the physical addr (entry) as defined in the page table
  */
 static pt_entry_type_t 
-pte32_lookup(pte32_t * pt, addr_t addr, addr_t * entry) 
+pte32_lookup(pte32_t * pt, 
+	     addr_t    addr, 
+	     addr_t  * entry) 
 {
     pte32_t * pte_entry = &(pt[PTE32_INDEX(addr)]);
 
@@ -645,7 +794,9 @@ pte32_lookup(pte32_t * pt, addr_t addr, addr_t * entry)
  *
  **/
 static pt_entry_type_t 
-pdpe32pae_lookup(pdpe32pae_t * pdp, addr_t addr, addr_t * entry) 
+pdpe32pae_lookup(pdpe32pae_t * pdp, 
+		 addr_t        addr, 
+		 addr_t      * entry) 
 {
     pdpe32pae_t * pdpe_entry = &(pdp[PDPE32PAE_INDEX(addr)]);
   
@@ -659,7 +810,9 @@ pdpe32pae_lookup(pdpe32pae_t * pdp, addr_t addr, addr_t * entry)
 }
 
 static pt_entry_type_t 
-pde32pae_lookup(pde32pae_t * pd, addr_t addr, addr_t * entry) 
+pde32pae_lookup(pde32pae_t * pd, 
+		addr_t       addr, 
+		addr_t     * entry) 
 {
     pde32pae_t * pde_entry = &(pd[PDE32PAE_INDEX(addr)]);
 
@@ -681,7 +834,9 @@ pde32pae_lookup(pde32pae_t * pd, addr_t addr, addr_t * entry)
 }
 
 static pt_entry_type_t 
-pte32pae_lookup(pte32pae_t * pt, addr_t addr, addr_t * entry) 
+pte32pae_lookup(pte32pae_t * pt,
+		addr_t       addr,
+		addr_t     * entry) 
 {
     pte32pae_t * pte_entry = &(pt[PTE32PAE_INDEX(addr)]);
 
@@ -703,7 +858,9 @@ pte32pae_lookup(pte32pae_t * pt, addr_t addr, addr_t * entry)
  *
  **/
 static pt_entry_type_t 
-pml4e64_lookup(pml4e64_t * pml, addr_t addr, addr_t * entry) 
+pml4e64_lookup(pml4e64_t * pml,
+	       addr_t      addr, 
+	       addr_t    * entry) 
 {
     pml4e64_t * pml_entry = &(pml[PML4E64_INDEX(addr)]);
 
@@ -718,7 +875,9 @@ pml4e64_lookup(pml4e64_t * pml, addr_t addr, addr_t * entry)
 }
 
 static pt_entry_type_t 
-pdpe64_lookup(pdpe64_t * pdp, addr_t addr, addr_t * entry) 
+pdpe64_lookup(pdpe64_t * pdp, 
+	      addr_t     addr, 
+	      addr_t   * entry) 
 {
     pdpe64_t * pdpe_entry = &(pdp[PDPE64_INDEX(addr)]);
   
@@ -740,7 +899,9 @@ pdpe64_lookup(pdpe64_t * pdp, addr_t addr, addr_t * entry)
 }
 
 static pt_entry_type_t 
-pde64_lookup(pde64_t * pd, addr_t addr, addr_t * entry) 
+pde64_lookup(pde64_t * pd, 
+	     addr_t    addr, 
+	     addr_t  * entry) 
 {
     pde64_t * pde_entry = &(pd[PDE64_INDEX(addr)]);
 
@@ -761,7 +922,9 @@ pde64_lookup(pde64_t * pd, addr_t addr, addr_t * entry)
 }
 
 static pt_entry_type_t 
-pte64_lookup(pte64_t * pt, addr_t addr, addr_t * entry) 
+pte64_lookup(pte64_t * pt,
+	     addr_t    addr, 
+	     addr_t  * entry) 
 {
     pte64_t * pte_entry = &(pt[PTE64_INDEX(addr)]);
 
@@ -778,7 +941,8 @@ pte64_lookup(pte64_t * pt, addr_t addr, addr_t * entry)
 
 
 static pt_access_status_t 
-can_access_pt_entry(gen_pt_t * pt, pf_error_t access_type)
+can_access_pt_entry(gen_pt_t * pt, 
+		    pf_error_t access_type)
 {
     if (pt->present == 0) {
 	return PT_ACCESS_NOT_PRESENT;
@@ -797,15 +961,19 @@ can_access_pt_entry(gen_pt_t * pt, pf_error_t access_type)
 /*
  *   32 bit access checks
  */
-pt_access_status_t inline 
-v3_can_access_pde32(pde32_t * pde, addr_t addr, pf_error_t access_type) 
+inline pt_access_status_t 
+v3_can_access_pde32(pde32_t    * pde, 
+		    addr_t       addr, 
+		    pf_error_t   access_type) 
 {
     gen_pt_t * entry = (gen_pt_t *)&pde[PDE32_INDEX(addr)];
     return can_access_pt_entry(entry, access_type);
 }
 
-pt_access_status_t inline 
-v3_can_access_pte32(pte32_t * pte, addr_t addr, pf_error_t access_type) 
+inline pt_access_status_t 
+v3_can_access_pte32(pte32_t    * pte, 
+		    addr_t       addr,
+		    pf_error_t   access_type) 
 {
     gen_pt_t * entry = (gen_pt_t *)&pte[PTE32_INDEX(addr)];
     return can_access_pt_entry(entry, access_type);
@@ -815,22 +983,28 @@ v3_can_access_pte32(pte32_t * pte, addr_t addr, pf_error_t access_type)
 /*
  *  32 bit PAE access checks
  */
-pt_access_status_t inline 
-v3_can_access_pdpe32pae(pdpe32pae_t * pdpe, addr_t addr, pf_error_t access_type) 
+inline pt_access_status_t 
+v3_can_access_pdpe32pae(pdpe32pae_t * pdpe, 
+			addr_t        addr, 
+			pf_error_t    access_type) 
 {
     gen_pt_t * entry = (gen_pt_t *)&pdpe[PDPE32PAE_INDEX(addr)];
     return can_access_pt_entry(entry, access_type);
 }
 
-pt_access_status_t inline 
-v3_can_access_pde32pae(pde32pae_t * pde, addr_t addr, pf_error_t access_type) 
+inline pt_access_status_t 
+v3_can_access_pde32pae(pde32pae_t * pde, 
+		       addr_t       addr, 
+		       pf_error_t   access_type) 
 {
     gen_pt_t * entry = (gen_pt_t *)&pde[PDE32PAE_INDEX(addr)];
     return can_access_pt_entry(entry, access_type);
 }
 
-pt_access_status_t inline 
-v3_can_access_pte32pae(pte32pae_t * pte, addr_t addr, pf_error_t access_type) 
+inline pt_access_status_t 
+v3_can_access_pte32pae(pte32pae_t * pte, 
+		       addr_t       addr, 
+		       pf_error_t   access_type) 
 {
     gen_pt_t * entry = (gen_pt_t *)&pte[PTE32PAE_INDEX(addr)];
     return can_access_pt_entry(entry, access_type);
@@ -839,29 +1013,37 @@ v3_can_access_pte32pae(pte32pae_t * pte, addr_t addr, pf_error_t access_type)
 /*
  *   64 Bit access checks
  */
-pt_access_status_t inline 
-v3_can_access_pml4e64(pml4e64_t * pmle, addr_t addr, pf_error_t access_type) 
+inline pt_access_status_t 
+v3_can_access_pml4e64(pml4e64_t  * pmle, 
+		      addr_t       addr,
+		      pf_error_t   access_type) 
 {
     gen_pt_t * entry = (gen_pt_t *)&pmle[PML4E64_INDEX(addr)];
     return can_access_pt_entry(entry, access_type);
 }
 
-pt_access_status_t inline 
-v3_can_access_pdpe64(pdpe64_t * pdpe, addr_t addr, pf_error_t access_type) 
+inline pt_access_status_t 
+v3_can_access_pdpe64(pdpe64_t   * pdpe, 
+		     addr_t       addr, 
+		     pf_error_t   access_type) 
 {
     gen_pt_t * entry = (gen_pt_t *)&pdpe[PDPE64_INDEX(addr)];
     return can_access_pt_entry(entry, access_type);
 }
 
-pt_access_status_t inline 
-v3_can_access_pde64(pde64_t * pde, addr_t addr, pf_error_t access_type) 
+inline pt_access_status_t 
+v3_can_access_pde64(pde64_t    * pde, 
+		    addr_t       addr, 
+		    pf_error_t   access_type) 
 {
     gen_pt_t * entry = (gen_pt_t *)&pde[PDE64_INDEX(addr)];
     return can_access_pt_entry(entry, access_type);
 }
 
-pt_access_status_t inline 
-v3_can_access_pte64(pte64_t * pte, addr_t addr, pf_error_t access_type) 
+inline pt_access_status_t 
+v3_can_access_pte64(pte64_t    * pte, 
+		    addr_t       addr,
+		    pf_error_t   access_type) 
 {
     gen_pt_t * entry = (gen_pt_t *)&pte[PTE64_INDEX(addr)];
     return can_access_pt_entry(entry, access_type);
@@ -873,9 +1055,11 @@ v3_can_access_pte64(pte64_t * pte, addr_t addr, pf_error_t access_type)
 
 
 int 
-v3_drill_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr, 
+v3_drill_host_pt_32(struct v3_core_info * core,
+		    v3_reg_t              host_cr3, 
+		    addr_t                vaddr, 
 		    int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-		    void * private_data) 
+		    void                * private_data) 
 {
     pde32_t * host_pde    = (pde32_t *)CR3_TO_PDE32_VA(host_cr3);
     addr_t    host_pde_pa = CR3_TO_PDE32_PA(host_cr3);
@@ -915,9 +1099,11 @@ v3_drill_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr,
 
 
 int 
-v3_drill_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr,
-			   int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-			   void * private_data) 
+v3_drill_host_pt_32pae(struct v3_core_info * core, 
+		       v3_reg_t              host_cr3, 
+		       addr_t                vaddr,
+		       int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
+		       void                * private_data) 
 {
     pdpe32pae_t * host_pdpe    = (pdpe32pae_t *)CR3_TO_PDPE32PAE_VA(host_cr3);
     addr_t        host_pdpe_pa = CR3_TO_PDPE32PAE_PA(host_cr3);
@@ -971,9 +1157,11 @@ v3_drill_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vad
 
 
 int 
-v3_drill_host_pt_64(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr,
+v3_drill_host_pt_64(struct v3_core_info * core, 
+		    v3_reg_t              host_cr3, 
+		    addr_t                vaddr,
 		    int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-		    void * private_data) 
+		    void                * private_data) 
 {
     pml4e64_t * host_pmle    = (pml4e64_t *)CR3_TO_PML4E64_VA(host_cr3);
     addr_t      host_pmle_pa = CR3_TO_PML4E64_PA(host_cr3);
@@ -1049,9 +1237,11 @@ v3_drill_host_pt_64(struct v3_core_info * core, v3_reg_t host_cr3, addr_t vaddr,
 
 
 int 
-v3_drill_guest_pt_32(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, 
+v3_drill_guest_pt_32(struct v3_core_info * core,
+		     v3_reg_t              guest_cr3, 
+		     addr_t                vaddr, 
 		     int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-		     void * private_data) 
+		     void                * private_data) 
 {
     addr_t    guest_pde_pa = CR3_TO_PDE32_PA(guest_cr3);
     pde32_t * guest_pde    = NULL;
@@ -1127,9 +1317,11 @@ v3_drill_guest_pt_32(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vadd
 
 
 int 
-v3_drill_guest_pt_32pae(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr,
+v3_drill_guest_pt_32pae(struct v3_core_info * core, 
+			v3_reg_t              guest_cr3, 
+			addr_t                vaddr,
 			int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-			void * private_data) 
+			void                * private_data) 
 {			
     addr_t        guest_pdpe_pa = CR3_TO_PDPE32PAE_PA(guest_cr3);
     pdpe32pae_t * guest_pdpe    = 0;
@@ -1226,9 +1418,11 @@ v3_drill_guest_pt_32pae(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t v
 }
 
 int 
-v3_drill_guest_pt_64(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vaddr, 
+v3_drill_guest_pt_64(struct v3_core_info * core, 
+		     v3_reg_t              guest_cr3, 
+		     addr_t                vaddr, 
 		     int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-		     void * private_data) 
+		     void                * private_data) 
 {	
     addr_t      guest_pml4_pa = CR3_TO_PML4E64_PA(guest_cr3);
     pml4e64_t * guest_pmle    = 0;
@@ -1361,9 +1555,10 @@ v3_drill_guest_pt_64(struct v3_core_info * core, v3_reg_t guest_cr3, addr_t vadd
 
 
 int 
-v3_walk_guest_pt_32(struct v3_core_info * core,  v3_reg_t guest_cr3,
+v3_walk_guest_pt_32(struct v3_core_info * core,  
+		    v3_reg_t              guest_cr3,
 		    int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-		    void * private_data)
+		    void                * private_data)
 {
     addr_t    guest_pde_pa = CR3_TO_PDE32_PA(guest_cr3);
     pde32_t * guest_pde    = NULL;
@@ -1451,9 +1646,10 @@ v3_walk_guest_pt_32(struct v3_core_info * core,  v3_reg_t guest_cr3,
 
 
 int 
-v3_walk_guest_pt_32pae(struct v3_core_info * core,  v3_reg_t guest_cr3,
+v3_walk_guest_pt_32pae(struct v3_core_info * core,  
+		       v3_reg_t              guest_cr3,
 		       int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-		       void * private_data) 
+		       void                * private_data) 
 {
     addr_t        guest_pdpe_pa = CR3_TO_PDPE32PAE_PA(guest_cr3);
     pdpe32pae_t * guest_pdpe    = NULL;
@@ -1564,9 +1760,10 @@ v3_walk_guest_pt_32pae(struct v3_core_info * core,  v3_reg_t guest_cr3,
 
 
 int 
-v3_walk_guest_pt_64(struct v3_core_info * core,  v3_reg_t guest_cr3,
+v3_walk_guest_pt_64(struct v3_core_info * core, 
+		    v3_reg_t              guest_cr3,
 		    int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-		    void * private_data) 
+		    void                * private_data) 
 {
     addr_t      guest_pml_pa = CR3_TO_PML4E64_PA(guest_cr3);
     pml4e64_t * guest_pml    = NULL;
@@ -1720,9 +1917,10 @@ v3_walk_guest_pt_64(struct v3_core_info * core,  v3_reg_t guest_cr3,
 }
 
 int 
-v3_walk_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3,
+v3_walk_host_pt_32(struct v3_core_info * core,
+		   v3_reg_t              host_cr3,
 		   int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-		   void * private_data) 
+		   void                * private_data) 
 {
     pde32_t * host_pde = (pde32_t *)CR3_TO_PDE32_VA(host_cr3);
     addr_t    pde_pa   = CR3_TO_PDE32_PA(host_cr3);
@@ -1785,9 +1983,10 @@ v3_walk_host_pt_32(struct v3_core_info * core, v3_reg_t host_cr3,
 
 
 int 
-v3_walk_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3,
+v3_walk_host_pt_32pae(struct v3_core_info * core, 
+		      v3_reg_t              host_cr3,
 		      int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-		      void * private_data) 
+		      void                * private_data) 
 {
     pdpe32pae_t * host_pdpe = (pdpe32pae_t *)CR3_TO_PDPE32PAE_VA(host_cr3);
     addr_t        pdpe_pa  = CR3_TO_PDPE32PAE_PA(host_cr3);
@@ -1861,9 +2060,10 @@ v3_walk_host_pt_32pae(struct v3_core_info * core, v3_reg_t host_cr3,
 			
 
 int 
-v3_walk_host_pt_64(struct v3_core_info * core, v3_reg_t host_cr3,
+v3_walk_host_pt_64(struct v3_core_info * core, 
+		   v3_reg_t              host_cr3,
 		   int (*callback)(struct v3_core_info * core, page_type_t type, addr_t vaddr, addr_t page_ptr, addr_t page_pa, void * private_data),
-		   void * private_data) 
+		   void                * private_data) 
 {
     pml4e64_t * host_pml = (pml4e64_t *)CR3_TO_PML4E64_VA(host_cr3);
     addr_t      pml_pa   = CR3_TO_PML4E64_PA(host_cr3);

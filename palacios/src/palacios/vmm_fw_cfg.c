@@ -94,7 +94,10 @@ struct e820_table {
 */
 
 static int 
-fw_cfg_add_bytes(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint8_t * data, uint32_t len)
+fw_cfg_add_bytes(struct v3_fw_cfg_state * cfg_state, 
+		 uint16_t                 key, 
+		 uint8_t                * data, 
+		 uint32_t                 len)
 {
     int arch = !!(key & FW_CFG_ARCH_LOCAL);
     // JRL: Well this is demented... Its basically generating a 1 or 0 from a mask operation
@@ -112,7 +115,9 @@ fw_cfg_add_bytes(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint8_t * dat
 }
 
 static int 
-fw_cfg_add_i16(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint16_t value)
+fw_cfg_add_i16(struct v3_fw_cfg_state * cfg_state, 
+	       uint16_t                 key, 
+	       uint16_t                 value)
 {
     uint16_t * copy = NULL;
 
@@ -122,7 +127,9 @@ fw_cfg_add_i16(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint16_t value)
 }
 
 static int 
-fw_cfg_add_i32(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint32_t value)
+fw_cfg_add_i32(struct v3_fw_cfg_state * cfg_state, 
+	       uint16_t                 key, 
+	       uint32_t                 value)
 {
     uint32_t * copy = NULL;
 
@@ -132,7 +139,9 @@ fw_cfg_add_i32(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint32_t value)
 }
 
 static int 
-fw_cfg_add_i64(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint64_t value)
+fw_cfg_add_i64(struct v3_fw_cfg_state * cfg_state, 
+	       uint16_t                 key, 
+	       uint64_t                 value)
 {
     uint64_t * copy = NULL;
 
@@ -142,12 +151,21 @@ fw_cfg_add_i64(struct v3_fw_cfg_state * cfg_state, uint16_t key, uint64_t value)
 }
 
 static int 
-fw_cfg_ctl_read(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
+fw_cfg_ctl_read(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * src, 
+		uint_t                length, 
+		void                * priv_data) 
+{
     return length;
 }
 
 static int 
-fw_cfg_ctl_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
+fw_cfg_ctl_write(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * src, 
+		 uint_t                length, 
+		 void                * priv_data) 
 {
     V3_ASSERT(length == 2);
 
@@ -170,7 +188,11 @@ fw_cfg_ctl_write(struct v3_core_info * core, uint16_t port, void * src, uint_t l
 
 
 static int 
-fw_cfg_data_read(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
+fw_cfg_data_read(struct v3_core_info * core, 
+		 uint16_t              port, 
+		 void                * src, 
+		 uint_t                length, 
+		 void                * priv_data) 
 {
     V3_ASSERT(length == 1);
 
@@ -194,7 +216,11 @@ fw_cfg_data_read(struct v3_core_info * core, uint16_t port, void * src, uint_t l
 }
 
 static int 
-fw_cfg_data_write(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) 
+fw_cfg_data_write(struct v3_core_info * core, 
+		  uint16_t              port, 
+		  void                * src, 
+		  uint_t                length, 
+		  void                * priv_data) 
 {
     V3_ASSERT(length == 1);
 

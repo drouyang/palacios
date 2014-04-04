@@ -34,7 +34,9 @@ v3_init_exception_state(struct v3_core_info * core)
 
 
 int 
-v3_raise_exception_with_error(struct v3_core_info * core, uint_t excp, uint_t error_code) 
+v3_raise_exception_with_error(struct v3_core_info * core, 
+			      uint_t                excp, 
+			      uint_t                error_code) 
 {
     struct v3_excp_state * excp_state = &(core->excp_state);
 
@@ -56,7 +58,8 @@ v3_raise_exception_with_error(struct v3_core_info * core, uint_t excp, uint_t er
 }
 
 int 
-v3_raise_exception(struct v3_core_info * core, uint_t excp) 
+v3_raise_exception(struct v3_core_info * core, 
+		   uint_t                excp) 
 {
     struct v3_excp_state * excp_state = &(core->excp_state);
     //PrintDebug("[v3_raise_exception]\n");
@@ -105,7 +108,8 @@ v3_get_excp_number(struct v3_core_info * core)
 
 
 int 
-v3_injecting_excp(struct v3_core_info * core, uint_t excp) 
+v3_injecting_excp(struct v3_core_info * core, 
+		  uint_t                excp) 
 {
     struct v3_excp_state * excp_state = &(core->excp_state);
     

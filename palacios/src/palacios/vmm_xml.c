@@ -62,8 +62,10 @@ static char * empty_attrib_list[] = { NULL }; // empty, null terminated array of
 
 
 static void * 
-tmp_realloc(void * old_ptr, size_t old_size, size_t new_size)
- {
+tmp_realloc(void * old_ptr, 
+	    size_t old_size, 
+	    size_t new_size)
+{
     void * new_buf = NULL; 
 
     new_buf = V3_Malloc(new_size);
@@ -82,7 +84,10 @@ tmp_realloc(void * old_ptr, size_t old_size, size_t new_size)
 
 // set an error string and return root
 static void 
-v3_xml_err(struct v3_xml_root * root, char * xml_str, const char * err, ...)
+v3_xml_err(struct v3_xml_root * root, 
+	   char               * xml_str, 
+	   const char         * err,
+	   ...)
 {
     va_list ap;
     int     line = 1;
@@ -113,7 +118,8 @@ v3_xml_err(struct v3_xml_root * root, char * xml_str, const char * err, ...)
 
 // returns the first child tag with the given name or NULL if not found
 struct v3_xml * 
-v3_xml_child(struct v3_xml * xml, const char * name) 
+v3_xml_child(struct v3_xml * xml,
+	     const char    * name) 
 {
     struct v3_xml * child = NULL;
 
@@ -131,7 +137,8 @@ v3_xml_child(struct v3_xml * xml, const char * name)
 // returns the Nth tag with the same name in the same subsection or NULL if not
 // found
 struct v3_xml * 
-v3_xml_idx(struct v3_xml * xml, int idx) 
+v3_xml_idx(struct v3_xml * xml, 
+	   int             idx) 
 {
     for (; xml && idx; idx--) {
 	xml = xml->next;
@@ -142,7 +149,8 @@ v3_xml_idx(struct v3_xml * xml, int idx)
 
 // returns the value of the requested tag attribute or NULL if not found
 const char * 
-v3_xml_attr(struct v3_xml * xml, const char * attr) 
+v3_xml_attr(struct v3_xml * xml,
+	    const char    * attr) 
 {
     int i = 0;
 
@@ -163,7 +171,8 @@ v3_xml_attr(struct v3_xml * xml, const char * attr)
 
 // same as v3_xml_get but takes an already initialized va_list
 static struct v3_xml * 
-v3_xml_vget(struct v3_xml * xml, va_list ap) 
+v3_xml_vget(struct v3_xml * xml,
+	    va_list         ap) 
 {
     char * name = va_arg(ap, char *);
     int    idx  = -1;
@@ -197,7 +206,8 @@ v3_xml_get(struct v3_xml * xml, ...)
 
 // sets a flag for the given tag and returns the tag
 static struct v3_xml * 
-v3_xml_set_flag(struct v3_xml * xml, short flag)
+v3_xml_set_flag(struct v3_xml * xml, 
+		short           flag)
 {
     if (xml) {
 	xml->flags |= flag;
@@ -216,7 +226,8 @@ v3_xml_set_flag(struct v3_xml * xml, short flag)
 // attribute normalization. Returns s, or if the decoded string is longer than
 // s, returns a malloced string that must be freed.
 static char * 
-v3_xml_decode(char * s, char t) 
+v3_xml_decode(char * s, 
+	      char   t) 
 {
     char * r = s;
     char * e = NULL;
@@ -297,7 +308,10 @@ v3_xml_decode(char * s, char t)
 
 // called when parser finds character content between open and closing tag
 static void 
-v3_xml_char_content(struct v3_xml_root * root, char * s, size_t len, char t) 
+v3_xml_char_content(struct v3_xml_root * root, 
+		    char               * s, 
+		    size_t               len,
+		    char                 t) 
 {
     struct v3_xml * xml = root->cur;
     char * m = s;
@@ -347,7 +361,9 @@ v3_xml_char_content(struct v3_xml_root * root, char * s, size_t len, char t)
 
 // called when parser finds closing tag
 static int 
-v3_xml_close_tag(struct v3_xml_root * root, char * name, char * s) 
+v3_xml_close_tag(struct v3_xml_root * root, 
+		 char               * name, 
+		 char               * s) 
 {
     if ( (root->cur       == NULL) || 
 	 (root->cur->name == NULL) || 
@@ -414,7 +430,9 @@ v3_xml_new(const char * name)
 
 // inserts an existing tag into an v3_xml structure
 struct v3_xml * 
-v3_xml_insert(struct v3_xml * xml, struct v3_xml * dest, size_t off) 
+v3_xml_insert(struct v3_xml * xml,
+	      struct v3_xml * dest,
+	      size_t          off) 
 {
     struct v3_xml * cur  = NULL;
     struct v3_xml * prev = NULL;
@@ -493,7 +511,9 @@ v3_xml_insert(struct v3_xml * xml, struct v3_xml * dest, size_t off)
 // Adds a child tag. off is the offset of the child tag relative to the start
 // of the parent tag's character content. Returns the child tag.
 static struct v3_xml * 
-v3_xml_add_child(struct v3_xml * xml, const char * name, size_t off) 
+v3_xml_add_child(struct v3_xml * xml, 
+		 const char    * name, 
+		 size_t          off) 
 {
     struct v3_xml * child;
 
@@ -520,7 +540,9 @@ v3_xml_add_child(struct v3_xml * xml, const char * name, size_t off)
 
 // called when parser finds start of new tag
 static void 
-v3_xml_open_tag(struct v3_xml_root * root, char * name, char ** attr) 
+v3_xml_open_tag(struct v3_xml_root * root,
+		char               * name,
+		char              ** attr) 
 {
     struct v3_xml * xml = root->cur;
     
@@ -543,7 +565,8 @@ v3_xml_open_tag(struct v3_xml_root * root, char * name, char ** attr)
 
 // parse the given xml string and return an v3_xml structure
 static struct v3_xml * 
-parse_str(char * buf, size_t len) 
+parse_str(char   * buf, 
+	  size_t   len) 
 {
     struct v3_xml_root * root = (struct v3_xml_root *)v3_xml_new(NULL);
     char    quote_char = 0;
@@ -607,9 +630,9 @@ parse_str(char * buf, size_t len)
 		// buf is incremented later on
 		// new attrib
 		int attr_cnt = (attr_idx / 2) + 1;
-		int val_idx  = attr_idx + 1;
-		int term_idx = attr_idx + 2;
-		int last_idx = attr_idx + 3;
+		int val_idx  =  attr_idx + 1;
+		int term_idx =  attr_idx + 2;
+		int last_idx =  attr_idx + 3;
 
 		// attr = allocated space
 		// attr[val_idx] = mem for list of maloced vals
@@ -873,7 +896,8 @@ v3_xml_free(struct v3_xml * xml)
 
 // sets the character content for the given tag and returns the tag
 struct v3_xml *  
-v3_xml_set_txt(struct v3_xml * xml, const char * txt) 
+v3_xml_set_txt(struct v3_xml * xml, 
+	       const char    * txt) 
 {
     if (! xml) {
 	return NULL;
@@ -892,7 +916,9 @@ v3_xml_set_txt(struct v3_xml * xml, const char * txt)
 // Sets the given tag attribute or adds a new attribute if not found. A value
 // of NULL will remove the specified attribute. Returns the tag given.
 struct v3_xml * 
-v3_xml_set_attr(struct v3_xml * xml, const char * name, const char * value) 
+v3_xml_set_attr(struct v3_xml * xml,
+		const char    * name, 
+		const char    * value) 
 {
     int l = 0;
     int c = 0;
@@ -1087,8 +1113,12 @@ v3_xml_cut(struct v3_xml * xml)
 // Encodes ampersand sequences appending the results to *dst, reallocating *dst
 // if length excedes max. a is non-zero for attribute encoding. Returns *dst
 static char *
-ampencode(const char * s, size_t len, char ** dst, size_t * dlen,
-                      size_t * max, short a)
+ampencode(const char * s, 
+	  size_t       len, 
+	  char      ** dst, 
+	  size_t     * dlen,
+	  size_t     * max, 
+	  short        a)
 {
     const char * e = NULL;
     
@@ -1121,8 +1151,11 @@ ampencode(const char * s, size_t len, char ** dst, size_t * dlen,
 // its length excedes max. start is the location of the previous tag in the
 // parent tag's character content. Returns *s.
 static char *
-toxml_r(struct v3_xml * xml, char ** s, size_t * len, size_t * max,
-	size_t start) 
+toxml_r(struct v3_xml * xml, 
+	char         ** s, 
+	size_t        * len,
+	size_t        * max,
+	size_t          start) 
 {
     int    i   = 0;
     char * txt = (xml->parent) ? xml->parent->txt : "";

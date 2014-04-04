@@ -235,38 +235,38 @@ struct vmx_exception_bitmap {
     union {
         uint32_t value;
 	struct {
-	    uint_t de          : 1; // (0) divide by zero
-	    uint_t db          : 1; // (1) Debug
-	    uint_t nmi         : 1; // (2) Non-maskable interrupt
-	    uint_t bp          : 1; // (3) Breakpoint
-	    uint_t of          : 1; // (4) Overflow
-	    uint_t br          : 1; // (5) Bound-Range
-	    uint_t ud          : 1; // (6) Invalid-Opcode
-	    uint_t nm          : 1; // (7) Device-not-available
-	    uint_t df          : 1; // (8) Double Fault
-	    uint_t ex9         : 1; 
-	    uint_t ts          : 1; // (10) Invalid TSS
-	    uint_t np          : 1; // (11) Segment-not-present
-	    uint_t ss          : 1; // (12) Stack
-	    uint_t gp          : 1; // (13) General Protection Fault
-	    uint_t pf          : 1; // (14) Page fault
-	    uint_t ex15        : 1;
-	    uint_t mf          : 1; // (15) Floating point exception
-	    uint_t ac          : 1; // (16) Alignment-check
-	    uint_t mc          : 1; // (17) Machine Check
-	    uint_t xf          : 1; // (18) SIMD floating-point
-	    uint_t ex20        : 1;
-	    uint_t ex21        : 1;
-	    uint_t ex22        : 1;
-	    uint_t ex23        : 1;
-	    uint_t ex24        : 1;
-	    uint_t ex25        : 1;
-	    uint_t ex26        : 1;
-	    uint_t ex27        : 1;
-	    uint_t ex28        : 1;
-	    uint_t ex29        : 1;
-	    uint_t sx          : 1; // (30) Security Exception
-	    uint_t ex31        : 1;
+	    uint32_t de          : 1; // (0) divide by zero
+	    uint32_t db          : 1; // (1) Debug
+	    uint32_t nmi         : 1; // (2) Non-maskable interrupt
+	    uint32_t bp          : 1; // (3) Breakpoint
+	    uint32_t of          : 1; // (4) Overflow
+	    uint32_t br          : 1; // (5) Bound-Range
+	    uint32_t ud          : 1; // (6) Invalid-Opcode
+	    uint32_t nm          : 1; // (7) Device-not-available
+	    uint32_t df          : 1; // (8) Double Fault
+	    uint32_t ex9         : 1; 
+	    uint32_t ts          : 1; // (10) Invalid TSS
+	    uint32_t np          : 1; // (11) Segment-not-present
+	    uint32_t ss          : 1; // (12) Stack
+	    uint32_t gp          : 1; // (13) General Protection Fault
+	    uint32_t pf          : 1; // (14) Page fault
+	    uint32_t ex15        : 1;
+	    uint32_t mf          : 1; // (15) Floating point exception
+	    uint32_t ac          : 1; // (16) Alignment-check
+	    uint32_t mc          : 1; // (17) Machine Check
+	    uint32_t xf          : 1; // (18) SIMD floating-point
+	    uint32_t ex20        : 1;
+	    uint32_t ex21        : 1;
+	    uint32_t ex22        : 1;
+	    uint32_t ex23        : 1;
+	    uint32_t ex24        : 1;
+	    uint32_t ex25        : 1;
+	    uint32_t ex26        : 1;
+	    uint32_t ex27        : 1;
+	    uint32_t ex28        : 1;
+	    uint32_t ex29        : 1;
+	    uint32_t sx          : 1; // (30) Security Exception
+	    uint32_t ex31        : 1;
 	} __attribute__ ((packed));
     } __attribute__ ((packed));
 } __attribute__((packed));

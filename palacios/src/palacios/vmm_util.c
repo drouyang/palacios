@@ -21,7 +21,10 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_sprintf.h>
 
-void v3_dump_mem(uint8_t * start, int n) {
+void 
+v3_dump_mem(uint8_t * start, 
+	    int       n) 
+{
     int i, j;
     char buf[128];
       

@@ -48,7 +48,8 @@ v3_add_core_timeout(struct v3_core_info * core,
 
 
 int 
-v3_handle_timeouts(struct v3_core_info * core, uint64_t guest_cycles) 
+v3_handle_timeouts(struct v3_core_info * core, 
+		   uint64_t              guest_cycles) 
 {
     struct v3_core_timeouts * timeouts = &(core->timeouts);
 

@@ -122,7 +122,8 @@ handle_passthrough_pagefault_32pae(struct v3_core_info * core,
 
 
 static inline int 
-invalidate_addr_32pae(struct v3_core_info * core, addr_t inv_addr) 
+invalidate_addr_32pae(struct v3_core_info * core, 
+		      addr_t                inv_addr) 
 {
     pdpe32pae_t * pdpe = NULL;
     pde32pae_t  * pde  = NULL;

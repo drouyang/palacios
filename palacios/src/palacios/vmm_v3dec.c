@@ -49,28 +49,43 @@ static v3_op_type_t op_form_to_type(op_form_t form);
 static int parse_operands(struct v3_core_info * core, uint8_t * instr_ptr, struct x86_instr * instr, op_form_t form);
 
 
-int v3_disasm(struct v3_core_info * core, void *instr_ptr, addr_t * rip, int mark) {
-    return -1;
-}
-
-
-int v3_init_decoder(struct v3_core_info * core) { 
-    return 0;
-}
-
-
-int v3_deinit_decoder(struct v3_core_info * core) {
-    return 0;
-}
-
-
-int v3_encode(struct v3_core_info * core, struct x86_instr * instr, uint8_t * instr_buf) {
+int 
+v3_disasm(struct v3_core_info * core, 
+	  void                * instr_ptr, 
+	  addr_t              * rip, 
+	  int                   mark) 
+{
     return -1;
 }
 
 
 int 
-v3_decode(struct v3_core_info * core, addr_t instr_ptr, struct x86_instr * instr) 
+v3_init_decoder(struct v3_core_info * core) 
+{ 
+    return 0;
+}
+
+
+int 
+v3_deinit_decoder(struct v3_core_info * core) 
+{
+    return 0;
+}
+
+
+int 
+v3_encode(struct v3_core_info * core, 
+	  struct x86_instr    * instr, 
+	  uint8_t             * instr_buf) 
+{
+    return -1;
+}
+
+
+int 
+v3_decode(struct v3_core_info * core, 
+	  addr_t                instr_ptr, 
+	  struct x86_instr    * instr) 
 {
     op_form_t form   = INVALID_INSTR; 
     int       ret    = 0;
@@ -133,8 +148,12 @@ v3_decode(struct v3_core_info * core, addr_t instr_ptr, struct x86_instr * instr
 }
 
 
-static int parse_operands(struct v3_core_info * core, uint8_t * instr_ptr, 
-			  struct x86_instr * instr, op_form_t form) {
+static int 
+parse_operands(struct v3_core_info * core, 
+	       uint8_t             * instr_ptr, 
+	       struct x86_instr    * instr,
+	       op_form_t             form) 
+{
     // get operational mode of the guest for operand width
     uint8_t   operand_width = get_operand_width(core, instr, form);
     uint8_t   addr_width    = get_addr_width(core, instr);
@@ -591,7 +610,9 @@ static int parse_operands(struct v3_core_info * core, uint8_t * instr_ptr,
 }
 
 
-static v3_op_type_t op_form_to_type(op_form_t form) { 
+static v3_op_type_t 
+op_form_to_type(op_form_t form) 
+{ 
     switch (form) {
 	case LMSW:
 	    return V3_OP_LMSW;

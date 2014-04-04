@@ -127,7 +127,8 @@ handle_passthrough_pagefault_32(struct v3_core_info * core,
 
 
 static inline int 
-invalidate_addr_32(struct v3_core_info * core, addr_t inv_addr) 
+invalidate_addr_32(struct v3_core_info * core, 
+		   addr_t                inv_addr) 
 {
     pde32_t * pde = NULL;
     pte32_t * pte = NULL;

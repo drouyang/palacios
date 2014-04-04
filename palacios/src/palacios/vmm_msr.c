@@ -22,7 +22,8 @@
 #include <palacios/vmm.h>
 #include <palacios/vm.h>
 
-static int free_hook(struct v3_vm_info * vm, struct v3_msr_hook * hook);
+static int free_hook(struct v3_vm_info  * vm, 
+		     struct v3_msr_hook * hook);
 
 void 
 v3_init_msr_map(struct v3_vm_info * vm) 
@@ -116,7 +117,10 @@ v3_handle_msr_read(struct v3_core_info * core)
 
 
 int 
-v3_msr_unhandled_read(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data) 
+v3_msr_unhandled_read(struct v3_core_info * core, 
+		      uint32_t              msr, 
+		      struct v3_msr       * dst, 
+		      void                * priv_data) 
 {
     V3_Print("Palacios: Unhandled MSR Read (MSR=0x%x) - returning zero\n", msr);
 
@@ -127,7 +131,10 @@ v3_msr_unhandled_read(struct v3_core_info * core, uint32_t msr, struct v3_msr * 
 }
 
 int 
-v3_msr_unhandled_write(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data) 
+v3_msr_unhandled_write(struct v3_core_info * core, 
+		       uint32_t              msr, 
+		       struct v3_msr         src, 
+		       void                * priv_data) 
 {
     V3_Print("Palacios: Unhandled MSR Write (MSR=0x%x) - ignored\n", msr);
     // should produce GPF for unsupported msr
@@ -136,10 +143,11 @@ v3_msr_unhandled_write(struct v3_core_info * core, uint32_t msr, struct v3_msr s
 
 
 int 
-v3_hook_msr(struct v3_vm_info * vm, uint32_t msr, 
-	    int (*read)(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
-	    int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data),
-	    void * priv_data) 
+v3_hook_msr(struct v3_vm_info * vm,
+	    uint32_t            msr, 
+	    int (*read)( struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
+	    int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr   src, void * priv_data),
+	    void              * priv_data) 
 {
     struct v3_msr_map  * msr_map = &(vm->msr_map);
     struct v3_msr_hook * hook    = NULL;
@@ -174,7 +182,8 @@ v3_hook_msr(struct v3_vm_info * vm, uint32_t msr,
 
 
 static int 
-free_hook(struct v3_vm_info * vm, struct v3_msr_hook * hook) 
+free_hook(struct v3_vm_info  * vm, 
+	  struct v3_msr_hook * hook) 
 {
     list_del(&(hook->link));
 
@@ -189,7 +198,8 @@ free_hook(struct v3_vm_info * vm, struct v3_msr_hook * hook)
 
 
 int 
-v3_unhook_msr(struct v3_vm_info * vm, uint32_t msr) 
+v3_unhook_msr(struct v3_vm_info * vm, 
+	      uint32_t            msr) 
 {
     struct v3_msr_hook * hook = v3_get_msr_hook(vm, msr);
 
@@ -206,7 +216,8 @@ v3_unhook_msr(struct v3_vm_info * vm, uint32_t msr)
 
 
 struct v3_msr_hook * 
-v3_get_msr_hook(struct v3_vm_info * vm, uint32_t msr) 
+v3_get_msr_hook(struct v3_vm_info * vm, 
+		uint32_t            msr) 
 {
     struct v3_msr_map  * msr_map = &(vm->msr_map);
     struct v3_msr_hook * hook    = NULL;

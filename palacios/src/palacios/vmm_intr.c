@@ -102,7 +102,9 @@ v3_deinit_intr_routers(struct v3_vm_info * vm)
 }
 
 void * 
-v3_register_intr_controller(struct v3_core_info * core, struct intr_ctrl_ops * ops, void * priv_data) 
+v3_register_intr_controller(struct v3_core_info  * core, 
+			    struct intr_ctrl_ops * ops,
+			    void                 * priv_data) 
 {
     struct intr_controller * ctrlr = (struct intr_controller *)V3_Malloc(sizeof(struct intr_controller));
 
@@ -120,7 +122,8 @@ v3_register_intr_controller(struct v3_core_info * core, struct intr_ctrl_ops * o
 }
 
 void 
-v3_remove_intr_controller(struct v3_core_info * core, void * handle) 
+v3_remove_intr_controller(struct v3_core_info * core, 
+			  void                * handle) 
 {
     struct v3_intr_core_state * intr_state = &(core->intr_core_state);
     struct intr_controller    * ctrlr      = handle;
@@ -144,7 +147,9 @@ v3_remove_intr_controller(struct v3_core_info * core, void * handle)
 }
 
 void * 
-v3_register_intr_router(struct v3_vm_info * vm, struct intr_router_ops * ops, void * priv_data) 
+v3_register_intr_router(struct v3_vm_info      * vm,
+			struct intr_router_ops * ops, 
+			void                   * priv_data) 
 {
     struct intr_router * router = (struct intr_router *)V3_Malloc(sizeof(struct intr_router));
 
@@ -162,8 +167,9 @@ v3_register_intr_router(struct v3_vm_info * vm, struct intr_router_ops * ops, vo
 }
 
 void 
-v3_remove_intr_router(struct v3_vm_info * vm, void * handle)
- {
+v3_remove_intr_router(struct v3_vm_info * vm, 
+		      void              * handle)
+{
     struct intr_router * router = handle;
     struct intr_router * tmp    = NULL;
     int found = 0;
@@ -187,7 +193,8 @@ v3_remove_intr_router(struct v3_vm_info * vm, void * handle)
 
 
 static inline struct v3_irq_hook * 
-get_irq_hook(struct v3_vm_info * vm, uint_t irq) 
+get_irq_hook(struct v3_vm_info * vm, 
+	     uint_t              irq) 
 {
     V3_ASSERT(irq <= 256);
     return vm->intr_routers.hooks[irq];
@@ -196,9 +203,11 @@ get_irq_hook(struct v3_vm_info * vm, uint_t irq)
 
 int 
 v3_hook_irq(struct v3_vm_info * vm,
-	    uint_t irq,
-	    int   (*handler)(struct v3_vm_info * vm, struct v3_interrupt * intr, void * priv_data),
-	    void  * priv_data) 
+	    uint_t              irq,
+	    int              (*handler)(struct v3_vm_info   * vm, 
+					struct v3_interrupt * intr, 
+					void                * priv_data),
+	    void              * priv_data) 
 {
     struct v3_irq_hook * hook = (struct v3_irq_hook *)V3_Malloc(sizeof(struct v3_irq_hook));
 
@@ -233,7 +242,9 @@ v3_hook_irq(struct v3_vm_info * vm,
 
 
 static int 
-passthrough_irq_handler(struct v3_vm_info * vm, struct v3_interrupt * intr, void * priv_data) 
+passthrough_irq_handler(struct v3_vm_info   * vm, 
+			struct v3_interrupt * intr, 
+			void                * priv_data) 
 {
     PrintDebug("[passthrough_irq_handler] raise_irq=%d (guest=0x%p)\n", 
 	       intr->irq, (void *)vm);
@@ -242,7 +253,8 @@ passthrough_irq_handler(struct v3_vm_info * vm, struct v3_interrupt * intr, void
 }
 
 int 
-v3_hook_passthrough_irq(struct v3_vm_info * vm, uint_t irq) 
+v3_hook_passthrough_irq(struct v3_vm_info * vm,
+			uint_t              irq) 
 {
     int rc = v3_hook_irq(vm, irq, passthrough_irq_handler, NULL);
 
@@ -260,7 +272,8 @@ v3_hook_passthrough_irq(struct v3_vm_info * vm, uint_t irq)
 
 
 int 
-v3_deliver_irq(struct v3_vm_info * vm, struct v3_interrupt * intr) 
+v3_deliver_irq(struct v3_vm_info   * vm,
+	       struct v3_interrupt * intr) 
 {
     PrintDebug("v3_deliver_irq: irq=%d state=0x%p, \n", intr->irq, (void *)intr);
   
@@ -278,7 +291,8 @@ v3_deliver_irq(struct v3_vm_info * vm, struct v3_interrupt * intr)
 
 
 int 
-v3_raise_swintr (struct v3_core_info * core, uint8_t vector)
+v3_raise_swintr (struct v3_core_info * core,
+		 uint8_t               vector)
 {
     struct v3_intr_core_state * intr_state = &(core->intr_core_state);
 
@@ -293,7 +307,8 @@ v3_raise_swintr (struct v3_core_info * core, uint8_t vector)
 
 
 int 
-v3_raise_virq(struct v3_core_info * core, int irq) 
+v3_raise_virq(struct v3_core_info * core, 
+	      int                   irq) 
 {
     struct v3_intr_core_state * intr_state = &(core->intr_core_state);
     int major = irq / 8;
@@ -305,7 +320,8 @@ v3_raise_virq(struct v3_core_info * core, int irq)
 }
 
 int 
-v3_lower_virq(struct v3_core_info * core, int irq) 
+v3_lower_virq(struct v3_core_info * core, 
+	      int                   irq) 
 {
     struct v3_intr_core_state * intr_state = &(core->intr_core_state);
     int major = irq / 8;
@@ -318,7 +334,8 @@ v3_lower_virq(struct v3_core_info * core, int irq)
 
 
 int 
-v3_lower_irq(struct v3_vm_info * vm, int irq) 
+v3_lower_irq(struct v3_vm_info * vm, 
+	     int                 irq) 
 {
     struct v3_irq irq_state;
 
@@ -330,7 +347,8 @@ v3_lower_irq(struct v3_vm_info * vm, int irq)
 }
 
 int 
-v3_raise_irq(struct v3_vm_info * vm, int irq) 
+v3_raise_irq(struct v3_vm_info * vm, 
+	     int                 irq) 
 {
     struct v3_irq irq_state;
 
@@ -343,7 +361,8 @@ v3_raise_irq(struct v3_vm_info * vm, int irq)
 
 
 int 
-v3_raise_acked_irq(struct v3_vm_info * vm, struct v3_irq irq) 
+v3_raise_acked_irq(struct v3_vm_info * vm, 
+		   struct v3_irq       irq) 
 {
     struct intr_router     * router  = NULL;
     struct v3_intr_routers * routers = &(vm->intr_routers);
@@ -364,7 +383,8 @@ v3_raise_acked_irq(struct v3_vm_info * vm, struct v3_irq irq)
 
 
 int 
-v3_lower_acked_irq(struct v3_vm_info * vm, struct v3_irq irq) 
+v3_lower_acked_irq(struct v3_vm_info * vm,
+		   struct v3_irq       irq) 
 {
     struct intr_router     * router  = NULL;
     struct v3_intr_routers * routers = &(vm->intr_routers);
@@ -522,7 +542,9 @@ v3_get_intr_type(struct v3_core_info * core)
 
 
 int 
-v3_injecting_intr(struct v3_core_info * core, uint_t intr_num, v3_intr_type_t type) 
+v3_injecting_intr(struct v3_core_info * core, 
+		  uint_t                intr_num, 
+		  v3_intr_type_t        type) 
 {
     struct v3_intr_core_state  * intr_state = &(core->intr_core_state);
 

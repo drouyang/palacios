@@ -33,9 +33,9 @@ struct v3_vm_info;
 
 
 typedef enum {
-    TEST_HCALL =           0x0001,
-    SYMCALL_RET_HCALL =    0x0535,         // args in GPRs
-    SYMCALL_ERR_HCALL =    0x0536,         // RBX: error code
+    TEST_HCALL                      =  0x0001,
+    SYMCALL_RET_HCALL               =  0x0535,         // args in GPRs
+    SYMCALL_ERR_HCALL               =  0x0536,         // RBX: error code
 
     /* -- Symmod symbol table hypercall --
      * RBX: SymTable start 
@@ -43,23 +43,23 @@ typedef enum {
      * RDX: SymStrs start 
      * RSI: SymStrs size
      */
-    SYMMOD_SYMS_HCALL =    0x0600,         
+    SYMMOD_SYMS_HCALL               =  0x0600,         
     
-    MEM_OFFSET_HCALL =     0x1000,         // RBX: base addr(out)
-    VM_INFO_HCALL =     0x3000,         // no args
-    TELEMETRY_HCALL =      0x3001,         // no args
-    DEBUG_CMD_HCALL     =  0x3002,         // RBX: cmd
-    BALLOON_START_HCALL =  0xba00,         // RAX: size
-    BALLOON_QUERY_HCALL =  0xba01,         // RCX: req_pgs(out), RDX: alloc_pgs(out)
-    OS_DEBUG_HCALL =       0xc0c0,          // RBX: msg_gpa, RCX: msg_len, RDX: buf_is_va (flag)
-    TIME_CPUFREQ_HCALL  =  0xd000,       //RBX: cpu freq (out)
-    TIME_RDHTSC_HCALL   =  0xd001,       //RBX: cpu freq (out)
+    MEM_OFFSET_HCALL                =  0x1000,         // RBX: base addr(out)
+    VM_INFO_HCALL                   =  0x3000,         // no args
+    TELEMETRY_HCALL                 =  0x3001,         // no args
+    DEBUG_CMD_HCALL                 =  0x3002,         // RBX: cmd
+    BALLOON_START_HCALL             =  0xba00,         // RAX: size
+    BALLOON_QUERY_HCALL             =  0xba01,         // RCX: req_pgs(out), RDX: alloc_pgs(out)
+    OS_DEBUG_HCALL                  =  0xc0c0,         // RBX: msg_gpa, RCX: msg_len, RDX: buf_is_va (flag)
+    TIME_CPUFREQ_HCALL              =  0xd000,         // RBX: cpu freq (out)
+    TIME_RDHTSC_HCALL               =  0xd001,         // RBX: cpu freq (out)
 
-    VNET_HEADER_QUERY_HCALL  =   0xe000,        // Get the current header for a src/dest pair
+    VNET_HEADER_QUERY_HCALL         =  0xe000,         // Get the current header for a src/dest pair
 
     XPMEM_MAKE_HCALL	            =  0xf000,
     XPMEM_REMOVE_HCALL	            =  0xf001,
-    XPMEM_GET_HCALL	                =  0xf002,
+    XPMEM_GET_HCALL	            =  0xf002,
     XPMEM_RELEASE_HCALL	            =  0xf003,
     XPMEM_ATTACH_HCALL	            =  0xf004,
     XPMEM_DETACH_HCALL	            =  0xf005,
@@ -72,10 +72,15 @@ typedef enum {
 void v3_init_hypercall_map(struct v3_vm_info * vm);
 int v3_deinit_hypercall_map(struct v3_vm_info * vm);
 
-int v3_register_hypercall(struct v3_vm_info * vm, hcall_id_t hypercall_id, 
-			  int (*hypercall)(struct v3_core_info * core , hcall_id_t hcall_id, void * priv_data),
-			  void * priv_data);
-int v3_remove_hypercall(struct v3_vm_info * vm, hcall_id_t hypercall_id);
+
+int v3_register_hypercall(struct v3_vm_info * vm, 
+			  hcall_id_t          hypercall_id, 
+			  int               (*hypercall)(struct v3_core_info * core , hcall_id_t hcall_id, void * priv_data),
+			  void              * priv_data);
+
+
+int v3_remove_hypercall(struct v3_vm_info * vm,
+			hcall_id_t          hypercall_id);
 
 int v3_handle_hypercall(struct v3_core_info * core);
 

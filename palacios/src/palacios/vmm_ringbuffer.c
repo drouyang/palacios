@@ -24,7 +24,8 @@
 
 
 void 
-v3_init_ringbuf(struct v3_ringbuf * ring, uint32_t size) 
+v3_init_ringbuf(struct v3_ringbuf * ring, 
+		uint32_t            size) 
 {
     ring->buf = V3_Malloc(size);
 
@@ -64,28 +65,37 @@ v3_free_ringbuf(struct v3_ringbuf * ring)
 
 
 
-static inline uint8_t * get_read_ptr(struct v3_ringbuf * ring) {
+static inline uint8_t * 
+get_read_ptr(struct v3_ringbuf * ring) 
+{
     return (uint8_t *)(ring->buf + ring->start);
 }
 
 
-static inline uint8_t * get_write_ptr(struct v3_ringbuf * ring) {
+static inline uint8_t * 
+get_write_ptr(struct v3_ringbuf * ring) 
+{
     return (uint8_t *)(ring->buf + ring->end);
 }
 
 
-static inline int get_read_section_size(struct v3_ringbuf * ring) {
+static inline int 
+get_read_section_size(struct v3_ringbuf * ring) 
+{
     return ring->size - ring->start;
 }
 
 
-static inline int get_write_section_size(struct v3_ringbuf * ring) {
+static inline int 
+get_write_section_size(struct v3_ringbuf * ring) 
+{
     return ring->size - ring->end;
 }
 
 
 static inline int 
-is_read_loop(struct v3_ringbuf * ring, uint32_t len) 
+is_read_loop(struct v3_ringbuf * ring, 
+	     uint32_t            len) 
 {
     if ((ring->start >= ring->end) && (ring->current_len > 0)) {
 	// end is past the end of the buffer
@@ -98,7 +108,8 @@ is_read_loop(struct v3_ringbuf * ring, uint32_t len)
 
 
 static inline int 
-is_write_loop(struct v3_ringbuf * ring, uint32_t len) 
+is_write_loop(struct v3_ringbuf * ring, 
+	      uint32_t            len) 
 {
     if ((ring->end >= ring->start) && (ring->current_len < ring->size)) {
 	// end is past the end of the buffer
@@ -132,7 +143,9 @@ v3_ringbuf_capacity(struct v3_ringbuf * ring)
 
 
 int 
-v3_ringbuf_read(struct v3_ringbuf * ring, uint8_t * dst, uint32_t len) 
+v3_ringbuf_read(struct v3_ringbuf * ring, 
+		uint8_t           * dst, 
+		uint32_t            len) 
 {
     int read_len      = 0;
     int ring_data_len = ring->current_len;
@@ -160,7 +173,9 @@ v3_ringbuf_read(struct v3_ringbuf * ring, uint8_t * dst, uint32_t len)
 
 
 int 
-v3_ringbuf_peek(struct v3_ringbuf * ring, uint8_t * dst, uint32_t len) 
+v3_ringbuf_peek(struct v3_ringbuf * ring, 
+		uint8_t           * dst,
+		uint32_t            len) 
 {
     int read_len      = 0;
     int ring_data_len = ring->current_len;
@@ -182,7 +197,8 @@ v3_ringbuf_peek(struct v3_ringbuf * ring, uint8_t * dst, uint32_t len)
 
 
 int 
-v3_ringbuf_delete(struct v3_ringbuf * ring, uint32_t len) 
+v3_ringbuf_delete(struct v3_ringbuf * ring, 
+		  uint32_t            len) 
 {
     int del_len       = 0;
     int ring_data_len = ring->current_len;
@@ -204,7 +220,9 @@ v3_ringbuf_delete(struct v3_ringbuf * ring, uint32_t len)
 
 
 int 
-v3_ringbuf_write(struct v3_ringbuf * ring, uint8_t * src, uint32_t len) 
+v3_ringbuf_write(struct v3_ringbuf * ring, 
+		 uint8_t           * src, 
+		 uint32_t            len) 
 {
     int write_len        = 0;
     int ring_avail_space = ring->size - ring->current_len;
