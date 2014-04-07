@@ -16,7 +16,7 @@ static struct list_head global_files;
 #define isprint(a) ((a >= ' ') && (a <= '~'))
 
 struct palacios_file {
-    u64 file_handle;
+    uintptr_t file_handle;
 
     char * path;
     int    mode;
@@ -105,6 +105,8 @@ palacios_file_open(const char * path,
 	    kmem_free(pfile);
 	    return NULL;
 	}
+
+	pfile->file_handle = (uintptr_t)blkdev;
     } else {
 
 	if ((mode & FILE_OPEN_MODE_READ) && (mode & FILE_OPEN_MODE_WRITE)) { 
@@ -143,8 +145,10 @@ palacios_file_close(void * file_ptr)
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
 
-    pisces_file_close(pfile->file_handle);
-    
+    if (!pfile->is_raw_block) {
+	pisces_file_close(pfile->file_handle);
+    }
+
     list_del(&(pfile->file_node));
 
     kmem_free(pfile->path);    
@@ -168,8 +172,41 @@ palacios_file_read(void               * file_ptr,
 		   unsigned long long   offset)
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
-   
-    return pisces_file_read(pfile->file_handle, buffer, length, offset);
+    unsigned long long     length = 0;
+    
+
+    if (pfile->is_raw_block) {
+	blk_req_t blkreq; 
+	u32       total_len = 0;
+	int       ret       = 0;
+
+	blkreq.dma_descs = kmem_alloc(sizeof(blk_dma_desc_t));
+	blkreq.desc_cnt  = 1;
+	
+	blkreq.dma_descs[0].buf_paddr = __pa(buffer);
+	blkreq.dma_descs[0].length    = length;
+
+	
+	blkreq.total_len = length;
+	blkreq.offset    = offset;
+	
+	ret = blkdev_do_request((blkdev_handle_t)pfile->file_handle, &blkreq);
+	
+	if ((ret           == 0) && 
+	    (blkreq.status == 0)) 
+	{
+	    length = total_length;
+	} else {
+	    printk(KERN_ERR "Error issuing block request for Palacios file (%s)\n", pfile->path);
+	}
+
+	kmem_free(blkreq.dma_descs);
+
+    } else {
+	length = pisces_file_read(pfile->file_handle, buffer, length, offset);
+    }
+
+    return length;
 }
 
 
@@ -180,8 +217,43 @@ palacios_file_write(void               * file_ptr,
 		    unsigned long long   offset) 
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
+    unsigned long long     length = 0;
+    
 
-    return pisces_file_write(pfile->file_handle, buffer, length, offset);
+    if (pfile->is_raw_block) {
+	blk_req_t blkreq; 
+	u32       total_len = 0;
+	int       ret       = 0;
+
+	blkreq.dma_descs = kmem_alloc(sizeof(blk_dma_desc_t));
+	blkreq.desc_cnt  = 1;
+	
+	blkreq.dma_descs[0].buf_paddr = __pa(buffer);
+	blkreq.dma_descs[0].length    = length;
+
+	
+	blkreq.total_len = length;
+	blkreq.offset    = offset;
+	blkreq.write     = 1;
+	
+	ret = blkdev_do_request((blkdev_handle_t)pfile->file_handle, &blkreq);
+	
+	if ((ret           == 0) && 
+	    (blkreq.status == 0)) 
+	{
+	    length = total_length;
+	} else {
+	    printk(KERN_ERR "Error issuing block request for Palacios file (%s)\n", pfile->path);
+	}
+
+	kmem_free(blkreq.dma_descs);
+
+    } else {
+	length = pisces_file_write(pfile->file_handle, buffer, length, offset);
+    }
+
+
+    return length;
 }
 
 static unsigned long long 
@@ -194,8 +266,41 @@ palacios_file_readv(void               * file_ptr,
     unsigned long long     length = 0;
     int i = 0;
 
-    for (i = 0; i < iov_len; i++) {
-	length += pisces_file_read(pfile->file_handle, iov_arr[i].iov_base, iov_arr[i].iov_len, offset + length);
+    if (pfile->is_raw_block) {
+	blk_req_t blkreq; 
+	u32       total_len = 0;
+	int       ret       = 0;
+
+	blkreq.dma_descs = kmem_alloc(sizeof(blk_dma_desc_t) * iov_len);
+	blkreq.desc_cnt  = iov_len;
+
+	for (i = 0; i < iov_len; i++) {
+	    blkreq.dma_descs[i].buf_paddr = __pa(iov_arr[i].iov_base);
+	    blkreq.dma_descs[i].length    = iov_arr[i].iov_len;
+	    total_len                    += iov_arr[i].iov_len;
+	}
+
+	
+	blkreq.total_len = total_len;
+	blkreq.offset    = offset;
+	
+	ret = blkdev_do_request((blkdev_handle_t)pfile->file_handle, &blkreq);
+	
+	if ((ret           == 0) && 
+	    (blkreq.status == 0)) 
+	{
+	    length = total_length;
+	} else {
+	    printk(KERN_ERR "Error issuing block request for Palacios file (%s)\n", pfile->path);
+	}
+
+	kmem_free(blkreq.dma_descs);
+
+    } else {
+
+	for (i = 0; i < iov_len; i++) {
+	    length += pisces_file_read(pfile->file_handle, iov_arr[i].iov_base, iov_arr[i].iov_len, offset + length);
+	}
     }
 
     return length;
@@ -212,8 +317,41 @@ palacios_file_writev(void               * file_ptr,
     unsigned long long     length = 0;
     int i = 0;
 
-    for (i = 0; i < iov_len; i++) {
-	length += pisces_file_write(pfile->file_handle, iov_arr[i].iov_base, iov_arr[i].iov_len, offset + length);
+    if (pfile->is_raw_block) {
+	blk_req_t blkreq; 
+	u32       total_len = 0;
+	int       ret       = 0;
+
+	blkreq.dma_descs = kmem_alloc(sizeof(blk_dma_desc_t) * iov_len);
+	blkreq.desc_cnt  = iov_len;
+
+	for (i = 0; i < iov_len; i++) {
+	    blkreq.dma_descs[i].buf_paddr = __pa(iov_arr[i].iov_base);
+	    blkreq.dma_descs[i].length    = iov_arr[i].iov_len;
+	    total_len                    += iov_arr[i].iov_len;
+	}
+
+	
+	blkreq.total_len = total_len;
+	blkreq.offset    = offset;
+	blkreq.write     = 1;
+	
+	ret = blkdev_do_request((blkdev_handle_t)pfile->file_handle, &blkreq);
+	
+	if ((ret           == 0) && 
+	    (blkreq.status == 0)) 
+	{
+	    length = total_length;
+	} else {
+	    printk(KERN_ERR "Error issuing block request for Palacios file (%s)\n", pfile->path);
+	}
+
+	kmem_free(blkreq.dma_descs);
+
+    } else {
+	for (i = 0; i < iov_len; i++) {
+	    length += pisces_file_write(pfile->file_handle, iov_arr[i].iov_base, iov_arr[i].iov_len, offset + length);
+	}
     }
 
     return length;
