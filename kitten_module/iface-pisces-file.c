@@ -145,8 +145,10 @@ palacios_file_close(void * file_ptr)
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
 
-    pisces_file_close(pfile->file_handle);
-    
+    if (!pfile->is_raw_block) {
+	pisces_file_close(pfile->file_handle);
+    }
+
     list_del(&(pfile->file_node));
 
     kmem_free(pfile->path);    
