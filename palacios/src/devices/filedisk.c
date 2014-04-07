@@ -165,6 +165,9 @@ readv(v3_iov_t * iov_arr,
     bytes_read = v3_file_readv(disk->fd, iov_arr, iov_len, lba);
 
     if (bytes_read != total_len) {
+        PrintError("readv error: bytes_read %llu != total_len %llu\n",
+                (unsigned long long) bytes_read, 
+                (unsigned long long) total_len);
 	return -1;
     }
 
@@ -196,6 +199,9 @@ writev(v3_iov_t * iov_arr,
     bytes_written = v3_file_writev(disk->fd, iov_arr, iov_len, lba);
 
     if (bytes_written != total_len) {
+        PrintError("writev error: bytes_written %llu != total_len %llu\n",
+                (unsigned long long) bytes_written, 
+                (unsigned long long) total_len);
 	return -1;
     }
 
