@@ -166,8 +166,7 @@ readv(v3_iov_t * iov_arr,
 
     if (bytes_read != total_len) {
         PrintError("readv error: bytes_read %llu != total_len %llu\n",
-                (unsigned long long) bytes_read, 
-                (unsigned long long) total_len);
+		   bytes_read,  total_len);
 	return -1;
     }
 
@@ -200,8 +199,8 @@ writev(v3_iov_t * iov_arr,
 
     if (bytes_written != total_len) {
         PrintError("writev error: bytes_written %llu != total_len %llu\n",
-                (unsigned long long) bytes_written, 
-                (unsigned long long) total_len);
+		   bytes_written, total_len);
+
 	return -1;
     }
 
