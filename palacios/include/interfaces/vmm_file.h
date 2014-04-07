@@ -29,7 +29,7 @@ typedef void * v3_file_t;
 
 int v3_mkdir(char * path, uint16_t permissions, uint8_t recursive);
 
-v3_file_t v3_file_open(struct v3_vm_info * vm, char * path, uint8_t mode);
+v3_file_t v3_file_open(struct v3_vm_info * vm, char * path, uint64_t mode);
 int v3_file_close(v3_file_t file);
 uint64_t v3_file_size(v3_file_t file);
 
@@ -41,10 +41,10 @@ uint64_t v3_file_readv(v3_file_t file, v3_iov_t * iov_arr, uint32_t iov_len, uin
 
 #endif
 
-#define FILE_OPEN_MODE_READ	(1 << 0)
-#define FILE_OPEN_MODE_WRITE    (1 << 1)
-#define FILE_OPEN_MODE_CREATE   (1 << 2)
-
+#define FILE_OPEN_MODE_READ	  (1 << 0)
+#define FILE_OPEN_MODE_WRITE      (1 << 1)
+#define FILE_OPEN_MODE_CREATE     (1 << 2)
+#define FILE_OPEN_MODE_RAW_BLOCK  (1 << 63)
 
 
 
@@ -52,7 +52,7 @@ uint64_t v3_file_readv(v3_file_t file, v3_iov_t * iov_arr, uint32_t iov_len, uin
 struct v3_file_hooks {
     int (*mkdir)(const char * path, unsigned short perms, int recursive);
 
-    void * (*open)(const char * path, int mode, void * host_data);
+    void * (*open)(const char * path, unsigned long long mode, void * host_data);
     int    (*close)(void * fd);
 
     unsigned long long (*size)(void * fd);

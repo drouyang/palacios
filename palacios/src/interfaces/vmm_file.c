@@ -50,7 +50,7 @@ v3_mkdir(char     * path,
 v3_file_t 
 v3_file_open(struct v3_vm_info * vm, 
 	     char              * path, 
-	     uint8_t             mode)
+	     uint64_t            mode)
 {
     void * priv_data = NULL;
 

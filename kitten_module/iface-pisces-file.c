@@ -5,6 +5,7 @@
 #include <arch/pisces/pisces_file.h>
 #include <lwk/list.h>
 #include <lwk/spinlock.h>
+#include <lwk/blkdev.h>
 
 #include "palacios.h"
 #include "kitten-exts.h"
@@ -19,6 +20,8 @@ struct palacios_file {
 
     char * path;
     int    mode;
+    
+    u8     is_raw_block;
     
     spinlock_t lock;
 
@@ -51,7 +54,7 @@ palacios_file_mkdir(const char    * pathname,
 
 static void * 
 palacios_file_open(const char * path, 
-		   int          mode, 
+		   u64          mode, 
 		   void       * private_data) 
 {
     struct v3_guest      * guest    = (struct v3_guest *)private_data;
@@ -76,25 +79,6 @@ palacios_file_open(const char * path,
 
     memset(pfile, 0, sizeof(struct palacios_file));
 
-    if ((mode & FILE_OPEN_MODE_READ) && (mode & FILE_OPEN_MODE_WRITE)) { 
-	pfile->mode = O_RDWR;
-    } else if (mode & FILE_OPEN_MODE_READ) { 
-	pfile->mode = O_RDONLY;
-    } else if (mode & FILE_OPEN_MODE_WRITE) { 
-	pfile->mode = O_WRONLY;
-    } 
-    
-    if (mode & FILE_OPEN_MODE_CREATE) {
-	pfile->mode |= O_CREAT;
-    }
-
-    pfile->file_handle = pisces_file_open(path, pfile->mode);
-
-    if (pfile->file_handle == 0) {
-	printk(KERN_ERR "Could not open file %s\n", path);
-	kmem_free(pfile);
-	return NULL;
-    }
 
     pfile->path = kmem_alloc(strlen(path));
     
@@ -107,6 +91,42 @@ palacios_file_open(const char * path,
     pfile->guest = guest;
     
     spin_lock_init(&(pfile->lock));
+
+
+    if (mode & FILE_OPEN_MODE_RAW_BLOCK) { 
+	blkdev_handle_t blkdev = 0;
+
+	pfile->is_raw_block = 1;
+
+	blkdev = get_blkdev(pfile->path);
+
+	if (blkdev == 0) {
+	    printk(KERN_ERR "Could not open Raw Block Device (%s)\n", path);
+	    kmem_free(pfile);
+	    return NULL;
+	}
+    } else {
+
+	if ((mode & FILE_OPEN_MODE_READ) && (mode & FILE_OPEN_MODE_WRITE)) { 
+	    pfile->mode = O_RDWR;
+	} else if (mode & FILE_OPEN_MODE_READ) { 
+	    pfile->mode = O_RDONLY;
+	} else if (mode & FILE_OPEN_MODE_WRITE) { 
+	    pfile->mode = O_WRONLY;
+	} 
+	
+	if (mode & FILE_OPEN_MODE_CREATE) {
+	    pfile->mode |= O_CREAT;
+	}
+
+	pfile->file_handle = pisces_file_open(path, pfile->mode);
+	
+	if (pfile->file_handle == 0) {
+	    printk(KERN_ERR "Could not open file %s\n", path);
+	    kmem_free(pfile);
+	    return NULL;
+	}
+    }
 
     if (guest == NULL) {
 	list_add(&(pfile->file_node), &(global_files));

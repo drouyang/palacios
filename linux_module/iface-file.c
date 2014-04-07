@@ -191,13 +191,19 @@ palacios_file_mkdir(const char     * pathname,
 
 
 static void * 
-palacios_file_open(const char * path,
-		   int          mode, 
-		   void       * private_data) 
+palacios_file_open(const char         * path,
+		   unsigned long long   mode, 
+		   void               * private_data) 
 {
     struct v3_guest      * guest    = (struct v3_guest *)private_data;
     struct palacios_file * pfile    = NULL;	
     struct vm_file_state * vm_state = NULL;
+
+
+    if (mode & FILE_OPEN_MODE_RAW_BLOCK) {
+	ERROR("Raw Block Access is not supported under Linux\n");
+	return NULL;
+    }
 
     if (guest != NULL) {
 	vm_state = get_vm_ext_data(guest, "FILE_INTERFACE");
