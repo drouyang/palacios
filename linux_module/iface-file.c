@@ -291,7 +291,7 @@ palacios_file_size(void * file_ptr)
     struct kstat s;
     int ret;
     
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,9,10)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,9,5)
     ret = vfs_getattr(filp->f_path.mnt, filp->f_path.dentry, &s);
 #else 
     ret = vfs_getattr(&(filp->f_path), &s);
