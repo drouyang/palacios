@@ -172,12 +172,10 @@ palacios_file_read(void               * file_ptr,
 		   unsigned long long   offset)
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
-    unsigned long long     length = 0;
     
 
     if (pfile->is_raw_block) {
 	blk_req_t blkreq; 
-	u32       total_len = 0;
 	int       ret       = 0;
 
 	blkreq.dma_descs = kmem_alloc(sizeof(blk_dma_desc_t));
@@ -192,15 +190,15 @@ palacios_file_read(void               * file_ptr,
 	
 	ret = blkdev_do_request((blkdev_handle_t)pfile->file_handle, &blkreq);
 	
-	if ((ret           == 0) && 
-	    (blkreq.status == 0)) 
+	kmem_free(blkreq.dma_descs);
+
+	if ((ret           != 0) || 
+	    (blkreq.status != 0)) 
 	{
-	    length = total_length;
-	} else {
 	    printk(KERN_ERR "Error issuing block request for Palacios file (%s)\n", pfile->path);
+	    return 0;
 	}
 
-	kmem_free(blkreq.dma_descs);
 
     } else {
 	length = pisces_file_read(pfile->file_handle, buffer, length, offset);
@@ -217,12 +215,10 @@ palacios_file_write(void               * file_ptr,
 		    unsigned long long   offset) 
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
-    unsigned long long     length = 0;
     
 
     if (pfile->is_raw_block) {
 	blk_req_t blkreq; 
-	u32       total_len = 0;
 	int       ret       = 0;
 
 	blkreq.dma_descs = kmem_alloc(sizeof(blk_dma_desc_t));
@@ -238,15 +234,15 @@ palacios_file_write(void               * file_ptr,
 	
 	ret = blkdev_do_request((blkdev_handle_t)pfile->file_handle, &blkreq);
 	
-	if ((ret           == 0) && 
-	    (blkreq.status == 0)) 
+	kmem_free(blkreq.dma_descs);
+
+	if ((ret           != 0) || 
+	    (blkreq.status != 0)) 
 	{
-	    length = total_length;
-	} else {
 	    printk(KERN_ERR "Error issuing block request for Palacios file (%s)\n", pfile->path);
+	    return 0;
 	}
 
-	kmem_free(blkreq.dma_descs);
 
     } else {
 	length = pisces_file_write(pfile->file_handle, buffer, length, offset);
@@ -289,7 +285,7 @@ palacios_file_readv(void               * file_ptr,
 	if ((ret           == 0) && 
 	    (blkreq.status == 0)) 
 	{
-	    length = total_length;
+	    length = total_len;
 	} else {
 	    printk(KERN_ERR "Error issuing block request for Palacios file (%s)\n", pfile->path);
 	}
@@ -341,7 +337,7 @@ palacios_file_writev(void               * file_ptr,
 	if ((ret           == 0) && 
 	    (blkreq.status == 0)) 
 	{
-	    length = total_length;
+	    length = total_len;
 	} else {
 	    printk(KERN_ERR "Error issuing block request for Palacios file (%s)\n", pfile->path);
 	}

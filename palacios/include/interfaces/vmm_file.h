@@ -41,10 +41,10 @@ uint64_t v3_file_readv(v3_file_t file, v3_iov_t * iov_arr, uint32_t iov_len, uin
 
 #endif
 
-#define FILE_OPEN_MODE_READ	  (1 << 0)
-#define FILE_OPEN_MODE_WRITE      (1 << 1)
-#define FILE_OPEN_MODE_CREATE     (1 << 2)
-#define FILE_OPEN_MODE_RAW_BLOCK  (1 << 63)
+#define FILE_OPEN_MODE_READ	  (0x1ULL << 0)
+#define FILE_OPEN_MODE_WRITE      (0x1ULL << 1)
+#define FILE_OPEN_MODE_CREATE     (0x1ULL << 2)
+#define FILE_OPEN_MODE_RAW_BLOCK  (0x1ULL << 63)
 
 
 
