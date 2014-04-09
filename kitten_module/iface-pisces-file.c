@@ -145,6 +145,10 @@ palacios_file_close(void * file_ptr)
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
 
+    if (pfile == NULL) {
+        return -1;
+    }
+
     if (!pfile->is_raw_block) {
 	pisces_file_close(pfile->file_handle);
     }
