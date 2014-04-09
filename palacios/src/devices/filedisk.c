@@ -254,11 +254,16 @@ disk_init(struct v3_vm_info * vm,
     char              * path         = v3_cfg_val(cfg, "path");
     char              * dev_id       = v3_cfg_val(cfg, "ID");
     char              * writable     = v3_cfg_val(cfg, "writable");
+    char              * raw_block     = v3_cfg_val(cfg, "raw_block");
     v3_cfg_tree_t     * frontend_cfg = v3_cfg_subtree(cfg, "frontend");
     int                 flags        = FILE_OPEN_MODE_READ;
 
     if ( (writable) && (writable[0] == '1') ) {
 	flags |= FILE_OPEN_MODE_WRITE;
+    }
+
+    if ( (raw_block) && (raw_block[0] == '1') ) {
+	flags |= FILE_OPEN_MODE_RAW_BLOCK;
     }
 
     if (path == NULL) {
