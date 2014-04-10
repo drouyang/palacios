@@ -492,7 +492,7 @@ v3_get_intr(struct v3_core_info * core)
 		    
 		    
 		    if (intr_num < 32) {
-			PrintError("Received Exception from Interrupt controller\n");
+			// PrintError("Received Exception from Interrupt controller\n");
 		    }
 		    
 		    //	PrintDebug("[get_intr_number] intr_number = %d\n", intr_num);

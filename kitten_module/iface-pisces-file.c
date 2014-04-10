@@ -166,7 +166,15 @@ palacios_file_size(void * file_ptr)
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
 
-    return pisces_file_size(pfile->file_handle);
+    if (pfile == NULL) {
+        return -1;
+    }
+
+    if (!pfile->is_raw_block) {
+	return pisces_file_size(pfile->file_handle);
+    }
+
+    return blkdev_get_capacity((blkdev_handle_t) pfile->file_handle);
 }
 
 static unsigned long long 
@@ -271,6 +279,7 @@ palacios_file_readv(void               * file_ptr,
 	u32       total_len = 0;
 	int       ret       = 0;
 
+        memset(&blkreq, 0, sizeof(blk_req_t));
 	blkreq.dma_descs = kmem_alloc(sizeof(blk_dma_desc_t) * iov_len);
 	blkreq.desc_cnt  = iov_len;
 
@@ -291,7 +300,8 @@ palacios_file_readv(void               * file_ptr,
 	{
 	    length = total_len;
 	} else {
-	    printk(KERN_ERR "Error issuing block request for Palacios file (%s)\n", pfile->path);
+	    printk(KERN_ERR "Error issuing block request for Palacios file (%s), ret=%d, status=%d\n", 
+                    pfile->path, ret, blkreq.status);
 	}
 
 	kmem_free(blkreq.dma_descs);
