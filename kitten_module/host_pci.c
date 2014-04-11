@@ -541,7 +541,7 @@ static int host_pci_setup_dev(struct host_pci_device * host_dev) {
     pci_dev_t * dev = NULL;
     struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
 
-    dev = pci_get_bus_and_slot(host_dev->hw_dev.bus,
+    dev = pci_get_dev_bus_and_slot(host_dev->hw_dev.bus,
             host_dev->hw_dev.devfn);
 
     if (dev == NULL) {
