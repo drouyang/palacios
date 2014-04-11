@@ -12,7 +12,8 @@ v3vee-y := 	main.o \
 		kitten-exts.o \
 		host_pci.o \
 		iface-pisces-console.o \
-		iface-sched-events.o
+		iface-sched-events.o \
+		iface-xpmem.o
 
 
 #		iface-pisces-pci.o

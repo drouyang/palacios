@@ -3,7 +3,7 @@
 
 #include <lwk/types.h>
 #include <lwk/list.h>
-#include <lwk/rbtree.h>
+#include <linux/rbtree.h>
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_host_events.h>
@@ -23,7 +23,10 @@
 #define V3_VM_CONSOLE_DISCONNECT 31
 #define V3_VM_KEYBOARD_EVENT 32
 
+#define V3_VM_XPMEM_CONNECT 12000
+
 #define V3_ADD_PCI_HW_DEV 55
+
 
 #define MAX_VMS 32
 

@@ -437,11 +437,11 @@ static int command_complete_hcall(struct v3_core_info * core, hcall_id_t hcall_i
             host_pfn = (uint64_t)(host_paddr >> 12);
 
             V3_Print("Guest PFN %llu ---> Host PFN %llu (%p -> %p)\n",
-                    (unsigned long long)guest_pfn,
-                    (unsigned long long)host_pfn,
-                    (void *)guest_paddr,
-                    (void *)host_paddr
-                    );
+		(unsigned long long)guest_pfn,
+		(unsigned long long)host_pfn,
+		(void *)guest_paddr,
+		(void *)host_paddr
+	    );
 
             cmd->attach.pfns[i] = (uint64_t)host_pfn;
         }
@@ -570,7 +570,7 @@ static addr_t alloc_mem_region(struct v3_xpmem_state * state, uint64_t size) {
             {
                 struct v3_mem_region * old_reg = v3_get_mem_region(state->vm, V3_MEM_CORE_ANY, free_start);
                 if (!old_reg) {
-                    PrintError("XPMEML Cannot remove old guest shadow mapping - this should be impossible\n");
+                    PrintError("XPMEM: Cannot remove old guest shadow mapping - this should be impossible\n");
                     return 0;
                 }
                 v3_delete_mem_region(state->vm, old_reg);
@@ -620,7 +620,7 @@ static addr_t xpmem_add_shadow_map(struct v3_xpmem_state * state, uint64_t * pfn
                     guest_addr,
                     guest_addr + PAGE_SIZE,
                     host_addr)) {
-            PrintError("Failed to add XPMEM shadow PFN region (%p -> %p)\n",
+            PrintError("XPMEM: Failed to add shadow PFN region (%p -> %p)\n",
                 (void *)guest_addr,
                 (void *)host_addr
             );

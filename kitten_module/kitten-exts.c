@@ -1,5 +1,5 @@
 #include "kitten-exts.h"
-#include <lwk/rbtree.h>
+#include <linux/rbtree.h>
 
 /* 
  * This is a place holder to ensure that the _lwk_exts section gets created by gcc

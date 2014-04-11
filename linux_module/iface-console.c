@@ -263,12 +263,13 @@ static void * palacios_tty_open(void * private_data, unsigned int width, unsigne
 	return NULL;
     }
 
+/*
     if (cons->open == 1) {
 	ERROR("Console already open\n");
 	palacios_kfree(cons);
 	return NULL;
     }
-
+*/
 
     cons->queue = create_queue(CONSOLE_QUEUE_LEN);
     spin_lock_init(&(cons->lock));

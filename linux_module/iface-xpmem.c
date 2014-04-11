@@ -154,7 +154,7 @@ static int palacios_xpmem_command(void * private_data, struct xpmem_cmd_ex * cmd
         ERROR("Cannot allocate memory for list iterator\n");
         return -1;
     }
-
+    
     iter->cmd = cmd;
     spin_lock_irqsave(&(cmd_state->lock), flags);
     list_add_tail(&(iter->node), &(cmd_state->xpmem_list));
@@ -224,7 +224,6 @@ static ssize_t xpmem_write(struct file * filp, const char __user * buffer, size_
     struct xpmem_cmd_ex * cmd = palacios_kmalloc(sizeof(struct xpmem_cmd_ex), GFP_KERNEL);
 
     if (!cmd) {
-        palacios_kfree(cmd);
         ERROR("Cannot allocate memory for XPMEM command\n");
         return -ENOMEM;
     }
@@ -265,7 +264,7 @@ static ssize_t xpmem_write(struct file * filp, const char __user * buffer, size_
         case XPMEM_DETACH_COMPLETE: 
             V3_xpmem_command(state->v3_xpmem, cmd);
             break;
-
+        
         default:
             palacios_kfree(cmd);
             ERROR("Cannot handle XPMEM write - not a valid command structure (%d)\n", cmd->type);

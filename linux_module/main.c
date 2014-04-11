@@ -52,6 +52,7 @@ static struct v3_guest * guest_map[MAX_VMS] = {[0 ... MAX_VMS - 1] = 0};
 struct class * v3_class = NULL;
 static struct cdev ctrl_dev;
 
+
 static int register_vm(struct v3_guest * guest) {
     int i = 0;
 
@@ -269,7 +270,6 @@ static int __init v3_init(void) {
 
     // Initialize Palacios
     palacios_vmm_init();
-
 
     palacios_init_numa();
 

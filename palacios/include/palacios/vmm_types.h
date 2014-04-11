@@ -56,7 +56,6 @@ typedef long ssize_t;
 typedef uchar_t bool;
 
 
-
 typedef unsigned long long uint64_t;
 typedef long long sint64_t;
 
