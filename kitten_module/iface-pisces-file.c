@@ -276,7 +276,7 @@ palacios_file_readv(void               * file_ptr,
 
     if (pfile->is_raw_block) {
 	blk_req_t blkreq; 
-	u32       total_len = 0;
+	u64       total_len = 0;
 	int       ret       = 0;
 
         memset(&blkreq, 0, sizeof(blk_req_t));
@@ -329,7 +329,7 @@ palacios_file_writev(void               * file_ptr,
 
     if (pfile->is_raw_block) {
 	blk_req_t blkreq; 
-	u32       total_len = 0;
+	u64       total_len = 0;
 	int       ret       = 0;
 
 	blkreq.dma_descs = kmem_alloc(sizeof(blk_dma_desc_t) * iov_len);
