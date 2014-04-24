@@ -8,6 +8,7 @@
 #include <lwk/poll.h>
 #include <lwk/kfs.h>
 #include <lwk/print.h>
+#include <arch/uaccess.h>
 
 #include "palacios.h"
 #include "vm.h"

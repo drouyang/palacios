@@ -3,7 +3,7 @@
 
 #include <lwk/types.h>
 #include <lwk/list.h>
-#include <linux/rbtree.h>
+#include <lwk/rbtree.h>
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_host_events.h>
