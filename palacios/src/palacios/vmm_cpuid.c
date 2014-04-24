@@ -80,6 +80,8 @@ v3_init_cpuid_map(struct v3_vm_info * vm)
     // disable TSC deadline mode
     v3_cpuid_add_fields(vm, 0x00000001, 0, 0, 0, 0, (1 << 24), 0, 0, 0);
 
+    /* Disable HyperThreading exposure */
+    v3_cpuid_add_fields(vm, 0x00000001, 0, 0, 0, 0, 0, 0, (1 << 28), 0);
 
 
     /* Fixup fields */
