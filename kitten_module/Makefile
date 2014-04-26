@@ -12,8 +12,7 @@ v3vee-y := 	main.o \
 		kitten-exts.o \
 		host_pci.o \
 		iface-pisces-console.o \
-		iface-sched-events.o \
-		iface-xpmem.o
+		iface-sched-events.o 
 
 
 #		iface-pisces-pci.o
@@ -21,6 +20,7 @@ v3vee-y := 	main.o \
 
 
 v3vee-$(V3_CONFIG_FILE) += iface-pisces-file.o
+v3vee-$(V3_CONFIG_XPMEM) += iface-xpmem.o
 
 #v3vee-$(V3_CONFIG_PCI_PASSTHROUGH) += iface-pci-passthrough.o
 
