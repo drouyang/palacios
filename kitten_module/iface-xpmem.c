@@ -179,6 +179,7 @@ static struct v3_xpmem_hooks palacios_xpmem_hooks = {
 };
 
 static int xpmem_open(struct inode * inodep, struct file * filp) {
+    filp->private_data = inodep->priv;
     return 0;
 }
 
