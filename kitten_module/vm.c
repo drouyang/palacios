@@ -64,6 +64,12 @@ int palacios_create_vm(struct v3_guest * guest)  {
     
     guest->v3_ctx = v3_create_vm(guest->img, guest, guest->name);
 
+    if (guest->v3_ctx == NULL) {
+	printk(KERN_ERR "Error: Could not create VM (%s)\n", guest->name);
+	deinit_vm_extensions(guest);
+	return -1;
+    }
+
 
     {
 	char cmd_file[128];

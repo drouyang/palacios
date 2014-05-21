@@ -5,9 +5,10 @@
  * This is a place holder to ensure that the _lwk_exts section gets created by gcc
  */
 
-static struct {} null_ext  __attribute__((__used__))                    \
-    __attribute__((unused, __section__ ("_v3_lwk_exts"),			\
-		   aligned(sizeof(void *))));
+static struct {} null_ext						\
+__attribute__((__used__))						\
+__attribute__((unused, __section__ ("_v3_lwk_exts"),			\
+	       aligned(sizeof(void *))));
 
 
 
@@ -29,14 +30,15 @@ struct vm_ctrl {
 
 
 
-static inline struct vm_ctrl * __insert_ctrl(struct v3_guest * vm, 
-					     struct vm_ctrl * ctrl) {
-    struct rb_node ** p = &(vm->vm_ctrls.rb_node);
-    struct rb_node * parent = NULL;
-    struct vm_ctrl * tmp_ctrl = NULL;
+static inline struct vm_ctrl * 
+__insert_ctrl(struct v3_guest * vm, 
+	      struct vm_ctrl * ctrl) {
+    struct rb_node ** p        = &(vm->vm_ctrls.rb_node);
+    struct rb_node  * parent   = NULL;
+    struct vm_ctrl  * tmp_ctrl = NULL;
 
     while (*p) {
-	parent = *p;
+	parent   = *p;
 	tmp_ctrl = rb_entry(parent, struct vm_ctrl, tree_node);
 
 	if (ctrl->cmd < tmp_ctrl->cmd) {
@@ -55,11 +57,15 @@ static inline struct vm_ctrl * __insert_ctrl(struct v3_guest * vm,
 
 
 
-int add_guest_ctrl(struct v3_guest * guest, unsigned int cmd, 
-		   int (*handler)(struct v3_guest * guest, 
-				  unsigned int cmd, unsigned long arg, 
-				  void * priv_data),
-		   void * priv_data) {
+int 
+add_guest_ctrl(struct v3_guest * guest, 
+	       unsigned int      cmd, 
+	       int            (*handler)(struct v3_guest * guest, 
+					 unsigned int cmd, 
+					 unsigned long arg, 
+					 void * priv_data),
+	       void            * priv_data) 
+{
     struct vm_ctrl * ctrl = kmem_alloc(sizeof(struct vm_ctrl));
 
     if (ctrl == NULL) {
@@ -67,8 +73,8 @@ int add_guest_ctrl(struct v3_guest * guest, unsigned int cmd,
 	return -1;
     }
 
-    ctrl->cmd = cmd;
-    ctrl->handler = handler;
+    ctrl->cmd       = cmd;
+    ctrl->handler   = handler;
     ctrl->priv_data = priv_data;
 
     if (__insert_ctrl(guest, ctrl) != NULL) {
@@ -85,8 +91,11 @@ int add_guest_ctrl(struct v3_guest * guest, unsigned int cmd,
 
 
 
-static struct vm_ctrl * get_ctrl(struct v3_guest * guest, unsigned int cmd) {
-    struct rb_node * n = guest->vm_ctrls.rb_node;
+static struct vm_ctrl * 
+get_ctrl(struct v3_guest * guest, 
+	 unsigned int      cmd) 
+{
+    struct rb_node * n    = guest->vm_ctrls.rb_node;
     struct vm_ctrl * ctrl = NULL;
 
     while (n) {
@@ -104,7 +113,11 @@ static struct vm_ctrl * get_ctrl(struct v3_guest * guest, unsigned int cmd) {
     return NULL;
 }
 
-int call_guest_ctrl(struct v3_guest * guest, unsigned int cmd, unsigned long arg) {
+int 
+call_guest_ctrl(struct v3_guest * guest, 
+		unsigned int      cmd, 
+		unsigned long     arg) 
+{
     struct vm_ctrl * ctrl = get_ctrl(guest, cmd);
 
     if (ctrl == NULL) {
@@ -115,7 +128,10 @@ int call_guest_ctrl(struct v3_guest * guest, unsigned int cmd, unsigned long arg
     return ctrl->handler(guest, cmd, arg, ctrl->priv_data);;	
 }
 
-int remove_guest_ctrl(struct v3_guest * guest, unsigned int cmd) {
+int 
+remove_guest_ctrl(struct v3_guest * guest,
+		  unsigned int      cmd) 
+{
     struct vm_ctrl * ctrl = get_ctrl(guest, cmd);
 
     if (ctrl == NULL) {
@@ -130,7 +146,9 @@ int remove_guest_ctrl(struct v3_guest * guest, unsigned int cmd) {
     return 0;
 }
 
-void free_guest_ctrls(struct v3_guest * guest) {
+void 
+free_guest_ctrls(struct v3_guest * guest) 
+{
     struct rb_node * node = rb_first(&(guest->vm_ctrls));
     struct vm_ctrl * ctrl = NULL;
 
@@ -153,13 +171,15 @@ void free_guest_ctrls(struct v3_guest * guest) {
 
 struct rb_root global_ctrls;
 
-static inline struct global_ctrl * __insert_global_ctrl(struct global_ctrl * ctrl) {
-    struct rb_node ** p = &(global_ctrls.rb_node);
-    struct rb_node * parent = NULL;
+static inline struct global_ctrl * 
+__insert_global_ctrl(struct global_ctrl * ctrl) 
+{
+    struct rb_node    ** p        = &(global_ctrls.rb_node);
+    struct rb_node     * parent   = NULL;
     struct global_ctrl * tmp_ctrl = NULL;
 
     while (*p) {
-        parent = *p;
+        parent   = *p;
         tmp_ctrl = rb_entry(parent, struct global_ctrl, tree_node);
 
         if (ctrl->cmd < tmp_ctrl->cmd) {
@@ -178,8 +198,10 @@ static inline struct global_ctrl * __insert_global_ctrl(struct global_ctrl * ctr
 
 
 
-int add_global_ctrl(unsigned int cmd, 
-                   int (*handler)(unsigned int cmd, unsigned long arg)) {
+int 
+add_global_ctrl(unsigned int cmd, 
+		int (*handler)(unsigned int cmd, unsigned long arg))
+{
     struct global_ctrl * ctrl = kmem_alloc(sizeof(struct global_ctrl));
 
     if (ctrl == NULL) {
@@ -187,7 +209,7 @@ int add_global_ctrl(unsigned int cmd,
         return -1;
     }
 
-    ctrl->cmd = cmd;
+    ctrl->cmd     = cmd;
     ctrl->handler = handler;
 
     if (__insert_global_ctrl(ctrl) != NULL) {
@@ -202,8 +224,10 @@ int add_global_ctrl(unsigned int cmd,
 }
 
 
-struct global_ctrl * get_global_ctrl(unsigned int cmd) {
-    struct rb_node * n = global_ctrls.rb_node;
+struct global_ctrl * 
+get_global_ctrl(unsigned int cmd) 
+{
+    struct rb_node     * n    = global_ctrls.rb_node;
     struct global_ctrl * ctrl = NULL;
 
     while (n) {
@@ -231,12 +255,15 @@ struct global_ctrl * get_global_ctrl(unsigned int cmd) {
 
 struct vm_ext {
     struct kitten_ext * impl;
-    void * vm_data;
-    struct list_head node;
+    void              * vm_data;
+    struct list_head    node;
 };
 
 
-void * get_vm_ext_data(struct v3_guest * guest, char * ext_name) {
+void * 
+get_vm_ext_data(struct v3_guest * guest, 
+		char            * ext_name) 
+{
     struct vm_ext * ext = NULL;
 
     list_for_each_entry(ext, &(guest->exts), node) {
@@ -249,10 +276,12 @@ void * get_vm_ext_data(struct v3_guest * guest, char * ext_name) {
 }
 
 
-int init_vm_extensions(struct v3_guest * guest) {
+int 
+init_vm_extensions(struct v3_guest * guest) 
+{
     extern struct kitten_ext * __start__v3_lwk_exts[];
     extern struct kitten_ext * __stop__v3_lwk_exts[];
-    struct kitten_ext * ext_impl = __start__v3_lwk_exts[0];
+    struct kitten_ext        * ext_impl = __start__v3_lwk_exts[0];
     int i = 0;
 
     printk("Initializing VM extensions\n");
@@ -291,7 +320,9 @@ int init_vm_extensions(struct v3_guest * guest) {
 
 
 
-int deinit_vm_extensions(struct v3_guest * guest) {
+int 
+deinit_vm_extensions(struct v3_guest * guest) 
+{
     struct vm_ext * ext = NULL;
     struct vm_ext * tmp = NULL;
 
@@ -310,10 +341,12 @@ int deinit_vm_extensions(struct v3_guest * guest) {
 }
 
 
-int init_lwk_extensions( void ) {
+int
+init_lwk_extensions( void ) 
+{
     extern struct kitten_ext * __start__v3_lwk_exts[];
     extern struct kitten_ext * __stop__v3_lwk_exts[];
-    struct kitten_ext * tmp_ext = __start__v3_lwk_exts[0];
+    struct kitten_ext        * tmp_ext = __start__v3_lwk_exts[0];
     int i = 0;
 
     printk("Initializing LWK extensions\n");
@@ -334,10 +367,12 @@ int init_lwk_extensions( void ) {
 }
 
 
-int deinit_lwk_extensions( void ) {
+int 
+deinit_lwk_extensions( void ) 
+{
     extern struct kitten_ext * __start__v3_lwk_exts[];
     extern struct kitten_ext * __stop__v3_lwk_exts[];
-    struct kitten_ext * tmp_ext = __start__v3_lwk_exts[0];
+    struct kitten_ext        * tmp_ext = __start__v3_lwk_exts[0];
     int i = 0;
 
     while (tmp_ext != __stop__v3_lwk_exts[0]) {

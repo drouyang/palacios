@@ -124,13 +124,18 @@ kbd_event(struct v3_guest * guest, unsigned int cmd,
 
 
 
-static int console_connect(struct v3_guest * guest, unsigned int cmd, 
-				 unsigned long arg, void * priv_data) {
+static int 
+console_connect(struct v3_guest * guest, 
+		unsigned int      cmd, 
+		unsigned long     arg,
+		void            * priv_data)
+{
+    void __user             * argp = (void __user *)arg;
     struct palacios_console * cons = priv_data;
-    void __user * argp = (void __user *)arg;
-    unsigned long flags;
-    int acquired = 0;
+
     struct pmem_region result;
+    int                acquired = 0;
+    unsigned long      flags    = 0;
 
     printk("V3: Connecting to VM console\n");
 
@@ -142,7 +147,7 @@ static int console_connect(struct v3_guest * guest, unsigned int cmd,
     spin_lock_irqsave(&(cons->cons_lock), flags);
     if (cons->connected == 0) {
 	cons->connected = 1;
-	acquired = 1;
+	acquired        = 1;
     }
     spin_unlock_irqrestore(&(cons->cons_lock), flags);
 
@@ -162,7 +167,7 @@ static int console_connect(struct v3_guest * guest, unsigned int cmd,
     }
 
     cons->ring_buf_pg_addr = result.start;
-    cons->ring_buf = __va(result.start);
+    cons->ring_buf         = __va(result.start);
 
     pisces_lock_init(&(cons->ring_buf->lock));
     cons->ring_buf->total_entries = ((RING_BUF_SIZE - sizeof(struct cons_ring_buf)) / sizeof(struct cons_msg));
@@ -177,49 +182,55 @@ static int console_connect(struct v3_guest * guest, unsigned int cmd,
     return 0;
 }
 
-static int console_disconnect(struct v3_guest * guest, unsigned int cmd, 
-			      unsigned long arg, void * priv_data) {
-    struct palacios_console * cons = priv_data;
-    uintptr_t ring_buf_pa = cons->ring_buf_pg_addr;
+static int 
+console_disconnect(struct v3_guest * guest, 
+		   unsigned int      cmd, 
+		   unsigned long     arg, 
+		   void            * priv_data)
+{
+    struct palacios_console * cons        = priv_data;
+    uintptr_t                 ring_buf_pa = cons->ring_buf_pg_addr;
     unsigned long flags;
 
     spin_lock_irqsave(&(cons->cons_lock), flags);
-    cons->connected = 0;
-    
-    cons->ring_buf_pg_addr = 0;
-    cons->ring_buf = NULL;
-
-    // Free the ring buffer
     {
-	/* 
-	 * OK.... So kitten really needs a pmem_free interface......
-	 */
-	struct pmem_region      query;
-	struct pmem_region      result;
-	int                     status;
+	cons->connected        = 0;
+	cons->ring_buf_pg_addr = 0;
+	cons->ring_buf         = NULL;
 	
-	pmem_region_unset_all(&query);
-
-	query.start             = (uintptr_t) ring_buf_pa;
-	query.end               = (uintptr_t) ring_buf_pa + RING_BUF_SIZE;
-	query.allocated         = true;
-	query.allocated_is_set  = true;
-	
-	status = pmem_query(&query, &result);
-	if (status)
-	    panic("Freeing page %p failed! query status=%d",
-		  ring_buf_pa, status);
-	
-	result.allocated = false;
-	status = pmem_update(&result);
-	if (status)
-	    panic("Failed to free page %p! (status=%d)",
-		  ring_buf_pa, status);
-
-
-
+	// Free the ring buffer
+	{
+	    /* 
+	     * OK.... So kitten really needs a pmem_free interface......
+	     */
+	    struct pmem_region      query;
+	    struct pmem_region      result;
+	    int                     status;
+	    
+	    pmem_region_unset_all(&query);
+	    
+	    query.start             = (uintptr_t) ring_buf_pa;
+	    query.end               = (uintptr_t) ring_buf_pa + RING_BUF_SIZE;
+	    query.allocated         = true;
+	    query.allocated_is_set  = true;
+	    
+	    status = pmem_query(&query, &result);
+	    
+	    if (status) {
+		panic("Freeing page %p failed! query status=%d",
+		      ring_buf_pa, status);
+	    }
+	    
+	    result.allocated = false;
+	    
+	    status = pmem_update(&result);
+	    
+	    if (status) {
+		panic("Failed to free page %p! (status=%d)",
+		      ring_buf_pa, status);
+	    }
+	}
     }
-
     spin_unlock_irqrestore(&(cons->cons_lock), flags);
 
     return 0;
@@ -257,14 +268,14 @@ static void * palacios_tty_open(void * private_data, unsigned int width, unsigne
     cons->guest = guest;
 
     cons->connected = 0;
-    cons->width = width;
-    cons->height = height;
-    cons->open = 1;
+    cons->width     = width;
+    cons->height    = height;
+    cons->open      = 1;
 
 
-    add_guest_ctrl(guest, V3_VM_CONSOLE_CONNECT, console_connect, cons);
+    add_guest_ctrl(guest, V3_VM_CONSOLE_CONNECT,    console_connect,    cons);
     add_guest_ctrl(guest, V3_VM_CONSOLE_DISCONNECT, console_disconnect, cons);
-    add_guest_ctrl(guest, V3_VM_KEYBOARD_EVENT, kbd_event, cons);
+    add_guest_ctrl(guest, V3_VM_KEYBOARD_EVENT,     kbd_event,          cons);
     return cons;
 }
 
@@ -336,7 +347,7 @@ static int palacios_tty_cursor_set(void * console, int x, int y) {
 
     memset(&msg, 0, sizeof(struct cons_msg));
 
-    msg.op = CONSOLE_CURS_SET;
+    msg.op       = CONSOLE_CURS_SET;
     msg.cursor.x = x;
     msg.cursor.y = y;
 
@@ -353,10 +364,10 @@ static int palacios_tty_character_set(void * console, int x, int y, char c, unsi
 
     memset(&msg, 0, sizeof(struct cons_msg));
 
-    msg.op = CONSOLE_CHAR_SET;
-    msg.character.x = x;
-    msg.character.y = y;
-    msg.character.c = c;
+    msg.op              = CONSOLE_CHAR_SET;
+    msg.character.x     = x;
+    msg.character.y     = y;
+    msg.character.c     = c;
     msg.character.style = style;
 
     return post_msg(cons, &msg);
@@ -445,10 +456,10 @@ static int console_init( void ) {
 
 
 static struct kitten_ext console_ext = {
-    .name = "CONSOLE",
-    .init = console_init,
-    .deinit = NULL,
-    .guest_init = NULL,
+    .name         = "CONSOLE",
+    .init         = console_init,
+    .deinit       = NULL,
+    .guest_init   = NULL,
     .guest_deinit = NULL
 };
 
