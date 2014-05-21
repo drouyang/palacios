@@ -26,18 +26,18 @@
 
 
 typedef union reg_ex {
-    ullong_t r_reg;
+    uint64_t r_reg;
     struct {
-	uint_t low;
-	uint_t high;
+	uint32_t low;
+	uint32_t high;
     } e_reg;
 
 } reg_ex_t;
 
 
 
-#define GET_LOW_32(x) (*((uint_t*)(&(x))))
-#define GET_HIGH_32(x) (*((uint_t*)(((uchar_t*)(&(x)))+4)))
+#define GET_LOW_32(x) (*((uint_t *)(&(x))))
+#define GET_HIGH_32(x) (*((uint_t *)(((uint8_t *)(&(x))) + 4)))
 
 
 
@@ -60,7 +60,7 @@ void v3_dump_mem(uint8_t * start, int n);
 	uint32_t a, d;					\
 	asm volatile("rdtsc" : "=a" (a), "=d" (d));	\
 	*(uint32_t *)&(tsc) = a;			\
-	*(uint32_t *)(((uchar_t *)&tsc) + 4) = d;	\
+	*(uint32_t *)(((uint8_t *)&tsc) + 4) = d;	\
 	val = tsc;					\
     } while (0)					
 
@@ -133,8 +133,8 @@ void v3_dump_mem(uint8_t * start, int n);
  * NOTE: This absolutely sucks... there has to be a better way....
  */
 #define do_divll(n, base) ({			\
-	    ullong_t __rem = 0;			\
-	    ullong_t __num = 0;			\
+	    uint64_t __rem = 0;			\
+	    uint64_t __num = 0;			\
 	    while (n > base) {			\
 		__num++;			\
 		n -= base;			\

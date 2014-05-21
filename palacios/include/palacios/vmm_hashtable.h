@@ -118,7 +118,7 @@ struct hashtable;
 
 /* These cannot be inlined because they are referenced as fn ptrs */
 ulong_t v3_hash_long(ulong_t val, uint_t bits);
-ulong_t v3_hash_buffer(uchar_t * msg, uint_t length);
+ulong_t v3_hash_buffer(uint8_t * msg, uint_t length);
 
 
 

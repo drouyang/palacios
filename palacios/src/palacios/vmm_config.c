@@ -118,7 +118,7 @@ static uint_t
 file_hash_fn(addr_t key) 
 {
     char * name = (char *)key;
-    return v3_hash_buffer((uchar_t *)name, strlen(name));
+    return v3_hash_buffer((uint8_t *)name, strlen(name));
 }
 
 static int 

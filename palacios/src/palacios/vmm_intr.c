@@ -85,7 +85,7 @@ v3_init_intr_routers(struct v3_vm_info * vm)
     
     v3_spinlock_init(&(vm->intr_routers.irq_lock));
 
-    memset((uchar_t *)(vm->intr_routers.hooks), 0, sizeof(struct v3_irq_hook *) * 256);
+    memset((uint8_t *)(vm->intr_routers.hooks), 0, sizeof(struct v3_irq_hook *) * 256);
 }
 
 

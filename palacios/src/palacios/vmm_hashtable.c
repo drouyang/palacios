@@ -122,7 +122,7 @@ ulong_t v3_hash_long(ulong_t val, uint_t bits) {
 
 /* HASH GENERIC MEMORY BUFFER */
 /* ELF HEADER HASH FUNCTION */
-ulong_t v3_hash_buffer(uchar_t * msg, uint_t length) {
+ulong_t v3_hash_buffer(uint8_t * msg, uint_t length) {
     ulong_t hash = 0;
     ulong_t temp = 0;
     uint_t i;

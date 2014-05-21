@@ -259,7 +259,7 @@ static inline uint32_t le_to_be_32(const uint32_t val) {
 }
 
 
-static inline int get_channel_index(ushort_t port) {
+static inline int get_channel_index(uint16_t port) {
     if (((port & 0xfff8) == 0x1f0) ||
 	((port & 0xfffe) == 0x3f6) || 
 	((port & 0xfff8) == 0xc000)) {
@@ -273,7 +273,7 @@ static inline int get_channel_index(ushort_t port) {
     return -1;
 }
 
-static inline struct ide_channel * get_selected_channel(struct ide_internal * ide, ushort_t port) {
+static inline struct ide_channel * get_selected_channel(struct ide_internal * ide, uint16_t port) {
     int channel_idx = get_channel_index(port);    
     return &(ide->channels[channel_idx]);
 }
@@ -688,7 +688,7 @@ static int dma_write(struct v3_core_info * core, struct ide_internal * ide, stru
 
 #define DMA_CHANNEL_FLAG  0x08
 
-static int write_dma_port(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * private_data) {
+static int write_dma_port(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
     struct ide_internal * ide = (struct ide_internal *)private_data;
     uint16_t port_offset = port & (DMA_CHANNEL_FLAG - 1);
     uint_t channel_flag = (port & DMA_CHANNEL_FLAG) >> 3;
@@ -792,7 +792,7 @@ static int read_dma_port(struct v3_core_info * core, uint16_t port, void * dst, 
 
 
 
-static int write_cmd_port(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct ide_internal * ide = priv_data;
     struct ide_channel * channel = get_selected_channel(ide, port);
     struct ide_drive * drive = get_selected_drive(channel);
@@ -1015,7 +1015,7 @@ static int write_cmd_port(struct v3_core_info * core, ushort_t port, void * src,
 }
 
 
-static int write_data_port(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int write_data_port(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct ide_internal * ide = priv_data;
     struct ide_channel * channel = get_selected_channel(ide, port);
     struct ide_drive * drive = get_selected_drive(channel);
@@ -1208,7 +1208,7 @@ static int read_drive_id( uint8_t * dst, uint_t length, struct ide_internal * id
 }
 
 
-static int ide_read_data_port(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int ide_read_data_port(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
     struct ide_internal * ide = priv_data;
     struct ide_channel * channel = get_selected_channel(ide, port);
     struct ide_drive * drive = get_selected_drive(channel);
@@ -1237,7 +1237,7 @@ static int ide_read_data_port(struct v3_core_info * core, ushort_t port, void * 
     return length;
 }
 
-static int write_port_std(struct v3_core_info * core, ushort_t port, void * src, uint_t length, void * priv_data) {
+static int write_port_std(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
     struct ide_internal * ide = priv_data;
     struct ide_channel * channel = get_selected_channel(ide, port);
     struct ide_drive * drive = get_selected_drive(channel);
@@ -1329,7 +1329,7 @@ static int write_port_std(struct v3_core_info * core, ushort_t port, void * src,
 }
 
 
-static int read_port_std(struct v3_core_info * core, ushort_t port, void * dst, uint_t length, void * priv_data) {
+static int read_port_std(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
     struct ide_internal * ide = priv_data;
     struct ide_channel * channel = get_selected_channel(ide, port);
     struct ide_drive * drive = get_selected_drive(channel);

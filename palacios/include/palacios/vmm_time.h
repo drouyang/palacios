@@ -79,7 +79,7 @@ struct vm_core_time {
 #define VM_TIME_TRAP_RDTSC (1 << 2)
 
 struct v3_timer_ops {
-    void (*update_timer)(struct v3_core_info * core, ullong_t cpu_cycles, ullong_t cpu_freq, void * priv_data);
+    void (*update_timer)(struct v3_core_info * core, uint64_t cpu_cycles, uint64_t cpu_freq, void * priv_data);
     void (*advance_timer)(struct v3_core_info * core, void * private_data);
 };
 

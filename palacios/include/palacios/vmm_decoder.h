@@ -159,7 +159,7 @@ void v3_print_instr(struct x86_instr * instr);
 
 
 
-static inline int is_prefix_byte(uchar_t byte) {
+static inline int is_prefix_byte(uint8_t byte) {
     switch (byte) {
 	case 0xF0:      // lock
 	case 0xF2:      // REPNE/REPNZ

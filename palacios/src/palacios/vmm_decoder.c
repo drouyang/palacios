@@ -89,7 +89,7 @@ v3_get_prefixes(uint8_t * instr, struct x86_prefixes * prefixes)
 }
 
 void 
-v3_strip_rep_prefix(uchar_t * instr, int length) 
+v3_strip_rep_prefix(uint8_t * instr, int length) 
 {
     int read_ctr  = 0;
     int write_ctr = 0;
@@ -173,14 +173,14 @@ operand_type_to_str(v3_operand_type_t op)
 }
 
 
-static const ullong_t mask_1 = 0x00000000000000ffLL;
-static const ullong_t mask_2 = 0x000000000000ffffLL;
-static const ullong_t mask_4 = 0x00000000ffffffffLL;
-static const ullong_t mask_8 = 0xffffffffffffffffLL;
+static const uint64_t mask_1 = 0x00000000000000ffLL;
+static const uint64_t mask_2 = 0x000000000000ffffLL;
+static const uint64_t mask_4 = 0x00000000ffffffffLL;
+static const uint64_t mask_8 = 0xffffffffffffffffLL;
 
 
 #define MASK(val, length) ({			\
-	    ullong_t mask = 0x0LL;		\
+	    uint64_t mask = 0x0LL;		\
 	    switch (length) {			\
 		case 1:				\
 		    mask = mask_1;		\

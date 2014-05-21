@@ -22,55 +22,61 @@
 
 #ifdef __V3VEE__
 
-typedef enum {SHADOW_PAGING, NESTED_PAGING} v3_paging_mode_t;
-typedef enum {VM_INVALID, VM_RUNNING, VM_STOPPED, VM_PAUSED, VM_ERROR, VM_SIMULATING} v3_vm_operating_mode_t;
-typedef enum {CORE_INVALID, CORE_RUNNING, CORE_STOPPED} v3_core_operating_mode_t;
+typedef enum {SHADOW_PAGING, 
+	      NESTED_PAGING}  v3_paging_mode_t;
 
-typedef enum {REAL, /*UNREAL,*/ PROTECTED, PROTECTED_PAE, LONG, LONG_32_COMPAT, LONG_16_COMPAT} v3_cpu_mode_t;
-typedef enum {PHYSICAL_MEM, VIRTUAL_MEM} v3_mem_mode_t;
+typedef enum {VM_INVALID, 
+	      VM_RUNNING, 
+	      VM_STOPPED, 
+	      VM_PAUSED,
+	      VM_ERROR, 
+	      VM_SIMULATING} v3_vm_operating_mode_t;
+
+typedef enum {CORE_INVALID,
+	      CORE_RUNNING, 
+	      CORE_STOPPED} v3_core_operating_mode_t;
+
+typedef enum {REAL, 
+	      PROTECTED, 
+	      PROTECTED_PAE, 
+	      LONG,
+	      LONG_32_COMPAT, 
+	      LONG_16_COMPAT} v3_cpu_mode_t;
+
+
+typedef enum {PHYSICAL_MEM, 
+	      VIRTUAL_MEM} v3_mem_mode_t;
 
 
 #define NULL ((void *)0)
 
 
-typedef signed char schar_t;
-typedef unsigned char uchar_t;
 
-typedef signed short sshort_t;
-typedef unsigned short ushort_t;
+typedef int                sint_t;
+typedef unsigned int       uint_t;
+typedef long               slong_t;
+typedef unsigned long      ulong_t;
 
-typedef signed int sint_t;
-typedef unsigned int uint_t;
+typedef unsigned long long uint64_t;
+typedef long long          sint64_t;
 
-typedef signed long long sllong_t;
-typedef unsigned long long ullong_t;
+typedef unsigned int       uint32_t;
+typedef int                sint32_t;
 
-typedef signed long slong_t;
-typedef unsigned long ulong_t;
+typedef unsigned short     uint16_t;
+typedef short              sint16_t;
 
-typedef unsigned long size_t;
-typedef long ssize_t;       
+typedef unsigned char      uint8_t;
+typedef char               sint8_t;
 
 #define false 0
 #define true 1
-typedef uchar_t bool;
-
-
-typedef unsigned long long uint64_t;
-typedef long long sint64_t;
-
-typedef unsigned int uint32_t;
-typedef int sint32_t;
-
-
-typedef unsigned short uint16_t;
-typedef short sint16_t;
-
-typedef unsigned char uint8_t;
-typedef char sint8_t;
-
-typedef ulong_t addr_t;
-typedef ullong_t v3_reg_t;
+typedef unsigned char      bool;
+typedef unsigned long      size_t;
+typedef long               ssize_t;
+typedef long long          loff_t;
+typedef unsigned long      addr_t;
+typedef unsigned long long v3_reg_t;
 #endif /* ! __V3VEE__ */
 
 

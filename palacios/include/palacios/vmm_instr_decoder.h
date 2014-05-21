@@ -500,7 +500,7 @@ static v3_seg_type_t get_instr_segment(struct v3_core_info * core, struct x86_in
 
 
 #define ADDR_MASK(val, length) ({			      \
-            ullong_t mask = 0x0LL;			      \
+            uint64_t mask = 0x0LL;			      \
             switch (length) {				      \
                 case 2:					      \
                     mask = 0x00000000000fffffLL;	      \

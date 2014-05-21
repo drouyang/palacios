@@ -95,12 +95,12 @@ handle_hcall(struct v3_core_info * core,
     }
 
     if (buf_is_va == 1) {
-	if (v3_read_gva_memory(core, msg_gpa, msg_len, (uchar_t *)state->debug_buf) != msg_len) {
+	if (v3_read_gva_memory(core, msg_gpa, msg_len, (uint8_t *)state->debug_buf) != msg_len) {
 	    PrintError("Could not read debug message\n");
 	    return -1;
 	}
     } else {
-	if (v3_read_gpa_memory(core, msg_gpa, msg_len, (uchar_t *)state->debug_buf) != msg_len) {
+	if (v3_read_gpa_memory(core, msg_gpa, msg_len, (uint8_t *)state->debug_buf) != msg_len) {
 	    PrintError("Could not read debug message\n");
 	    return -1;
 	}
