@@ -58,14 +58,14 @@ struct host_pci_device {
 };
 
 
-struct pisces_pci_ack_irq_lcall {
+struct pci_ack_irq_lcall {
 	struct pisces_lcall lcall;
     
 	char name[128];
 	u32 vector;
 } __attribute__((packed));
 
-struct pisces_pci_cmd_lcall {
+struct pci_cmd_lcall {
 	struct pisces_lcall lcall;
 
 	char name[128];
@@ -73,19 +73,26 @@ struct pisces_pci_cmd_lcall {
 	u64 arg;
 } __attribute__((packed));
 
-struct pisces_pci_iommu_map_lcall {
+struct pci_iommu_map_lcall {
 	struct pisces_lcall lcall;
 
 	char name[128];
 	u64 region_start;
 	u64 region_end;
 	u64 gpa;
-	u32 last;
+} __attribute__((packed));
+
+
+struct pci_attach_lcall {
+	struct pisces_lcall lcall;
+
+	char name[128];
+	u32  ipi_vector;
 } __attribute__((packed));
 
 
 static struct list_head  device_list;
-static        spinlock_t lock;
+static spinlock_t        lock;
 
 
 static struct host_pci_device * 
@@ -116,7 +123,7 @@ host_pci_config_write(struct v3_host_pci_dev * v3_dev,
 	u32 val = 0;
 
 	memcpy(&val, src, length);
-	pci_write(pci_dev, reg_num, length, src);
+	pci_write(pci_dev, reg_num, length, val);
 
 	return length;
 }
@@ -131,7 +138,7 @@ host_pci_config_read(struct v3_host_pci_dev * v3_dev,
 	pci_dev_t              * pci_dev  = host_dev->pci_dev;
 	u32 val = 0;
 
-	val = read_hw_pci_config(host_dev, reg_num, length);
+	val = pci_read(pci_dev, reg_num, length);
 	memcpy(dst, &val, length);
 
 	return length;
@@ -141,13 +148,13 @@ static int
 host_pci_ack_irq(struct v3_host_pci_dev * v3_dev, 
 		 unsigned int             vector) 
 {
-	struct host_pci_device          * host_dev   = v3_dev->host_data;
-	struct pisces_lcall_resp        * lcall_resp = NULL;
-	struct pisces_pci_ack_irq_lcall   ack_irq_lcall;
+	struct host_pci_device   * host_dev   = v3_dev->host_data;
+	struct pisces_lcall_resp * lcall_resp = NULL;
+	struct pci_ack_irq_lcall   ack_irq_lcall;
 	int status = 0;
 
 	ack_irq_lcall.lcall.lcall    = PISCES_LCALL_PCI_ACK_IRQ;
-	ack_irq_lcall.lcall.data_len = (sizeof(struct pisces_pci_ack_irq_lcall) -
+	ack_irq_lcall.lcall.data_len = (sizeof(struct pci_ack_irq_lcall) -
 					sizeof(struct pisces_lcall));
 	ack_irq_lcall.vector         = vector;
 	strncpy(ack_irq_lcall.name, host_dev->name, 128);
@@ -207,9 +214,9 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev,
 	     host_pci_cmd_t           cmd, 
 	     u64                      arg) 
 {
-	struct host_pci_device      * host_dev = v3_dev->host_data;
-	struct pisces_pci_cmd_lcall   cmd_lcall;
-	struct pisces_lcall_resp    * cmd_lcall_resp = NULL;
+	struct host_pci_device   * host_dev = v3_dev->host_data;
+	struct pci_cmd_lcall       cmd_lcall;
+	struct pisces_lcall_resp * cmd_lcall_resp = NULL;
 	int status = 0;
 	
 	switch (cmd) {
@@ -316,14 +323,14 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev,
 	    case HOST_PCI_CMD_DMA_ENABLE: 
 		    pci_dma_enable(host_dev->pci_dev);
 		    break;
-	    case HOST_PCI_CMD_MEM_DISABLE: 
+	    case HOST_PCI_CMD_MEM_ENABLE: 
 		    pci_mmio_enable(host_dev->pci_dev);
 		    break;
 
 	    case HOST_PCI_CMD_INTX_ENABLE:
 	    case HOST_PCI_CMD_INTX_DISABLE:
 		    cmd_lcall.lcall.lcall    = PISCES_LCALL_PCI_CMD;
-		    cmd_lcall.lcall.data_len = (sizeof(struct pisces_pci_cmd_lcall) -
+		    cmd_lcall.lcall.data_len = (sizeof(struct pci_cmd_lcall) -
 						sizeof(struct pisces_lcall));
 		    cmd_lcall.cmd            = cmd;
 		    cmd_lcall.arg            = arg;
@@ -341,88 +348,13 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev,
 
 		    break;
 	    default:
-		    printk(KERN_ERR "Invalid PCI command (%d) sent to host PCI interface, cmd\n");
+		    printk(KERN_ERR "Invalid PCI command (%d) sent to host PCI interface, cmd\n", cmd);
 		    break;
 	}
 
 	return status;
 }
 
-static int
-host_pci_iommu_map(struct host_pci_device * host_dev, 
-		   u64                      region_start,
-		   u64                      region_end, 
-		   u64                      gpa, 
-		   int                      last)
-{
-	struct pisces_pci_iommu_map_lcall   iommu_lcall;
-	struct pisces_lcall_resp          * lcall_resp = NULL;
-	int status = 0;
-
-	iommu_lcall.lcall.lcall    = PISCES_LCALL_PCI_IOMMU_MAP;
-	iommu_lcall.lcall.data_len = (sizeof(struct pisces_pci_iommu_map_lcall) - 
-				      sizeof(struct pisces_lcall));
-
-	strncpy(iommu_lcall.name, host_dev->name, 128);
-	iommu_lcall.region_start = region_start;
-	iommu_lcall.region_end   = region_end;
-	iommu_lcall.gpa          = gpa;
-	iommu_lcall.last         = last;
-
-	status = pisces_lcall_exec((struct pisces_lcall       *)&iommu_lcall,
-				   (struct pisces_lcall_resp **)&lcall_resp);
-
-	if (status != 0) {
-		return -1;
-	}
-
-	status = lcall_resp->status;
-	kmem_free(lcall_resp);
-	return status;
-}
-
-static int
-reserve_hw_pci_dev(struct host_pci_device * host_dev, 
-		   void                   * v3_ctx)
-{
-	struct v3_guest_mem_region region;
-	unsigned long flags;
-
-	u64 gpa = 0;
-	int ret = 0;
-  
-	spin_lock_irqsave(&lock, flags);
-	{
-		if (host_dev->in_use == 0) {
-			host_dev->in_use = 1;
-		} else {
-			ret = -1;
-		}
-	}
-	spin_unlock_irqrestore(&lock, flags);
-
-	if (ret == -1)
-		return ret;
-
-	while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
-		printk("Memory region (GPA:%p), start=%p, end=%p\n",
-		       (void *)gpa,
-		       (void *)region.start,
-		       (void *)region.end);
-
-		if (host_pci_iommu_map(host_dev, region.start, region.end, gpa, 0) != 0) {
-			return -1;
-		}
-
-		gpa += (region.end - region.start);
-	}
-
-	if (host_pci_iommu_map(host_dev, 0, 0, 0, 1) != 0) {
-		return -1;
-	}
-
-	return ret;
-}
 
 static struct v3_host_pci_dev * 
 host_pci_request_dev(char * url, 
@@ -430,10 +362,16 @@ host_pci_request_dev(char * url,
 {
 	struct host_pci_device * host_dev = NULL;
 	unsigned long flags;
- 
+
 	spin_lock_irqsave(&lock, flags);
 	{
 		host_dev = find_dev_by_name(url);
+		
+		if ((host_dev) && (host_dev->in_use == 0)) {
+			host_dev->in_use = 1;	/* Mark the device as in use */
+		} else {
+			host_dev = NULL;
+		}
 	}
 	spin_unlock_irqrestore(&lock, flags);
 
@@ -443,9 +381,70 @@ host_pci_request_dev(char * url,
 	}
 
 
-	if (reserve_hw_pci_dev(host_dev, v3_ctx) == -1) {
-		printk(KERN_ERR "Could not reserve host device (%s)\n", url);
-		return NULL;
+	/* Map device with IOMMU (Done in Linux via LCALLs) */
+	{
+
+		struct pci_iommu_map_lcall iommu_lcall;
+		struct v3_guest_mem_region region;
+		u64 gpa = 0;
+
+		iommu_lcall.lcall.lcall    = PISCES_LCALL_PCI_IOMMU_MAP;
+		iommu_lcall.lcall.data_len = (sizeof(struct pci_iommu_map_lcall) - 
+					      sizeof(struct pisces_lcall));
+		
+		while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
+			
+			struct pisces_lcall_resp * lcall_resp = NULL;
+			int status = 0;
+				
+			printk("Memory region (GPA:%p), start=%p, end=%p\n",
+			       (void *)gpa,
+			       (void *)region.start,
+			       (void *)region.end);
+
+			strncpy(iommu_lcall.name, host_dev->name, 128);
+			iommu_lcall.region_start = region.start;
+			iommu_lcall.region_end   = region.end;
+			iommu_lcall.gpa          = gpa;
+			
+			pisces_lcall_exec((struct pisces_lcall       *)&iommu_lcall,
+					  (struct pisces_lcall_resp **)&lcall_resp);
+			
+			status = lcall_resp->status;
+			kmem_free(lcall_resp);
+
+			if (status != 0) {
+				return NULL;
+			}
+			
+			gpa += (region.end - region.start);
+		}
+	}
+
+
+	/* Attach Device */
+	{
+		struct pci_attach_lcall    attach_lcall;
+		struct pisces_lcall_resp * lcall_resp = NULL;
+		int status = 0;
+
+		/* Setup LCALL Fields */
+		attach_lcall.lcall.lcall    = PISCES_LCALL_PCI_ATTACH;
+		attach_lcall.lcall.data_len = (sizeof(struct pci_attach_lcall) - 
+					       sizeof(struct pisces_lcall));
+		strncpy(attach_lcall.name, host_dev->name, 128);
+		attach_lcall.ipi_vector     = host_dev->intx_ipi_vector;
+
+		/* Issue LCALL to Linux */
+		pisces_lcall_exec((struct pisces_lcall       *)&attach_lcall,
+				  (struct pisces_lcall_resp **)&lcall_resp);
+
+		status = lcall_resp->status;
+		kmem_free(lcall_resp);
+		
+		if (status != 0) {
+			return NULL;
+		}
 	}
 
 	return &(host_dev->v3_dev);
