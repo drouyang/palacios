@@ -1,8 +1,5 @@
 /** 
  * PCI device interface code for passthrough PCI device
- * This provides an interface to the Kitten PCI code to:
- *   -  detect BARs
- *   -  update config space parameters 
  * 
  * (c) 2013, Jack Lange <jacklange@cs.pitt.edu>
  * (c) 2013, Brian Kocoloski <briankoco@cs.pitt.edu>
@@ -105,61 +102,7 @@ find_dev_by_name(char * name)
 	return NULL;
 }
 
-static int
-write_hw_pci_config(struct host_pci_device * host_dev, 
-		    u32                      reg, 
-		    void                   * data, 
-		    u32                      length) 
-{
-	pci_dev_t * dev = host_dev->pci_dev;
 
-	if (reg < 64) {
-		return 0;
-	}
-
-	switch (length) {
-        case 1:
-		pci_write(dev, reg, 1, *(u8  *)data);
-		break;
-        case 2:
-		pci_write(dev, reg, 2, *(u16 *)data);
-		break;
-        case 4:
-		pci_write(dev, reg, 4, *(u32 *)data);
-		break;
-        default:
-		printk(KERN_ERR "Invalid length of host PCI config update\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-static int
-read_hw_pci_config(struct host_pci_device * host_dev, 
-		   u32                      reg, 
-		   void                   * data,
-		   u32                      length) 
-{
-	pci_dev_t * dev = host_dev->pci_dev;
-
-	switch(length) {
-        case 1:
-		*(u8  *)data = pci_read(dev, reg, 1);
-		break;
-        case 2:
-		*(u16 *)data = pci_read(dev, reg, 2);
-		break;
-        case 4:
-		*(u32 *)data = pci_read(dev, reg, 4);
-		break;
-        default:
-		printk(KERN_ERR "Invalid length of host PCI config read\n");
-		return -1;
-	}
-
-	return 0;
-}
 
 
 static int 
@@ -169,9 +112,13 @@ host_pci_config_write(struct v3_host_pci_dev * v3_dev,
 		      u32                      length) 
 {
 	struct host_pci_device * host_dev = v3_dev->host_data;
+	pci_dev_t              * pci_dev  = host_dev->pci_dev;
+	u32 val = 0;
 
-	return write_hw_pci_config(host_dev, reg_num, src, length);
+	memcpy(&val, src, length);
+	pci_write(pci_dev, reg_num, length, src);
 
+	return length;
 }
 
 static int
@@ -181,8 +128,13 @@ host_pci_config_read(struct v3_host_pci_dev * v3_dev,
 		     u32                      length) 
 {
 	struct host_pci_device * host_dev = v3_dev->host_data;
+	pci_dev_t              * pci_dev  = host_dev->pci_dev;
+	u32 val = 0;
 
-	return read_hw_pci_config(host_dev, reg_num, dst, length);
+	val = read_hw_pci_config(host_dev, reg_num, length);
+	memcpy(dst, &val, length);
+
+	return length;
 }
 
 static int
@@ -259,129 +211,138 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev,
 	struct pisces_pci_cmd_lcall   cmd_lcall;
 	struct pisces_lcall_resp    * cmd_lcall_resp = NULL;
 	int status = 0;
-
+	
 	switch (cmd) {
-        case HOST_PCI_CMD_MSI_ENABLE:
-		{
-			/* allocate MSI vector*/
-			/* only support 1 vector for now */
-			
-			int irq = -1;
-			
-			irq = irq_request_free_vector(msi_irq_handler, 0, "V3_HOST_PCI_MSI", host_dev);
-			
-			if (irq == -1) {
-				printk(KERN_ERR "Could not allocate IRQ vector for host PCI device (%s)\n", host_dev->name);
-				return -1;
-			}
-			host_dev->msi_irq_vector = irq;
-			
-			/* Enable MSI on the device */
-			pci_msi_setup(host_dev->pci_dev, irq);
-			pci_msi_enable(host_dev->pci_dev);
-
-			break;
-		}
-
-        case HOST_PCI_CMD_MSI_DISABLE:
-		/* free allocated vector number */
+	    case HOST_PCI_CMD_MSI_ENABLE: {
+		    /* allocate MSI vector*/
+		    /* only support 1 vector for now */
+		    
+		    int irq = -1;
+		    
+		    irq = irq_request_free_vector(msi_irq_handler, 0, "V3_HOST_PCI_MSI", host_dev);
 		
-		pci_msi_disable(host_dev->pci_dev);
-		irq_free(host_dev->msi_irq_vector, host_dev);
-
-		break;
-
-        case HOST_PCI_CMD_MSIX_ENABLE:
-		{
-			int i;
-
-			printk("Enabling MSI-X\n");
-
-			host_dev->num_msix_vecs = arg;
-			host_dev->msix_entries  = kmem_alloc(host_dev->num_msix_vecs * 
-								    sizeof(struct msix_entry));
-
-			if (host_dev->msix_entries == NULL) {
-				printk("Error allocating MSI-X entries\n");
-				break;
-			}
-
-
-			for (i = 0; i < host_dev->num_msix_vecs; i++) {
-				int irq = -1;
-				struct msix_entry * msix_entry = &(host_dev->msix_entries[i]);
-				
-				irq = irq_request_free_vector(msix_irq_handler, 0, "V3_HOST_PCI_MSIX", host_dev);
-			
-				if (irq == -1) {
-					break;
-				}
-				
-				msix_entry->entry  = i;
-				msix_entry->vector = irq;
-			}
-
-			/* Free allocated vectors if there's an error*/
-			if (i != host_dev->num_msix_vecs) {
-				int j = 0;
-
-				printk(KERN_ERR "Could not allocate %d MSIX vectors for Host PCI Device (%s)\n", 
-				       host_dev->num_msix_vecs, host_dev->name);
-				
+		    if (irq == -1) {
+			    printk(KERN_ERR "Could not allocate IRQ vector for host PCI device (%s)\n", host_dev->name);
+			    return -1;
+		    }
+		    host_dev->msi_irq_vector = irq;
 		
-				for (j = 0; j < i; j++) {
-					irq_free(host_dev->msix_entries[j].vector, host_dev);
-				}
+		    /* Enable MSI on the device */
+		    pci_msi_setup(host_dev->pci_dev, irq);
+		    pci_msi_enable(host_dev->pci_dev);
+		
+		    break;
+	    }
+	    case HOST_PCI_CMD_MSI_DISABLE:
+		    /* free allocated vector number */
+		
+		    pci_msi_disable(host_dev->pci_dev);
+		    irq_free(host_dev->msi_irq_vector, host_dev);
 
-				return -1;
-			}
-
-			/* Now we can enable MSIX on the device */
-			pci_msix_setup(host_dev->pci_dev, 
-				       host_dev->msix_entries, 
-				       host_dev->num_msix_vecs);
-
-			pci_msix_enable(host_dev->pci_dev);
-
-			break;
-		}
-
-        case HOST_PCI_CMD_MSIX_DISABLE:
-		{
-			int i = 0;
-
-			printk("Disabling MSI-X\n");
-
-			pci_msix_disable(host_dev->pci_dev);
+		    break;
+	    case HOST_PCI_CMD_MSIX_ENABLE: {
+		    int i;
+		
+		    printk("Enabling MSI-X\n");
+		
+		    host_dev->num_msix_vecs = arg;
+		    host_dev->msix_entries  = kmem_alloc(host_dev->num_msix_vecs * 
+							 sizeof(struct msix_entry));
+		
+		    if (host_dev->msix_entries == NULL) {
+			    printk("Error allocating MSI-X entries\n");
+			    break;
+		    }
+		
+		
+		    for (i = 0; i < host_dev->num_msix_vecs; i++) {
+			    int irq = -1;
+			    struct msix_entry * msix_entry = &(host_dev->msix_entries[i]);
 			
-			/* free allocated vectors */
-			for (i = 0; i < host_dev->num_msix_vecs; i++) {
-				irq_free(host_dev->msix_entries[i].vector, host_dev);
-			}
+			    irq = irq_request_free_vector(msix_irq_handler, 0, "V3_HOST_PCI_MSIX", host_dev);
+			
+			    if (irq == -1) {
+				    break;
+			    }
+			
+			    msix_entry->entry  = i;
+			    msix_entry->vector = irq;
+		    }
+		
+		    /* Free allocated vectors if there's an error*/
+		    if (i != host_dev->num_msix_vecs) {
+			    int j = 0;
+			
+			    printk(KERN_ERR "Could not allocate %d MSIX vectors for Host PCI Device (%s)\n", 
+				   host_dev->num_msix_vecs, host_dev->name);
+			
+			
+			    for (j = 0; j < i; j++) {
+				    irq_free(host_dev->msix_entries[j].vector, host_dev);
+			    }
+			
+			    return -1;
+		    }
+		
+		    /* Now we can enable MSIX on the device */
+		    pci_msix_setup(host_dev->pci_dev, 
+				   host_dev->msix_entries, 
+				   host_dev->num_msix_vecs);
+		
+		    pci_msix_enable(host_dev->pci_dev);
+		
+		    break;
+	    }
+	    case HOST_PCI_CMD_MSIX_DISABLE: {
+		    int i = 0;
+		
+		    printk("Disabling MSI-X\n");
+		
+		    pci_msix_disable(host_dev->pci_dev);
+		
+		    /* free allocated vectors */
+		    for (i = 0; i < host_dev->num_msix_vecs; i++) {
+			    irq_free(host_dev->msix_entries[i].vector, host_dev);
+		    }
+		
+		    host_dev->num_msix_vecs = 0;
+		    kmem_free(host_dev->msix_entries);
+		
+		    break;
+	    }
+	    case HOST_PCI_CMD_DMA_DISABLE: 
+		    pci_dma_disable(host_dev->pci_dev);
+		    break;
+	    case HOST_PCI_CMD_DMA_ENABLE: 
+		    pci_dma_enable(host_dev->pci_dev);
+		    break;
+	    case HOST_PCI_CMD_MEM_DISABLE: 
+		    pci_mmio_enable(host_dev->pci_dev);
+		    break;
 
-			host_dev->num_msix_vecs = 0;
-			kmem_free(host_dev->msix_entries);
+	    case HOST_PCI_CMD_INTX_ENABLE:
+	    case HOST_PCI_CMD_INTX_DISABLE:
+		    cmd_lcall.lcall.lcall    = PISCES_LCALL_PCI_CMD;
+		    cmd_lcall.lcall.data_len = (sizeof(struct pisces_pci_cmd_lcall) -
+						sizeof(struct pisces_lcall));
+		    cmd_lcall.cmd            = cmd;
+		    cmd_lcall.arg            = arg;
+		    strncpy(cmd_lcall.name, host_dev->name, 128);
 
-			break;
-		}
+		    /* forward pci cmd to Linux */
+		    status = pisces_lcall_exec((struct pisces_lcall       *)&cmd_lcall,
+					       (struct pisces_lcall_resp **)&cmd_lcall_resp);
+		    if (status < 0) {
+			    break;
+		    }
 
-        default:
-		cmd_lcall.lcall.lcall    = PISCES_LCALL_PCI_CMD;
-		cmd_lcall.lcall.data_len = (sizeof(struct pisces_pci_cmd_lcall) -
-					    sizeof(struct pisces_lcall));
-		cmd_lcall.cmd            = cmd;
-		cmd_lcall.arg            = arg;
-		strncpy(cmd_lcall.name, host_dev->name, 128);
+		    status = cmd_lcall_resp->status;
+		    kmem_free(cmd_lcall_resp);
 
-		/* forward pci cmd to Linux */
-		status = pisces_lcall_exec((struct pisces_lcall       *)&cmd_lcall,
-					   (struct pisces_lcall_resp **)&cmd_lcall_resp);
-		if (status < 0) {
-			break;
-		}
-
-		status = cmd_lcall_resp->status;
-		kmem_free(cmd_lcall_resp);
+		    break;
+	    default:
+		    printk(KERN_ERR "Invalid PCI command (%d) sent to host PCI interface, cmd\n");
+		    break;
 	}
 
 	return status;
