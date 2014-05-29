@@ -95,10 +95,9 @@ struct v3_xpmem_state {
 
     /* List of pending incoming commands */
     struct list_head xpmem_cmd_list;
-    v3_spinlock_t xpmem_cmd_lock;
 
-    /* Interrupt status lock */
-    v3_spinlock_t interrupt_lock;
+    /* lock */
+    v3_spinlock_t lock;
 
     /* Bar exposed to guest */
     struct xpmem_bar_state * bar_state;
@@ -163,7 +162,7 @@ static int copy_guest_regs(struct v3_xpmem_state * state, struct v3_core_info * 
     unsigned long flags;
     int ret = 0;
 
-    flags = v3_spin_lock_irqsave(state->interrupt_lock);
+    flags = v3_spin_lock_irqsave(state->lock);
 
     switch (cmd->type) {
         case XPMEM_MAKE:
@@ -227,7 +226,7 @@ static int copy_guest_regs(struct v3_xpmem_state * state, struct v3_core_info * 
             break;
     }
 
-    v3_spin_unlock_irqrestore(state->interrupt_lock, flags);
+    v3_spin_unlock_irqrestore(state->lock, flags);
     return ret;
 }
 
@@ -379,7 +378,7 @@ static int command_complete_hcall(struct v3_core_info * core, hcall_id_t hcall_i
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex * cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex));
     struct xpmem_cmd_iter * iter = NULL;
-    unsigned long flags, interrupt_flags;
+    unsigned long flags;
 
     if (!cmd) {
         PrintError("XPMEM failed to allocate memory for guest hypercall structure\n");
@@ -447,26 +446,31 @@ static int command_complete_hcall(struct v3_core_info * core, hcall_id_t hcall_i
         }
     }
 
-    interrupt_flags = v3_spin_lock_irqsave(state->interrupt_lock);
-    flags = v3_spin_lock_irqsave(state->xpmem_cmd_lock);
+    {
+	int cmd_issued = 0;
 
-    if (list_empty(&(state->xpmem_cmd_list))) {
-        v3_spin_unlock_irqrestore(state->xpmem_cmd_lock, flags);
-        state->bar_state->interrupt_status &= ~INT_REQUEST;
-        v3_spin_unlock_irqrestore(state->interrupt_lock, interrupt_flags);
-    } else {
-        iter = list_first_entry(&(state->xpmem_cmd_list), struct xpmem_cmd_iter, node);
-        list_del(&(iter->node));
-        v3_spin_unlock_irqrestore(state->xpmem_cmd_lock, flags);
+	flags = v3_spin_lock_irqsave(state->lock);
+	{
+	    if (list_empty(&(state->xpmem_cmd_list))) {
+		state->bar_state->interrupt_status &= ~INT_REQUEST;
+	    } else {
+		iter = list_first_entry(&(state->xpmem_cmd_list), struct xpmem_cmd_iter, node);
+		list_del(&(iter->node));
 
-        state->bar_state->request = *(iter->cmd);
-        state->bar_state->interrupt_status |= INT_REQUEST;
-        xpmem_raise_irq(state);
+		state->bar_state->request = *(iter->cmd);
+		state->bar_state->interrupt_status |= INT_REQUEST;
 
-        V3_Free(iter->cmd);
-        V3_Free(iter);
+		cmd_issued = 1;
+	    }
+	}
+        v3_spin_unlock_irqrestore(state->lock, flags);
 
-        v3_spin_unlock_irqrestore(state->interrupt_lock, interrupt_flags);
+	if (cmd_issued) {
+	    xpmem_raise_irq(state);
+	    V3_Free(iter->cmd);
+	    V3_Free(iter);
+	}
+    
     }
 
     return v3_xpmem_host_command(state->host_handle, cmd);
@@ -520,10 +524,19 @@ static int register_xpmem_dev(struct v3_xpmem_state * state) {
 }
 
 
-#define XPMEM_MEM_INCR 0x40000000LL
-#define XPMEM_MEM_SIZE 0x400000000LL
-#define XPMEM_MAX_ADDR 0x2000000000LL
+// 1 TB: Start of XPMEM range
+#define XPMEM_MEM_START (1ULL << 40)
+#define XPMEM_MEM_INCR  0x40000000LL
 
+// 64 GB of addressable XPMEM
+#define XPMEM_MEM_SIZE  (1ULL << 36)
+
+
+/*
+ * This all has to change, huge security problem, causes guests under 4GB to
+ * die, etcetera
+ */
+#if 0
 static int init_xpmem_mem_map(struct v3_xpmem_state * state) {
     INIT_LIST_HEAD(&(state->mem_map));
     addr_t try_addr = 0;
@@ -533,7 +546,8 @@ static int init_xpmem_mem_map(struct v3_xpmem_state * state) {
                     V3_MEM_CORE_ANY, V3_MEM_RD | V3_MEM_WR,
                     try_addr,
                     try_addr + XPMEM_MEM_SIZE,
-                    0)) {
+                    0))
+	{
             struct xpmem_mem_iter * iter = V3_Malloc(sizeof(struct xpmem_mem_iter));
             if (!iter) {
                 PrintError("XPMEM: Out of memory\n");
@@ -636,6 +650,7 @@ static int xpmem_remove_shadow_map(struct v3_xpmem_state * state, uint64_t * pfn
     return 0;
 }
 */
+#endif
 
 static int xpmem_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg){
     struct vm_device * pci_bus = v3_find_dev(vm, v3_cfg_val(cfg, "bus"));
@@ -687,13 +702,11 @@ static int xpmem_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg){
     v3_register_hypercall(vm, XPMEM_CMD_COMPLETE_HCALL, command_complete_hcall, state);
 
     INIT_LIST_HEAD(&(state->xpmem_cmd_list));
-    v3_spinlock_init(&(state->xpmem_cmd_lock));
-
     state->bar_state->interrupt_status = 0;
-    v3_spinlock_init(&(state->interrupt_lock));
+    v3_spinlock_init(&(state->lock));
 
     // Initialize guest memory map
-    init_xpmem_mem_map(state);
+    // init_xpmem_mem_map(state);
 
     // Initialize host channel
     state->host_handle = v3_xpmem_host_connect(vm, state);
@@ -724,34 +737,37 @@ static int xpmem_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg){
  */
 static int xpmem_command_request(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd) {
     struct xpmem_cmd_iter * iter = NULL;
-    unsigned long flags, interrupt_flags;
-    int ret = 0;
+    unsigned long flags;
+    int cmd_issued = 0;
 
-    interrupt_flags = v3_spin_lock_irqsave(v3_xpmem->interrupt_lock);
-    flags = v3_spin_lock_irqsave(v3_xpmem->xpmem_cmd_lock);
+    iter = V3_Malloc(sizeof(struct xpmem_cmd_iter));
 
-    if (list_empty(&(v3_xpmem->xpmem_cmd_list))) {
-        v3_xpmem->bar_state->request = *cmd;
-        v3_xpmem->bar_state->interrupt_status |= INT_REQUEST;
-        ret = xpmem_raise_irq(v3_xpmem);
-
-        V3_Free(cmd);
-    } else {
-        iter = V3_Malloc(sizeof(struct xpmem_cmd_iter));
-
-        if (!iter) {
-            PrintError("Cannot append xpmem command list: out of memory\n");
-            return -1;
-        }
-
-        iter->cmd = cmd;
-        list_add_tail(&(iter->node), &(v3_xpmem->xpmem_cmd_list));
+    if (!iter) {
+	PrintError("Cannot append xpmem command list: out of memory\n");
+	return -1;
     }
 
-    v3_spin_unlock_irqrestore(v3_xpmem->xpmem_cmd_lock, flags);
-    v3_spin_unlock_irqrestore(v3_xpmem->interrupt_lock, interrupt_flags);
+    iter->cmd = cmd;
 
-    return ret;
+    flags = v3_spin_lock_irqsave(v3_xpmem->lock);
+    {
+	if (v3_xpmem->bar_state->interrupt_status & INT_REQUEST) {
+	    list_add_tail(&(iter->node), &(v3_xpmem->xpmem_cmd_list));
+	} else {
+	    v3_xpmem->bar_state->request = *cmd;
+	    v3_xpmem->bar_state->interrupt_status |= INT_REQUEST;
+
+	    cmd_issued = 1;
+	}
+    }
+    v3_spin_unlock_irqrestore(v3_xpmem->lock, flags);
+
+    if (cmd_issued) {
+	V3_Free(iter);
+	V3_Free(cmd);
+    }
+
+    return 0;
 }
 
 /* Incoming response to a previously issued XPMEM command
@@ -768,16 +784,16 @@ static int xpmem_command_request(struct v3_xpmem_state * v3_xpmem, struct xpmem_
  * request at a time, so we can always write the response directly in
  */
 static int xpmem_command_complete(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd) {
-    unsigned long interrupt_flags;
+    unsigned long flags;
 
     if ((cmd->type == XPMEM_ATTACH_COMPLETE) && (cmd->attach.num_pfns > 0)) {
         addr_t guest_start_addr = 0;
         
         /* Add new shadow map for the PFNs */
-        if ((guest_start_addr = xpmem_add_shadow_map(v3_xpmem, cmd->attach.pfns, cmd->attach.num_pfns)) == 0) {
+        /*if ((guest_start_addr = xpmem_add_shadow_map(v3_xpmem, cmd->attach.pfns, cmd->attach.num_pfns)) == 0) {
             PrintError("XPMEM: Unable to complete remote XPMEM attachment: cannot update shadow map\n");
             return -1;
-        }
+        }*/
 
         /* Copy the attachment list pfns into the guest */
         {
@@ -816,9 +832,9 @@ static int xpmem_command_complete(struct v3_xpmem_state * v3_xpmem, struct xpmem
         }
     }
 
-    interrupt_flags = v3_spin_lock_irqsave(v3_xpmem->interrupt_lock);
+    flags = v3_spin_lock_irqsave(v3_xpmem->lock);
     v3_xpmem->bar_state->interrupt_status |= INT_COMPLETE;
-    v3_spin_unlock_irqrestore(v3_xpmem->interrupt_lock, interrupt_flags);
+    v3_spin_unlock_irqrestore(v3_xpmem->lock, flags);
 
     v3_xpmem->bar_state->response = *cmd;
     V3_Free(cmd);
