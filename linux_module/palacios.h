@@ -9,42 +9,39 @@
 #include <linux/proc_fs.h>
 
 /* Global Control IOCTLs */
-#define V3_CREATE_GUEST 12
-#define V3_FREE_GUEST 13
+#define V3_ADD_CPU               1
+#define V3_ADD_MEMORY            2
+#define V3_ADD_PCI_HW_DEV        5
 
-#define V3_ADD_MEMORY 50
-#define V3_ADD_PCI_HW_DEV 55
-#define V3_ADD_PCI_USER_DEV 56
-
-#define V3_ADD_NUMA_TOPO 60
+#define V3_CREATE_GUEST          12
+#define V3_FREE_GUEST            13
 
 /* VM Specific IOCTLs */
-#define V3_VM_CONSOLE_CONNECT 20
-#define V3_VM_STREAM_CONNECT 21
 
-#define V3_VM_PAUSE 23
-#define V3_VM_CONTINUE 24
+#define V3_VM_PAUSE              23
+#define V3_VM_CONTINUE           24
 
-#define V3_VM_LAUNCH 25
-#define V3_VM_STOP 26
-#define V3_VM_LOAD 27
-#define V3_VM_SAVE 28
-#define V3_VM_SIMULATE 29
+#define V3_VM_LAUNCH             25
+#define V3_VM_STOP               26
+#define V3_VM_LOAD               27
+#define V3_VM_SAVE               28
+#define V3_VM_SIMULATE           29
 
-#define V3_VM_INSPECT 30
-#define V3_VM_DEBUG 31
+#define V3_VM_INSPECT            30
+#define V3_VM_DEBUG              31
 
-#define V3_VM_MOVE_CORE 33
+#define V3_VM_MOVE_CORE          33
 
-#define V3_VM_SEND    34
-#define V3_VM_RECEIVE 35
+#define V3_VM_SEND               34
+#define V3_VM_RECEIVE            35
 
-#define V3_VM_FB_INPUT 257
-#define V3_VM_FB_QUERY 258
+#define V3_VM_CONSOLE_CONNECT    40
+#define V3_VM_CONSOLE_DISCONNECT 41
+#define V3_VM_KEYBOARD_EVENT     42
+#define V3_VM_STREAM_CONNECT     45
 
-#define V3_VM_HOST_DEV_CONNECT 10245
 
-#define V3_VM_KSTREAM_USER_CONNECT 11245
+
 
 #define V3_VM_XPMEM_CONNECT 12000
 
@@ -82,12 +79,6 @@ struct v3_hw_pci_dev {
     unsigned int bus;
     unsigned int dev;
     unsigned int func;
-} __attribute__((packed));
-
-struct v3_user_pci_dev {
-    char name[128];
-    unsigned short vendor_id;
-    unsigned short dev_id;
 } __attribute__((packed));
 
 

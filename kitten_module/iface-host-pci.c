@@ -53,6 +53,7 @@ struct host_pci_device {
 	};
 
 	struct v3_host_pci_dev v3_dev;
+	void * v3_ctx;
 
 	struct list_head dev_node;
 };
@@ -82,12 +83,27 @@ struct pci_iommu_map_lcall {
 	u64 gpa;
 } __attribute__((packed));
 
+struct pci_iommu_unmap_lcall {
+	struct pisces_lcall lcall;
+
+	char name[128];
+	u64 region_start;
+	u64 region_end;
+	u64 gpa;
+} __attribute__((packed));
+
 
 struct pci_attach_lcall {
 	struct pisces_lcall lcall;
 
 	char name[128];
 	u32  ipi_vector;
+} __attribute__((packed));
+
+struct pci_detach_lcall {
+	struct pisces_lcall lcall;
+
+	char name[128];
 } __attribute__((packed));
 
 
@@ -208,6 +224,39 @@ msix_irq_handler(int    irq,
 	return IRQ_NONE;
 }
 
+static void 
+disable_msix(struct host_pci_device * host_dev)
+{
+	int i = 0;
+	
+	printk("Disabling MSI-X\n");
+	
+	pci_msix_disable(host_dev->pci_dev);
+	
+	/* free allocated vectors */
+	for (i = 0; i < host_dev->num_msix_vecs; i++) {
+		irq_free(host_dev->msix_entries[i].vector, host_dev);
+	}
+	
+	host_dev->num_msix_vecs = 0;
+	kmem_free(host_dev->msix_entries);
+
+	return;
+}
+
+
+static void 
+disable_msi(struct host_pci_device * host_dev)
+{
+	/* free allocated vector number */
+	
+	pci_msi_disable(host_dev->pci_dev);
+	irq_free(host_dev->msi_irq_vector, host_dev);
+	
+	host_dev->msi_irq_vector = 0;
+
+	return;
+}
 
 static int 
 host_pci_cmd(struct v3_host_pci_dev * v3_dev, 
@@ -241,11 +290,7 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev,
 		    break;
 	    }
 	    case HOST_PCI_CMD_MSI_DISABLE:
-		    /* free allocated vector number */
-		
-		    pci_msi_disable(host_dev->pci_dev);
-		    irq_free(host_dev->msi_irq_vector, host_dev);
-
+		    disable_msi(host_dev);
 		    break;
 	    case HOST_PCI_CMD_MSIX_ENABLE: {
 		    int i;
@@ -301,20 +346,7 @@ host_pci_cmd(struct v3_host_pci_dev * v3_dev,
 		    break;
 	    }
 	    case HOST_PCI_CMD_MSIX_DISABLE: {
-		    int i = 0;
-		
-		    printk("Disabling MSI-X\n");
-		
-		    pci_msix_disable(host_dev->pci_dev);
-		
-		    /* free allocated vectors */
-		    for (i = 0; i < host_dev->num_msix_vecs; i++) {
-			    irq_free(host_dev->msix_entries[i].vector, host_dev);
-		    }
-		
-		    host_dev->num_msix_vecs = 0;
-		    kmem_free(host_dev->msix_entries);
-		
+		    disable_msix(host_dev);
 		    break;
 	    }
 	    case HOST_PCI_CMD_DMA_DISABLE: 
@@ -388,7 +420,7 @@ host_pci_request_dev(char * url,
 		struct v3_guest_mem_region region;
 		u64 gpa = 0;
 
-		iommu_lcall.lcall.lcall    = PISCES_LCALL_PCI_IOMMU_MAP;
+		iommu_lcall.lcall.lcall    = PISCES_LCALL_IOMMU_MAP;
 		iommu_lcall.lcall.data_len = (sizeof(struct pci_iommu_map_lcall) - 
 					      sizeof(struct pisces_lcall));
 		
@@ -447,12 +479,127 @@ host_pci_request_dev(char * url,
 		}
 	}
 
+	host_dev->v3_ctx = v3_ctx;
+
 	return &(host_dev->v3_dev);
+}
+
+
+static int 
+host_pci_release_dev(struct v3_host_pci_dev * v3_dev) 
+{
+	struct host_pci_device   * host_dev   = v3_dev->host_data;
+	int status = 0;
+	
+	pci_dma_disable(host_dev->pci_dev);
+
+	/* Disable Any Active IRQs */
+
+	if (host_dev->num_msix_vecs > 0) {
+		disable_msix(host_dev);
+	} else if (host_dev->msi_irq_vector > 0) {
+		disable_msi(host_dev);
+	} else {
+		struct pci_cmd_lcall       cmd_lcall;
+		struct pisces_lcall_resp * cmd_lcall_resp = NULL;
+
+		cmd_lcall.lcall.lcall    = PISCES_LCALL_PCI_CMD;
+		cmd_lcall.lcall.data_len = (sizeof(struct pci_cmd_lcall) -
+					    sizeof(struct pisces_lcall));
+		cmd_lcall.cmd            = HOST_PCI_CMD_INTX_DISABLE;
+		cmd_lcall.arg            = 0;
+		strncpy(cmd_lcall.name, host_dev->name, 128);
+		
+		/* forward pci cmd to Linux */
+		status = pisces_lcall_exec((struct pisces_lcall       *)&cmd_lcall,
+					   (struct pisces_lcall_resp **)&cmd_lcall_resp);
+		if (status < 0) {
+			return -1;
+		}
+		
+		status = cmd_lcall_resp->status;
+		kmem_free(cmd_lcall_resp);
+	}
+
+
+	/* Unmap IOMMU */
+	{
+
+		struct pci_iommu_unmap_lcall iommu_lcall;
+		struct v3_guest_mem_region region;
+		u64 gpa = 0;
+
+		iommu_lcall.lcall.lcall    = PISCES_LCALL_IOMMU_UNMAP;
+		iommu_lcall.lcall.data_len = (sizeof(struct pci_iommu_unmap_lcall) - 
+					      sizeof(struct pisces_lcall));
+		
+		while (V3_get_guest_mem_region(host_dev->v3_ctx, &region, gpa)) {
+			
+			struct pisces_lcall_resp * lcall_resp = NULL;
+			int status = 0;
+				
+			printk("Unmapping Memory region (GPA:%p), start=%p, end=%p\n",
+			       (void *)gpa,
+			       (void *)region.start,
+			       (void *)region.end);
+
+			strncpy(iommu_lcall.name, host_dev->name, 128);
+			iommu_lcall.region_start = region.start;
+			iommu_lcall.region_end   = region.end;
+			iommu_lcall.gpa          = gpa;
+			
+			pisces_lcall_exec((struct pisces_lcall       *)&iommu_lcall,
+					  (struct pisces_lcall_resp **)&lcall_resp);
+			
+			status = lcall_resp->status;
+			kmem_free(lcall_resp);
+
+			if (status != 0) {
+				return -1;
+			}
+			
+			gpa += (region.end - region.start);
+		}
+	}
+
+
+	/* Detach from IOMMU */
+
+	{
+		struct pci_detach_lcall    detach_lcall;
+		struct pisces_lcall_resp * lcall_resp = NULL;
+		int status = 0;
+
+		/* Setup LCALL Fields */
+		detach_lcall.lcall.lcall    = PISCES_LCALL_PCI_DETACH;
+		detach_lcall.lcall.data_len = (sizeof(struct pci_detach_lcall) - 
+					       sizeof(struct pisces_lcall));
+		strncpy(detach_lcall.name, host_dev->name, 128);
+
+		/* Issue LCALL to Linux */
+		pisces_lcall_exec((struct pisces_lcall       *)&detach_lcall,
+				  (struct pisces_lcall_resp **)&lcall_resp);
+
+		status = lcall_resp->status;
+		kmem_free(lcall_resp);
+		
+		if (status != 0) {
+			return -1;
+		}
+	}
+
+
+	/* Mark device as free */
+	__asm__ __volatile__ ("":::"memory");
+	host_dev->in_use = 0;
+
+	return 0;
 }
 
 
 static struct v3_host_pci_hooks host_pci_hooks = {
 	.request_device = host_pci_request_dev,
+	.release_device = host_pci_release_dev,
 	.config_write   = host_pci_config_write,
 	.config_read    = host_pci_config_read,
 	.ack_irq        = host_pci_ack_irq,

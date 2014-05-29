@@ -30,7 +30,7 @@ struct vm_path {
 } __attribute__((packed));
 
 static struct v3_guest * guest_map[MAX_VMS] = {[0 ... MAX_VMS - 1] = 0};
-static char * options = NULL;
+static char            * options = NULL;
 
 
 
@@ -51,8 +51,9 @@ static int register_vm(struct v3_guest * guest) {
 
 
 static long
-palacios_ioctl(struct file * filp,
-	       unsigned int ioctl, unsigned long arg) 
+palacios_ioctl(struct file  * filp,
+	       unsigned int   ioctl, 
+	       unsigned long  arg) 
 {
     void __user * argp = (void __user *)arg;
 
@@ -60,12 +61,13 @@ palacios_ioctl(struct file * filp,
 
     switch (ioctl) {
 	case V3_CREATE_GUEST: {
-	    struct vm_path guest_path;
+	    struct vm_path    guest_path;
 	    struct v3_guest * guest = NULL;
-	    u64 img_size = 0;
-	    u64 file_handle = 0;
-	    u8 * img_ptr = NULL;
-	    int guest_id = 0;
+
+	    u64   img_size    = 0;
+	    u64   file_handle = 0;
+	    u8  * img_ptr     = NULL;
+	    int   guest_id    = 0;
 
 	    printk("Creating Guest IOCTL\n");
 
@@ -137,7 +139,7 @@ palacios_ioctl(struct file * filp,
 	    pisces_file_read(file_handle, img_ptr, img_size, 0);
 	    pisces_file_close(file_handle);
 
-	    guest->img = img_ptr;
+	    guest->img      = img_ptr;
 	    guest->img_size = img_size;
 	    strncpy(guest->name, guest_path.vm_name, 128);
 
@@ -157,18 +159,17 @@ palacios_ioctl(struct file * filp,
 	    return 0;
 
 	}
-	default:
-	    {
-		struct global_ctrl * ctrl = get_global_ctrl(ioctl);
-		
-		if (ctrl) {
-		    return ctrl->handler(ioctl, arg);
-		}
-		
-		printk(KERN_WARNING "\tUnhandled global ctrl cmd: %d\n", ioctl);
-
-		return -EINVAL;
+	default: {
+	    struct global_ctrl * ctrl = get_global_ctrl(ioctl);
+	    
+	    if (ctrl) {
+		return ctrl->handler(ioctl, arg);
 	    }
+	    
+	    printk(KERN_WARNING "\tUnhandled global ctrl cmd: %d\n", ioctl);
+	    
+	    return -EINVAL;
+	}
     }
 
 
@@ -186,17 +187,6 @@ static struct kfs_fops palacios_ctrl_fops = {
 };
 
 
-extern void v3_print_guest_state_all(struct v3_vm_info * vm);
-static void
-dbg_handler(struct pt_regs * regs, unsigned int vector) {
-
-
-	printk("DBG Handler\n");
-
-	v3_print_guest_state_all(guest_map[0]->v3_ctx);
-
-	return;
-}
 
 
 /**
@@ -222,9 +212,6 @@ palacios_init(void)
 		   &palacios_ctrl_fops,
 		   0777, 
 		   NULL, 0);
-
-
-	set_idtvec_handler(169, dbg_handler);
 
 	return 0;
 }
