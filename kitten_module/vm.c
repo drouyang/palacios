@@ -143,7 +143,7 @@ int palacios_create_vm(struct v3_guest * guest)  {
 		char cmd_file[128];
 
 		memset(cmd_file, 0, 128);
-		snprintf(cmd_file, 128, "/palacios-vm%d", guest->guest_id);
+		snprintf(cmd_file, 128, V3_VM_PATH "%d", guest->guest_id);
 
 		kfs_create(cmd_file, NULL, 
 			   &vm_ctrl_fops, 

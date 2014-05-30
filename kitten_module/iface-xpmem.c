@@ -65,7 +65,7 @@ static int xpmem_connect(struct v3_guest * guest, unsigned int cmd, unsigned lon
 
     {
         char buf[16];
-        snprintf(buf, 16, "/v3-vm%d-xpmem", guest->guest_id);
+        snprintf(buf, 16, V3_VM_PATH "%d-xpmem", guest->guest_id);
 
         if (!kfs_create(buf,
                 NULL,

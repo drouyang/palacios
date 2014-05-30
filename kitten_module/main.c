@@ -207,7 +207,7 @@ palacios_init(void)
 
 	printk("creating palacios command file\n");
 
-	kfs_create("/palacios-cmd", 
+	kfs_create(V3_CMD_PATH, 
 		   NULL, 
 		   &palacios_ctrl_fops,
 		   0777, 

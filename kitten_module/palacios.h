@@ -43,7 +43,8 @@
 
 #define V3_VM_XPMEM_CONNECT      12000
 
-
+#define V3_CMD_PATH         "/palacios-cmd"
+#define V3_VM_PATH          "/palacios-vm"
 
 #define MAX_VMS 32
 
