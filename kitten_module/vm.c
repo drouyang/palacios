@@ -116,15 +116,17 @@ vm_ioctl(struct file   * filp,
 
 
 static struct kfs_fops vm_ctrl_fops = {
-	//	.open = palacios_open, 
-	//	.write = palacios_write,
-	//	.read = palacios_read,
-	//	.poll = palacios_poll, 
-	//	.close = palacios_close,
+	//	.open   = palacios_open, 
+	//	.write  = palacios_write,
+	//	.read   = palacios_read,
+ 	//	.poll   = palacios_poll, 
+	//	.close  = palacios_close,
 	.unlocked_ioctl = vm_ioctl,
 };
 
-int palacios_create_vm(struct v3_guest * guest)  {
+int
+palacios_create_vm(struct v3_guest * guest) 
+{
     
 	INIT_LIST_HEAD(&(guest->exts));
     
@@ -145,14 +147,43 @@ int palacios_create_vm(struct v3_guest * guest)  {
 		memset(cmd_file, 0, 128);
 		snprintf(cmd_file, 128, V3_VM_PATH "%d", guest->guest_id);
 
-		kfs_create(cmd_file, NULL, 
-			   &vm_ctrl_fops, 
-			   0777, guest, sizeof(uintptr_t));
+		guest->kfs_inode = kfs_create(cmd_file, NULL, 
+					      &vm_ctrl_fops, 
+					      0777, guest, sizeof(uintptr_t));
 
+		if (guest->kfs_inode == NULL) {
+			ERROR("Could not create KFS command file (%s)\n", cmd_file);
+
+			v3_free_vm(guest->v3_ctx);
+			deinit_vm_extensions(guest);
+
+			return -1;
+		}
+		
 	}
 
 	v3_lwk_printk("Created VM (id=%d) at %p\n", guest->guest_id, guest);
     
 
+	return 0;
+}
+
+
+
+
+int 
+palacios_free_vm(struct v3_guest * guest) 
+{
+
+	kfs_destroy(guest->kfs_inode);
+	
+	if (v3_free_vm(guest->v3_ctx) < 0) { 
+		return -1;
+	}
+	
+	free_guest_ctrls(guest);
+	
+
+	
 	return 0;
 }

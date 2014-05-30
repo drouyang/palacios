@@ -7,5 +7,5 @@
 #define __PALACIOS_VM_H__
 
 int palacios_create_vm(struct v3_guest * guest);
-
+int palacios_free_vm(struct v3_guest * guest);
 #endif

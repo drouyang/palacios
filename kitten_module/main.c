@@ -148,6 +148,54 @@ palacios_ioctl(struct file  * filp,
 	    return guest_id;
 
 	}
+	case V3_FREE_GUEST: {
+	    struct pmem_region      query;
+	    struct pmem_region      result;
+
+	    unsigned long     vm_idx = arg;
+	    struct v3_guest * guest  = guest_map[vm_idx];
+
+	    if (!guest) {
+		ERROR("No VM at index %ld\n",vm_idx);
+		return -1;
+	    }
+
+	    v3_lwk_printk("Freeing VM (%s) (%p)\n", guest->name, guest);
+
+	    if (palacios_free_vm(guest) < 0) { 
+		ERROR("Cannot free guest at index %ld\n", vm_idx);
+		return -1;
+	    }
+
+	    guest_map[vm_idx] = NULL;
+
+
+	    /* Free Guest Image */
+	    {
+		pmem_region_unset_all(&query);
+		
+		query.start            = (uintptr_t)guest->img;
+		query.end              = (uintptr_t)guest->img + guest->img_size;
+		query.allocated        = true;
+		query.allocated_is_set = true;
+
+		if (pmem_query(&query, &result) == 0) {
+
+		    result.allocated       = false;
+		
+		    if (pmem_update(&result) != 0) {
+			ERROR("Could not Free guest image from PMEM\n");
+		    }
+		} else {
+		    ERROR("Could not find guest image in PMEM\n");
+		}
+	    }
+
+	    kmem_free(guest);
+
+	    break;
+
+	}
 	case V3_ADD_CPU: {
 	    int cpu_id = (int)arg;
 	    

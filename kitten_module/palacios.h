@@ -6,6 +6,7 @@
 #include <lwk/rbtree.h>
 #include <lwk/smp.h>
 
+
 #include <palacios/vmm.h>
 #include <palacios/vmm_host_events.h>
 
@@ -48,6 +49,8 @@
 
 #define MAX_VMS 32
 
+struct inode;
+
 struct v3_guest {
     void * v3_ctx;
 
@@ -55,7 +58,8 @@ struct v3_guest {
     u32 img_size;
 
     char name[128];
-
+    
+    struct inode * kfs_inode;
 
     int guest_id;
 
