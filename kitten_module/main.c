@@ -174,8 +174,8 @@ palacios_ioctl(struct file  * filp,
 	    {
 		pmem_region_unset_all(&query);
 		
-		query.start            = (uintptr_t)guest->img;
-		query.end              = (uintptr_t)guest->img + guest->img_size;
+		query.start            = (uintptr_t)__pa(guest->img);
+		query.end              = (uintptr_t)__pa(guest->img) + guest->img_size;
 		query.allocated        = true;
 		query.allocated_is_set = true;
 
