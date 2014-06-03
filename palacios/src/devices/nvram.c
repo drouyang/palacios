@@ -827,7 +827,7 @@ nvram_read_data_port(struct v3_core_info * core,
 
     struct nvram_internal * data = priv_data;
 
-    addr_t irq_state = v3_spin_lock_irqsave(data->nvram_lock);
+    addr_t irq_state = v3_spin_lock_irqsave(&(data->nvram_lock));
     {
 
 	if (get_memory(data, data->thereg, (uint8_t *)dst) == -1) {
@@ -842,7 +842,7 @@ nvram_read_data_port(struct v3_core_info * core,
 	    data->mem_state[data->thereg] ^= 0x80;  // toggle Update in progess
 	}
     }
-    v3_spin_unlock_irqrestore(data->nvram_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(data->nvram_lock), irq_state);
 
     return 1;
 }
@@ -858,11 +858,11 @@ nvram_write_data_port(struct v3_core_info * core,
     
     struct nvram_internal * data = priv_data;
 
-    addr_t irq_state = v3_spin_lock_irqsave(data->nvram_lock);
+    addr_t irq_state = v3_spin_lock_irqsave(&(data->nvram_lock));
     {
 	set_memory(data, data->thereg, *(uint8_t *)src);
     }
-    v3_spin_unlock_irqrestore(data->nvram_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(data->nvram_lock), irq_state);
 
     PrintDebug("nvram: nvram_write_data_port(0x%x) = 0x%x\n", 
 	       data->thereg, data->mem_state[data->thereg]);

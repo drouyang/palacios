@@ -27,6 +27,7 @@ CFLAGS += -I../linux_module -I$(PETLIB) -L$(PETLIB)
 
 
 execs-y := 	v3_mem \
+		v3_cpu \
 		v3_free \
 		v3_launch \
 		v3_stop \

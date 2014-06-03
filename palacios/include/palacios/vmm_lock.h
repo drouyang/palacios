@@ -29,21 +29,21 @@ int v3_spinlock_init(v3_spinlock_t * lock);
 void v3_spinlock_deinit(v3_spinlock_t * lock);
 
 
-void v3_spin_lock(v3_spinlock_t lock);
-void v3_spin_unlock(v3_spinlock_t lock);
+void v3_spin_lock(v3_spinlock_t * lock);
+void v3_spin_unlock(v3_spinlock_t * lock);
 
 
-addr_t v3_spin_lock_irqsave(v3_spinlock_t lock);
-void v3_spin_unlock_irqrestore(v3_spinlock_t lock, addr_t irq_state);
+uint64_t v3_spin_lock_irqsave(v3_spinlock_t * lock);
+void v3_spin_unlock_irqrestore(v3_spinlock_t * lock, uint64_t irq_state);
 
 
 typedef addr_t v3_mutex_t;
 
-int v3_mutex_init(v3_mutex_t * mutex);
+v3_mutex_t * v3_mutex_init();
 void v3_mutex_deinit(v3_mutex_t * mutex);
 
-void v3_mutex_lock(v3_mutex_t mutex);
-void v3_mutex_unlock(v3_mutex_t mutex);
+void v3_mutex_lock(v3_mutex_t * mutex);
+void v3_mutex_unlock(v3_mutex_t * mutex);
 
 #endif
 

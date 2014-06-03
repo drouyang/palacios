@@ -362,7 +362,7 @@ key_event_handler(struct v3_vm_info        * vm,
 
 
 
-    addr_t irq_state = v3_spin_lock_irqsave(state->kb_lock);
+    addr_t irq_state = v3_spin_lock_irqsave(&(state->kb_lock));
 
     if ( (state->status.enabled == 1) &&     // onboard is enabled
 	 (state->cmd.disable    == 0) )  {   // keyboard is enabled
@@ -370,7 +370,7 @@ key_event_handler(struct v3_vm_info        * vm,
 	push_to_output_queue(state, evt->scan_code, DATA, KEYBOARD);
     }
 
-    v3_spin_unlock_irqrestore(state->kb_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(state->kb_lock), irq_state);
   
     return 0;
 }
@@ -387,7 +387,7 @@ mouse_event_handler(struct v3_vm_info     * vm,
     PrintDebug("keyboard: injected mouse packet 0x %x %x %x\n",
 	       evt->data[0], evt->data[1], evt->data[2]);
   
-    addr_t irq_state = v3_spin_lock_irqsave(kbd->kb_lock);
+    addr_t irq_state = v3_spin_lock_irqsave(&(kbd->kb_lock));
     {
 
 	switch (kbd->mouse_state) { 
@@ -405,7 +405,7 @@ mouse_event_handler(struct v3_vm_info     * vm,
 	}
 
     }
-    v3_spin_unlock_irqrestore(kbd->kb_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(kbd->kb_lock), irq_state);
 
     return ret;
 }
@@ -602,7 +602,7 @@ keyboard_write_command(struct v3_core_info * core,
     }
 
 
-    addr_t irq_state = v3_spin_lock_irqsave(kbd->kb_lock);
+    addr_t irq_state = v3_spin_lock_irqsave(&(kbd->kb_lock));
     {
 	if (kbd->state != NORMAL) { 
 	    PrintDebug("keyboard: warning - receiving command on 64h but state != NORMAL\n");
@@ -759,7 +759,7 @@ keyboard_write_command(struct v3_core_info * core,
 		break;
 	}
     }
-    v3_spin_unlock_irqrestore(kbd->kb_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(kbd->kb_lock), irq_state);
 
     return length;
 }
@@ -780,11 +780,11 @@ keyboard_read_status(struct v3_core_info * core,
 
     PrintDebug("keyboard: read status (64h): ");
 
-    addr_t irq_state = v3_spin_lock_irqsave(kbd->kb_lock);
+    addr_t irq_state = v3_spin_lock_irqsave(&(kbd->kb_lock));
     {
 	*(uint8_t *)dest = kbd->status.val;
     }
-    v3_spin_unlock_irqrestore(kbd->kb_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(kbd->kb_lock), irq_state);
     
     PrintDebug("0x%x\n", *(uint8_t *)dest);
     
@@ -810,7 +810,7 @@ keyboard_write_output(struct v3_core_info * core,
   
     PrintDebug("keyboard: output 0x%x on 60h\n", data);
 
-    addr_t irq_state = v3_spin_lock_irqsave(kbd->kb_lock);
+    addr_t irq_state = v3_spin_lock_irqsave(&(kbd->kb_lock));
     {
 	switch (kbd->state) {
 	    case WRITING_CMD_BYTE:
@@ -979,7 +979,7 @@ keyboard_write_output(struct v3_core_info * core,
 	    }
 	}
     }
-    v3_spin_unlock_irqrestore(kbd->kb_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(kbd->kb_lock), irq_state);
 
     return ret;
 }
@@ -998,11 +998,11 @@ keyboard_read_input(struct v3_core_info * core,
 	return -1;
     }
     
-    addr_t irq_state = v3_spin_lock_irqsave(kbd->kb_lock);
+    addr_t irq_state = v3_spin_lock_irqsave(&(kbd->kb_lock));
     {
 	pull_from_output_queue(kbd, (uint8_t *)dest);
     } 
-    v3_spin_unlock_irqrestore(kbd->kb_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(kbd->kb_lock), irq_state);
 
     PrintDebug("keyboard: read from input (60h): 0x%x\n", *(uint8_t *)dest);
 

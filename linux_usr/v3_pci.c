@@ -46,7 +46,7 @@ int main(int argc, char ** argv) {
     }
 
 
-    ret = ioctl(v3_fd, V3_ADD_PCI_HW_DEV, &dev_info);
+    ret = ioctl(v3_fd, V3_ADD_PCI, &dev_info);
     
 
     if (ret < 0) {

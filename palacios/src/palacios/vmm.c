@@ -40,18 +40,107 @@
 #include <palacios/vmm_checkpoint.h>
 #endif
 
-
-v3_cpu_arch_t v3_cpu_types[V3_CONFIG_MAX_CPUS];
+/* 
+ * The architecture we are running on
+ */
 v3_cpu_arch_t v3_mach_type = V3_INVALID_CPU;
 
+/* 
+ * List of valid CPUs usable by VMM
+ */
+v3_cpu_arch_t v3_cpu_types[V3_CONFIG_MAX_CPUS];
+
+/*
+ * The vcore thread currently executing on each physical core
+ *  - NULL if there is no vcore thread currently active
+ */
 struct v3_core_info * v3_cores_current[V3_CONFIG_MAX_CPUS];
 
-struct v3_os_hooks  * os_hooks = NULL;
+/* 
+ * List of vcores currently assigned to each physical core
+ */
+static struct list_head v3_cores_assigned[V3_CONFIG_MAX_CPUS];
+
+/* 
+ * List of VMs currently running
+ */
+static LIST_HEAD(v3_vm_list);
+
+/*
+ * Special lock to protect access to the following global data structures
+ *  - v3_cores_assigned
+ *  - v3_cpu_types
+ *  - v3_vm_list 
+ */
+static struct {
+    v3_spinlock_t lock;
+    int           acquired;
+} gbl_op_lock;
+
+
+/*
+ * OS interface function hooks
+ *  - assigned by host OS during initialization
+ */
+struct v3_os_hooks    * os_hooks = NULL;
+
+
 int v3_dbg_enable              = 0;
 
 #ifdef V3_CONFIG_KITTEN
 extern void lapic_set_timer_freq(unsigned int hz);
 #endif
+
+
+static void
+op_lock_init()
+{
+    v3_spinlock_init(&(gbl_op_lock.lock));
+    gbl_op_lock.acquired = 0;
+}
+
+
+static void
+op_lock_deinit()
+{
+    v3_spinlock_deinit(&(gbl_op_lock.lock));
+    gbl_op_lock.acquired = 1;
+
+}
+
+static void
+op_lock_acquire()
+{
+    uint64_t flags = 0;
+    int acquired = 0;
+
+    while (!acquired) {
+	flags = v3_spin_lock_irqsave(&(gbl_op_lock.lock));
+	{
+	    if (gbl_op_lock.acquired == 0) {
+		gbl_op_lock.acquired = 1;
+		acquired             = 1;
+	    }
+	}
+	v3_spin_unlock_irqrestore(&(gbl_op_lock.lock), flags);
+
+	if (!acquired) V3_Yield();
+    }
+
+}
+
+static void
+op_lock_release()
+{
+    uint64_t flags = 0;
+
+    flags = v3_spin_lock_irqsave(&(gbl_op_lock.lock));
+    {
+	gbl_op_lock.acquired = 0;
+    }
+    v3_spin_unlock_irqrestore(&(gbl_op_lock.lock), flags);
+}
+
 
 static void 
 init_cpu(void * arg) 
@@ -61,11 +150,11 @@ init_cpu(void * arg)
 #ifdef V3_CONFIG_KITTEN
     lapic_set_timer_freq(1000);
 #endif
-
+	
 #ifdef V3_CONFIG_SVM
     if (v3_is_svm_capable()) {
-        PrintDebug("Machine is SVM Capable\n");
-        v3_init_svm_cpu(cpu_id);
+	PrintDebug("Machine is SVM Capable\n");
+	v3_init_svm_cpu(cpu_id);
 	
     } else 
 #endif
@@ -73,20 +162,19 @@ init_cpu(void * arg)
     if (v3_is_vmx_capable()) {
 	PrintDebug("Machine is VMX Capable\n");
 	v3_init_vmx_cpu(cpu_id);
-
+	
     } else 
 #endif
     {
-       PrintError("CPU has no virtualization Extensions\n");
-    }
+	PrintError("CPU has no virtualization Extensions\n");
+    }	
 }
 
 
-static void 
+static void
 deinit_cpu(void * arg) 
 {
     uint32_t cpu_id = (uint32_t)(addr_t)arg;
-
 
     switch (v3_cpu_types[cpu_id]) {
 #ifdef V3_CONFIG_SVM
@@ -109,23 +197,67 @@ deinit_cpu(void * arg)
 	    PrintError("CPU has no virtualization Extensions\n");
 	    break;
     }
+
 }
 
 int 
 v3_add_cpu(int cpu_id) 
 {
+    int ret = 0;
+
     if (os_hooks == NULL) {
 	PrintError("Error Tried to add a CPU to unitialized VMM\n");
 	return -1;
     }
 
-    os_hooks->call_on_cpu(cpu_id, &init_cpu, (void *)(addr_t)cpu_id);
+    V3_Print("Adding CPU %d\n", cpu_id);
 
-    return 0;
+    op_lock_acquire();
+    {
+	if (v3_cpu_types[cpu_id] != V3_INVALID_CPU) {
+	    PrintError("Error: CPU %d is already Active\n", cpu_id);
+	    ret = -1;
+	} else {
+	    os_hooks->call_on_cpu(cpu_id, &init_cpu, (void *)(addr_t)cpu_id);
+	}
+    }
+    op_lock_release();
+
+    return ret;
 }
 
+int 
+v3_remove_cpu(int cpu_id) 
+{
+    int ret = 0;
+ 
+    if (os_hooks == NULL) {
+	PrintError("Error Tried to remove a CPU from unitialized VMM\n");
+	return -1;
+    }
 
-void 
+    V3_Print("Removing CPU %d\n", cpu_id);
+
+
+    op_lock_acquire();
+    {
+
+	if (!list_empty(&(v3_cores_assigned[cpu_id]))) {
+	    PrintError("Error: CPU %d has active VCores\n", cpu_id);
+	    ret = -1;
+	} else if (v3_cpu_types[cpu_id] == V3_INVALID_CPU) {
+	    PrintError("Error: CPU %d is inactive\n", cpu_id);
+	    ret = -1;
+	} else {
+	    os_hooks->call_on_cpu(cpu_id, &deinit_cpu, (void *)(addr_t)cpu_id);
+	}
+    }
+    op_lock_release();
+
+    return ret;
+}
+
+int 
 Init_V3(struct v3_os_hooks * hooks, 
 	char               * cpu_mask, 
 	int                  num_cpus,
@@ -137,31 +269,35 @@ Init_V3(struct v3_os_hooks * hooks,
 
     V3_Print("V3 Print statement to fix a Kitten page fault bug\n");
 
-    // Set global variables. 
+    /* Initialize op lock */
+    op_lock_init();
+
+    /* Set global variables.  */
     os_hooks = hooks;
 
-    // Determine the global machine type
+    /* Determine the global machine type */
     v3_mach_type = V3_INVALID_CPU;
 
+    /* Initialize each cores type/state */
     for (i = 0; i < V3_CONFIG_MAX_CPUS; i++) {
 	v3_cpu_types[i]     = V3_INVALID_CPU;
 	v3_cores_current[i] = NULL;
+	INIT_LIST_HEAD(&(v3_cores_assigned[i]));
     }
 
-
-    // Setup options from host OS
+    /* Setup options from host OS */
     if (V3_init_options(options) == -1) {
 	PrintError("Error parsing VMM options. Aborting Initialization.\n");
-	return;
+	return -1;
     }
 
-    // Register all the possible device types
+    /* Register all the possible device types */
     V3_init_devices();
 
-    // Register all shadow paging handlers
+    /* Register all shadow paging handlers */
     V3_init_shdw_paging();
 
-    // Register all extensions
+    /* Register all extensions */
     V3_init_extensions();
 
 
@@ -186,14 +322,46 @@ Init_V3(struct v3_os_hooks * hooks,
             }
         }
     }
+    
+    return 0;
 }
 
 
 
-void 
+int
 Shutdown_V3() 
 {
     int i;
+
+    op_lock_acquire();
+    {
+	
+	if (!list_empty(&v3_vm_list)) {
+	    PrintError("Error: Cannot Shutdown Palacios with Active VMs\n");
+	    op_lock_release();
+	    return -1;
+	} 
+
+
+	if ((os_hooks) && (os_hooks->call_on_cpu)) {
+	    for (i = 0; i < V3_CONFIG_MAX_CPUS; i++) {
+		if (v3_cpu_types[i] != V3_INVALID_CPU) {
+		    
+		    if (!list_empty(&(v3_cores_assigned[i]))) {
+			PrintError("ERROR: Invalid VMM state.\n");
+			PrintError("\tVCPUs are assigned to core %d, but no VMs are active\n", i);
+			op_lock_release();
+			return -1;
+		    }
+
+		    V3_Call_On_CPU(i, deinit_cpu, (void *)(addr_t)i);
+		    //deinit_cpu((void *)(addr_t)i);
+		}
+	    }
+	}
+	
+    }
+    op_lock_release();
 
     V3_deinit_devices();
     V3_deinit_shdw_paging();
@@ -206,23 +374,26 @@ Shutdown_V3()
 #endif
 
 
-    if ((os_hooks) && (os_hooks->call_on_cpu)) {
-	for (i = 0; i < V3_CONFIG_MAX_CPUS; i++) {
-	    if (v3_cpu_types[i] != V3_INVALID_CPU) {
-		V3_Call_On_CPU(i, deinit_cpu, (void *)(addr_t)i);
-		//deinit_cpu((void *)(addr_t)i);
-	    }
-	}
-    }
+    op_lock_deinit();
 
+    return 0;
 }
 
 
 v3_cpu_arch_t 
 v3_get_cpu_type(int cpu_id) 
 {
-    return v3_cpu_types[cpu_id];
+    v3_cpu_arch_t cpu_type = V3_INVALID_CPU;
+
+    op_lock_acquire();
+    {
+	cpu_type = v3_cpu_types[cpu_id];
+    }
+    op_lock_release();
+
+    return cpu_type;
 }
+
 
 
 struct v3_vm_info * 
@@ -248,7 +419,50 @@ v3_create_vm(void * cfg,
     memset (vm->name, 0,    128);
     strncpy(vm->name, name, 127);
 
+    op_lock_acquire();
+    {
+	list_add(&(vm->vm_list_node), &(v3_vm_list));
+    }
+    op_lock_release();
+
     return vm;
+}
+
+
+
+int 
+v3_free_vm(struct v3_vm_info * vm) 
+{
+    int i = 0;
+    // deinitialize guest (free memory, etc...)
+    
+
+    op_lock_acquire();
+    {
+	list_del(&(vm->vm_list_node));
+    }
+    op_lock_release();
+
+
+    // Mark as dead
+
+    v3_free_vm_devices(vm);
+
+    // free cores
+    for (i = 0; i < vm->num_cores; i++) {
+	v3_free_core(&(vm->cores[i]));
+    }
+
+    // free vm
+    v3_free_vm_internal(vm);
+
+    v3_free_config(vm);
+
+    V3_Free(vm);
+
+
+
+    return 0;
 }
 
 
@@ -259,6 +473,15 @@ core_sched_in(struct v3_core_info * core, int cpu)
 {
     v3_cores_current[cpu] = core;
     v3_telemetry_inc_core_counter(core, "CORE_SCHED_IN");
+
+    /* In case we were migrated... */
+    if (core->pcpu_id != cpu) {
+	V3_Print("Core Migrated from CPU %d to %d\n", 
+		 core->pcpu_id, cpu);
+
+	core->pcpu_id = cpu;
+    }
+
     return 0;
 }
 
@@ -276,6 +499,10 @@ core_sched_out(struct v3_core_info * core, int cpu)
 #endif
 
 
+
+/* 
+ * This function must be called with the gbl_op_lock acquired
+ */
 static int 
 start_core(void * p)
 {
@@ -289,7 +516,10 @@ start_core(void * p)
     PrintDebug("virtual core %u (on logical core %u): in start_core (RIP=%p)\n", 
 	       core->vcpu_id, core->pcpu_id, (void *)(addr_t)core->rip);
 
+    /* Add VCore to active core lists */
     v3_cores_current[V3_Get_CPU()] = core;
+    list_add(&(core->curr_cores_node), &(v3_cores_assigned[V3_Get_CPU()]));
+    
 
     switch (v3_mach_type) {
 #ifdef V3_CONFIG_SVM
@@ -310,7 +540,10 @@ start_core(void * p)
 	    return -1;
     }
 
+    /* Remove VCore from Active Core lists */
     v3_cores_current[V3_Get_CPU()] = NULL;
+    list_del(&(core->curr_cores_node));
+
 
 #ifdef V3_CONFIG_HOST_SCHED_EVENTS
     v3_unhook_core_preemptions(core, core_sched_in, core_sched_out);
@@ -333,17 +566,16 @@ v3_start_vm(struct v3_vm_info * vm,
     int       vcore_id    = 0;
     uint32_t i;
 
-
     if (vm->run_state != VM_STOPPED) {
         PrintError("VM has already been launched (state=%d)\n", (int)vm->run_state);
         return -1;
     }
 
-    /// CHECK IF WE ARE MULTICORE ENABLED....
-
     V3_Print("V3 --  Starting VM (%u cores)\n", vm->num_cores);
     V3_Print("CORE 0 RIP=%p\n",                 (void *)(addr_t)(vm->cores[0].rip));
 
+
+    op_lock_acquire();
 
     // Check that enough cores are present in the mask to handle vcores
     for (i = 0; i < MAX_CORES; i++) {
@@ -358,11 +590,12 @@ v3_start_vm(struct v3_vm_info * vm,
 	    }
 	}
     }
-
+    
 
     if (vm->num_cores > avail_cores) {
 	PrintError("Attempted to start a VM with too many cores (vm->num_cores = %d, avail_cores = %d, MAX=%d)\n", 
 		   vm->num_cores, avail_cores, MAX_CORES);
+	op_lock_release();
 	return -1;
     }
 
@@ -398,8 +631,7 @@ v3_start_vm(struct v3_vm_info * vm,
 
 	    if (specified_cpu != NULL) {
 		PrintError("CPU was specified explicitly (%d). HARD ERROR\n", core_idx);
-		v3_stop_vm(vm);
-		return -1;
+		goto err;
 	    }
 
 	    continue;
@@ -419,8 +651,7 @@ v3_start_vm(struct v3_vm_info * vm,
 
 	if (core->core_thread == NULL) {
 	    PrintError("Thread launch failed\n");
-	    v3_stop_vm(vm);
-	    return -1;
+	    goto err;
 	}
 
 	vcore_id--;
@@ -428,13 +659,16 @@ v3_start_vm(struct v3_vm_info * vm,
 
     if (vcore_id >= 0) {
 	PrintError("Error starting VM: Not enough available CPU cores\n");
-	v3_stop_vm(vm);
-	return -1;
+	goto err;
     }
 
-
+    op_lock_release();
     return 0;
 
+ err:
+    op_lock_release();
+    v3_stop_vm(vm);
+    return -1; 
 }
 
 
@@ -442,28 +676,38 @@ int
 v3_reset_vm_core(struct v3_core_info * core, 
 		 addr_t                rip) 
 {
+    int ret = 0;
     
     switch (v3_cpu_types[core->pcpu_id]) {
 #ifdef V3_CONFIG_SVM
 	case V3_SVM_CPU:
 	case V3_SVM_REV3_CPU:
 	    PrintDebug("Resetting SVM Guest CPU %d\n", core->vcpu_id);
-	    return v3_reset_svm_vm_core(core, rip);
+
+	    ret = v3_reset_svm_vm_core(core, rip);
+
+	    break;
 #endif
 #ifdef V3_CONFIG_VMX
 	case V3_VMX_CPU:
 	case V3_VMX_EPT_CPU:
 	case V3_VMX_EPT_UG_CPU:
 	    PrintDebug("Resetting VMX Guest CPU %d\n", core->vcpu_id);
-	    return v3_reset_vmx_vm_core(core, rip);
+
+	    ret = v3_reset_vmx_vm_core(core, rip);
+
+	    break;
 #endif
 	case V3_INVALID_CPU:
 	default:
 	    PrintError("CPU has no virtualization Extensions\n");
+
+	    ret = -1;
+
 	    break;
     }
 
-    return -1;
+    return ret;
 }
 
 
@@ -475,33 +719,46 @@ v3_move_vm_core(struct v3_vm_info * vm,
 		int                 target_cpu) 
 {
     struct v3_core_info * core = NULL;
-
+    
     if ( (vcore_id <  0) || 
 	 (vcore_id >= vm->num_cores) ) {
 	PrintError("Attempted to migrate invalid virtual core (%d)\n", vcore_id);
 	return -1;
     }
 
-    core = &(vm->cores[vcore_id]);
 
-    if (target_cpu == core->pcpu_id) {
-	PrintError("Attempted to migrate to local core (%d)\n", target_cpu);
-	// well that was pointless
-	return 0;
-    }
+    core = &(vm->cores[vcore_id]);
 
     if (core->core_thread == NULL) {
 	PrintError("Attempted to migrate a core without a valid thread context\n");
 	return -1;
     }
 
+    op_lock_acquire();
+
+    if (v3_cpu_types[target_cpu] == V3_INVALID_CPU) {
+	PrintError("Attempted to migrate Vcore to Invalid Physical CPU (%d)\n", 
+		   target_cpu);
+	op_lock_release();
+	return -1;
+    }
+
     while (v3_raise_barrier(vm, NULL) == -1);
+
+    if (target_cpu == core->pcpu_id) {
+	PrintError("Attempted to migrate to local core (%d)\n", target_cpu);
+
+	// well that was pointless
+	v3_lower_barrier(vm);
+	op_lock_release();
+	return 0;
+    }
+
 
     V3_Print("Performing Migration from %d to %d\n", core->pcpu_id, target_cpu);
 
     // Double check that we weren't preemptively migrated
     if (target_cpu != core->pcpu_id) {    
-
 	V3_Print("Moving Core\n");
 
 #ifdef V3_CONFIG_VMX
@@ -517,27 +774,26 @@ v3_move_vm_core(struct v3_vm_info * vm,
 	}
 #endif
 
-	v3_cores_current[V3_Get_CPU()] = NULL;
 
+	/* 
+	 * Request Host scheduler to Move the thread 
+	 */
 	if (V3_MOVE_THREAD_TO_CPU(target_cpu, core->core_thread) != 0) {
 	    PrintError("Failed to move Vcore %d to CPU %d\n", 
 		       core->vcpu_id, target_cpu);
+
 	    v3_lower_barrier(vm);
+	    op_lock_release();
 	    return -1;
 	} 
 
 	
-	/* There will be a benign race window here:
-	   core->pcpu_id will be set to the target core before its fully "migrated"
-	   However the core will NEVER run on the old core again, its just in flight to the new core
-	*/
-	core->pcpu_id                  = target_cpu;
-	v3_cores_current[V3_Get_CPU()] = core;
-
-	V3_Print("core now at %d\n", core->pcpu_id);	
+	list_move(&(core->curr_cores_node), &(v3_cores_assigned[target_cpu]));
     }
 
+
     v3_lower_barrier(vm);
+    op_lock_release();
 
     return 0;
 }
@@ -555,6 +811,8 @@ v3_stop_vm(struct v3_vm_info * vm)
     }
 
     vm->run_state = VM_STOPPED;
+
+
 
     // Sanity check to catch any weird execution states
     if (v3_wait_for_barrier(vm, NULL) == 0) {
@@ -589,7 +847,6 @@ v3_stop_vm(struct v3_vm_info * vm)
 int 
 v3_pause_vm(struct v3_vm_info * vm) 
 {
-
     if (vm->run_state != VM_RUNNING) {
 	PrintError("Tried to pause a VM that was not running\n");
 	return -1;
@@ -606,7 +863,6 @@ v3_pause_vm(struct v3_vm_info * vm)
 int 
 v3_continue_vm(struct v3_vm_info * vm) 
 {
-
     if (vm->run_state != VM_PAUSED) {
 	PrintError("Tried to continue a VM that was not paused\n");
 	return -1;
@@ -615,7 +871,7 @@ v3_continue_vm(struct v3_vm_info * vm)
     vm->run_state = VM_RUNNING;
 
     v3_lower_barrier(vm);
-
+    
     return 0;
 }
 
@@ -759,29 +1015,6 @@ v3_receive_vm(struct v3_vm_info * vm, char * store, char * url)
 
 #endif
 
-
-int 
-v3_free_vm(struct v3_vm_info * vm) 
-{
-    int i = 0;
-    // deinitialize guest (free memory, etc...)
-
-    v3_free_vm_devices(vm);
-
-    // free cores
-    for (i = 0; i < vm->num_cores; i++) {
-	v3_free_core(&(vm->cores[i]));
-    }
-
-    // free vm
-    v3_free_vm_internal(vm);
-
-    v3_free_config(vm);
-
-    V3_Free(vm);
-
-    return 0;
-}
 
 
 #ifdef __V3_32BIT__

@@ -69,13 +69,13 @@ v3_enqueue(struct v3_queue * queue,
 	return ;
     }
 
-    flags = v3_spin_lock_irqsave(queue->lock);
+    flags = v3_spin_lock_irqsave(&(queue->lock));
     {
 	q_entry->entry = entry;
 	list_add_tail(&(q_entry->entry_list), &(queue->entries));
 	queue->num_entries++;
     }
-    v3_spin_unlock_irqrestore(queue->lock, flags);
+    v3_spin_unlock_irqrestore(&(queue->lock), flags);
 }
 
 
@@ -85,7 +85,7 @@ v3_dequeue(struct v3_queue * queue)
     addr_t       entry_val = 0;
     unsigned int flags     = 0;
 
-    flags = v3_spin_lock_irqsave(queue->lock);
+    flags = v3_spin_lock_irqsave(&(queue->lock));
     {
 	if (!list_empty(&(queue->entries))) {
 	    struct list_head      * q_entry   = queue->entries.next;
@@ -96,7 +96,7 @@ v3_dequeue(struct v3_queue * queue)
 	    V3_Free(tmp_entry);
 	}
     }
-    v3_spin_unlock_irqrestore(queue->lock, flags);
+    v3_spin_unlock_irqrestore(&(queue->lock), flags);
 
     return entry_val;
 }

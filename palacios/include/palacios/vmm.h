@@ -48,7 +48,7 @@ struct v3_core_info;
 
 #define V3_Print(fmt, args...)						\
     do {								\
-	extern struct v3_core_info * v3_cores_current[];			\
+	extern struct v3_core_info * v3_cores_current[];		\
 	extern struct v3_os_hooks * os_hooks;				\
 									\
 	if ((os_hooks) && (os_hooks)->print) {				\
@@ -60,13 +60,13 @@ struct v3_core_info;
 	}								\
     } while (0)
 
-#define PrintDebug(fmt, args...)						\
+#define PrintDebug(fmt, args...)					\
     do {								\
-	extern struct v3_core_info * v3_cores_current[];			\
+	extern struct v3_core_info * v3_cores_current[];		\
 	extern struct v3_os_hooks * os_hooks;				\
 									\
 	if ((os_hooks) && (os_hooks)->print) {				\
-	    if (v3_cores_current[V3_Get_CPU()] != NULL) {						\
+	    if (v3_cores_current[V3_Get_CPU()] != NULL) {		\
 		(os_hooks)->print("V3> [%s-%d.%d] "fmt, v3_cores_current[V3_Get_CPU()]->vm_info->name, v3_cores_current[V3_Get_CPU()]->vcpu_id, v3_cores_current[V3_Get_CPU()]->pcpu_id, ##args); \
 	    } else {							\
 		(os_hooks)->print("V3> (%d) " fmt, V3_Get_CPU(), ##args); \
@@ -78,11 +78,11 @@ struct v3_core_info;
 
 #define PrintError(fmt, args...)					\
     do {								\
-	extern struct v3_core_info * v3_cores_current[];			\
+	extern struct v3_core_info * v3_cores_current[];		\
 	extern struct v3_os_hooks * os_hooks;				\
 									\
 	if ((os_hooks) && (os_hooks)->print) {				\
-	    if (v3_cores_current[V3_Get_CPU()] != NULL) {						\
+	    if (v3_cores_current[V3_Get_CPU()] != NULL) {		\
 		(os_hooks)->print("V3> [%s-%d.%d] %s(%d): "fmt, v3_cores_current[V3_Get_CPU()]->vm_info->name, v3_cores_current[V3_Get_CPU()]->vcpu_id, v3_cores_current[V3_Get_CPU()]->pcpu_id, __FILE__, __LINE__, ##args); \
 	    } else {							\
 		(os_hooks)->print("V3> (%d) -- %s(%d): "fmt, V3_Get_CPU(), __FILE__, __LINE__, ##args); \
@@ -412,8 +412,8 @@ struct v3_interrupt {
 
 
 
-void Init_V3(struct v3_os_hooks * hooks, char * cpus, int num_cpus, char * options);
-void Shutdown_V3( void );
+int Init_V3(struct v3_os_hooks * hooks, char * cpus, int num_cpus, char * options);
+int Shutdown_V3( void );
 
 
 struct v3_vm_info * v3_create_vm(void * cfg, void * priv_data, char * name);
@@ -438,7 +438,7 @@ int v3_free_vm(struct v3_vm_info * vm);
 int v3_deliver_irq(struct v3_vm_info * vm, struct v3_interrupt * intr);
 
 int v3_add_cpu(int cpu_id);
-
+int v3_remove_cpu(int cpu_id);
 
 
 #endif

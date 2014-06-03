@@ -118,24 +118,25 @@ struct v3_core_info {
 #endif
 
 
-    /* struct v3_core_dev_mgr core_dev_mgr; */
+    // struct v3_core_dev_mgr core_dev_mgr;
 
     void * decoder_state;
 
 
-    /* Per-core config tree data. */
-    v3_cfg_tree_t * core_cfg_data;
+    v3_cfg_tree_t * core_cfg_data;        /* Per-core config tree data. */
 
-    struct v3_vm_info * vm_info;
+    struct v3_vm_info * vm_info;          /* Ptr to VM this core is assigned to */
 
 
-    /* thread struct for virtual core */
-    /* Opaque to us, used by the host OS */
-    void * core_thread; 
+    void * core_thread;                   /* thread struct for virtual core
+					   * Opaque to us, used by the host OS
+					   */
 
-    uint32_t pcpu_id;      /* The physical cpu this core is currently running on*/
-    uint32_t vcpu_id;      /* The virtual core number */
-    uint32_t numa_id;      /* The physical NUMA zone this core is assigned to */
+    struct list_head curr_cores_node;     /* linked list entry for v3_cores_current list */
+
+    uint32_t pcpu_id;                     /* The physical cpu this core is currently running on*/
+    uint32_t vcpu_id;                     /* The virtual core number */
+    uint32_t numa_id;                     /* The physical NUMA zone this core is assigned to */
      
 };
 
@@ -165,10 +166,8 @@ struct v3_vm_info {
     struct v3_cpuid_map  cpuid_map;
     v3_hypercall_map_t   hcall_map;
 
+    struct vmm_dev_mgr     dev_mgr;      /* device_map */
 
-
-    /* device_map */
-    struct vmm_dev_mgr     dev_mgr;
     struct v3_extensions   extensions;
 
     struct v3_time         time_state;
@@ -186,6 +185,8 @@ struct v3_vm_info {
     uint_t                    enable_telemetry;
     struct v3_telemetry_state telemetry;
 #endif
+
+    struct list_head   vm_list_node;  /* List entry for global VM list (v3_vm_list) */
 
 
     void * host_priv_data;

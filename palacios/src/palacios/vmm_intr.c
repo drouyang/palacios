@@ -370,13 +370,13 @@ v3_raise_acked_irq(struct v3_vm_info * vm,
 
     //  PrintDebug("[v3_raise_irq (%d)]\n", irq);
 
-    irq_state = v3_spin_lock_irqsave(routers->irq_lock);
+    irq_state = v3_spin_lock_irqsave(&(routers->irq_lock));
     {
 	list_for_each_entry(router, &(routers->router_list), router_node) {
 	    router->router_ops->raise_intr(vm, router->priv_data, &irq);
 	}
     }
-    v3_spin_unlock_irqrestore(routers->irq_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(routers->irq_lock), irq_state);
 
     return 0;
 }
@@ -392,13 +392,13 @@ v3_lower_acked_irq(struct v3_vm_info * vm,
 
     //    PrintDebug("[v3_lower_irq]\n");
 
-    irq_state = v3_spin_lock_irqsave(routers->irq_lock);
+    irq_state = v3_spin_lock_irqsave(&(routers->irq_lock));
     {
 	list_for_each_entry(router, &(routers->router_list), router_node) {
 	    router->router_ops->lower_intr(vm, router->priv_data, &irq);
 	}
     }
-    v3_spin_unlock_irqrestore(routers->irq_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(routers->irq_lock), irq_state);
 
     return 0;
 
@@ -426,7 +426,7 @@ v3_intr_pending(struct v3_core_info * core)
     int    i         = 0;
 
     //  PrintDebug("[intr_pending]\n");
-    irq_state = v3_spin_lock_irqsave(intr_state->irq_lock);
+    irq_state = v3_spin_lock_irqsave(&(intr_state->irq_lock));
     {
 	// External IRQs have lowest priority
 	list_for_each_entry(ctrl, &(intr_state->controller_list), ctrl_node) {
@@ -449,7 +449,7 @@ v3_intr_pending(struct v3_core_info * core)
 	    ret = V3_SOFTWARE_INTR;
 	}
     }
-    v3_spin_unlock_irqrestore(intr_state->irq_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(intr_state->irq_lock), irq_state);
 
     return ret;
 }
@@ -465,7 +465,7 @@ v3_get_intr(struct v3_core_info * core)
     int    i         = 0;
     int    j         = 0;
 
-    irq_state = v3_spin_lock_irqsave(intr_state->irq_lock);    
+    irq_state = v3_spin_lock_irqsave(&(intr_state->irq_lock));    
     {
 	// virqs have priority
 	for (i = 0; i < MAX_IRQ / 8; i++) {
@@ -502,7 +502,7 @@ v3_get_intr(struct v3_core_info * core)
 	    }
 	}
     }
-    v3_spin_unlock_irqrestore(intr_state->irq_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(intr_state->irq_lock), irq_state);
 
     return ret;
 }
@@ -515,7 +515,7 @@ v3_get_intr_type(struct v3_core_info * core)
     struct intr_controller * ctrl       = NULL;
     intr_type_t              type       = V3_INVALID_INTR;
 
-    addr_t irq_state = v3_spin_lock_irqsave(intr_state->irq_lock);  
+    addr_t irq_state = v3_spin_lock_irqsave(&(intr_state->irq_lock));  
 
     list_for_each_entry(ctrl, &(intr_state->controller_list), ctrl_node) {
 	if (ctrl->ctrl_ops->intr_pending(ctrl->priv_data) == 1) {
@@ -531,7 +531,7 @@ v3_get_intr_type(struct v3_core_info * core)
     }
 #endif
 
-    v3_spin_unlock_irqrestore(intr_state->irq_lock, irq_state);
+    v3_spin_unlock_irqrestore(&(intr_state->irq_lock), irq_state);
 
     return type;
 }
@@ -552,14 +552,14 @@ v3_injecting_intr(struct v3_core_info * core,
 	struct intr_controller * ctrl       = NULL;
 	addr_t                   irq_state  = 0;
 
-	irq_state = v3_spin_lock_irqsave(intr_state->irq_lock); 
+	irq_state = v3_spin_lock_irqsave(&(intr_state->irq_lock)); 
 	{
 	    //	PrintDebug("[injecting_intr] External_Irq with intr_num = %x\n", intr_num);
 	    list_for_each_entry(ctrl, &(intr_state->controller_list), ctrl_node) {
 		ctrl->ctrl_ops->begin_irq(core, ctrl->priv_data, intr_num);
 	    }
 	}
-	v3_spin_unlock_irqrestore(intr_state->irq_lock, irq_state);
+	v3_spin_unlock_irqrestore(&(intr_state->irq_lock), irq_state);
     }
 
     return 0;

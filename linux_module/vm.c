@@ -175,11 +175,6 @@ static long v3_vm_ioctl(struct file * filp,
 	case V3_VM_STOP: {
 	    v3_lnx_printk("Stopping VM (%s) (%p)\n", guest->name, guest);
 
-	    if (irqs_disabled()) {
-		ERROR("WHAT!!?? IRQs are disabled??\n");
-		break;
-	    }
-
 	    v3_stop_vm(guest->v3_ctx);
 	    break;
 	}

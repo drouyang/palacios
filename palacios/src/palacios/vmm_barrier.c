@@ -55,14 +55,14 @@ v3_raise_barrier_nowait(struct v3_vm_info   * vm_info,
     addr_t              flag       = 0;
     int i = 0;
 
-    flag = v3_spin_lock_irqsave(barrier->lock);
+    flag = v3_spin_lock_irqsave(&(barrier->lock));
 
     if (barrier->active == 0) {
 	barrier->active = 1;
 	acquired        = 1;
     }
 
-    v3_spin_unlock_irqrestore(barrier->lock, flag);
+    v3_spin_unlock_irqrestore(&(barrier->lock), flag);
 
     if (acquired == 0) {
 	/* If we are in a core context and the barrier has already been acquired 

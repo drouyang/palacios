@@ -414,7 +414,7 @@ ioapic_eoi(struct v3_core_info * core,
 	    continue;
 	}
 
-	flags = v3_spin_lock_irqsave(ioapic->ack_tbl_lock);
+	flags = v3_spin_lock_irqsave(&(ioapic->ack_tbl_lock));
 
 	list_for_each_entry_safe(ack, tmp, &(ioapic->ack_tbl[i]), node) {
 	    PrintDebug("ioapic %u: ACKING IOAPIC IRQ (fn=%p) apic_irq=%d, ioapic_irq=%d\n", 
@@ -428,7 +428,7 @@ ioapic_eoi(struct v3_core_info * core,
 
 	    list_move_tail(&(ack->node), &(ioapic->ack_free_list));
 	}
-	v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+	v3_spin_unlock_irqrestore(&(ioapic->ack_tbl_lock), flags);
 
 
 	if (irq_entry->trig_mode) {
@@ -489,11 +489,11 @@ ioapic_raise_irq(struct v3_vm_info * vm,
 	PrintDebug("ioapic %u: Incrementing level_cnt for ioapic.irq=%d (prev_val=%d)\n", 
 		   ioapic->ioapic_id.id, irq_num, ioapic->level_cnt[irq_num]);
 
-	flags = v3_spin_lock_irqsave(ioapic->lvl_cnt_lock);
+	flags = v3_spin_lock_irqsave(&(ioapic->lvl_cnt_lock));
 	{
 	    ioapic->level_cnt[irq_num]++;
 	}
-	v3_spin_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
+	v3_spin_unlock_irqrestore(&(ioapic->lvl_cnt_lock), flags);
     }
 
 
@@ -501,7 +501,7 @@ ioapic_raise_irq(struct v3_vm_info * vm,
 	struct ack_entry * tmp_ack_entry = NULL;
 	unsigned int flags = 0;
 
-	flags = v3_spin_lock_irqsave(ioapic->ack_tbl_lock);	
+	flags = v3_spin_lock_irqsave(&(ioapic->ack_tbl_lock));	
 	{
 	    // scan for identical call sites, if one exists then this interrupt is ignored. 
 	    list_for_each_entry(tmp_ack_entry, &(ioapic->ack_tbl[irq_num]), node) {
@@ -510,14 +510,14 @@ ioapic_raise_irq(struct v3_vm_info * vm,
 		    (tmp_ack_entry->private_data == irq->private_data)) {
 		    
 		    // Refire of a level triggered IRQ, safe to ignore
-		    v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+		    v3_spin_unlock_irqrestore(&(ioapic->ack_tbl_lock), flags);
 		    return 0;
 		}
 	    }
 	    
 	    if (list_empty(&(ioapic->ack_free_list))) {
 		PrintError("Error: ioapic %u - Callback free list is exhausted...\n", ioapic->ioapic_id.id);
-		v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+		v3_spin_unlock_irqrestore(&(ioapic->ack_tbl_lock), flags);
 		return -1;
 	    }
 	    
@@ -530,7 +530,7 @@ ioapic_raise_irq(struct v3_vm_info * vm,
 	    
 	    list_move_tail(&(tmp_ack_entry->node), &(ioapic->ack_tbl[irq_num]));
 	}
-	v3_spin_unlock_irqrestore(ioapic->ack_tbl_lock, flags);
+	v3_spin_unlock_irqrestore(&(ioapic->ack_tbl_lock), flags);
     }
 
 
@@ -575,7 +575,7 @@ ioapic_lower_irq(struct v3_vm_info * vm,
 
     if (irq_entry->trig_mode) {
 	
-	flags = v3_spin_lock_irqsave(ioapic->lvl_cnt_lock);
+	flags = v3_spin_lock_irqsave(&(ioapic->lvl_cnt_lock));
 	{	
 	    if (ioapic->level_cnt[irq_num] <= 0) {
 		PrintError("Error: ioapic %u - No active IRQ line to lower (irq_num=%d) (lvl_cnt=%d)\n", 
@@ -583,7 +583,7 @@ ioapic_lower_irq(struct v3_vm_info * vm,
 			   irq_num, 
 			   ioapic->level_cnt[irq_num] );
 
-		v3_spin_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);		
+		v3_spin_unlock_irqrestore(&(ioapic->lvl_cnt_lock), flags);		
 		return -1;
 	    }
 	    
@@ -592,7 +592,7 @@ ioapic_lower_irq(struct v3_vm_info * vm,
 	    
 	    ioapic->level_cnt[irq_num]--;
 	}
-	v3_spin_unlock_irqrestore(ioapic->lvl_cnt_lock, flags);
+	v3_spin_unlock_irqrestore(&(ioapic->lvl_cnt_lock), flags);
 
     }
 

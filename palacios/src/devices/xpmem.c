@@ -162,7 +162,7 @@ static int copy_guest_regs(struct v3_xpmem_state * state, struct v3_core_info * 
     unsigned long flags;
     int ret = 0;
 
-    flags = v3_spin_lock_irqsave(state->lock);
+    flags = v3_spin_lock_irqsave(&(state->lock));
 
     switch (cmd->type) {
         case XPMEM_MAKE:
@@ -226,7 +226,7 @@ static int copy_guest_regs(struct v3_xpmem_state * state, struct v3_core_info * 
             break;
     }
 
-    v3_spin_unlock_irqrestore(state->lock, flags);
+    v3_spin_unlock_irqrestore(&(state->lock), flags);
     return ret;
 }
 
@@ -449,7 +449,7 @@ static int command_complete_hcall(struct v3_core_info * core, hcall_id_t hcall_i
     {
 	int cmd_issued = 0;
 
-	flags = v3_spin_lock_irqsave(state->lock);
+	flags = v3_spin_lock_irqsave(&(state->lock));
 	{
 	    if (list_empty(&(state->xpmem_cmd_list))) {
 		state->bar_state->interrupt_status &= ~INT_REQUEST;
@@ -463,7 +463,7 @@ static int command_complete_hcall(struct v3_core_info * core, hcall_id_t hcall_i
 		cmd_issued = 1;
 	    }
 	}
-        v3_spin_unlock_irqrestore(state->lock, flags);
+        v3_spin_unlock_irqrestore(&(state->lock), flags);
 
 	if (cmd_issued) {
 	    xpmem_raise_irq(state);
@@ -749,7 +749,7 @@ static int xpmem_command_request(struct v3_xpmem_state * v3_xpmem, struct xpmem_
 
     iter->cmd = cmd;
 
-    flags = v3_spin_lock_irqsave(v3_xpmem->lock);
+    flags = v3_spin_lock_irqsave(&(v3_xpmem->lock));
     {
 	if (v3_xpmem->bar_state->interrupt_status & INT_REQUEST) {
 	    list_add_tail(&(iter->node), &(v3_xpmem->xpmem_cmd_list));
@@ -760,7 +760,7 @@ static int xpmem_command_request(struct v3_xpmem_state * v3_xpmem, struct xpmem_
 	    cmd_issued = 1;
 	}
     }
-    v3_spin_unlock_irqrestore(v3_xpmem->lock, flags);
+    v3_spin_unlock_irqrestore(&(v3_xpmem->lock), flags);
 
     if (cmd_issued) {
 	V3_Free(iter);
@@ -832,9 +832,11 @@ static int xpmem_command_complete(struct v3_xpmem_state * v3_xpmem, struct xpmem
         }
     }
 
-    flags = v3_spin_lock_irqsave(v3_xpmem->lock);
-    v3_xpmem->bar_state->interrupt_status |= INT_COMPLETE;
-    v3_spin_unlock_irqrestore(v3_xpmem->lock, flags);
+    flags = v3_spin_lock_irqsave(&(v3_xpmem->lock));
+    {
+	v3_xpmem->bar_state->interrupt_status |= INT_COMPLETE;
+    }
+    v3_spin_unlock_irqrestore(&(v3_xpmem->lock), flags);
 
     v3_xpmem->bar_state->response = *cmd;
     V3_Free(cmd);

@@ -207,6 +207,16 @@ palacios_ioctl(struct file  * filp,
 	    return 0;
 
 	}
+	case V3_REMOVE_CPU: {
+	    int cpu_id = (int)arg;
+
+	    if (v3_remove_cpu(cpu_id) != 0) {
+                printk(KERN_ERR "Error adding CPU %d to Palacios\n", cpu_id);
+                return -1;
+	    }
+
+	    break;
+	}
 	default: {
 	    struct global_ctrl * ctrl = get_global_ctrl(ioctl);
 	    

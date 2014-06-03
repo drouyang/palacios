@@ -160,7 +160,27 @@ out_err:
 	    guest_map[vm_idx] = NULL;
 	    break;
 	}
-	case V3_ADD_MEMORY: {
+	case V3_ADD_CPU: {
+	    int cpu_id = (int)arg;
+
+	    if (v3_add_cpu(cpu_id) != 0) {
+                printk(KERN_ERR "Error adding CPU %d to Palacios\n", cpu_id);
+                return -1;
+	    }
+
+	    break;
+	}
+	case V3_REMOVE_CPU: {
+	    int cpu_id = (int)arg;
+
+	    if (v3_remove_cpu(cpu_id) != 0) {
+                printk(KERN_ERR "Error adding CPU %d to Palacios\n", cpu_id);
+                return -1;
+	    }
+
+	    break;
+	}
+	case V3_ADD_MEM: {
 	    struct v3_mem_region mem;
 	    
 	    memset(&mem, 0, sizeof(struct v3_mem_region));
@@ -170,7 +190,7 @@ out_err:
 		return -EFAULT;
 	    }
 
-	    DEBUG("Adding %llu pages to Palacios memory\n", mem.num_pages);
+	    v3_lnx_printk("Adding %llu pages to Palacios memory\n", mem.num_pages);
 
 	    if (add_palacios_memory(mem.base_addr, mem.num_pages) == -1) {
 		ERROR("Error adding memory to Palacios\n");
@@ -179,18 +199,6 @@ out_err:
 
 	    break;
 	}
-#if 0
-	case V3_ADD_NUMA_TOPO: {
-	    /* F@%King Linux tries to hide the NUMA topology, so we have to pull it in from user space... */
-	    
-	    if (create_numa_topology_from_user(argp) == -1) {
-		ERROR("Could not create topology from user input\n");
-		return -EFAULT;
-	    }
-
-	    break;
-	}
-#endif
 	default: {
 	    struct global_ctrl * ctrl = get_global_ctrl(ioctl);
 	    

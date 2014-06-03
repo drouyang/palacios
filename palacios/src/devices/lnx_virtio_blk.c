@@ -148,7 +148,7 @@ vq_notify(struct virtio_blk_state * blk_state)
 
     if (!(vq->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
 
-        v3_spin_lock(blk_state->isr_lock);
+        v3_spin_lock(&(blk_state->isr_lock));
 	{
 	    if (blk_state->virtio_cfg.pci_isr == 0) {
 
@@ -162,7 +162,7 @@ vq_notify(struct virtio_blk_state * blk_state)
 		PrintDebug("virtio_blk isr value: 1 -> 1\n");
 	    }
 	}
-	v3_spin_unlock(blk_state->isr_lock);
+	v3_spin_unlock(&(blk_state->isr_lock));
     } else {
         PrintDebug("%s: VIRTIO_NO_IRQ_FLAG is set\n", __func__);
     }
@@ -527,11 +527,11 @@ virtio_io_write(struct v3_core_info * core,
 	    break;
 
 	case VIRTIO_ISR_PORT:
-            v3_spin_lock(blk_state->isr_lock);
+            v3_spin_lock(&(blk_state->isr_lock));
 	    {
 		blk_state->virtio_cfg.pci_isr = *(uint8_t *)src;
 	    }
-            v3_spin_unlock(blk_state->isr_lock);
+            v3_spin_unlock(&(blk_state->isr_lock));
 	    break;
 	default:
 	    return -1;
@@ -601,7 +601,7 @@ virtio_io_read(struct v3_core_info * core,
 	    break;
 
 	case VIRTIO_ISR_PORT:
-            v3_spin_lock(blk_state->isr_lock);
+            v3_spin_lock(&(blk_state->isr_lock));
 	    {
 		*(uint8_t *)dst = blk_state->virtio_cfg.pci_isr;
 		
@@ -614,7 +614,7 @@ virtio_io_read(struct v3_core_info * core,
 		    PrintDebug("VIRTIO_ISR_PORT: isr not set\n");
 		}
 	    }
-            v3_spin_unlock(blk_state->isr_lock);
+            v3_spin_unlock(&(blk_state->isr_lock));
 
 	    break;
 
@@ -651,22 +651,26 @@ virtio_free(struct virtio_dev_state * virtio)
     struct virtio_blk_state * blk_state = NULL;
     struct virtio_blk_state * tmp       = NULL;
 
-    blk_state->async_thread_should_stop = 1;
 
-    while (blk_state->async_thread != NULL) {
-	v3_yield(NULL, -1);
-	__asm__ __volatile__ ("":::"memory");
+
+    if (!list_empty(&(virtio->dev_list))) {
+	list_for_each_entry_safe(blk_state, tmp, &(virtio->dev_list), dev_link) {
+	    
+	    blk_state->async_thread_should_stop = 1;
+	    
+	    while (blk_state->async_thread != NULL) {
+		v3_yield(NULL, -1);
+		__asm__ __volatile__ ("":::"memory");
+	    }
+
+	    // unregister from PCI
+	    
+	    list_del(&(blk_state->dev_link));	    
+
+	    v3_spinlock_deinit(&(blk_state->isr_lock));
+	    V3_Free(blk_state);
+	}
     }
-
-
-    list_for_each_entry_safe(blk_state, tmp, &(virtio->dev_list), dev_link) {
-
-	// unregister from PCI
-
-	list_del(&(blk_state->dev_link));
-	V3_Free(blk_state);
-    }
-    
 
     V3_Free(virtio);
 

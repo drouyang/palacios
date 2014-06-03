@@ -21,7 +21,7 @@
 #include <palacios/vmm_lock.h>
 #include <palacios/vmm_lowlevel.h>
 
-#define v3_irqsave(x)    do { __asm__ __volatile__("# local_irq_save \n\t pushfq ; popq %0 ; cli": "=g" (x): /* no input */ : "memory"); } while (0)
+#define v3_irqsave(x)    do { __asm__ __volatile__("# local_irq_save \n\t pushfq ; popq %q0 ; cli": "=g" (x): /* no input */ : "memory"); } while (0)
 #define v3_irqrestore(x)      __asm__ __volatile__("# restore_flags \n\t pushq %0 ; popfq": /* no output */  :"g" (x): "memory", "cc")
 
 
@@ -42,15 +42,7 @@ static inline uint32_t v3_xchg8(volatile void * ptr, uint8_t val) {
 int 
 v3_spinlock_init(v3_spinlock_t * lock)
 {
-
-    *lock = (addr_t)V3_Malloc(sizeof(uint8_t));
-
-    if (!(*lock)) {
-        return -1;
-    }
-
-    *(uint8_t *)*lock = 0;
-
+    *lock = 0;
     return 0;
 
 }
@@ -58,13 +50,12 @@ v3_spinlock_init(v3_spinlock_t * lock)
 void 
 v3_spinlock_deinit(v3_spinlock_t * lock)
 {
-    V3_Free((void *)*lock);
     *lock = 0;
 }
 
 
 void 
-v3_spin_lock(v3_spinlock_t lock)
+v3_spin_lock(v3_spinlock_t * lock)
 {
     while (1) {
 	if (v3_xchg8((void *)lock, 1) == 0) {
@@ -76,43 +67,41 @@ v3_spin_lock(v3_spinlock_t lock)
 
 
 void 
-v3_spin_unlock(v3_spinlock_t lock)
+v3_spin_unlock(v3_spinlock_t * lock)
 {
     __asm__ __volatile__ ("": : :"memory");
     *(uint8_t *)lock = 0;
 }
 
-addr_t 
-v3_spin_lock_irqsave(v3_spinlock_t lock)
+uint64_t
+v3_spin_lock_irqsave(v3_spinlock_t * lock)
 {
     uint64_t flags;
 
     v3_irqsave(flags);
     v3_spin_lock(lock);
 
-    return (addr_t) flags;
+    return flags;
 }
 
 void 
-v3_spin_unlock_irqrestore(v3_spinlock_t lock, addr_t flags)
+v3_spin_unlock_irqrestore(v3_spinlock_t * lock, uint64_t flags)
 {
     v3_spin_unlock(lock);
     v3_irqrestore(flags);
 }
 
-int 
-v3_mutex_init(v3_mutex_t * mutex) 
+v3_mutex_t * 
+v3_mutex_init() 
 {
+    v3_mutex_t * mutex = NULL;
+
     V3_ASSERT(os_hooks);
     V3_ASSERT(os_hooks->mutex_alloc);
 
-    *mutex = (addr_t)(os_hooks->mutex_alloc());
+    mutex = os_hooks->mutex_alloc();
 
-    if (!(*mutex)) {
-        return -1;
-    }
-
-    return 0;
+    return mutex;
 }
 
 
@@ -122,12 +111,11 @@ v3_mutex_deinit(v3_mutex_t * mutex)
     V3_ASSERT(os_hooks);
     V3_ASSERT(os_hooks->mutex_free);
 
-    os_hooks->mutex_free((void *)*mutex);
-    *mutex = 0;
+    os_hooks->mutex_free((void *)mutex);
 }
 
 void 
-v3_mutex_lock(v3_mutex_t mutex) 
+v3_mutex_lock(v3_mutex_t * mutex) 
 {
     V3_ASSERT(os_hooks);
     V3_ASSERT(os_hooks->mutex_lock);
@@ -136,7 +124,7 @@ v3_mutex_lock(v3_mutex_t mutex)
 }
 
 void 
-v3_mutex_unlock(v3_mutex_t mutex) 
+v3_mutex_unlock(v3_mutex_t * mutex) 
 {
     V3_ASSERT(os_hooks);
     V3_ASSERT(os_hooks->mutex_unlock);

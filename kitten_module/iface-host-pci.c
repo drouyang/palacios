@@ -817,7 +817,7 @@ host_pci_init( void )
 
 	V3_Init_Host_PCI(&host_pci_hooks);
 
-	add_global_ctrl(V3_ADD_PCI_HW_DEV, register_pci_hw_dev);
+	add_global_ctrl(V3_ADD_PCI, register_pci_hw_dev);
 
 	return 0;
 }
