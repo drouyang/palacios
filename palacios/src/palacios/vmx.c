@@ -891,7 +891,13 @@ update_irq_entry_state(struct v3_core_info * core)
             V3_Print("IRQ pending from previous injection\n");
 #endif
 
-            // Copy the IDT vectoring info over to reinject the old interrupt
+	    /* 
+	     * Failed Injection
+	     * 
+	     * Instead of leaving the VMCS fields untouched, VMX moves them to a separate area
+	     * We have to recover them, and reload them into the injection fields of the VMCS 
+	     */
+	     
             if (idt_vec_info.error_code == 1) {
                 uint32_t err_code = 0;
 
@@ -957,12 +963,8 @@ update_irq_entry_state(struct v3_core_info * core)
 	 * This forces an exit immediately after IRQs are re-enabled, so we can retry the injection.
 	 */
 
-        uint32_t instr_len;
-	
-        check_vmcs_read(VMCS_EXIT_INSTR_LEN, &instr_len);
-
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
-        V3_Print("Enabling Interrupt-Window exiting: %d\n", instr_len);
+        V3_Print("Enabling Interrupt-Window exiting\n");
 #endif
 
         vmx_info->pri_proc_ctrls.int_wndw_exit = 1;
