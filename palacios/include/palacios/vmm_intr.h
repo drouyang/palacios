@@ -28,7 +28,7 @@
 #include <palacios/vmm_lock.h>
 
 
-typedef enum {V3_INVALID_INTR, V3_EXTERNAL_IRQ, V3_VIRTUAL_IRQ, V3_NMI, V3_SOFTWARE_INTR} v3_intr_type_t;
+typedef enum {V3_INVALID_INTR, V3_EXTERNAL_IRQ, V3_VIRTUAL_IRQ, V3_SOFTWARE_INTR} v3_intr_type_t;
 
 struct v3_core_info;
 struct v3_vm_info;
@@ -66,7 +66,7 @@ struct v3_intr_core_state {
     uint_t irq_started;
     uint_t irq_vector;
 
-    uint_t swintr_posted;
+    uint_t  swintr_posted;
     uint8_t swintr_vector;
 
     uint8_t virq_map[MAX_IRQ / 8];

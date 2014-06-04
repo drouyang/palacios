@@ -25,59 +25,85 @@
 void 
 v3_init_exception_state(struct v3_core_info * core) 
 {
-    core->excp_state.excp_pending    = 0;
-    core->excp_state.excp_num        = 0;
-    core->excp_state.excp_error_code = 0;
+    int i = 0;
+
+    core->excp_state.excp_bitmap    = 0;
+    core->excp_state.error_bitmap   = 0;
+
+    for (i = 0; i < 32; i++) {
+	core->excp_state.error_codes[i] = 0;
+    }
+
+    v3_spinlock_init(&(core->excp_state.excp_lock));
 
 }
 
 
 
+
+
 int 
 v3_raise_exception_with_error(struct v3_core_info * core, 
-			      uint_t                excp, 
-			      uint_t                error_code) 
+			      uint32_t              excp, 
+			      uint32_t              error_code) 
 {
     struct v3_excp_state * excp_state = &(core->excp_state);
+    uint64_t flags;
 
-    if (excp_state->excp_pending == 0) {
+    flags = v3_spin_lock_irqsave(&(excp_state->excp_lock));
+    {
 
-	excp_state->excp_pending          = 1;
-	excp_state->excp_num              = excp;
-	excp_state->excp_error_code       = error_code;
-	excp_state->excp_error_code_valid = 1;
-
-	//	PrintDebug("[v3_raise_exception_with_error] error code: %x\n", error_code);
-    } else {
-	PrintError("Error injecting exception_w_error (excp=%d) (error=%d) -- Exception (%d) (error=%d) already pending\n",
-		   excp, error_code, excp_state->excp_num, excp_state->excp_error_code);
-	return -1;
+	if ((excp_state->excp_bitmap & (1 << excp)) == 0) {
+	    
+	    excp_state->excp_bitmap        |= (1 << excp);
+	    excp_state->error_bitmap       |= (1 << excp);
+	    excp_state->error_codes[excp]   = error_code;
+	    
+	    //	PrintDebug("[v3_raise_exception_with_error] error code: %x\n", error_code);
+	} else {
+	    PrintError("Error injecting exception_w_error (excp=%d) (error=%d): Already pending\n",
+		       excp, error_code);
+	    v3_spin_unlock_irqrestore(&(excp_state->excp_lock), flags);
+	    return -1;
+	}
     }
+    v3_spin_unlock_irqrestore(&(excp_state->excp_lock), flags);
 
     return 0;
 }
 
 int 
 v3_raise_exception(struct v3_core_info * core, 
-		   uint_t                excp) 
+		   uint32_t              excp) 
 {
     struct v3_excp_state * excp_state = &(core->excp_state);
+    uint64_t flags;
     //PrintDebug("[v3_raise_exception]\n");
 
-    if (excp_state->excp_pending == 0) {
+    flags = v3_spin_lock_irqsave(&(excp_state->excp_lock));
+    {
 
-	excp_state->excp_pending          = 1;
-	excp_state->excp_num              = excp;
-	excp_state->excp_error_code       = 0;
-	excp_state->excp_error_code_valid = 0;
-
-    } else {
-	PrintError("Error injecting exception (excp=%d) -- Exception (%d) (error=%d) already pending\n",
-		   excp, excp_state->excp_num, excp_state->excp_error_code);
-	return -1;
+	if ((excp_state->excp_bitmap & (1 << excp)) ==  0) {
+	    
+	    excp_state->excp_bitmap |= (1 << excp);
+	    
+	} else {
+	    PrintError("Error injecting exception (excp=%d): Already pending\n",
+		       excp);
+	    v3_spin_unlock_irqrestore(&(excp_state->excp_lock), flags);
+	    return -1;
+	}
     }
+    v3_spin_unlock_irqrestore(&(excp_state->excp_lock), flags);
 
     return 0;
+}
+
+
+int 
+v3_raise_nmi(struct v3_core_info * core)
+{
+    return v3_raise_exception(core, NMI_EXCEPTION);
 }
 
 
@@ -85,38 +111,96 @@ int
 v3_excp_pending(struct v3_core_info * core) 
 {
     struct v3_excp_state * excp_state = &(core->excp_state);
-    
-    if (excp_state->excp_pending == 1) {
-	return 1;
-    }
+    int    ret = 0;
+    addr_t flags;
 
-    return 0;
+    flags = v3_spin_lock_irqsave(&(excp_state->excp_lock));
+    {
+	if (excp_state->excp_bitmap != 0) {
+	   ret = 1;
+	}
+    }
+    v3_spin_unlock_irqrestore(&(excp_state->excp_lock), flags);
+
+    return ret;
 }
 
 
-int 
+uint32_t
 v3_get_excp_number(struct v3_core_info * core) 
 {
     struct v3_excp_state * excp_state = &(core->excp_state);
+    uint32_t vec   = -1;
+    addr_t   flags = 0;
 
-    if (excp_state->excp_pending == 1) {
-	return excp_state->excp_num;
+    flags = v3_spin_lock_irqsave(&(excp_state->excp_lock));
+    {
+
+	__asm__ __volatile__ ("bsfl %1, %0\n"
+			      "jnz 1f\n"
+			      "movl $-1, %0\n"
+			      "1:" 
+			      : "=r"(vec)
+			      : "rm"(excp_state->excp_bitmap)
+			      :);
+
     }
+    v3_spin_unlock_irqrestore(&(excp_state->excp_lock), flags);
 
-    return 0;
+    return vec;
 }
 
 
 int 
-v3_injecting_excp(struct v3_core_info * core, 
-		  uint_t                excp) 
+v3_excp_has_error(struct v3_core_info * core, 
+		  uint32_t              excp) 
 {
     struct v3_excp_state * excp_state = &(core->excp_state);
-    
-    excp_state->excp_pending          = 0;
-    excp_state->excp_num              = 0;
-    excp_state->excp_error_code       = 0;
-    excp_state->excp_error_code_valid = 0;
-    
+    int    ret = 0;
+    addr_t flags;
+
+    flags = v3_spin_lock_irqsave(&(excp_state->excp_lock));
+    {
+	if (( excp_state->error_bitmap & (1 << excp)) != 0) {
+	    ret = 1;
+	}
+    }
+    v3_spin_unlock_irqrestore(&(excp_state->excp_lock), flags);
+
+    return ret;
+}
+
+uint32_t
+v3_get_excp_error(struct v3_core_info * core, 
+		  uint32_t              excp) 
+{
+    struct v3_excp_state * excp_state = &(core->excp_state);
+    uint32_t err_code = 0;
+    addr_t flags;
+
+    flags = v3_spin_lock_irqsave(&(excp_state->excp_lock));
+    {
+	err_code = excp_state->error_codes[excp];
+    }
+    v3_spin_unlock_irqrestore(&(excp_state->excp_lock), flags);
+
+    return err_code;
+}
+
+int 
+v3_injecting_excp(struct v3_core_info * core, 
+		  uint32_t              excp) 
+{
+    struct v3_excp_state * excp_state = &(core->excp_state);
+    addr_t flags;
+
+    flags = v3_spin_lock_irqsave(&(excp_state->excp_lock));
+    {
+	excp_state->excp_bitmap  &= ~(1 << excp);
+	excp_state->error_bitmap &= ~(1 << excp);
+	
+    }
+    v3_spin_unlock_irqrestore(&(excp_state->excp_lock), flags);
+
     return 0;
 }

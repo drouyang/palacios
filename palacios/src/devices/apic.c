@@ -967,10 +967,11 @@ deliver_ipi(struct apic_state * src_apic,
 	     * We probably just want to do 1 here, and assume the raise_irq() will hit the 8259a.
 	     */
 	    return 0;
-
+	case IPI_NMI:
+	    v3_raise_nmi(dst_core);
+	    break;
 	case IPI_SMI: 
 	case IPI_RES1: // reserved						
-	case IPI_NMI:
 	default:
 	    PrintError("IPI %d delivery is unsupported\n", ipi->mode); 
 	    return -1;

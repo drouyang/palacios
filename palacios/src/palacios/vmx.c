@@ -827,46 +827,65 @@ static int
 update_irq_entry_state(struct v3_core_info * core) 
 {
     struct vmx_exit_idt_vec_info   idt_vec_info;
-    struct vmcs_interrupt_state    intr_core_state;
+    struct vmcs_interrupt_state    vmcs_intr_state;
     struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
 
     check_vmcs_read(VMCS_IDT_VECTOR_INFO, &(idt_vec_info.value));
-    check_vmcs_read(VMCS_GUEST_INT_STATE, &(intr_core_state));
+    check_vmcs_read(VMCS_GUEST_INT_STATE, &(vmcs_intr_state));
 
-    /* Check for pending exceptions to inject */
+
     if (v3_excp_pending(core)) {
         struct vmx_entry_int_info int_info;
+	uint32_t excp_vector = v3_get_excp_number(core);
 
-        // In VMX, almost every exception is hardware
-        // Software exceptions are pretty much only for breakpoint or overflow
-        int_info.value  = 0;
-        int_info.type   = 3;
-        int_info.vector = v3_get_excp_number(core);
 
-        if (core->excp_state.excp_error_code_valid) {
-            check_vmcs_write(VMCS_ENTRY_EXCP_ERR, core->excp_state.excp_error_code);
-            int_info.error_code = 1;
+	int_info.value  = 0;     /* Reset injection fields  */
+
+	if (excp_vector == 2) {
+
+	    /* NMI */
+	    int_info.type   = 2;  /* NMIs have a special injection type (2)  */
+	    int_info.vector = 0;  /* Vector is ignored                       */
+
+	} else {
+	    /*
+	     * In VMX, almost every exception is hardware
+	     * Software exceptions are pretty much only for breakpoint or overflow
+	     */
+	    int_info.type   = 3;              /* Set to HW Exception  */
+	    int_info.vector = excp_vector;    /* Set vector           */
+
+	}	    
+
+	/*  Set error code if valid  */
+	if (v3_excp_has_error(core, excp_vector)) {    
+	    uint32_t excp_error = v3_get_excp_error(core, excp_vector);
+
+	    check_vmcs_write(VMCS_ENTRY_EXCP_ERR, excp_error);
+	    int_info.error_code = 1;
+	    
+#ifdef V3_CONFIG_DEBUG_INTERRUPTS
+	    V3_Print("Injecting exception %d with error code %x\n", 
+		     int_info.vector, excp_error);
+#endif
+	}
+	    
+        int_info.valid = 1;                                        /*  Mark as Valid  */
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
-            V3_Print("Injecting exception %d with error code %x\n", 
-                    int_info.vector, core->excp_state.excp_error_code);
-#endif
-        }
-
-        int_info.valid = 1;
-
-#ifdef V3_CONFIG_DEBUG_INTERRUPTS
-        V3_Print("Injecting exception %d (EIP=%p)\n", int_info.vector, (void *)(addr_t)core->rip);
+        V3_Print("Injecting exception %d (EIP=%p)\n", excp_vector, (void *)(addr_t)core->rip);
 #endif
 
-        check_vmcs_write(VMCS_ENTRY_INT_INFO, int_info.value);
+        check_vmcs_write(VMCS_ENTRY_INT_INFO, int_info.value);     /* Serialize injection info to VMCS  */
 
-        v3_injecting_excp(core, int_info.vector);
+        v3_injecting_excp(core, excp_vector);                      /* Signal that EXCP has been injected */
 
-    } else if ((((struct rflags *)&(core->ctrl_regs.rflags))->intr == 1) && 
-	       (intr_core_state.val == 0)) {
+
+    } else if ((((struct rflags *)&(core->ctrl_regs.rflags))->intr == 1) &&    /* Guest has interrupts enabled       */
+	       (vmcs_intr_state.val == 0)) {                                   /* VMCS intr blocking is not enabled  */
        
-        if ((core->intr_core_state.irq_started == 1) && (idt_vec_info.valid == 1)) {
+        if ((core->intr_core_state.irq_started == 1) &&              /* IRQ has previously been injected  */
+	    (idt_vec_info.valid                == 1)) {              /* But, IRQ is still pending in VMCS */ 
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
             V3_Print("IRQ pending from previous injection\n");
@@ -877,23 +896,23 @@ update_irq_entry_state(struct v3_core_info * core)
                 uint32_t err_code = 0;
 
                 check_vmcs_read( VMCS_IDT_VECTOR_ERR, &err_code);
-                check_vmcs_write(VMCS_ENTRY_EXCP_ERR, err_code);
+                check_vmcs_write(VMCS_ENTRY_EXCP_ERR,  err_code);
             }
 
             idt_vec_info.undef = 0;
             check_vmcs_write(VMCS_ENTRY_INT_INFO, idt_vec_info.value);
 
-        } else {
+        } else {                                                     /* Injecting a new IRQ */
             struct vmx_entry_int_info ent_int;
-            ent_int.value = 0;
+            ent_int.value = 0;                                       /* Clear irq entry fields */
 
             switch (v3_intr_pending(core)) {
                 case V3_EXTERNAL_IRQ: {
-                    core->intr_core_state.irq_vector = v3_get_intr(core); 
-                    ent_int.vector                   = core->intr_core_state.irq_vector;
-                    ent_int.type                     = 0;
-                    ent_int.error_code               = 0;
-                    ent_int.valid                    = 1;
+                    core->intr_core_state.irq_vector = v3_get_intr(core);                 /* Cache vector in case we need to reinject (?) */
+                    ent_int.vector                   = core->intr_core_state.irq_vector;  /* Set vector              */
+                    ent_int.type                     = 0;                                 /* Set type to HW IRQ      */
+                    ent_int.error_code               = 0;                                 /* No error codes for IRQs */
+                    ent_int.valid                    = 1;                                 /* Mark entry as valid     */
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
                     V3_Print("Injecting Interrupt %d at exit %u(EIP=%p)\n", 
@@ -902,20 +921,12 @@ update_irq_entry_state(struct v3_core_info * core)
 			       (void *)(addr_t)core->rip);
 #endif
 
-                    check_vmcs_write(VMCS_ENTRY_INT_INFO, ent_int.value);
-                    core->intr_core_state.irq_started = 1;
+                    check_vmcs_write(VMCS_ENTRY_INT_INFO, ent_int.value);                 /* Serialize IRQ info to VMCS              */
+                    core->intr_core_state.irq_started = 1;                                /* Record that we have begun IRQ injection */
 
                     break;
                 }
-                case V3_NMI:
-                    PrintDebug("Injecting NMI\n");
 
-                    ent_int.type   = 2;
-                    ent_int.vector = 2;
-                    ent_int.valid  = 1;
-                    check_vmcs_write(VMCS_ENTRY_INT_INFO, ent_int.value);
-
-                    break;
                 case V3_SOFTWARE_INTR:
                     PrintDebug("Injecting software interrupt\n");
 
@@ -925,19 +936,29 @@ update_irq_entry_state(struct v3_core_info * core)
 
 		    break;
                 case V3_VIRTUAL_IRQ:
-                    // Not sure what to do here, Intel doesn't have virtual IRQs
-                    // May be the same as external interrupts/IRQs
-
+                    /* 
+		     * Not sure what to do here, Intel doesn't have virtual IRQs
+		     * Maybe the same as external interrupts/IRQs
+		     */
 		    break;
                 case V3_INVALID_INTR:
-                default:
-                    break;
+                default:                          /* No IRQ pending, so we just drop out to end of function */
+                    break; 
             }
         }
-    } else if ((v3_intr_pending(core)) && (vmx_info->pri_proc_ctrls.int_wndw_exit == 0)) {
-        // Enable INTR window exiting so we know when IF=1
-        uint32_t instr_len;
+    } else if ((v3_intr_pending(core)) &&                                   /* There is an IRQ pending (But guest has IRQs disabled) */
+	       (vmx_info->pri_proc_ctrls.int_wndw_exit == 0)) {             /* And IRQ window exiting is turned off                  */
 
+	/* 
+	 * At this point there is a pending interrupt, but the guest has IRQs disabled
+	 *
+	 * VMX does not allow injection in this case. Instead we have to force an exit as
+	 * soon as they are turned back on by setting the intr window exiting control in the VMCS.
+	 * This forces an exit immediately after IRQs are re-enabled, so we can retry the injection.
+	 */
+
+        uint32_t instr_len;
+	
         check_vmcs_read(VMCS_EXIT_INSTR_LEN, &instr_len);
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS

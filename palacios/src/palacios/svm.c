@@ -485,11 +485,16 @@ update_irq_entry_state(struct v3_core_info * core)
     if (v3_excp_pending(core)) {
 	uint_t excp = v3_get_excp_number(core);
 	
-	guest_ctrl->EVENTINJ.type = SVM_INJECTION_EXCEPTION;
-	
-	if (core->excp_state.excp_error_code_valid) {
+	if (excp == NMI_EXCEPTION) {
+	    guest_ctrl->EVENTINJ.type = SVM_INJECTION_NMI;
+	} else {
+	    guest_ctrl->EVENTINJ.type = SVM_INJECTION_EXCEPTION;
+	    guest_ctrl->EVENTINJ.vector = excp;
+	}
 
-	    guest_ctrl->EVENTINJ.error_code = core->excp_state.excp_error_code;
+	if (v3_excp_has_error(core, excp)) {
+
+	    guest_ctrl->EVENTINJ.error_code = v3_get_excp_error(core, excp);
 	    guest_ctrl->EVENTINJ.ev         = 1;
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
@@ -497,7 +502,7 @@ update_irq_entry_state(struct v3_core_info * core)
 #endif
 	}
 	
-	guest_ctrl->EVENTINJ.vector = excp;
+
 	guest_ctrl->EVENTINJ.valid  = 1;
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
@@ -542,9 +547,6 @@ update_irq_entry_state(struct v3_core_info * core)
 		
 		break;
 	    }
-	    case V3_NMI:
-		guest_ctrl->EVENTINJ.type = SVM_INJECTION_NMI;
-		break;
 	    case V3_SOFTWARE_INTR:
 		guest_ctrl->EVENTINJ.type = SVM_INJECTION_SOFT_INTR;
 

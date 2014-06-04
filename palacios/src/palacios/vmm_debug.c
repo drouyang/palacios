@@ -286,9 +286,9 @@ v3_print_guest_state(struct v3_core_info * core)
     V3_Print("IRQ STATE: started=%d, pending=%d\n", 
 	     core->intr_core_state.irq_started, 
 	     core->intr_core_state.irq_pending);
-    V3_Print("EXCP STATE: err_code_valid=%d, err_code=%x\n", 
-	     core->excp_state.excp_error_code_valid, 
-	     core->excp_state.excp_error_code);
+    V3_Print("EXCP STATE: excp_bitmap=%x, err_bitmap=%x\n", 
+	     core->excp_state.excp_bitmap,
+	     core->excp_state.error_bitmap);
 
 
     v3_print_segments(&(core->segments));

@@ -24,6 +24,7 @@
 
 
 #include <palacios/vmm_types.h>
+#include <palacios/vmm_lock.h>
 
 #define DE_EXCEPTION          0x00  
 #define DB_EXCEPTION          0x01
@@ -51,23 +52,31 @@ struct v3_core_info;
 struct v3_excp_state {
 
     /* We need to rework the exception state, to handle stacking */
-    uint_t excp_pending;
-    uint_t excp_num;
-    uint_t excp_error_code_valid : 1;
-    uint_t excp_error_code;
+    uint32_t excp_bitmap;          /* 1 = excp pending,     0 = not pending   */
+    uint32_t error_bitmap;         /* 1 = error code valid, 0 = no error code */
+    uint32_t error_codes[32];
     
+    v3_spinlock_t excp_lock;       /* Lock to allow remote cores to raise exceptions */
 };
 
 
 void v3_init_exception_state(struct v3_core_info * core);
 
 
-int v3_raise_exception(struct v3_core_info * core, uint_t excp);
-int v3_raise_exception_with_error(struct v3_core_info * core, uint_t excp, uint_t error_code);
+int v3_raise_exception(struct v3_core_info * core, uint32_t excp);
+int v3_raise_exception_with_error(struct v3_core_info * core, uint32_t excp, uint_t error_code);
+int v3_raise_nmi(struct v3_core_info * core);
 
 int v3_excp_pending(struct v3_core_info * core);
-int v3_get_excp_number(struct v3_core_info * core);
-int v3_injecting_excp(struct v3_core_info * core, uint_t excp);
+int v3_excp_has_error(struct v3_core_info * core, uint32_t excp);
+
+uint32_t v3_get_excp_number(struct v3_core_info * core);
+uint32_t v3_get_excp_error(struct v3_core_info * core, uint32_t excp);
+
+int v3_injecting_excp(struct v3_core_info * core, uint32_t excp);
+
+
+int v3_raise_nmi(struct v3_core_info * core);
 
 #endif 
 
