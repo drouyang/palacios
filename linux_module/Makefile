@@ -8,6 +8,10 @@ endif
 
 EXTRA_CFLAGS  += -I$(PWD)/../palacios/include/ -include autoconf.h -DMODULE=1 -D__KERNEL__=1
 
+ifdef V3_CONFIG_XPMEM
+EXTRA_CFLAGS  += -I/$(V3_CONFIG_LINUX_KERN)/drivers/xpmem/include
+endif
+
 
 v3vee-y := 	palacios-stubs.o \
 		main.o \
