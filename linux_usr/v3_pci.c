@@ -29,11 +29,9 @@ typedef enum {QUERY, ADD, REMOVE} op_mode_t;
 
 
 int main(int argc, char ** argv) {
-    struct v3_hw_pci_dev dev_info;
     char      * bdf_str = NULL;
     char      * name    = NULL;
     op_mode_t   mode    = QUERY;
-    int         ret     = 0;
 
 
     {
@@ -167,7 +165,7 @@ int main(int argc, char ** argv) {
 	strncpy(dev_spec.url, name, 128);
 	
 	if (pet_ioctl_path((char *)v3_dev, V3_REMOVE_PCI,  &dev_spec) != 0) {
-	    printf("Error: Could not add device to Palacios\n");
+	    printf("Error: Could not remove device from Palacios\n");
 	    pet_online_pci(bus, dev, fn);
 	    return -1;
 	}
@@ -186,9 +184,5 @@ int main(int argc, char ** argv) {
   
 
 
-    if (ret < 0) {
-	printf("Error registering PCI device\n");
-	return -1;
-    }
 
 }
