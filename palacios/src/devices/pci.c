@@ -1260,7 +1260,8 @@ pci_free(struct pci_internal * pci_state)
             {
                 struct pci_cap * cap = NULL;
                 struct pci_cap * tmp = NULL;
-                list_for_each_entry_safe(cap, tmp, &(dev->cfg_hooks), cap_node) {
+
+                list_for_each_entry_safe(cap, tmp, &(dev->capabilities), cap_node) {
                     list_del(&(cap->cap_node));
                     V3_Free(cap);
                 }

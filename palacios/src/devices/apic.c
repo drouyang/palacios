@@ -1935,6 +1935,22 @@ apic_free(struct apic_dev_state * apic_dev)
 
 	// unhook memory
 
+
+	// Free submission queues...
+	{
+	    struct irq_queue_entry * irq_entry = NULL;
+	    struct irq_queue_entry * tmp_entry = NULL;
+
+	    list_for_each_entry_safe(irq_entry, tmp_entry, &(apic->irq_queue.entries), list_node) {
+		list_del(&(irq_entry->list_node));
+		V3_Free(irq_entry);
+	    }
+
+	    list_for_each_entry_safe(irq_entry, tmp_entry, &(apic->irq_queue.free_list), list_node) {
+		list_del(&(irq_entry->list_node));
+		V3_Free(irq_entry);
+	    }
+	}
     }
 
     v3_unhook_msr(vm, BASE_ADDR_MSR);

@@ -212,6 +212,7 @@ cons_free(struct cons_state * state)
     v3_console_close(state->cons);
 
     // remove host event
+    V3_Free(state->framebuf);
 
     V3_Free(state);
 

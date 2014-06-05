@@ -320,10 +320,32 @@ host_pci_init( void )
 }
 
 
+static int 
+host_pci_deinit( void ) 
+{
+    struct host_pci_device * host_dev = NULL;
+    struct host_pci_device * tmp_dev  = NULL;
+    unsigned long flags;
+
+    spin_lock_irqsave(&lock, flags);
+    {
+
+	list_for_each_entry_safe(host_dev, tmp_dev, &device_list, dev_node) {
+	    list_del(&(host_dev->dev_node));
+	    palacios_kfree(host_dev);
+	    
+	}
+    }
+    spin_unlock_irqrestore(&lock, flags);
+
+    return 0;
+}
+
 
 static struct linux_ext host_pci_ext = {
-    .name = "HOST_PCI",
-    .init = host_pci_init,
+    .name   = "HOST_PCI",
+    .init   = host_pci_init,
+    .deinit = host_pci_deinit,
 };
 
 

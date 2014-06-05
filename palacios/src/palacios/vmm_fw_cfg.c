@@ -94,7 +94,7 @@ struct e820_table {
 */
 
 static int 
-fw_cfg_add_bytes(struct v3_fw_cfg_state * cfg_state, 
+__add_bytes(struct v3_fw_cfg_state * cfg_state, 
 		 uint16_t                 key, 
 		 uint8_t                * data, 
 		 uint32_t                 len)
@@ -105,13 +105,30 @@ fw_cfg_add_bytes(struct v3_fw_cfg_state * cfg_state,
     key &= FW_CFG_ENTRY_MASK;
 
     if (key >= FW_CFG_MAX_ENTRY) {
+	PrintError("Error: Invalid FW_CFG entry key (%d)\n", key);
         return 0;
     }
+
+    V3_Print("Adding FW_CFG entry for key (%x)\n", key);
 
     cfg_state->entries[arch][key].data = data;
     cfg_state->entries[arch][key].len  = len;
 
     return 1;
+}
+
+static int 
+fw_cfg_add_buf(struct v3_fw_cfg_state * cfg_state, 
+	       uint16_t                 key, 
+	       uint8_t                * buf, 
+	       uint32_t                 len) 
+{
+    uint8_t * copy = NULL;
+
+    copy = V3_Malloc(len);
+    memcpy(copy, buf, len);
+
+    return __add_bytes(cfg_state, key, copy, len);    
 }
 
 static int 
@@ -123,7 +140,7 @@ fw_cfg_add_i16(struct v3_fw_cfg_state * cfg_state,
 
     copy  = V3_Malloc(sizeof(uint16_t));
     *copy = value;
-    return fw_cfg_add_bytes(cfg_state, key, (uint8_t *)copy, sizeof(uint16_t));
+    return __add_bytes(cfg_state, key, (uint8_t *)copy, sizeof(uint16_t));
 }
 
 static int 
@@ -135,7 +152,7 @@ fw_cfg_add_i32(struct v3_fw_cfg_state * cfg_state,
 
     copy  = V3_Malloc(sizeof(uint32_t));
     *copy = value;
-    return fw_cfg_add_bytes(cfg_state, key, (uint8_t *)copy, sizeof(uint32_t));
+    return __add_bytes(cfg_state, key, (uint8_t *)copy, sizeof(uint32_t));
 }
 
 static int 
@@ -147,7 +164,7 @@ fw_cfg_add_i64(struct v3_fw_cfg_state * cfg_state,
 
     copy  = V3_Malloc(sizeof(uint64_t));
     *copy = value;
-    return fw_cfg_add_bytes(cfg_state, key, (uint8_t *)copy, sizeof(uint64_t));
+    return __add_bytes(cfg_state, key, (uint8_t *)copy, sizeof(uint64_t));
 }
 
 static int 
@@ -282,6 +299,7 @@ v3_fw_cfg_init(struct v3_vm_info * vm)
     struct v3_fw_cfg_state * cfg_state = &(vm->fw_cfg_state);
     int ret = 0;
 
+    memset(cfg_state, 0, sizeof(struct v3_fw_cfg_state));
 
     /* 
        struct e820_table * e820 = e820_populate(vm);
@@ -302,37 +320,46 @@ v3_fw_cfg_init(struct v3_vm_info * vm)
         PrintError("Failed to hook FW CFG ports!\n");
         return -1;
     }
+    
+    ret = 1;
 
-    fw_cfg_add_bytes(cfg_state, FW_CFG_SIGNATURE, (uint8_t *)"QEMU", 4);
-    //fw_cfg_add_bytes(cfg_state, FW_CFG_UUID, qemu_uuid, 16);
-    fw_cfg_add_i16(cfg_state,   FW_CFG_NOGRAPHIC, /*(uint16_t)(display_type == DT_NOGRAPHIC)*/ 0);
-    fw_cfg_add_i16(cfg_state,   FW_CFG_NB_CPUS,   (uint16_t)vm->num_cores);
-    fw_cfg_add_i16(cfg_state,   FW_CFG_MAX_CPUS,  (uint16_t)vm->num_cores);
-    fw_cfg_add_i16(cfg_state,   FW_CFG_BOOT_MENU, (uint16_t)1);
+    ret &= fw_cfg_add_buf(cfg_state, FW_CFG_SIGNATURE, (uint8_t *)"QEMU", 4);
+    //__add_bytes(cfg_state, FW_CFG_UUID, qemu_uuid, 16);
+    ret &= fw_cfg_add_i16(cfg_state,   FW_CFG_NOGRAPHIC, /*(uint16_t)(display_type == DT_NOGRAPHIC)*/ 0);
+    ret &= fw_cfg_add_i16(cfg_state,   FW_CFG_NB_CPUS,   (uint16_t)vm->num_cores);
+    ret &= fw_cfg_add_i16(cfg_state,   FW_CFG_MAX_CPUS,  (uint16_t)vm->num_cores);
+    ret &= fw_cfg_add_i16(cfg_state,   FW_CFG_BOOT_MENU, (uint16_t)1);
     //fw_cfg_bootsplash(cfg_state);
 
-    fw_cfg_add_i32(cfg_state,   FW_CFG_ID, 1);
-    fw_cfg_add_i64(cfg_state,   FW_CFG_RAM_SIZE,  (uint64_t)vm->mem_size / (1024 * 1024));
+    ret &= fw_cfg_add_i32(cfg_state,   FW_CFG_ID, 1);
+    ret &= fw_cfg_add_i64(cfg_state,   FW_CFG_RAM_SIZE,  (uint64_t)vm->mem_size / (1024 * 1024));
 
-    //fw_cfg_add_bytes(cfg_state, FW_CFG_ACPI_TABLES, (uint8_t *)acpi_tables,
+    //__add_bytes(cfg_state, FW_CFG_ACPI_TABLES, (uint8_t *)acpi_tables,
     //       acpi_tables_len);
 
-    fw_cfg_add_i32(cfg_state,   FW_CFG_IRQ0_OVERRIDE, 1);
+    ret &= fw_cfg_add_i32(cfg_state,   FW_CFG_IRQ0_OVERRIDE, 1);
 
     /*
       smbios_table = smbios_get_table(&smbios_len);
     
       if (smbios_table) {
-           fw_cfg_add_bytes(cfg_state, FW_CFG_SMBIOS_ENTRIES,
+           ret &= __add_bytes(cfg_state, FW_CFG_SMBIOS_ENTRIES,
                             smbios_table, smbios_len);
       }
 
-      fw_cfg_add_bytes(cfg_state, FW_CFG_E820_TABLE, (uint8_t *)e820,
+      ret &= __add_bytes(cfg_state, FW_CFG_E820_TABLE, (uint8_t *)e820,
                      sizeof(struct e820_table));
 
-      fw_cfg_add_bytes(cfg_state, FW_CFG_HPET, (uint8_t *)&hpet_cfg,
+      ret &= __add_bytes(cfg_state, FW_CFG_HPET, (uint8_t *)&hpet_cfg,
                      sizeof(struct hpet_fw_config));
     */
+
+    if (ret == 0) {
+	PrintError("Error: Invalid FWCFG parameter was added\n");
+	return -1;
+    }
+	
+
 
 
 
@@ -444,7 +471,7 @@ v3_fw_cfg_init(struct v3_vm_info * vm)
 
 
 	    // Register the NUMA cfg array with the FW_CFG interface
-	    fw_cfg_add_bytes(cfg_state, FW_CFG_NUMA, (uint8_t *)numa_fw_cfg,
+	    __add_bytes(cfg_state, FW_CFG_NUMA, (uint8_t *)numa_fw_cfg,
 			     (1 + vm->num_cores + num_nodes) * sizeof(uint64_t));
 
 	}
@@ -458,12 +485,14 @@ void
 v3_fw_cfg_deinit(struct v3_vm_info * vm) 
 {
     struct v3_fw_cfg_state * cfg_state = &(vm->fw_cfg_state);
-    int i, j;
+    int i = 0;
+    int j = 0;
 
-    for (i = 0; i < 2; ++i) {
-        for (j = 0; j < FW_CFG_MAX_ENTRY; ++j) {
-            if (cfg_state->entries[i][j].data != NULL)
+    for (i = 0; i < 2; i++) {
+        for (j = 0; j < FW_CFG_MAX_ENTRY; j++) {
+            if (cfg_state->entries[i][j].data != NULL) {
                 V3_Free(cfg_state->entries[i][j].data);
+	    }
         }
     }
 }

@@ -613,6 +613,8 @@ int
 v3_free_config(struct v3_vm_info * vm) 
 {
    
+    v3_fw_cfg_deinit(vm);
+
     v3_free_htable(vm->cfg_data->file_table, 1, 0);
 
     v3_xml_free(vm->cfg_data->cfg);

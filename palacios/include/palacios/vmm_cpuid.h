@@ -41,7 +41,9 @@ struct v3_cpuid_hook {
 		   uint32_t * eax, uint32_t * ebx, \
 		   uint32_t * ecx, uint32_t * edx, \
 		   void * private_data);
-    void * private_data;
+
+    void   * private_data;
+    uint8_t  should_free_priv;
 
     struct rb_node tree_node;
 };

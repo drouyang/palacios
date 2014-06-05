@@ -419,7 +419,9 @@ static void palacios_tty_close(void * console) {
 
     remove_guest_ctrl(cons->guest, V3_VM_CONSOLE_CONNECT);
     deinit_queue(cons->queue);
-       
+    
+    palacios_kfree(cons->queue);
+
     palacios_kfree(cons);
 }
 

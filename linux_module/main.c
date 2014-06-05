@@ -288,6 +288,7 @@ v3_init(void)
 
     palacios_init_numa();
 
+    init_global_ctrls();
     // initialize extensions
     init_lnx_extensions();
 
@@ -407,6 +408,7 @@ v3_exit(void)
 
 
     deinit_lnx_extensions();
+    deinit_global_ctrls();
 
     palacios_deinit_mm();
 

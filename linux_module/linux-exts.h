@@ -32,6 +32,9 @@ struct global_ctrl {
     struct rb_node tree_node;
 };
 
+void init_global_ctrls(void);
+void deinit_global_ctrls(void);
+
 int add_global_ctrl(unsigned int cmd, 
 		    int (*handler)(unsigned int cmd, unsigned long arg));
 

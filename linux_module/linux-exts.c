@@ -17,13 +17,40 @@ static struct {} null_ext  __attribute__((__used__))                    \
 
 struct rb_root global_ctrls;
 
-static inline struct global_ctrl * __insert_global_ctrl(struct global_ctrl * ctrl) {
-    struct rb_node ** p = &(global_ctrls.rb_node);
-    struct rb_node * parent = NULL;
+void 
+init_global_ctrls(void)
+{
+    global_ctrls.rb_node = NULL;
+}
+
+
+void
+deinit_global_ctrls(void) 
+{
+    struct rb_node     * node = rb_first(&global_ctrls);
+    struct global_ctrl * tmp_ctrl = NULL;
+    
+    while (node) {
+	tmp_ctrl = rb_entry(node, struct global_ctrl, tree_node);
+	
+	rb_erase(&(tmp_ctrl->tree_node), &global_ctrls);
+
+	palacios_kfree(tmp_ctrl);
+	
+	node     = rb_first(&global_ctrls);
+    }    
+}
+
+
+static inline struct global_ctrl * 
+__insert_global_ctrl(struct global_ctrl * ctrl) 
+{
+    struct rb_node    ** p        = &(global_ctrls.rb_node);
+    struct rb_node     * parent   = NULL;
     struct global_ctrl * tmp_ctrl = NULL;
 
     while (*p) {
-        parent = *p;
+        parent   = *p;
         tmp_ctrl = rb_entry(parent, struct global_ctrl, tree_node);
 
         if (ctrl->cmd < tmp_ctrl->cmd) {
@@ -42,16 +69,20 @@ static inline struct global_ctrl * __insert_global_ctrl(struct global_ctrl * ctr
 
 
 
-int add_global_ctrl(unsigned int cmd, 
-                   int (*handler)(unsigned int cmd, unsigned long arg)) {
-    struct global_ctrl * ctrl = palacios_kmalloc(sizeof(struct global_ctrl), GFP_KERNEL);
+int 
+add_global_ctrl(unsigned int cmd, 
+		int (*handler)(unsigned int cmd, unsigned long arg))
+{
+    struct global_ctrl * ctrl = NULL;
+
+    ctrl = palacios_kmalloc(sizeof(struct global_ctrl), GFP_KERNEL);
 
     if (ctrl == NULL) {
 	ERROR("Could not allocate global ctrl %d\n", cmd);
         return -1;
     }
 
-    ctrl->cmd = cmd;
+    ctrl->cmd     = cmd;
     ctrl->handler = handler;
 
     if (__insert_global_ctrl(ctrl) != NULL) {
@@ -66,8 +97,10 @@ int add_global_ctrl(unsigned int cmd,
 }
 
 
-struct global_ctrl * get_global_ctrl(unsigned int cmd) {
-    struct rb_node * n = global_ctrls.rb_node;
+struct global_ctrl * 
+get_global_ctrl(unsigned int cmd) 
+{
+    struct rb_node     * n    = global_ctrls.rb_node;
     struct global_ctrl * ctrl = NULL;
 
     while (n) {
@@ -95,12 +128,15 @@ struct global_ctrl * get_global_ctrl(unsigned int cmd) {
 
 struct vm_ext {
     struct linux_ext * impl;
-    void * vm_data;
-    struct list_head node;
+    void             * vm_data;
+    struct list_head   node;
 };
 
 
-void * get_vm_ext_data(struct v3_guest * guest, char * ext_name) {
+void * 
+get_vm_ext_data(struct v3_guest * guest, 
+		char            * ext_name) 
+{
     struct vm_ext * ext = NULL;
 
     list_for_each_entry(ext, &(guest->exts), node) {
@@ -113,10 +149,12 @@ void * get_vm_ext_data(struct v3_guest * guest, char * ext_name) {
 }
 
 
-int init_vm_extensions(struct v3_guest * guest) {
+int 
+init_vm_extensions(struct v3_guest * guest) 
+{
     extern struct linux_ext * __start__lnx_exts[];
     extern struct linux_ext * __stop__lnx_exts[];
-    struct linux_ext * ext_impl = __start__lnx_exts[0];
+    struct linux_ext        * ext_impl = __start__lnx_exts[0];
     int i = 0;
 
     while (ext_impl != __stop__lnx_exts[0]) {
@@ -143,7 +181,7 @@ int init_vm_extensions(struct v3_guest * guest) {
 
 	list_add(&(ext->node), &(guest->exts));
 
-	ext_impl = __start__lnx_exts[++i];
+	ext_impl  = __start__lnx_exts[++i];
     }
     
     return 0;
@@ -151,11 +189,16 @@ int init_vm_extensions(struct v3_guest * guest) {
 
 
 
-int deinit_vm_extensions(struct v3_guest * guest) {
+int 
+deinit_vm_extensions(struct v3_guest * guest) 
+{
     struct vm_ext * ext = NULL;
     struct vm_ext * tmp = NULL;
 
     list_for_each_entry_safe(ext, tmp, &(guest->exts), node) {
+
+	v3_lnx_printk("Freeing Linux Extension (%s)\n", ext->impl->name);
+	
 	if (ext->impl->guest_deinit) {
 	    ext->impl->guest_deinit(guest, ext->vm_data);
 	} else {
@@ -170,10 +213,12 @@ int deinit_vm_extensions(struct v3_guest * guest) {
 }
 
 
-int init_lnx_extensions( void ) {
+int 
+init_lnx_extensions( void ) 
+{
     extern struct linux_ext * __start__lnx_exts[];
     extern struct linux_ext * __stop__lnx_exts[];
-    struct linux_ext * tmp_ext = __start__lnx_exts[0];
+    struct linux_ext        * tmp_ext = __start__lnx_exts[0];
     int i = 0;
 
     while (tmp_ext != __stop__lnx_exts[0]) {
@@ -192,10 +237,12 @@ int init_lnx_extensions( void ) {
 }
 
 
-int deinit_lnx_extensions( void ) {
+int 
+deinit_lnx_extensions( void ) 
+{
     extern struct linux_ext * __start__lnx_exts[];
     extern struct linux_ext * __stop__lnx_exts[];
-    struct linux_ext * tmp_ext = __start__lnx_exts[0];
+    struct linux_ext        * tmp_ext = __start__lnx_exts[0];
     int i = 0;
 
     while (tmp_ext != __stop__lnx_exts[0]) {

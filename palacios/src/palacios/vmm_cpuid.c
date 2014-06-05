@@ -130,17 +130,14 @@ v3_deinit_cpuid_map(struct v3_vm_info * vm)
 {
     struct rb_node       * node     = v3_rb_first(&(vm->cpuid_map.map));
     struct v3_cpuid_hook * hook     = NULL;
-    struct rb_node       * tmp_node = NULL;
     
 
     while (node) {
 	hook = rb_entry(node, struct v3_cpuid_hook, tree_node);
-	tmp_node = node;
-	node = v3_rb_next(node);
 
-	v3_rb_erase(&(hook->tree_node), &(vm->cpuid_map.map));
-	V3_Free(hook);
-	
+	v3_unhook_cpuid(vm, hook->cpuid);
+
+	node = v3_rb_first(&(vm->cpuid_map.map));
     }
 
     return 0;
@@ -247,6 +244,48 @@ mask_hook(struct v3_core_info * core,
 
 
 
+
+static int 
+__hook_cpuid(struct v3_vm_info * vm, 
+	      uint32_t           cpuid, 
+	      int (*hook_fn)(struct v3_core_info * core, uint32_t cpuid, \
+			     uint32_t * eax, uint32_t * ebx,		\
+			     uint32_t * ecx, uint32_t * edx,		\
+			     void * private_data), 
+	     void              * private_data, 
+	     int                 should_free_priv) 
+{
+
+    struct v3_cpuid_hook * hook = NULL;
+
+    if (hook_fn == NULL) {
+	PrintError("CPUID hook requested with null handler\n");
+	return -1;
+    }
+
+    hook = (struct v3_cpuid_hook *)V3_Malloc(sizeof(struct v3_cpuid_hook));
+
+    if (!hook) {
+	PrintError("Cannot allocate memory to hook cpu id\n");
+	return -1;
+    }
+
+    hook->cpuid            = cpuid;
+    hook->private_data     = private_data;
+    hook->hook_fn          = hook_fn;
+    hook->should_free_priv = should_free_priv;
+
+    if (insert_cpuid_hook(vm, hook)) {
+	PrintError("Could not hook cpuid 0x%x (already hooked)\n", cpuid);
+	V3_Free(hook);
+	return -1;
+    }
+
+    return 0;
+
+}
+
+
 /* This function allows you to reserve a set of bits in a given cpuid value 
  * For each cpuid return register you specify which bits you want to reserve in the mask.
  * The value of those bits is set in the reg param.
@@ -293,7 +332,7 @@ v3_cpuid_add_fields(struct v3_vm_info * vm,
 	mask->rdx_mask = rdx_mask;
 	mask->rdx      = rdx;
 
-	if (v3_hook_cpuid(vm, cpuid, mask_hook, mask) == -1) {
+	if (__hook_cpuid(vm, cpuid, mask_hook, mask, 1) == -1) {
 	    PrintError("Error hooking cpuid %d\n", cpuid);
 	    V3_Free(mask);
 	    return -1;
@@ -349,10 +388,15 @@ v3_unhook_cpuid(struct v3_vm_info * vm,
 
     v3_rb_erase(&(hook->tree_node), &(vm->cpuid_map.map));
 
+    if (hook->should_free_priv) {
+	V3_Free(hook->private_data);
+    }
+
     V3_Free(hook);
 
     return 0;
 }
+
 
 int 
 v3_hook_cpuid(struct v3_vm_info * vm, 
@@ -363,31 +407,7 @@ v3_hook_cpuid(struct v3_vm_info * vm,
 			     void * private_data), 
 	      void              * private_data) 
 {
-    struct v3_cpuid_hook * hook = NULL;
-
-    if (hook_fn == NULL) {
-	PrintError("CPUID hook requested with null handler\n");
-	return -1;
-    }
-
-    hook = (struct v3_cpuid_hook *)V3_Malloc(sizeof(struct v3_cpuid_hook));
-
-    if (!hook) {
-	PrintError("Cannot allocate memory to hook cpu id\n");
-	return -1;
-    }
-
-    hook->cpuid        = cpuid;
-    hook->private_data = private_data;
-    hook->hook_fn      = hook_fn;
-
-    if (insert_cpuid_hook(vm, hook)) {
-	PrintError("Could not hook cpuid 0x%x (already hooked)\n", cpuid);
-	V3_Free(hook);
-	return -1;
-    }
-
-    return 0;
+    return __hook_cpuid(vm, cpuid, hook_fn, private_data, 0);
 }
 
 int 

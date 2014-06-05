@@ -23,16 +23,16 @@
 
 #include <palacios/vmm_types.h>
 
-#define FW_CFG_FILE_FIRST       0x20
-#define FW_CFG_FILE_SLOTS       0x10
+#define FW_CFG_FILE_FIRST        0x20
+#define FW_CFG_FILE_SLOTS        0x10
 #define FW_CFG_MAX_ENTRY        (FW_CFG_FILE_FIRST + FW_CFG_FILE_SLOTS)
 
 typedef void (*v3_fw_cfg_cb)(void * opaque, uint8_t * data);
 
 struct v3_fw_cfg_entry {
-    uint32_t len;
-    uint8_t * data;
-    void * callback_opaque;
+    uint32_t     len;
+    uint8_t    * data;
+    void       * callback_opaque;
     v3_fw_cfg_cb callback;
 };
 
