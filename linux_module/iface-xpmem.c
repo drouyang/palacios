@@ -10,6 +10,8 @@
 #include <linux/poll.h>
 #include <linux/anon_inodes.h>
 
+#include <xpmem_ns.h>
+
 #include "palacios.h"
 #include "vm.h"
 #include "mm.h"
@@ -170,11 +172,11 @@ static struct v3_xpmem_hooks palacios_xpmem_hooks = {
     .xpmem_command          = palacios_xpmem_command,
 };
 
-static int xpmem_open(struct inode * inodep, struct file * filp) {
+static int xpmem_open_op(struct inode * inodep, struct file * filp) {
     return 0;
 }
 
-static int xpmem_release(struct inode * inodep, struct file * filp) {
+static int xpmem_release_op(struct inode * inodep, struct file * filp) {
     struct host_xpmem_state * state = (struct host_xpmem_state *)filp->private_data;
     unsigned long flags;
 
@@ -185,7 +187,7 @@ static int xpmem_release(struct inode * inodep, struct file * filp) {
     return 0;
 }
 
-static ssize_t xpmem_read(struct file * filp, char __user * buffer, size_t size, loff_t * offp) {
+static ssize_t xpmem_read_op(struct file * filp, char __user * buffer, size_t size, loff_t * offp) {
     struct host_xpmem_state * state = (struct host_xpmem_state *)filp->private_data;
     struct xpmem_cmd_state * cmd_state = &(state->cmd_state);
     struct xpmem_cmd_iter * iter;
@@ -219,7 +221,7 @@ static ssize_t xpmem_read(struct file * filp, char __user * buffer, size_t size,
 }
 
 
-static ssize_t xpmem_write(struct file * filp, const char __user * buffer, size_t size, loff_t * offp) {
+static ssize_t xpmem_write_op(struct file * filp, const char __user * buffer, size_t size, loff_t * offp) {
     struct host_xpmem_state * state = (struct host_xpmem_state *)filp->private_data;
     struct xpmem_cmd_ex * cmd = palacios_kmalloc(sizeof(struct xpmem_cmd_ex), GFP_KERNEL);
 
@@ -274,7 +276,7 @@ static ssize_t xpmem_write(struct file * filp, const char __user * buffer, size_
     return size;
 }
 
-static unsigned int xpmem_poll(struct file * filp, struct poll_table_struct * pollp) {
+static unsigned int xpmem_poll_op(struct file * filp, struct poll_table_struct * pollp) {
     struct host_xpmem_state * state = (struct host_xpmem_state *)filp->private_data;
     struct xpmem_cmd_state * cmd_state = &(state->cmd_state);
     unsigned int ret = 0;
@@ -295,11 +297,11 @@ static unsigned int xpmem_poll(struct file * filp, struct poll_table_struct * po
 
 
 static struct file_operations xpmem_fops = {
-    .open       = xpmem_open,
-    .release    = xpmem_release,
-    .read       = xpmem_read,
-    .write      = xpmem_write,
-    .poll       = xpmem_poll,
+    .open       = xpmem_open_op,
+    .release    = xpmem_release_op,
+    .read       = xpmem_read_op,
+    .write      = xpmem_write_op,
+    .poll       = xpmem_poll_op,
 };
 
 
