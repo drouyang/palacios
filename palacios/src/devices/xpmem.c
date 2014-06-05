@@ -24,7 +24,6 @@
 #include <interfaces/vmm_xpmem.h>
 #include <devices/pci.h>
 #include <devices/pci_types.h>
-#include <devices/lnx_virtio_pci.h>
 #include <devices/xpmem.h>
 
 
@@ -45,12 +44,13 @@ struct xpmem_bar_state {
     /* Hypercall numbers */
     uint32_t xpmem_hcall_id;
     uint32_t xpmem_irq_clear_hcall_id;
+    uint32_t xpmem_read_cmd_hcall_id;
 
-    /* Interrupt status */
-    uint8_t  irq_handled;
+    /* interrupt status */
+    uint8_t irq_handled;
 
-    /* struct holding xpmem command for guest processing */
-    struct xpmem_cmd_ex * cmd;
+    /* size of xpmem cmd */
+    uint64_t xpmem_cmd_size;
 };
 
 
@@ -218,83 +218,94 @@ xpmem_hcall(struct v3_core_info * core,
 {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex   * cmd   = NULL;
+    int                     ret   = 0;
 
     if (copy_guest_regs(state, core, &cmd)) {
         PrintError("XPMEM: failed to copy guest registers\n");
         return -1;
     }
 
-#if 0
-    {
-	int cmd_issued = 0;
+    ret = v3_xpmem_host_command(state->host_handle, cmd);
 
-	flags = v3_spin_lock_irqsave(&(state->lock));
-	{
-	    if (list_empty(&(state->xpmem_cmd_list))) {
-		state->bar_state->interrupt_status &= ~INT_REQUEST;
-	    } else {
-		iter = list_first_entry(&(state->xpmem_cmd_list), struct xpmem_cmd_iter, node);
-		list_del(&(iter->node));
+    V3_Free(cmd);
 
-		state->bar_state->request = *(iter->cmd);
-		state->bar_state->interrupt_status |= INT_REQUEST;
-
-		cmd_issued = 1;
-	    }
-	}
-        v3_spin_unlock_irqrestore(&(state->lock), flags);
-
-	if (cmd_issued) {
-	    xpmem_raise_irq(state);
-	    V3_Free(iter->cmd);
-	    V3_Free(iter);
-	}
-    
-    }
-#endif
-
-    return v3_xpmem_host_command(state->host_handle, cmd);
+    return ret;
 }
 
-
-/*
- * The guest has processed the XPMEM command from the BAR.
- *
- * If there are no pending commands, we set the irq_handled bit so that any
- * additional commands for the guest will immediately raise an IRQ
- *
- * If there are pending commands, we do not set the irq_handled bit, and instead
- * copy the next command into the BAR and raise another IRQ
- */
 static int
 xpmem_irq_clear_hcall(struct v3_core_info * core,
                       hcall_id_t            hcall_id,
 		      void                * priv_data)
 {
     struct v3_xpmem_state    * state     = (struct v3_xpmem_state *)priv_data;
-    struct xpmem_cmd_ex_iter * iter      = NULL; 
     unsigned long              flags     = 0;
-    int                        cmd_ready = 0;
+    int                        raise_irq = 0;
+    int                        ret       = 0;
 
     flags = v3_spin_lock_irqsave(&(state->lock));
     {
-	/* Free the command */
-	V3_Free(state->bar_state->cmd);
-
 	if (!list_empty(&(state->cmd_list))) {
-	    iter = list_first_entry(&(state->cmd_list), struct xpmem_cmd_ex_iter, node);
-	    list_del(&(iter->node));
-
-	    cmd_ready = 1;
+	    raise_irq = 1;
 	} else {
 	    state->bar_state->irq_handled = 1;
 	}
     }
     v3_spin_unlock_irqrestore(&(state->lock), flags);
 
-    if (cmd_ready) {
-        state->bar_state->cmd = iter->cmd;
-	xpmem_raise_irq(state);
+    if (raise_irq) {
+	ret = xpmem_raise_irq(state);
+    }
+
+    return ret;
+
+}
+
+static int
+xpmem_read_cmd_hcall(struct v3_core_info * core,
+                     hcall_id_t            hcall_id,
+                     void                * priv_data)
+{
+    struct v3_xpmem_state    * state     = (struct v3_xpmem_state *)priv_data;
+    struct xpmem_cmd_ex_iter * iter      = NULL; 
+    unsigned long              flags     = 0;
+    int                        cmd_ready = 0;
+
+
+    flags = v3_spin_lock_irqsave(&(state->lock));
+    {
+	if (!list_empty(&(state->cmd_list))) {
+	    iter = list_first_entry(&(state->cmd_list), struct xpmem_cmd_ex_iter, node);
+	    list_del(&(iter->node));
+	    cmd_ready = 1;
+	}
+    }
+    v3_spin_unlock_irqrestore(&(state->lock), flags);
+
+    if (!cmd_ready) {
+	return -1;
+    }
+
+    {
+	uint64_t cmd_size  = core->vm_regs.rbx;
+	addr_t   guest_buf = core->vm_regs.rcx;
+	addr_t   host_buf  = 0;
+
+	if (cmd_size != state->bar_state->xpmem_cmd_size) {
+	    PrintError("XPMEM: Guest trying to read invalid cmd size (%llu instead of %llu)\n",
+		cmd_size, state->bar_state->xpmem_cmd_size);
+	    return -1;
+	}
+
+	if (v3_gpa_to_hva(core, guest_buf, &host_buf)) {
+	    PrintError("XPMEM: Unable to convert guest command buffer to host address"
+		       " (GPA: %p)\n", (void *)guest_buf);
+	    return -1;
+	}
+
+	memcpy((void *)host_buf, iter->cmd, cmd_size);
+
+	V3_Free(iter->cmd);
+	V3_Free(iter);
     }
 
     return 0;
@@ -520,10 +531,12 @@ xpmem_init(struct v3_vm_info * vm,
     /* Save hypercall ids in the bar */
     state->bar_state->xpmem_hcall_id           = XPMEM_HCALL;
     state->bar_state->xpmem_irq_clear_hcall_id = XPMEM_IRQ_CLEAR_HCALL;
+    state->bar_state->xpmem_read_cmd_hcall_id  = XPMEM_READ_CMD_HCALL;
 
     /* Register hypercall callbacks with Palacios */
     v3_register_hypercall(vm, XPMEM_HCALL, xpmem_hcall, state);
     v3_register_hypercall(vm, XPMEM_IRQ_CLEAR_HCALL, xpmem_irq_clear_hcall, state);
+    v3_register_hypercall(vm, XPMEM_READ_CMD_HCALL, xpmem_read_cmd_hcall, state);
 
     v3_spinlock_init(&(state->lock));
 
@@ -626,33 +639,26 @@ v3_xpmem_command(struct v3_xpmem_state * v3_xpmem,
         }
     }
 
-    /* Either raise an IRQ or add to the command list */
+    /* Add to the command list */
     {
-	int cmd_ready = 0;
+	int raise_irq = 0;
 
         flags = v3_spin_lock_irqsave(&(v3_xpmem->lock));
 	{
+	    list_add_tail(&(iter->node), &(v3_xpmem->cmd_list));
+
 	    if (v3_xpmem->bar_state->irq_handled) {
-		cmd_ready = 1;
+		raise_irq = 1;
 		v3_xpmem->bar_state->irq_handled = 0;
 	    }
 	}
 	v3_spin_unlock_irqrestore(&(v3_xpmem->lock), flags);
 
 
-	if (cmd_ready) {
-	    /* Put this in the BAR and raise an IRQ */
-	    v3_xpmem->bar_state->cmd = iter->cmd;
-
-	    /* Don't need the iterator */
-	    V3_Free(iter);
-
+	if (raise_irq) {
 	    /* Raise the IRQ */ 
 	    ret = xpmem_raise_irq(v3_xpmem);
-	} else {
-	    /* Add to the list */
-	    list_add_tail(&(iter->node), &(v3_xpmem->cmd_list));
-	}
+	}	
     }
 
     return ret;

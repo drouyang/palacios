@@ -58,7 +58,8 @@ typedef enum {
     VNET_HEADER_QUERY_HCALL         =  0xe000,         // Get the current header for a src/dest pair
 
     XPMEM_HCALL                     =  0xf000,
-    XPMEM_IRQ_CLEAR_HCALL           =  0xf001
+    XPMEM_IRQ_CLEAR_HCALL           =  0xf001,
+    XPMEM_READ_CMD_HCALL            =  0xf002
 } hcall_id_t;
 
 
