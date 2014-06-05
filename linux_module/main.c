@@ -36,24 +36,26 @@
 MODULE_LICENSE("GPL");
 
 // Module parameter
-int cpu_list[NR_CPUS] = {};
-int cpu_list_len = 0;
+int cpu_list[NR_CPUS] = {[0 ... NR_CPUS - 1] = 0};
+int cpu_list_len      = 0;
 module_param_array(cpu_list, int, &cpu_list_len, 0644);
 MODULE_PARM_DESC(cpu_list, "Comma-delimited list of CPUs that Palacios will run on");
 
 
-struct proc_dir_entry * palacios_proc_dir = NULL;
 
-
-static int v3_major_num = 0;
 
 static struct v3_guest * guest_map[MAX_VMS] = {[0 ... MAX_VMS - 1] = 0};
 
-struct class * v3_class = NULL;
-static struct cdev ctrl_dev;
+static int              v3_major_num      = 0;
+struct class          * v3_class          = NULL;
+static struct cdev      ctrl_dev;
+struct proc_dir_entry * palacios_proc_dir = NULL;
 
 
-static int register_vm(struct v3_guest * guest) {
+
+static int 
+register_vm(struct v3_guest * guest) 
+{
     int i = 0;
 
     for (i = 0; i < MAX_VMS; i++) {
@@ -68,8 +70,11 @@ static int register_vm(struct v3_guest * guest) {
 
 
 
-static long v3_dev_ioctl(struct file * filp,
-			 unsigned int ioctl, unsigned long arg) {
+static long 
+v3_dev_ioctl(struct file  * filp,
+	     unsigned int   ioctl, 
+	     unsigned long  arg) 
+{
     void __user * argp = (void __user *)arg;
     DEBUG("V3 IOCTL %d\n", ioctl);
 
@@ -77,8 +82,8 @@ static long v3_dev_ioctl(struct file * filp,
     switch (ioctl) {
 	case V3_CREATE_GUEST:{
 	    int vm_minor = 0;
-	    struct v3_guest_img user_image;
-	    struct v3_guest * guest = palacios_kmalloc(sizeof(struct v3_guest), GFP_KERNEL);
+	    struct v3_guest_img   user_image;
+	    struct v3_guest     * guest = palacios_kmalloc(sizeof(struct v3_guest), GFP_KERNEL);
 
 	    if (IS_ERR(guest)) {
 		ERROR("Palacios: Error allocating Kernel guest_image\n");
@@ -218,9 +223,9 @@ out_err:
 
 
 static struct file_operations v3_ctrl_fops = {
-    .owner = THIS_MODULE,
+    .owner          = THIS_MODULE,
     .unlocked_ioctl = v3_dev_ioctl,
-    .compat_ioctl = v3_dev_ioctl,
+    .compat_ioctl   = v3_dev_ioctl,
 };
 
 
@@ -263,7 +268,9 @@ static const struct file_operations vm_proc_ops = {
 /*** END PROC File functions */
 
 
-static int __init v3_init(void) {
+static int __init 
+v3_init(void) 
+{
     dev_t dev = MKDEV(0, 0); // We dynamicallly assign the major number
     int ret = 0;
 
@@ -356,14 +363,16 @@ static int __init v3_init(void) {
 }
 
 
-static void __exit v3_exit(void) {
+static void __exit 
+v3_exit(void) 
+{
     extern u32 pg_allocs;
     extern u32 pg_frees;
     extern u32 mallocs;
     extern u32 frees;
-    int i = 0;
     struct v3_guest * guest;
     dev_t dev;
+    int i = 0;
 
 
     /* Stop and free any running VMs */ 

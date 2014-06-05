@@ -11,173 +11,49 @@
 #define PCI_HDR_SIZE 256
 
 
-static int setup_hw_pci_dev(struct host_pci_device * host_dev) {
-    int ret = 0;
-    struct pci_dev * dev = NULL;
+static int 
+init_hw_pci_dev(struct host_pci_device * host_dev)
+{
     struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
-
-    dev = pci_get_bus_and_slot(host_dev->hw_dev.bus,
-			       host_dev->hw_dev.devfn);
-
-
-    if (dev == NULL) {
-	ERROR("Could not find HW pci device (bus=%d, devfn=%d)\n", 
-	       host_dev->hw_dev.bus, host_dev->hw_dev.devfn); 
-	return -1;
-    }
-
-    // record pointer in dev state
-    host_dev->hw_dev.dev = dev;
-
-    host_dev->hw_dev.intx_disabled = 1;
-    spin_lock_init(&(host_dev->hw_dev.intx_lock));
-
-    if (pci_enable_device(dev)) {
-	ERROR("Could not enable Device\n");
-	return -1;
-    }
-    
-    ret = pci_request_regions(dev, "v3vee");
-    if (ret != 0) {
-	ERROR("Could not reservce PCI regions\n");
-	return -1;
-    }
-
-
-    pci_reset_function(host_dev->hw_dev.dev);
-    pci_save_state(host_dev->hw_dev.dev);
-
-
-    {
-	int i = 0;
-	for (i = 0; i < DEVICE_COUNT_RESOURCE; i++) {
-	    v3_lnx_printk("Resource %d\n", i);
-	    v3_lnx_printk("\tflags = 0x%lx\n", pci_resource_flags(dev, i));
-	    v3_lnx_printk("\t name=%s, start=%lx, size=%d\n", 
-		   host_dev->hw_dev.dev->resource[i].name, (uintptr_t)pci_resource_start(dev, i),
-		   (u32)pci_resource_len(dev, i));
-
-	}
-
-	v3_lnx_printk("Rom BAR=%d\n", dev->rom_base_reg);
-    }
-
-    /* Cache first 6 BAR regs */
-    {
-	int i = 0;
-
-	for (i = 0; i < 6; i++) {
-	    struct v3_host_pci_bar * bar = &(v3_dev->bars[i]);
-	    unsigned long flags;
-	    
-	    bar->size = pci_resource_len(dev, i);
-	    bar->addr = pci_resource_start(dev, i);
-	    flags = pci_resource_flags(dev, i);
-
-	    if (flags & IORESOURCE_IO) {
-		bar->type = PT_BAR_IO;
-	    } else if (flags & IORESOURCE_MEM) {
-		if (flags & IORESOURCE_MEM_64) {
-		    struct v3_host_pci_bar * hi_bar = &(v3_dev->bars[i + 1]); 
-	    
-		    bar->type = PT_BAR_MEM64_LO;
-
-		    hi_bar->type = PT_BAR_MEM64_HI;
-		    hi_bar->size = bar->size;
-		    hi_bar->addr = bar->addr;
-		    hi_bar->cacheable = ((flags & IORESOURCE_CACHEABLE) != 0);
-		    hi_bar->prefetchable = ((flags & IORESOURCE_PREFETCH) != 0);
-		    
-		    i++;
-		} else if (flags & IORESOURCE_DMA) {
-		    bar->type = PT_BAR_MEM24;
-		} else {
-		    bar->type = PT_BAR_MEM32;
-		}
-		
-		bar->cacheable = ((flags & IORESOURCE_CACHEABLE) != 0);
-		bar->prefetchable = ((flags & IORESOURCE_PREFETCH) != 0);
-
-	    } else {
-		bar->type = PT_BAR_NONE;
-	    }
-	}
-    }
-
-    /* Cache expansion rom bar */
-    {
-	struct resource * rom_res = &(dev->resource[PCI_ROM_RESOURCE]);
-	int rom_size = pci_resource_len(dev, PCI_ROM_RESOURCE);
-
-	if (rom_size > 0) {
-	    unsigned long flags;
-
-	    v3_dev->exp_rom.size = rom_size;
-	    v3_dev->exp_rom.addr = pci_resource_start(dev, PCI_ROM_RESOURCE);
-	    flags = pci_resource_flags(dev, PCI_ROM_RESOURCE);
-
-	    v3_dev->exp_rom.type = PT_EXP_ROM;
-
-	    // Enable exp rom
-
-	    v3_dev->exp_rom.exp_rom_enabled = rom_res->flags & IORESOURCE_ROM_ENABLE;
-	    v3_lnx_printk("%s: exp_rom enabled: %d\n",
-		   host_dev->name,
-		   v3_dev->exp_rom.exp_rom_enabled);
-	}
-
-    }
-
-    /* Cache entire configuration space */
-    {
-	int m = 0;
-
-	// Copy the configuration space to the local cached version
-	for (m = 0; m < PCI_HDR_SIZE; m += 4) {
-	    pci_read_config_dword(dev, m, (u32 *)&(v3_dev->cfg_space[m]));
-	}
-    }
-
-
-    {
-	bool iommu_avail = false;
+    bool iommu_avail = false;
 
 	
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,43)
-	//JRL: This version might not be correct...
-	iommu_avail = iommu_found();
+    //JRL: This version might not be correct...
+    iommu_avail = iommu_found();
 #else 
-	v3_lnx_printk("checking for IOMMU\n");
-	iommu_avail = iommu_present(&pci_bus_type);
-
+    v3_lnx_printk("checking for IOMMU\n");
+    iommu_avail = iommu_present(&pci_bus_type);
+    
 #endif
-
-	v3_lnx_printk("IOMMU status =%d\n", iommu_avail);
-
-	if (iommu_avail == true) {
-	    v3_lnx_printk("Setting host PCI device (%s) as IOMMU\n", host_dev->name);
-	    v3_dev->iface = IOMMU;
-	} else {
-	    v3_lnx_printk("Error: Cannot passthrough PCI device without IOMMU\n");
-	    return -1;
-	}
-
+    
+    v3_lnx_printk("IOMMU status =%d\n", iommu_avail);
+    
+    if (iommu_avail == true) {
+	v3_lnx_printk("Setting host PCI device (%s) as IOMMU\n", host_dev->name);
+	v3_dev->iface = IOMMU;
+    } else {
+	v3_lnx_printk("Error: Cannot passthrough PCI device without IOMMU\n");
+	return -1;
     }
-
+ 
     return 0;
-
 }
 
 
-
-static irqreturn_t host_pci_intx_irq_handler(int irq, void * priv_data) {
+static irqreturn_t 
+host_pci_intx_irq_handler(int    irq, 
+			  void * priv_data) 
+{
     struct host_pci_device * host_dev = priv_data;
 
     //   printk("Host PCI IRQ handler (%d)\n", irq);
 
     spin_lock(&(host_dev->hw_dev.intx_lock));
-    disable_irq_nosync(irq);
-    host_dev->hw_dev.intx_disabled = 1;
+    {
+	disable_irq_nosync(irq);
+	host_dev->hw_dev.intx_disabled = 1;
+    }
     spin_unlock(&(host_dev->hw_dev.intx_lock));
 
     V3_host_pci_raise_irq(&(host_dev->v3_dev), 0);
@@ -187,7 +63,10 @@ static irqreturn_t host_pci_intx_irq_handler(int irq, void * priv_data) {
 
 
 
-static irqreturn_t host_pci_msi_irq_handler(int irq, void * priv_data) {
+static irqreturn_t 
+host_pci_msi_irq_handler(int    irq, 
+			 void * priv_data)
+{
     struct host_pci_device * host_dev = priv_data;
     // printk(KERN_ERR "Host PCI MSI IRQ Handler (%d)\n", irq);
 
@@ -196,7 +75,10 @@ static irqreturn_t host_pci_msi_irq_handler(int irq, void * priv_data) {
     return IRQ_HANDLED;
 }
 
-static irqreturn_t host_pci_msix_irq_handler(int irq, void * priv_data) {
+static irqreturn_t 
+host_pci_msix_irq_handler(int    irq, 
+			  void * priv_data) 
+{
     struct host_pci_device * host_dev = priv_data;
     int i = 0;
     
@@ -208,11 +90,15 @@ static irqreturn_t host_pci_msix_irq_handler(int irq, void * priv_data) {
             V3_host_pci_raise_irq(&(host_dev->v3_dev), i);
         }    
     }
+
     return IRQ_HANDLED;
 }
 
 
-static irqreturn_t host_pci_msix_irq_handler_thread(int irq, void * priv_data) {
+static irqreturn_t 
+host_pci_msix_irq_handler_thread(int    irq, 
+				 void * priv_data) 
+{
     struct host_pci_device * host_dev = priv_data;
     int i = 0;
 
@@ -228,7 +114,11 @@ static irqreturn_t host_pci_msix_irq_handler_thread(int irq, void * priv_data) {
 }
 
 
-static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64 arg) {
+static int 
+hw_pci_cmd(struct host_pci_device * host_dev, 
+	   host_pci_cmd_t           cmd, 
+	   u64                      arg) 
+{
     //struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
     struct pci_dev * dev = host_dev->hw_dev.dev;
 
@@ -246,9 +136,9 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 
 	    v3_lnx_printk("Passthrough PCI device enabling MEM resources\n");
 	    
-	    pci_read_config_word(host_dev->hw_dev.dev, PCI_COMMAND, &hw_cmd);
+	    pci_read_config_word(host_dev->hw_dev.dev,  PCI_COMMAND, &hw_cmd);
 	    hw_cmd |= 0x2;
-	    pci_write_config_word(host_dev->hw_dev.dev, PCI_COMMAND, hw_cmd);
+	    pci_write_config_word(host_dev->hw_dev.dev, PCI_COMMAND,  hw_cmd);
 
 
 	    break;
@@ -283,8 +173,6 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 
 	    v3_lnx_printk(KERN_ERR "Passthrough PCI device Enabling MSI\n");
 
-
-	    
 	    if (!dev->msi_enabled) {
 
 		v3_lnx_printk("Enabling MSI\n");
@@ -309,15 +197,15 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 
 	    break;
 	case HOST_PCI_CMD_MSIX_ENABLE: {
-	    int i = 0;
+	    int i   = 0;
 	    int ret = 0;
         
 	    v3_lnx_printk("Passthrough PCI device Enabling MSIX (%llu entries requested)\n", arg);
 
 
 	    host_dev->hw_dev.num_msix_vecs = arg;
-	    host_dev->hw_dev.msix_entries = kzalloc((sizeof(struct msix_entry) * host_dev->hw_dev.num_msix_vecs), 
-						    GFP_KERNEL);
+	    host_dev->hw_dev.msix_entries  = kzalloc((sizeof(struct msix_entry) * host_dev->hw_dev.num_msix_vecs), 
+						     GFP_KERNEL);
         
 	    for (i = 0; i < host_dev->hw_dev.num_msix_vecs; i++) {
 		host_dev->hw_dev.msix_entries[i].entry = i;
@@ -338,7 +226,10 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 		if (request_threaded_irq(host_dev->hw_dev.msix_entries[i].vector, 
 					 host_pci_msix_irq_handler, 
 					 host_pci_msix_irq_handler_thread, 
-					 0, "V3VEE_host_PCI_MSIX", (void *)host_dev)) {
+					 0, 
+					 "V3VEE_host_PCI_MSIX", 
+					 (void *)host_dev)) {
+
 		   ERROR("Error requesting IRQ %d for Passthrough MSIX IRQ\n", 
 			   host_dev->hw_dev.msix_entries[i].vector);
 		}
@@ -377,16 +268,21 @@ static int hw_pci_cmd(struct host_pci_device * host_dev, host_pci_cmd_t cmd, u64
 }
 
 
-static int hw_ack_irq(struct host_pci_device * host_dev, u32 vector) {
+static int 
+hw_ack_irq(struct host_pci_device * host_dev, 
+	   u32                      vector) 
+{
     struct pci_dev * dev = host_dev->hw_dev.dev;
     unsigned long flags;
 
     //    printk("Acking IRQ vector %d\n", vector);
 
     spin_lock_irqsave(&(host_dev->hw_dev.intx_lock), flags);
-    //    printk("Enabling IRQ %d\n", dev->irq);
-    enable_irq(dev->irq);
-    host_dev->hw_dev.intx_disabled = 0;
+    {
+	//    printk("Enabling IRQ %d\n", dev->irq);
+	enable_irq(dev->irq);
+	host_dev->hw_dev.intx_disabled = 0;
+    }
     spin_unlock_irqrestore(&(host_dev->hw_dev.intx_lock), flags);
     
     return 0;
@@ -395,25 +291,136 @@ static int hw_ack_irq(struct host_pci_device * host_dev, u32 vector) {
 
 
 
-static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) {
-    int ret = 0;
-    unsigned long flags;
+static int 
+reserve_hw_pci_dev(struct host_pci_device * host_dev, 
+		   void                   * v3_ctx) 
+{
     struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
-    struct pci_dev * dev = host_dev->hw_dev.dev;
+    struct pci_dev         * dev    = host_dev->hw_dev.dev;
+    unsigned long            flags  = 0;
+    int ret = 0;
 
     spin_lock_irqsave(&lock, flags);
-    if (host_dev->hw_dev.in_use == 0) {
-	host_dev->hw_dev.in_use = 1;
-    } else {
-	ret = -1;
+    {
+	if (host_dev->in_use == 0) {
+	    host_dev->in_use = 1;
+	} else {
+	    ret = -1;
+	}
     }
     spin_unlock_irqrestore(&lock, flags);
 
 
+    dev = pci_get_bus_and_slot(host_dev->hw_dev.bus,
+			       host_dev->hw_dev.devfn);
+
+
+    if (dev == NULL) {
+	ERROR("Could not find HW pci device (bus=%d, devfn=%d)\n", 
+	       host_dev->hw_dev.bus, host_dev->hw_dev.devfn); 
+	return -1;
+    }
+
+    // record pointer in dev state
+    host_dev->hw_dev.dev           = dev;
+    host_dev->hw_dev.intx_disabled = 1;
+    spin_lock_init(&(host_dev->hw_dev.intx_lock));
+
+    if (pci_enable_device(dev)) {
+	ERROR("Could not enable Device\n");
+	return -1;
+    }
+    
+    ret = pci_request_regions(dev, "v3vee");
+    if (ret != 0) {
+	ERROR("Could not reservce PCI regions\n");
+	return -1;
+    }
+
+
+    pci_reset_function(host_dev->hw_dev.dev);
+    pci_save_state(host_dev->hw_dev.dev);
+
+
+    /* Cache first 6 BAR regs */
+    {
+	int i = 0;
+
+	for (i = 0; i < 6; i++) {
+	    struct v3_host_pci_bar * bar = &(v3_dev->bars[i]);
+	    unsigned long flags;
+	    
+	    bar->size = pci_resource_len(dev, i);
+	    bar->addr = pci_resource_start(dev, i);
+	    flags     = pci_resource_flags(dev, i);
+
+	    if (flags & IORESOURCE_IO) {
+		bar->type = PT_BAR_IO;
+	    } else if (flags & IORESOURCE_MEM) {
+		if (flags & IORESOURCE_MEM_64) {
+		    struct v3_host_pci_bar * hi_bar = &(v3_dev->bars[i + 1]); 
+	    
+		    bar->type            = PT_BAR_MEM64_LO;
+
+		    hi_bar->type         = PT_BAR_MEM64_HI;
+		    hi_bar->size         = bar->size;
+		    hi_bar->addr         = bar->addr;
+		    hi_bar->cacheable    = ((flags & IORESOURCE_CACHEABLE) != 0);
+		    hi_bar->prefetchable = ((flags & IORESOURCE_PREFETCH) != 0);
+		    
+		    i++;
+		} else if (flags & IORESOURCE_DMA) {
+		    bar->type            = PT_BAR_MEM24;
+		} else {
+		    bar->type            = PT_BAR_MEM32;
+		}
+		
+		bar->cacheable    = ((flags & IORESOURCE_CACHEABLE) != 0);
+		bar->prefetchable = ((flags & IORESOURCE_PREFETCH)  != 0);
+
+	    } else {
+		bar->type         = PT_BAR_NONE;
+	    }
+	}
+    }
+
+    /* Cache expansion rom bar */
+    {
+	struct resource * rom_res  = &(dev->resource[PCI_ROM_RESOURCE]);
+	int               rom_size = pci_resource_len(dev, PCI_ROM_RESOURCE);
+
+	if (rom_size > 0) {
+	    unsigned long flags;
+
+	    v3_dev->exp_rom.size            = rom_size;
+	    v3_dev->exp_rom.addr            = pci_resource_start(dev, PCI_ROM_RESOURCE);
+	    flags                           = pci_resource_flags(dev, PCI_ROM_RESOURCE);
+	    v3_dev->exp_rom.type            = PT_EXP_ROM;
+	    v3_dev->exp_rom.exp_rom_enabled = rom_res->flags & IORESOURCE_ROM_ENABLE;
+
+	    v3_lnx_printk("%s: exp_rom enabled: %d\n",
+			  host_dev->name,
+			  v3_dev->exp_rom.exp_rom_enabled);
+	}
+
+    }
+
+    /* Cache entire configuration space */
+    {
+	int m = 0;
+
+	// Copy the configuration space to the local cached version
+	for (m = 0; m < PCI_HDR_SIZE; m += 4) {
+	    pci_read_config_dword(dev, m, (u32 *)&(v3_dev->cfg_space[m]));
+	}
+    }
+
+
+
     if (v3_dev->iface == IOMMU) {
 	struct v3_guest_mem_region region;
-	int flags = 0;
-	uintptr_t gpa = 0;
+	uintptr_t gpa   = 0;
+	int       flags = 0;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,43)
 	host_dev->hw_dev.iommu_domain = iommu_domain_alloc();
@@ -445,7 +452,10 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
 	while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
 	
-	    v3_lnx_printk("Memory region: (GPA=%p), start=%p, end=%p\n", (void *)gpa, (void *)region.start, (void *)region.end);
+	    v3_lnx_printk("Memory region: (GPA=%p), start=%p, end=%p\n", 
+			  (void *)gpa, 
+			  (void *)region.start,
+			  (void *)region.end);
 
 
 	    
@@ -457,12 +467,15 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 #else 
 	    /* Linux actually made the interface worse... Now you can only map memory in powers of 2 (meant to only be pages...) */
 	    {	
-		u64 size = region.end - region.start;
+		u64 size      = region.end - region.start;
 		u32 page_size = 512 * 4096; // assume large 64bit pages (2MB)
-		u64 hpa = region.start;
+		u64 hpa       = region.start;
 		
 
-		v3_lnx_printk("Memory region: GPA=%p, HPA=%p, size=%p\n", (void *)gpa, (void *)hpa, (void *)size);
+		v3_lnx_printk("Memory region: GPA=%p, HPA=%p, size=%p\n", 
+			      (void *)gpa, 
+			      (void *)hpa,
+			      (void *)size);
 
 
 		do {
@@ -476,8 +489,12 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
 		    if (iommu_map(host_dev->hw_dev.iommu_domain, gpa, hpa, 
 				  get_order(page_size), flags)) {
+
 			ERROR("Could not map sub region (GPA=%p) (HPA=%p) (order=%d)\n", 
-			       (void *)gpa, (void *)hpa, get_order(page_size));
+			      (void *)gpa, 
+			      (void *)hpa, 
+			      get_order(page_size));
+
 			return -1;
 		    }
 #else 
@@ -485,16 +502,21 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 
 		    if (iommu_map(host_dev->hw_dev.iommu_domain, gpa, hpa, 
 				  page_size, flags)) {
+
 			ERROR("Could not map sub region (GPA=%p) (HPA=%p) (size=%d)\n", 
-			       (void *)gpa, (void *)hpa, get_order(page_size));
+			      (void *)gpa, 
+			      (void *)hpa, 
+			      get_order(page_size));
+
 			return -1;
 		    }
 #endif
 		    
-		    hpa += page_size;
-		    gpa += page_size;
+		    hpa  += page_size;
+		    gpa  += page_size;
 		    
 		    size -= page_size;
+
 		} while (size > 0);
 	    }
 #endif
@@ -521,6 +543,7 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
     //    setup regular IRQs until advanced IRQ mechanisms are enabled
     if (request_threaded_irq(dev->irq, NULL, host_pci_intx_irq_handler, 
 			     IRQF_ONESHOT, "V3Vee_Host_PCI_INTx", (void *)host_dev)) {
+
 	ERROR("Could not assign IRQ to host PCI device (%s)\n", host_dev->name);
     }
 
@@ -535,11 +558,17 @@ static int reserve_hw_pci_dev(struct host_pci_device * host_dev, void * v3_ctx) 
 /* NOTE NOTE NOTE: This function has been written for the 3.11 kernel
  * the IOMMU APIs have changed, and we DO NOT HAVE the legacy APIs implemented here.... 
  */
-static int release_hw_pci_dev(struct host_pci_device * host_dev) {
-    struct pci_dev * dev = host_dev->hw_dev.dev;
+static int 
+release_hw_pci_dev(struct host_pci_device * host_dev) 
+{
+    struct pci_dev         * dev    = host_dev->hw_dev.dev;
     struct v3_host_pci_dev * v3_dev = &(host_dev->v3_dev);
 
 
+    /* Disable DMA operations, because we are going to nuke the IOMMU state  */
+    pci_clear_master(dev);    
+
+    /* Free MSIX IRQs if enabled */
     if (dev->msix_enabled) {
 	int i = 0;
 	
@@ -557,12 +586,14 @@ static int release_hw_pci_dev(struct host_pci_device * host_dev) {
 	pci_disable_msix(dev);
     }
     
+    /* Disable MSI IRQs if enabled */
     if (dev->msi_enabled) {
 	disable_irq(dev->irq);
 	free_irq(dev->irq, (void *)host_dev);
 	pci_disable_msi(dev);
     }
-    
+
+    /* Disable Legacy IRQs if enabled */
     if (!host_dev->hw_dev.intx_disabled) {
 	disable_irq(dev->irq);
 	free_irq(dev->irq, (void *)host_dev);
@@ -570,17 +601,20 @@ static int release_hw_pci_dev(struct host_pci_device * host_dev) {
 	host_dev->hw_dev.intx_disabled = 1;
     }
 
-
-    // possibly need to reset config header state....
+    /* Free BAR regions */
+    pci_release_regions(dev);
     
+    /* Reset Device State */
+    pci_reset_function(dev);
+
+    /* Unmap Device from IOMMU */
     if (v3_dev->iface == IOMMU) {
-	//    UNMAP IOMMU pages
 	struct v3_guest_mem_region region;
 	uintptr_t gpa = 0;
 
 	
 	while (V3_get_guest_mem_region(host_dev->v3_ctx, &region, gpa)) {
-	    u64 size = region.end - region.start;
+	    u64 size      = region.end - region.start;
 	    u32 page_size = 512 * 4096;
 
 
@@ -591,25 +625,37 @@ static int release_hw_pci_dev(struct host_pci_device * host_dev) {
 		    
 		iommu_unmap(host_dev->hw_dev.iommu_domain, gpa, page_size);
 		    
-		gpa += page_size;
+		gpa  += page_size;
 		size -= page_size;
 		    
 	    } while (size > 0);
 	}
 
     
-	//    free IOMMU domain
+	/* Free IOMMU domain */
 	iommu_detach_device(host_dev->hw_dev.iommu_domain, &(dev->dev));
 	iommu_domain_free(host_dev->hw_dev.iommu_domain);
     }
 
-    host_dev->hw_dev.in_use = 0;
+    
+    pci_restore_state(dev);
+    pci_disable_device(dev);
+
+
+    /* Mark device as available */
+    host_dev->in_use = 0;
+
     return 0;
 }
 
 
 
-static int write_hw_pci_config(struct host_pci_device * host_dev, u32 reg, void * data, u32 length) {
+static int 
+write_hw_pci_config(struct host_pci_device * host_dev,
+		    u32                      reg, 
+		    void                   * data,
+		    u32                      length) 
+{
     struct pci_dev * dev = host_dev->hw_dev.dev;
 
     if (reg < 64) {
@@ -617,9 +663,9 @@ static int write_hw_pci_config(struct host_pci_device * host_dev, u32 reg, void 
     }
 	
     if (length == 1) {
-	pci_write_config_byte(dev, reg, *(u8 *)data);
+	pci_write_config_byte(dev,  reg, *(u8  *)data);
     } else if (length == 2) {
-	pci_write_config_word(dev, reg, *(u16 *)data);
+	pci_write_config_word(dev,  reg, *(u16 *)data);
     } else if (length == 4) {
 	pci_write_config_dword(dev, reg, *(u32 *)data);
     } else {
@@ -632,21 +678,24 @@ static int write_hw_pci_config(struct host_pci_device * host_dev, u32 reg, void 
 
 
 
-static int read_hw_pci_config(struct host_pci_device * host_dev, u32 reg, void * data, u32 length) {
+static int 
+read_hw_pci_config(struct host_pci_device * host_dev,
+		   u32                      reg, 
+		   void                   * data, 
+		   u32                      length) 
+{
     struct pci_dev * dev = host_dev->hw_dev.dev;
-
 	
     if (length == 1) {
-	pci_read_config_byte(dev, reg, data);
+	pci_read_config_byte(dev,  reg, data);
     } else if (length == 2) {
-	pci_read_config_word(dev, reg, data);
+	pci_read_config_word(dev,  reg, data);
     } else if (length == 4) {
 	pci_read_config_dword(dev, reg, data);
     } else {
 	ERROR("Invalid length of host PCI config read\n");
 	return -1;
     }
-
 
     return 0; 
 }

@@ -10,49 +10,185 @@
 #include <sys/types.h> 
 #include <unistd.h>
 #include <string.h>
-
+#include <getopt.h>
 
 #include "v3_ctrl.h"
+#include <pet_pci.h>
+#include <pet_ioctl.h>
+
+void usage() {
+    printf("Usage:\n"); 
+    printf("\tv3_pci [<bus>:<dev>.<fn>]             --- List PCI Device State\n");
+    printf("\tv3_pci -a <name> <bus>:<dev>.<fn>     --- Add PCI Device\n");
+    printf("\tv3_pci -r <name> <bus>:<dev>.<fn>     --- Remove PCI Device\n");
+}
+
+
+typedef enum {QUERY, ADD, REMOVE} op_mode_t;
+
 
 
 int main(int argc, char ** argv) {
-    int v3_fd = 0;
     struct v3_hw_pci_dev dev_info;
-    unsigned int bus = 0;
-    unsigned int dev = 0;
-    unsigned int func = 0;
-    int ret = 0;
+    char      * bdf_str = NULL;
+    char      * name    = NULL;
+    op_mode_t   mode    = QUERY;
+    int         ret     = 0;
 
-    if (argc < 3) {
-	printf("Usage: ./v3_pci <name> <bus> <dev> <func>\n");
+
+    {
+	char c         = 0;
+	int  opt_index = 0;
+
+	static struct option long_options[] = {
+	    {"help",   no_argument,       0, 'h'},
+	    {"remove", required_argument, 0, 'r'},
+	    {"add",    required_argument, 0, 'a'},
+	    {0, 0, 0, 0}
+	};
+
+	while ((c = getopt_long(argc, argv, "r:a:h", long_options, &opt_index)) != -1) {
+	    switch (c) {
+		case 'r':
+		    mode = REMOVE;
+		    name = optarg;
+		    break;
+		case 'a':
+		    mode = ADD;
+		    name = optarg;
+		    break;
+		case 'h':
+		case '?':
+		    usage();
+		    return -1;
+	    }
+	}
+    }
+
+    if (mode == QUERY) {
+	
+	if (argc == 1) {
+	    unsigned int     num_devs = 0;
+	    struct pet_pci * pci_arr  = NULL;
+	    int j = 0;
+	    
+	    if (pet_probe_pci(&num_devs, &pci_arr) != 0) {
+		printf("Error: Could not probe PCI\n");
+	    } else {
+		printf("PCI Device States:\n");
+
+		for (j = 0; j < num_devs; j++) {
+		    printf("%.2x:%.2x.%u --  %s\n", 
+			   pci_arr[j].bus, pci_arr[j].dev, pci_arr[j].fn,
+			   pet_pci_state_to_str(pci_arr[j].state));
+		}
+	    }
+	    
+	} else if (argc == 2) {
+	    unsigned int bus = 0;
+	    unsigned int dev = 0;
+	    unsigned int fn  = 0;
+	    
+	    bdf_str = argv[1];
+	    
+	    if (pet_parse_bdf(bdf_str, &bus, &dev, &fn) != 0) {
+		printf("Error: Could not parse BDF spcification string\n");
+		return -1;
+	    }
+	    
+	    printf("Status=%s\n", pet_pci_state_to_str(pet_pci_status(bus, dev, fn)));
+	    
+	} else {
+	    usage();
+	    return -1;
+	}
+    } else if (mode == ADD)   {
+	unsigned int bus = 0;
+	unsigned int dev = 0;
+	unsigned int fn  = 0;
+	struct v3_hw_pci_dev dev_spec;
+	
+	if (argc - optind + 1 < 2) {
+	    usage();
+	    return -1;
+	}
+	
+
+	bdf_str = argv[optind];
+	
+	if (pet_parse_bdf(bdf_str, &bus, &dev, &fn) != 0) {
+	    printf("Error: Could not parse BDF spcification string\n");
+	    return -1;
+	}
+	
+	if (pet_offline_pci(bus, dev, fn) != 0) {
+	    printf("Error: Could not offline PCI device\n");
+	    return -1;
+	}
+	
+	memset(&dev_spec, 0, sizeof(struct v3_hw_pci_dev));
+	
+	
+	dev_spec.bus  = bus;
+	dev_spec.dev  = dev;
+	dev_spec.func = fn;
+	strncpy(dev_spec.url, name, 128);
+	
+	if (pet_ioctl_path((char *)v3_dev, V3_ADD_PCI,  &dev_spec) != 0) {
+	    printf("Error: Could not add device to Palacios\n");
+	    pet_online_pci(bus, dev, fn);
+	    return -1;
+	}
+    } else if (mode == REMOVE) {
+	unsigned int bus = 0;
+	unsigned int dev = 0;
+	unsigned int fn  = 0;
+	struct v3_hw_pci_dev dev_spec;
+	
+	if (argc - optind + 1 < 2) {
+	    usage();
+	    return -1;
+	}
+	
+	bdf_str = argv[optind];
+	
+	if (pet_parse_bdf(bdf_str, &bus, &dev, &fn) != 0) {
+	    printf("Error: Could not parse BDF spcification string (%s)\n", bdf_str);
+	    return -1;
+	}
+	
+
+	memset(&dev_spec, 0, sizeof(struct v3_hw_pci_dev));
+	
+	
+	dev_spec.bus  = bus;
+	dev_spec.dev  = dev;
+	dev_spec.func = fn;
+	strncpy(dev_spec.url, name, 128);
+	
+	if (pet_ioctl_path((char *)v3_dev, V3_REMOVE_PCI,  &dev_spec) != 0) {
+	    printf("Error: Could not add device to Palacios\n");
+	    pet_online_pci(bus, dev, fn);
+	    return -1;
+	}
+
+
+	if (pet_online_pci(bus, dev, fn) != 0) {
+	    printf("Error: Could not online PCI device (%s)\n", bdf_str);
+	    return -1;
+	}
+	
+    } else {
+	usage();
 	return -1;
     }
 
-    bus = atoi(argv[2]);
-    dev = atoi(argv[3]);
-    func = atoi(argv[4]);
+  
 
-    strncpy(dev_info.url, argv[1], 128);
-    dev_info.bus = bus;
-    dev_info.dev = dev;
-    dev_info.func = func;
-    
-
-    v3_fd = open("/dev/v3vee", O_RDONLY);
-
-    if (v3_fd == -1) {
-	printf("Error opening V3Vee device file\n");
-	return -1;
-    }
-
-
-    ret = ioctl(v3_fd, V3_ADD_PCI, &dev_info);
-    
 
     if (ret < 0) {
 	printf("Error registering PCI device\n");
 	return -1;
     }
 
-    close(v3_fd);
 }

@@ -43,7 +43,7 @@
 
 
 
-#define V3_VM_XPMEM_CONNECT 12000
+#define V3_VM_XPMEM_CONNECT      12000
 
 
 
