@@ -18,11 +18,14 @@
  * A block's index is used to find the block's tag bit, mp->tag_bits[block_id].
  */
 static unsigned long
-block_to_id(struct buddy_mempool *mp, struct block *block)
+block_to_id(struct buddy_mempool * mp,
+	    struct block         * block)
 {
     unsigned long block_id =
 	((unsigned long)__pa(block) - mp->base_addr) >> mp->zone->min_order;
+
     BUG_ON(block_id >= mp->num_blocks);
+
     return block_id;
 }
 
@@ -31,7 +34,8 @@ block_to_id(struct buddy_mempool *mp, struct block *block)
  * Marks a block as free by setting its tag bit to one.
  */
 static void
-mark_available(struct buddy_mempool *mp, struct block *block)
+mark_available(struct buddy_mempool * mp,
+	       struct block         * block)
 {
     __set_bit(block_to_id(mp, block), mp->tag_bits);
 }
@@ -41,7 +45,8 @@ mark_available(struct buddy_mempool *mp, struct block *block)
  * Marks a block as allocated by setting its tag bit to zero.
  */
 static void
-mark_allocated(struct buddy_mempool *mp, struct block *block)
+mark_allocated(struct buddy_mempool * mp,
+	       struct block         * block)
 {
     __clear_bit(block_to_id(mp, block), mp->tag_bits);
 }
@@ -51,7 +56,8 @@ mark_allocated(struct buddy_mempool *mp, struct block *block)
  * Returns true if block is free, false if it is allocated.
  */
 static int
-is_available(struct buddy_mempool *mp, struct block *block)
+is_available(struct buddy_mempool * mp,
+	     struct block         * block)
 {
     return test_bit(block_to_id(mp, block), mp->tag_bits);
 }
@@ -61,7 +67,9 @@ is_available(struct buddy_mempool *mp, struct block *block)
  * Returns the address of the block's buddy block.
  */
 static void *
-find_buddy(struct buddy_mempool *mp, struct block *block, unsigned long order)
+find_buddy(struct buddy_mempool * mp,
+	   struct block         * block, 
+	   unsigned long          order)
 {
     unsigned long _block;
     unsigned long _buddy;
@@ -85,8 +93,10 @@ static inline uintptr_t pool_end_addr(struct buddy_mempool * pool) {
 
 
 static struct buddy_mempool * 
-find_mempool(struct buddy_memzone * zone, uintptr_t addr) {
-    struct rb_node * n = zone->mempools.rb_node;
+find_mempool(struct buddy_memzone * zone,
+	     uintptr_t              addr) 
+{
+    struct rb_node       * n    = zone->mempools.rb_node;
     struct buddy_mempool * pool = NULL;
 
     while (n) {
@@ -108,13 +118,14 @@ find_mempool(struct buddy_memzone * zone, uintptr_t addr) {
 
 static int 
 insert_mempool(struct buddy_memzone * zone, 
-	       struct buddy_mempool * pool) {
-    struct rb_node ** p = &(zone->mempools.rb_node);
-    struct rb_node * parent = NULL;
-    struct buddy_mempool * tmp_pool;
+	       struct buddy_mempool * pool)
+{
+    struct rb_node      ** p        = &(zone->mempools.rb_node);
+    struct rb_node       * parent   = NULL;
+    struct buddy_mempool * tmp_pool = NULL;
 
     while (*p) {
-	parent = *p;
+	parent   = *p;
 	tmp_pool = rb_entry(parent, struct buddy_mempool, tree_node);
 
 	if (pool_end_addr(pool) <= tmp_pool->base_addr) {
@@ -140,8 +151,9 @@ insert_mempool(struct buddy_memzone * zone,
  */
 
 int buddy_add_pool(struct buddy_memzone * zone, 
-		   unsigned long base_addr, 
-		   unsigned long pool_order) {
+		   unsigned long          base_addr, 
+		   unsigned long          pool_order) 
+{
     struct buddy_mempool * mp = NULL;
     unsigned long flags = 0;
     int ret = 0;
@@ -161,23 +173,25 @@ int buddy_add_pool(struct buddy_memzone * zone,
 	return -1;
     }
 
-    mp->base_addr  = base_addr;
-    mp->pool_order = pool_order;
-    mp->zone = zone;
+    mp->base_addr       = base_addr;
+    mp->pool_order      = pool_order;
+    mp->zone            = zone;
     mp->num_free_blocks = 0;
 
     /* Allocate a bitmap with 1 bit per minimum-sized block */
-    mp->num_blocks = (1UL << pool_order) / (1UL << zone->min_order);
+    mp->num_blocks      = (1UL << pool_order) / (1UL << zone->min_order);
 
-    mp->tag_bits   = kmalloc_node(
-				  BITS_TO_LONGS(mp->num_blocks) * sizeof(long), GFP_KERNEL, zone->node_id
-				  );
+    mp->tag_bits        = kmalloc_node(BITS_TO_LONGS(mp->num_blocks) * sizeof(long), 
+				       GFP_KERNEL, 
+				       zone->node_id);
 
     /* Initially mark all minimum-sized blocks as allocated */
     bitmap_zero(mp->tag_bits, mp->num_blocks);
 
     spin_lock_irqsave(&(zone->lock), flags);
-    ret = insert_mempool(zone, mp);
+    {
+	ret = insert_mempool(zone, mp);
+    }
     spin_unlock_irqrestore(&(zone->lock), flags);
 
     if (ret == -1) {
@@ -201,11 +215,11 @@ int buddy_add_pool(struct buddy_memzone * zone,
  * assumes the zone lock is already held 
  */
 static int __buddy_remove_mempool(struct buddy_memzone * zone, 
-				  unsigned long base_addr, 
-				  unsigned char force) {
+				  unsigned long          base_addr, 
+				  unsigned char          force) {
 
-    struct buddy_mempool * pool = NULL;
-    struct block * block = NULL;
+    struct buddy_mempool * pool  = NULL;
+    struct block         * block = NULL;
 
     pool = find_mempool(zone, base_addr);
 
@@ -233,13 +247,16 @@ static int __buddy_remove_mempool(struct buddy_memzone * zone,
 }
 
 int buddy_remove_pool(struct buddy_memzone * zone,
-			 unsigned long base_addr, 
-			 unsigned char force) {
+		      unsigned long          base_addr, 
+		      unsigned char          force)
+{
     unsigned long flags = 0;
-    int ret = 0;
+    int           ret   = 0;
 
-    spin_lock_irqsave(&(zone->lock), flags);    
-    ret = __buddy_remove_mempool(zone, base_addr, force);
+    spin_lock_irqsave(&(zone->lock), flags);
+    {
+	ret = __buddy_remove_mempool(zone, base_addr, force);
+    }
     spin_unlock_irqrestore(&(zone->lock), flags);
 
     return ret;
@@ -262,12 +279,12 @@ int buddy_remove_pool(struct buddy_memzone * zone,
 uintptr_t
 buddy_alloc(struct buddy_memzone *zone, unsigned long order)
 {
-    unsigned long j;
-    struct buddy_mempool * mp = NULL;
-    struct list_head * list = NULL;
-    struct block * block = NULL;
-    struct block * buddy_block = NULL;
+    struct buddy_mempool * mp    = NULL;
+    struct list_head     * list  = NULL;
+    struct block         * block = NULL;
+    struct block         * buddy_block = NULL;
     unsigned long flags = 0;
+    unsigned long j;
 
     BUG_ON(zone == NULL);
     BUG_ON(order > zone->max_order);
@@ -308,9 +325,10 @@ buddy_alloc(struct buddy_memzone *zone, unsigned long order)
 	/* Trim if a higher order block than necessary was allocated */
 	while (j > order) {
 	    --j;
-	    buddy_block = (struct block *)((unsigned long)block + (1UL << j));
-	    buddy_block->mp = mp;
+	    buddy_block        = (struct block *)((unsigned long)block + (1UL << j));
+	    buddy_block->mp    = mp;
 	    buddy_block->order = j;
+
 	    mark_available(mp, buddy_block);
 	    list_add(&(buddy_block->link), &(zone->avail[j]));
 	}
@@ -341,8 +359,8 @@ buddy_free(
 	unsigned long		order
 ) 
 {
-    struct block * block  = NULL;
-    struct buddy_mempool * pool = NULL;
+    struct block         * block = NULL;
+    struct buddy_mempool * pool  = NULL;
     unsigned long flags = 0;
 
     BUG_ON(zone == NULL);
@@ -404,8 +422,9 @@ buddy_free(
 
     /* Add the (possibly coalesced) block to the appropriate free list */
     block->order = order;
-    block->mp = pool;
+    block->mp    = pool;
     mark_available(pool, block);
+
     list_add(&(block->link), &(zone->avail[order]));
 
     spin_unlock_irqrestore(&(zone->lock), flags);
@@ -418,12 +437,15 @@ buddy_free(
  * Dumps the state of a buddy system memory allocator object to the console.
  */
 static int 
-zone_mem_show(struct seq_file * s, void * v) {
-    struct buddy_memzone * zone = s->private;
-    unsigned long i;
-    unsigned long num_blocks;
-    struct list_head * entry = NULL;
+zone_mem_show(struct seq_file * s, 
+	      void            * v) 
+{
+    struct buddy_memzone * zone       = s->private;
+    unsigned long          num_blocks = 0;
+    struct list_head     * entry      = NULL;
+
     unsigned long flags = 0;
+    unsigned long i     = 0;
 
 
     if (!zone) {
@@ -433,7 +455,7 @@ zone_mem_show(struct seq_file * s, void * v) {
 
     seq_printf(s, "DUMP OF BUDDY MEMORY ZONE:\n");
     seq_printf(s, "  Zone Max Order=%lu, Min Order=%lu\n", 
-	   zone->max_order, zone->min_order);
+	       zone->max_order, zone->min_order);
 
     spin_lock_irqsave(&(zone->lock), flags);
 
@@ -441,6 +463,7 @@ zone_mem_show(struct seq_file * s, void * v) {
 
 	/* Count the number of memory blocks in the list */
 	num_blocks = 0;
+
 	list_for_each(entry, &zone->avail[i]) {
 	    ++num_blocks;
 	}
@@ -452,7 +475,7 @@ zone_mem_show(struct seq_file * s, void * v) {
     seq_printf(s, " %lu memory pools\n", zone->num_pools);
     // list pools in zone
     {
-	struct rb_node * node = rb_first(&(zone->mempools));
+	struct rb_node       * node = rb_first(&(zone->mempools));
 	struct buddy_mempool * pool = NULL;
     
 	while (node) {
@@ -486,10 +509,10 @@ static int zone_proc_open(struct inode * inode, struct file * filp) {
 
 
 static struct file_operations zone_proc_ops = {
-    .owner = THIS_MODULE,
-    .open = zone_proc_open, 
-    .read = seq_read,
-    .llseek = seq_lseek, 
+    .owner   = THIS_MODULE,
+    .open    = zone_proc_open, 
+    .read    = seq_read,
+    .llseek  = seq_lseek, 
     .release = single_release,
 };
 
@@ -499,9 +522,9 @@ void buddy_deinit(struct buddy_memzone * zone) {
     unsigned long flags;
 
     spin_lock_irqsave(&(zone->lock), flags);
-
-    // for each pool, free it
-
+    {
+	/* TODO: for each pool, free it */
+    }
     spin_unlock_irqrestore(&(zone->lock), flags);
     
     {
@@ -544,7 +567,7 @@ struct buddy_memzone *
 buddy_init(
 	unsigned long max_order,
 	unsigned long min_order,
-	unsigned int node_id
+	unsigned int  node_id
 )
 {
     struct buddy_memzone * zone = NULL;
@@ -573,8 +596,8 @@ buddy_init(
     memset(zone, 0, sizeof(struct buddy_memzone));
 
     zone->max_order = max_order;
-    zone->min_order  = min_order;
-    zone->node_id = node_id;
+    zone->min_order = min_order;
+    zone->node_id   = node_id;
 
     /* Allocate a list for every order up to the maximum allowed order */
     zone->avail = kmalloc_node((max_order + 1) * sizeof(struct list_head), GFP_KERNEL, zone->node_id);
@@ -605,18 +628,17 @@ buddy_init(
 
 	if (zone_entry) {
 	    zone_entry->proc_fops = &zone_proc_ops;
-	    zone_entry->data = zone;
-	} else {
-	    ERROR("Error creating memory zone proc file\n");
-	}
-
+	    zone_entry->data      = zone;
+	} 
 #else 
 	zone_entry = proc_create_data(proc_file_name, 0444, palacios_proc_dir, &zone_proc_ops, zone);
+#endif
+
 
 	if (!zone_entry) {
 	    ERROR("Error creating memory zone proc file\n");
 	}
-#endif
+
 
     }
 

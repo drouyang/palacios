@@ -23,10 +23,10 @@
 #include "mm.h"
 
 struct palacios_socket {
-    struct socket * sock;
+    struct socket    * sock;
     
-    struct v3_guest * guest;
-    struct list_head sock_node;
+    struct v3_guest  * guest;
+    struct list_head   sock_node;
 };
 
 static struct list_head global_sockets;
@@ -40,10 +40,13 @@ struct vm_socket_state {
 
 //ignore the arguments given here currently
 static void * 
-palacios_tcp_socket(const int bufsize, const int nodelay, 
-		    const int nonblocking, void * private_data) {
-    struct v3_guest * guest = (struct v3_guest *)private_data;
-    struct palacios_socket * sock = NULL;
+palacios_tcp_socket(const int   bufsize, 
+		    const int   nodelay, 
+		    const int   nonblocking, 
+		    void      * private_data) 
+{
+    struct v3_guest        * guest    = (struct v3_guest *)private_data;
+    struct palacios_socket * sock     = NULL;
     struct vm_socket_state * vm_state = NULL;
     int err;
 
@@ -87,14 +90,12 @@ palacios_tcp_socket(const int bufsize, const int nodelay,
 
 //ignore the arguments given here currently
 static void *
-palacios_udp_socket(
-	const int bufsize,
-	const int nonblocking,
- 	void * private_data
-)
+palacios_udp_socket(const int   bufsize,
+		    const int   nonblocking,
+		    void      * private_data)
 {
-    struct v3_guest * guest = (struct v3_guest *)private_data;
-    struct palacios_socket * sock = NULL;
+    struct v3_guest        * guest    = (struct v3_guest *)private_data;
+    struct palacios_socket * sock     = NULL;
     struct vm_socket_state * vm_state = NULL;
     int err;
 
@@ -151,30 +152,26 @@ palacios_close(void * sock_ptr)
 }
 
 static int 
-palacios_bind_socket(
-	const void * sock_ptr,
-	const int port
-)
+palacios_bind_socket(const void * sock_ptr,
+		     const int    port)
 {
-	struct sockaddr_in addr;
+	struct sockaddr_in       addr;
 	struct palacios_socket * sock = (struct palacios_socket *)sock_ptr;
 
 	if (sock == NULL) {
 	    return -1;
 	}
 
-	addr.sin_family = AF_INET;
-  	addr.sin_port = htons(port);
+	addr.sin_family      = AF_INET;
+  	addr.sin_port        = htons(port);
   	addr.sin_addr.s_addr = INADDR_ANY;
 
 	return sock->sock->ops->bind(sock->sock, (struct sockaddr *)&addr, sizeof(addr));
 }
 
 static int 
-palacios_listen(
-	const void * sock_ptr,
-	int backlog
-)
+palacios_listen(const void * sock_ptr,
+		int          backlog)
 {
 	struct palacios_socket * sock = (struct palacios_socket *)sock_ptr;
 
@@ -185,10 +182,14 @@ palacios_listen(
 	return sock->sock->ops->listen(sock->sock, backlog);
 }
 
-static void * palacios_accept(const void * sock_ptr, unsigned int * remote_ip, unsigned int * port) {
+static void * 
+palacios_accept(const void   * sock_ptr, 
+		unsigned int * remote_ip, 
+		unsigned int * port) 
+{
 
-    struct palacios_socket * sock = (struct palacios_socket *)sock_ptr;
-    struct palacios_socket * newsock = NULL;
+    struct palacios_socket * sock     = (struct palacios_socket *)sock_ptr;
+    struct palacios_socket * newsock  = NULL;
     struct vm_socket_state * vm_state = NULL;
     int err;
 
@@ -213,7 +214,7 @@ static void * palacios_accept(const void * sock_ptr, unsigned int * remote_ip, u
 	return NULL;
     }
 
-    err = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &(newsock->sock));
+    err     = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &(newsock->sock));
 
     if (err < 0) {
 	ERROR("Cannot create new socket on accept\n");
@@ -222,9 +223,9 @@ static void * palacios_accept(const void * sock_ptr, unsigned int * remote_ip, u
     }
 
     newsock->sock->type = sock->sock->type;
-    newsock->sock->ops = sock->sock->ops;
+    newsock->sock->ops  = sock->sock->ops;
 
-    err = newsock->sock->ops->accept(sock->sock, newsock->sock, 0);
+    err     = newsock->sock->ops->accept(sock->sock, newsock->sock, 0);
 
     if (err < 0){
 	ERROR("Cannot accept\n");
@@ -247,11 +248,10 @@ static void * palacios_accept(const void * sock_ptr, unsigned int * remote_ip, u
 }
 
 static int 
-palacios_select(
-	struct v3_sock_set * rset,
-	struct v3_sock_set * wset,
-	struct v3_sock_set * eset,
-	struct v3_timeval tv)
+palacios_select(struct v3_sock_set * rset,
+		struct v3_sock_set * wset,
+		struct v3_sock_set * eset,
+		struct v3_timeval    tv)
 {
   	//TODO:
 
@@ -259,116 +259,104 @@ palacios_select(
 }
 
 static int 
-palacios_connect_to_ip(
-	const void * sock_ptr,
-	const int hostip,
-	const int port
-)
+palacios_connect_to_ip(const void * sock_ptr,
+		       const int    hostip,
+		       const int    port)
 {
-  	struct sockaddr_in client;
-	struct palacios_socket * sock = (struct palacios_socket *)sock_ptr;
+  	struct sockaddr_in       client;
+	struct palacios_socket * sock   = (struct palacios_socket *)sock_ptr;
 
 	if (sock == NULL) {
 	    return -1;
 	}
 
-  	client.sin_family = AF_INET;
-  	client.sin_port = htons(port);
+  	client.sin_family      = AF_INET;
+  	client.sin_port        = htons(port);
   	client.sin_addr.s_addr = htonl(hostip);
 
   	return sock->sock->ops->connect(sock->sock, (struct sockaddr *)&client, sizeof(client), 0);
 }
 
 static int 
-palacios_send(
-	const void * sock_ptr,
-	const char * buf,
-	const int len
-)
+palacios_send(const void * sock_ptr,
+	      const char * buf,
+	      const int    len)
 {
 	struct palacios_socket * sock = (struct palacios_socket *)sock_ptr;
 	struct msghdr msg;
-	mm_segment_t oldfs;
-	struct iovec iov;
+	mm_segment_t  oldfs;
+	struct iovec  iov;
   	int err = 0;
 
 	if (sock == NULL) {
 	    return -1;
 	}
 
-	msg.msg_flags = MSG_NOSIGNAL;//0/*MSG_DONTWAIT*/;;
-	msg.msg_name = 0;
-	msg.msg_namelen = 0;
-	msg.msg_control = NULL;
+	msg.msg_flags      = MSG_NOSIGNAL;//0/*MSG_DONTWAIT*/;;
+	msg.msg_name       = 0;
+	msg.msg_namelen    = 0;
+	msg.msg_control    = NULL;
 	msg.msg_controllen = 0;
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
+	msg.msg_iov        = &iov;
+	msg.msg_iovlen     = 1;
 
-	iov.iov_base = (char *)buf;
-	iov.iov_len = (size_t)len;
+	iov.iov_base       = (char *)buf;
+	iov.iov_len        = (size_t)len;
 
 	oldfs = get_fs();
 	set_fs(KERNEL_DS);
-
-	err = sock_sendmsg(sock->sock, &msg, (size_t)len);
-
+	err   = sock_sendmsg(sock->sock, &msg, (size_t)len);
 	set_fs(oldfs);
 
 	return err;
 }
 
 static int 
-palacios_recv(
-	const void * sock_ptr,
-	char * buf,
-	const int len
-)
+palacios_recv(const void * sock_ptr,
+	      char       * buf,
+	      const int    len)
 {
 
 	struct palacios_socket * sock = (struct palacios_socket *)sock_ptr;
 	struct msghdr msg;
-	mm_segment_t oldfs;
-	struct iovec iov;
+	mm_segment_t  oldfs;
+	struct iovec  iov;
 	int err;
 
 	if (sock == NULL) {
 	    return -1;
 	}
 
-	msg.msg_flags = 0;
-	msg.msg_name = 0;
-	msg.msg_namelen = 0;
-	msg.msg_control = NULL;
+	msg.msg_flags      = 0;
+	msg.msg_name       = 0;
+	msg.msg_namelen    = 0;
+	msg.msg_control    = NULL;
 	msg.msg_controllen = 0;
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
+	msg.msg_iov        = &iov;
+	msg.msg_iovlen     = 1;
 
-	iov.iov_base = (void *)&buf[0];
-	iov.iov_len = (size_t)len;
+	iov.iov_base       = (void *)&buf[0];
+	iov.iov_len        = (size_t)len;
 
 	oldfs = get_fs();
 	set_fs(KERNEL_DS);
-
-	err = sock_recvmsg(sock->sock, &msg, (size_t)len, 0/*MSG_DONTWAIT*/);
-
+	err   = sock_recvmsg(sock->sock, &msg, (size_t)len, 0/*MSG_DONTWAIT*/);
 	set_fs(oldfs);
 
 	return err;
 }
 
 static int 
-palacios_sendto_ip(
-	const void * sock_ptr,
-	const int ip_addr,
-	const int port,
-	const char * buf,
-	const int len
-)
+palacios_sendto_ip(const void * sock_ptr,
+		   const int    ip_addr,
+		   const int    port,
+		   const char * buf,
+		   const int    len)
 {
 	struct palacios_socket * sock = (struct palacios_socket *)sock_ptr;
-	struct msghdr msg;
-	mm_segment_t oldfs;
-	struct iovec iov;
+	struct msghdr      msg;
+	mm_segment_t       oldfs;
+	struct iovec       iov;
 	struct sockaddr_in dst;
  	int err = 0;
 
@@ -376,26 +364,24 @@ palacios_sendto_ip(
 	    return -1;
 	}
 
-	dst.sin_family = AF_INET;
-	dst.sin_port = htons(port);
+	dst.sin_family      = AF_INET;
+	dst.sin_port        = htons(port);
 	dst.sin_addr.s_addr = htonl(ip_addr);
 
-	msg.msg_flags = MSG_NOSIGNAL;//0/*MSG_DONTWAIT*/;;
-	msg.msg_name = &dst;
-	msg.msg_namelen = sizeof(struct sockaddr_in);
-	msg.msg_control = NULL;
-	msg.msg_controllen = 0;
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
-
-	iov.iov_base = (char *)buf;
-	iov.iov_len = (size_t)len;
+	msg.msg_flags       = MSG_NOSIGNAL;//0/*MSG_DONTWAIT*/;;
+	msg.msg_name        = &dst;
+	msg.msg_namelen     = sizeof(struct sockaddr_in);
+	msg.msg_control     = NULL;
+	msg.msg_controllen  = 0;
+	msg.msg_iov         = &iov;
+	msg.msg_iovlen      = 1;
+	
+	iov.iov_base        = (char *)buf;
+	iov.iov_len         = (size_t)len;
 
 	oldfs = get_fs();
 	set_fs(KERNEL_DS);
-
-	err = sock_sendmsg(sock->sock, &msg, (size_t)len);
-
+	err   = sock_sendmsg(sock->sock, &msg, (size_t)len);
 	set_fs(oldfs);
 
 	return err;
@@ -404,78 +390,79 @@ palacios_sendto_ip(
 
 // TODO:
 static int 
-palacios_recvfrom_ip(
-	const void * sock_ptr,
-	const int ip_addr,
-	const int port,
-	char * buf,
-	const int len
-)
+palacios_recvfrom_ip(const void * sock_ptr,
+		     const int    ip_addr,
+		     const int    port,
+		     char       * buf,
+		     const int    len)
 {
 	struct palacios_socket * sock = (struct palacios_socket *)sock_ptr;
   	struct sockaddr_in src;
-  	int alen;
-	struct msghdr msg;
-	mm_segment_t oldfs;
-	struct iovec iov;
-	int err;
+	struct msghdr      msg;
+	mm_segment_t       oldfs;
+	struct iovec       iov;
+  	int alen = 0;
+	int err  = 0;
 
 	if (sock == NULL) {
 	    return -1;
 	}
 
-  	src.sin_family = AF_INET;
-  	src.sin_port = htons(port);
+  	src.sin_family      = AF_INET;
+  	src.sin_port        = htons(port);
   	src.sin_addr.s_addr = htonl(ip_addr);
-  	alen = sizeof(src);
+
+  	alen                = sizeof(src);
 
 
-	msg.msg_flags = 0;
-	msg.msg_name = &src;
-	msg.msg_namelen = sizeof(struct sockaddr_in);
-	msg.msg_control = NULL;
-	msg.msg_controllen = 0;
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
+	msg.msg_flags       = 0;
+	msg.msg_name        = &src;
+	msg.msg_namelen     = sizeof(struct sockaddr_in);
+	msg.msg_control     = NULL;
+	msg.msg_controllen  = 0;
+	msg.msg_iov         = &iov;
+	msg.msg_iovlen      = 1;
 
-	iov.iov_base = (void *)&buf[0];
-	iov.iov_len = (size_t)len;
+	iov.iov_base        = (void *)&buf[0];
+	iov.iov_len         = (size_t)len;
 
 	oldfs = get_fs();
 	set_fs(KERNEL_DS);
-
-	err = sock_recvmsg(sock->sock, &msg, (size_t)len, 0/*MSG_DONTWAIT*/);
-
+	err   = sock_recvmsg(sock->sock, &msg, (size_t)len, 0/*MSG_DONTWAIT*/);
 	set_fs(oldfs);
 
 	return err;
 }
 
 static struct v3_socket_hooks palacios_sock_hooks = {
-  	.tcp_socket = palacios_tcp_socket,
-  	.udp_socket = palacios_udp_socket,
-  	.close = palacios_close,
-  	.bind = palacios_bind_socket,
-  	.listen = palacios_listen,
-  	.accept = palacios_accept,
-  	.select = palacios_select,
-  	.connect_to_ip = palacios_connect_to_ip,
+  	.tcp_socket      = palacios_tcp_socket,
+  	.udp_socket      = palacios_udp_socket,
+  	.close           = palacios_close,
+  	.bind            = palacios_bind_socket,
+  	.listen          = palacios_listen,
+  	.accept          = palacios_accept,
+  	.select          = palacios_select,
+  	.connect_to_ip   = palacios_connect_to_ip,
   	.connect_to_host = NULL,
-  	.send = palacios_send,
-  	.recv = palacios_recv,
-  	.sendto_host = NULL,
-  	.sendto_ip = palacios_sendto_ip,
-  	.recvfrom_host = NULL,
-  	.recvfrom_ip = palacios_recvfrom_ip,
+  	.send            = palacios_send,
+  	.recv            = palacios_recv,
+  	.sendto_host     = NULL,
+  	.sendto_ip       = palacios_sendto_ip,
+  	.recvfrom_host   = NULL,
+  	.recvfrom_ip     = palacios_recvfrom_ip,
 };
 
-static int socket_init( void ) {
+static int 
+socket_init( void ) 
+{
   	V3_Init_Sockets(&palacios_sock_hooks);
 	INIT_LIST_HEAD(&global_sockets);
 	return 0;
 }
 
-static int socket_deinit( void ) {
+static int 
+socket_deinit( void ) 
+{
     if (!list_empty(&(global_sockets))) {
 	ERROR("Error removing module with open sockets\n");
     }
@@ -485,10 +472,10 @@ static int socket_deinit( void ) {
 
 
 static struct linux_ext socket_ext = {
-    .name = "SOCKET_INTERFACE",
-    .init = socket_init,
-    .deinit = socket_deinit,
-    .guest_init = NULL,
+    .name         = "SOCKET_INTERFACE",
+    .init         = socket_init,
+    .deinit       = socket_deinit,
+    .guest_init   = NULL,
     .guest_deinit = NULL
 };
 

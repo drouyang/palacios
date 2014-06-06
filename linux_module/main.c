@@ -46,10 +46,10 @@ MODULE_PARM_DESC(cpu_list, "Comma-delimited list of CPUs that Palacios will run 
 
 static struct v3_guest * guest_map[MAX_VMS] = {[0 ... MAX_VMS - 1] = 0};
 
-static int              v3_major_num      = 0;
-struct class          * v3_class          = NULL;
-static struct cdev      ctrl_dev;
-struct proc_dir_entry * palacios_proc_dir = NULL;
+static int               v3_major_num       = 0;
+struct class           * v3_class           = NULL;
+static struct cdev       ctrl_dev;
+struct proc_dir_entry  * palacios_proc_dir  = NULL;
 
 
 
@@ -147,8 +147,8 @@ out_err:
 	    break;
 	}
 	case V3_FREE_GUEST: {
-	    unsigned long vm_idx = arg;
-	    struct v3_guest * guest = guest_map[vm_idx];
+	    unsigned long     vm_idx = arg;
+	    struct v3_guest * guest  = guest_map[vm_idx];
 
 	    if (!guest) {
 		ERROR("No VM at index %ld\n",vm_idx);
@@ -235,7 +235,10 @@ static struct file_operations v3_ctrl_fops = {
 /* This is OK, because at least for now there is no way we will exceed 4KB of data in the file. 
  * If we ever do, we will need to implement a full seq_file implementation
  */
-static int vm_seq_show(struct seq_file * s, void * v) {
+static int 
+vm_seq_show(struct seq_file * s, 
+	    void            * v) 
+{
     int i;
 
     for (i = 0; i < MAX_VMS; i++) {
@@ -256,10 +259,10 @@ static int vm_proc_open(struct inode * inode, struct file * filp) {
 }
 
 static const struct file_operations vm_proc_ops = {
-    .owner = THIS_MODULE,
-    .open = vm_proc_open, 
-    .read = seq_read, 
-    .llseek = seq_lseek,
+    .owner   = THIS_MODULE,
+    .open    = vm_proc_open, 
+    .read    = seq_read, 
+    .llseek  = seq_lseek,
     .release = single_release,
 };
 
@@ -272,7 +275,7 @@ static int __init
 v3_init(void) 
 {
     dev_t dev = MKDEV(0, 0); // We dynamicallly assign the major number
-    int ret = 0;
+    int   ret = 0;
 
 
     palacios_proc_dir = proc_mkdir("v3vee", NULL);
@@ -309,14 +312,14 @@ v3_init(void)
     }
 
     v3_major_num = MAJOR(dev);
-
-    dev = MKDEV(v3_major_num, MAX_VMS + 1);
+    dev          = MKDEV(v3_major_num, MAX_VMS + 1);
 
     
     DEBUG("Creating V3 Control device: Major %d, Minor %d\n", v3_major_num, MINOR(dev));
+
     cdev_init(&ctrl_dev, &v3_ctrl_fops);
     ctrl_dev.owner = THIS_MODULE;
-    ctrl_dev.ops = &v3_ctrl_fops;
+    ctrl_dev.ops   = &v3_ctrl_fops;
     cdev_add(&ctrl_dev, dev, 1);
     
     device_create(v3_class, NULL, dev, NULL, "v3vee");
@@ -330,23 +333,23 @@ v3_init(void)
 
     if (palacios_proc_dir) {
 	struct proc_dir_entry * entry = NULL;
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
 	entry = create_proc_entry("v3-guests", 0444, palacios_proc_dir);
+
         if (entry) {
 	    entry->proc_fops = &vm_proc_ops;
 	    v3_lnx_printk("/proc/v3vee/v3-guests successfully created\n");
-	} else {
-	    ERROR("Could not create proc entry\n");
-	    goto failure1;
 	}
 #else 
 	entry = proc_create_data("v3-guests", 0444, palacios_proc_dir, &vm_proc_ops, NULL);
+#endif
 
 	if (!entry) {
 	    ERROR("Could not create proc entry (%s)\n", "v3-guests");
 	    goto failure1;
 	}
-#endif
+
 	
     } else {
 	ERROR("Could not create proc entry\n");
@@ -367,14 +370,9 @@ v3_init(void)
 static void __exit 
 v3_exit(void) 
 {
-    extern u32 pg_allocs;
-    extern u32 pg_frees;
-    extern u32 mallocs;
-    extern u32 frees;
-    struct v3_guest * guest;
+    struct v3_guest * guest = NULL;
     dev_t dev;
-    int i = 0;
-
+    int   i = 0;
 
     /* Stop and free any running VMs */ 
     for (i = 0; i < MAX_VMS; i++) {
@@ -396,8 +394,26 @@ v3_exit(void)
 
     palacios_vmm_exit();
 
-    DEBUG("Palacios Mallocs = %d, Frees = %d\n", mallocs, frees);
-    DEBUG("Palacios Page Allocs = %d, Page Frees = %d\n", pg_allocs, pg_frees);
+
+    {
+	/*
+	 * Simple Memory leak detection
+	 * We count the number of alloc/free operations, and compare them here 
+	 */
+
+	extern u32 pg_allocs;
+	extern u32 pg_frees;
+	extern u32 mallocs;
+	extern u32 frees;
+
+	if ((frees    != mallocs) ||
+	    (pg_frees != pg_allocs)) {
+
+	    ERROR("Memory Leak Detected!!!\n");
+	    ERROR("\t-- Mallocs = %d, Frees = %d\n", mallocs, frees);
+	    ERROR("\t-- Page Allocs = %d, Page Frees = %d\n", pg_allocs, pg_frees);
+	}
+    }
 
     unregister_chrdev_region(MKDEV(v3_major_num, 0), MAX_VMS + 1);
 
@@ -413,7 +429,7 @@ v3_exit(void)
     palacios_deinit_mm();
 
     remove_proc_entry("v3-guests", palacios_proc_dir);
-    remove_proc_entry("v3vee", NULL);
+    remove_proc_entry("v3vee",     NULL);
 }
 
 

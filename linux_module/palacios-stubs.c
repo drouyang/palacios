@@ -65,17 +65,19 @@ void palacios_print(const char * fmt, ...) {
  * Allocates a contiguous region of pages of the requested size.
  * Returns the physical address of the first page in the region.
  */
-void * palacios_allocate_pages(int num_pages, unsigned int alignment, int node_id) {
-    void * pg_addr = NULL;
-
-    pg_addr = (void *)alloc_palacios_pgs(num_pages, alignment, node_id);
+void * 
+palacios_allocate_pages(int          num_pages, 
+			unsigned int alignment, 
+			int          node_id) 
+{
+    void * pg_addr = (void *)alloc_palacios_pgs(num_pages, alignment, node_id);
 
     if (!pg_addr) { 
 	ERROR("ALERT ALERT  Page allocation has FAILED Warning\n");
 	return NULL;
     }
 
-    pg_allocs += num_pages;
+    pg_allocs     += num_pages;
 
     return pg_addr;
 }
@@ -87,7 +89,10 @@ void * palacios_allocate_pages(int num_pages, unsigned int alignment, int node_i
  * a single call while palacios_free_page() only frees a single page.
  */
 
-void palacios_free_pages(void * page_paddr, int num_pages) {
+void 
+palacios_free_pages(void * page_paddr, 
+		    int    num_pages) 
+{
     pg_frees += num_pages;
     free_palacios_pgs((uintptr_t)page_paddr, num_pages);
 }
@@ -99,10 +104,9 @@ void palacios_free_pages(void * page_paddr, int num_pages) {
  * Returns the kernel virtual address of the memory allocated.
  */
 void *
-palacios_alloc(unsigned int size) {
-
+palacios_alloc(unsigned int size) 
+{
     mallocs++;
-
     return palacios_kmalloc(size, GFP_KERNEL);
 }
 
@@ -110,9 +114,7 @@ palacios_alloc(unsigned int size) {
  * Frees memory that was previously allocated by palacios_alloc().
  */
 void
-palacios_free(
-	void *			addr
-)
+palacios_free(void * addr)
 {
     frees++;
     palacios_kfree(addr);
@@ -123,37 +125,29 @@ palacios_free(
  * Converts a kernel virtual address to the corresponding physical address.
  */
 void *
-palacios_vaddr_to_paddr(
-	void *			vaddr
-)
+palacios_vaddr_to_paddr(void * vaddr)
 {
     return (void*) __pa(vaddr);
-
 }
 
 /**
  * Converts a physical address to the corresponding kernel virtual address.
  */
 void *
-palacios_paddr_to_vaddr(
-	void *			paddr
-)
+palacios_paddr_to_vaddr(void * paddr)
 {
-  return __va(paddr);
+    return __va(paddr);
 }
+
 
 /**
  * Runs a function on the specified CPU.
  */
 static void 
-palacios_xcall(
-	int			cpu_id, 
-	void			(*fn)(void *arg),
-	void *			arg
-)
+palacios_xcall(int    cpu_id, 
+	       void(*fn)(void *arg),
+	       void * arg)
 {
-
-
     // We set wait to 1, but I'm not sure this is necessary
     smp_call_function_single(cpu_id, fn, arg, 1);
     
@@ -166,7 +160,9 @@ struct lnx_thread_arg {
     char * name;
 };
 
-static int lnx_thread_target(void * arg) {
+static int 
+lnx_thread_target(void * arg)
+{
     struct lnx_thread_arg * thread_info = (struct lnx_thread_arg *)arg;
     int ret = 0;
     /*
@@ -187,18 +183,18 @@ static int lnx_thread_target(void * arg) {
 
     do_exit(ret);
     
-    return 0; // should not get here.
+    /* should not get here. */
+    return 0; 
 }
 
 /**
  * Creates a kernel thread.
  */
 void *
-palacios_start_kernel_thread(
-	int (*fn)		(void * arg),
-	void *			arg,
-	char *			thread_name) {
-
+palacios_start_kernel_thread(int (*fn)(void * arg),
+			     void * arg,
+			     char * thread_name) 
+{
     struct lnx_thread_arg * thread_info = palacios_kmalloc(sizeof(struct lnx_thread_arg), GFP_KERNEL);
 
     if (!thread_info) { 
@@ -206,8 +202,8 @@ palacios_start_kernel_thread(
 	return NULL;
     }
 
-    thread_info->fn = fn;
-    thread_info->arg = arg;
+    thread_info->fn   = fn;
+    thread_info->arg  = arg;
     thread_info->name = thread_name;
 
     return kthread_run( lnx_thread_target, thread_info, thread_name );
@@ -218,11 +214,12 @@ palacios_start_kernel_thread(
  * Starts a kernel thread on the specified CPU.
  */
 void * 
-palacios_start_thread_on_cpu(int cpu_id, 
+palacios_start_thread_on_cpu(int    cpu_id, 
 			     int (*fn)(void * arg), 
 			     void * arg, 
-			     char * thread_name ) {
-    struct task_struct * thread = NULL;
+			     char * thread_name )
+{
+    struct task_struct    * thread      = NULL;
     struct lnx_thread_arg * thread_info = palacios_kmalloc(sizeof(struct lnx_thread_arg), GFP_KERNEL);
 
     if (!thread_info) { 
@@ -230,8 +227,8 @@ palacios_start_thread_on_cpu(int cpu_id,
 	return NULL;
     }
 
-    thread_info->fn = fn;
-    thread_info->arg = arg;
+    thread_info->fn   = fn;
+    thread_info->arg  = arg;
     thread_info->name = thread_name;
 
 
@@ -262,8 +259,9 @@ palacios_start_thread_on_cpu(int cpu_id,
  * non-zero return means failure
  */
 int
-palacios_move_thread_to_cpu(int new_cpu_id, 
-			    void * thread_ptr) {
+palacios_move_thread_to_cpu(int    new_cpu_id, 
+			    void * thread_ptr)
+{
     struct task_struct * thread = (struct task_struct *)thread_ptr;
 
     v3_lnx_printk("Moving thread (%p) to cpu %d\n", thread, new_cpu_id);
@@ -311,11 +309,9 @@ palacios_get_cpu(void)
 #include <asm/apic.h>
 
 static void
-palacios_interrupt_cpu(
-	struct v3_vm_info *	vm, 
-	int			cpu_id, 
-	int                     vector
-)
+palacios_interrupt_cpu(struct v3_vm_info * vm, 
+		       int		   cpu_id, 
+		       int                 vector)
 {
     if (vector == 0) {
 	smp_send_reschedule(cpu_id);
@@ -329,7 +325,10 @@ palacios_interrupt_cpu(
  * Dispatches an interrupt to Palacios for handling.
  */
 static void
-palacios_dispatch_interrupt( int vector, void * dev, struct pt_regs * regs ) {
+palacios_dispatch_interrupt(int              vector, 
+			    void           * dev,
+			    struct pt_regs * regs ) 
+{
     struct v3_interrupt intr = {
 	.irq		= vector,
 	.error		= regs->orig_ax,
@@ -346,20 +345,20 @@ palacios_dispatch_interrupt( int vector, void * dev, struct pt_regs * regs ) {
  * Instructs the kernel to forward the specified IRQ to Palacios.
  */
 static int
-palacios_hook_interrupt(struct v3_vm_info *	vm,
-			unsigned int		vector ) {
+palacios_hook_interrupt(struct v3_vm_info * vm,
+			unsigned int	    vector ) 
+{
     v3_lnx_printk("hooking vector %d\n", vector);  	
 
     if (irq_to_guest_map[vector]) {
-	WARNING(
-	       "%s: Interrupt vector %u is already hooked.\n",
-	       __func__, vector);
+
+	WARNING("%s: Interrupt vector %u is already hooked.\n",
+		__func__, vector);
 	return -1;
     }
 
-    DEBUG(
-	   "%s: Hooking interrupt vector %u to vm %p.\n",
-	   __func__, vector, vm);
+    DEBUG("%s: Hooking interrupt vector %u to vm %p.\n",
+	  __func__, vector, vm);
 
     irq_to_guest_map[vector] = vm;
 
@@ -377,9 +376,8 @@ palacios_hook_interrupt(struct v3_vm_info *	vm,
 	return -1;
     } else {
 	int device_id = 0;		
-	
-	int flag = 0;
-	int error;
+	int flag      = 0;
+	int error     = 0;
 		
 	DEBUG("hooking vector: %d\n", vector);		
 
@@ -411,13 +409,11 @@ palacios_hook_interrupt(struct v3_vm_info *	vm,
  * Acknowledges an interrupt.
  */
 static int
-palacios_ack_interrupt(
-	int			vector
-) 
+palacios_ack_interrupt(int vector) 
 {
-  ack_APIC_irq(); 
-  DEBUG("Pretending to ack interrupt, vector=%d\n", vector);
-  return 0;
+    ack_APIC_irq(); 
+    DEBUG("Pretending to ack interrupt, vector=%d\n", vector);
+    return 0;
 }
   
 /**
@@ -427,7 +423,7 @@ unsigned int
 palacios_get_cpu_khz(void) 
 {
     v3_lnx_printk("cpu_khz is %u\n", cpu_khz);
-
+    
     if (cpu_khz == 0) { 
 	v3_lnx_printk("faking cpu_khz to 1000000\n");
 	return 1000000;
@@ -454,31 +450,39 @@ palacios_yield_cpu(void)
  * Given now immediately if there is no other thread that is runnable
  * And there is no real bound on how long it will yield
  */
-void palacios_sleep_cpu(unsigned int us)
+void 
+palacios_sleep_cpu(unsigned int us)
 {
 
     set_current_state(TASK_INTERRUPTIBLE);
+    
     if (us) {
-        unsigned int uspj = 1000000U/HZ;
-        unsigned int jiffies = us/uspj + ((us%uspj) !=0);  // ceiling 
+        unsigned int uspj    = 1000000U/HZ;
+        unsigned int jiffies = (us / uspj) + ( (us % uspj) != 0 ) ;  // ceiling 
         schedule_timeout(jiffies);
     } else {
         schedule();
     }
+
     return;
 }
 
-void palacios_wakeup_cpu(void *thread)
+void 
+palacios_wakeup_cpu(void * thread)
 {
     wake_up_process(thread);
     return;
 }
 
-void palacios_save_fpu(void) {
+void 
+palacios_save_fpu(void) 
+{
     __kernel_fpu_begin();
 }
 
-void palacios_restore_fpu(void) {
+void
+palacios_restore_fpu(void)
+{
     __kernel_fpu_end();
 }
 
@@ -506,7 +510,8 @@ palacios_mutex_alloc(void)
  * Frees a mutex.
  */
 void
-palacios_mutex_free(void * mutex) {
+palacios_mutex_free(void * mutex) 
+{
     palacios_free(mutex);
 }
 
@@ -514,12 +519,10 @@ palacios_mutex_free(void * mutex) {
  * Locks a mutex.
  */
 void 
-palacios_mutex_lock(void * mutex) {
+palacios_mutex_lock(void * mutex) 
+{
     down(mutex);
 }
-
-
-
 
 /**
  * Unlocks a mutex.
@@ -566,15 +569,16 @@ static struct v3_os_hooks palacios_os_hooks = {
 
 
 
-int palacios_vmm_init( void )
+int 
+palacios_vmm_init( void )
 {
-    int num_cpus = num_online_cpus();
+    int    num_cpus = num_online_cpus();
     char * cpu_mask = NULL;
 
     if (cpu_list_len > 0) {
 	int major = 0;
 	int minor = 0;
-	int i = 0;
+	int i     = 0;
 
         cpu_mask = palacios_kmalloc((num_cpus / 8) + 1, GFP_KERNEL);
 
@@ -586,6 +590,7 @@ int palacios_vmm_init( void )
 	memset(cpu_mask, 0, (num_cpus / 8) + 1);
         
         for (i = 0; i < cpu_list_len; i++) {
+
 	    if (cpu_list[i] >= num_cpus) {
 		WARNING("CPU (%d) exceeds number of available CPUs. Ignoring...\n", cpu_list[i]);
 		continue;
@@ -610,7 +615,9 @@ int palacios_vmm_init( void )
 }
 
 
-int palacios_vmm_exit( void ) {
+int 
+palacios_vmm_exit( void ) 
+{
 
     Shutdown_V3();
 

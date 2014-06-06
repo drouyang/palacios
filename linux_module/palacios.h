@@ -9,51 +9,51 @@
 #include <linux/proc_fs.h>
 
 /* Global Control IOCTLs */
-#define V3_ADD_CPU               100
-#define V3_ADD_MEM               101
-#define V3_ADD_PCI               102
+#define V3_ADD_CPU               100   /* Add a physical CPU for use by Palacios                     */
+#define V3_ADD_MEM               101   /* Add a physical memory region to Palacios memory manager    */
+#define V3_ADD_PCI               102   /* Add a passthrough PCI device for VM assignment             */
 
-#define V3_REMOVE_CPU            105
-#define V3_REMOVE_MEM            106
-#define V3_REMOVE_PCI            107
+#define V3_REMOVE_CPU            105   /* Remove a physical CPU for use by Palacios                  */
+#define V3_REMOVE_MEM            106   /* Remove a physical memory region to Palacios memory manager */
+#define V3_REMOVE_PCI            107   /* Remove passthrough PCI device for VM assignment            */
 
-#define V3_CREATE_GUEST          112
-#define V3_FREE_GUEST            113
+#define V3_CREATE_GUEST          112   /* Create a VM from a configuration image                     */
+#define V3_FREE_GUEST            113   /* Free a VM and all of its associated state                  */
 
 /* VM Specific IOCTLs */
 
-#define V3_VM_PAUSE              123
-#define V3_VM_CONTINUE           124
+#define V3_VM_PAUSE              123   /* Pause a running VMs execution                              */
+#define V3_VM_CONTINUE           124   /* Continue a running VMs execution                           */
 
-#define V3_VM_LAUNCH             125
-#define V3_VM_STOP               126
-#define V3_VM_LOAD               127
-#define V3_VM_SAVE               128
-#define V3_VM_SIMULATE           129
+#define V3_VM_LAUNCH             125   /* Launch a previously created VM                             */
+#define V3_VM_STOP               126   /* Stop a running VM                                          */
+#define V3_VM_LOAD               127   /* Load a VM's execution state from a checkpoint              */
+#define V3_VM_SAVE               128   /* Save a VM's execution state to a checkpoint                */
+#define V3_VM_SIMULATE           129   /* Cause a VM to enter simulation mode                        */
 
-#define V3_VM_INSPECT            130
-#define V3_VM_DEBUG              131
+#define V3_VM_INSPECT            130   /* Request inspection of a VM's state (OBSOLETE)              */
+#define V3_VM_DEBUG              131   /* Send a Debug command to a VM                               */
 
-#define V3_VM_MOVE_CORE          133
+#define V3_VM_MOVE_CORE          133   /* Migrate a VM's VCPU to another physical CPU                */
 
-#define V3_VM_SEND               134
-#define V3_VM_RECEIVE            135
+#define V3_VM_SEND               134   /* Migration command                                          */
+#define V3_VM_RECEIVE            135   /* Migration command                                          */
 
-#define V3_VM_CONSOLE_CONNECT    140
-#define V3_VM_CONSOLE_DISCONNECT 141
-#define V3_VM_KEYBOARD_EVENT     142
-#define V3_VM_STREAM_CONNECT     145
-
-
+#define V3_VM_CONSOLE_CONNECT    140   /* Connect to a VM's text mode console                        */
+#define V3_VM_CONSOLE_DISCONNECT 141   /* Disconnect from a VM's text mode console                   */
+#define V3_VM_KEYBOARD_EVENT     142   /* Send a scan scode to the VM's virtual keyboard             */
+#define V3_VM_STREAM_CONNECT     145   /* Connect to a VM's named data stream                        */
 
 
-#define V3_VM_XPMEM_CONNECT 12000
+
+
+#define V3_VM_XPMEM_CONNECT      12000
 
 
 struct v3_guest_img {
-    unsigned long long size;
-    void * guest_data;
-    char name[128];
+    unsigned long long   size;
+    void               * guest_data;
+    char                 name[128];
 } __attribute__((packed));
 
 struct v3_mem_region {
@@ -74,12 +74,12 @@ struct v3_core_move_cmd {
 
 struct v3_chkpt_info {
     char store[128];
-    char url[256]; /* This might need to be bigger... */
+    char url[256];
 } __attribute__((packed));
 
 
 struct v3_hw_pci_dev {
-    char name[128];
+    char         name[128];
     unsigned int bus;
     unsigned int dev;
     unsigned int func;
@@ -87,28 +87,22 @@ struct v3_hw_pci_dev {
 
 
 
-void * trace_malloc(size_t size, gfp_t flags);
-void trace_free(const void * objp);
-
-
 struct v3_guest {
     void * v3_ctx;
 
     void * img; 
-    u32 img_size;
+    u32    img_size;
 
     char name[128];
 
 
-    struct rb_root vm_ctrls;
+    struct rb_root   vm_ctrls;
     struct list_head exts;
 
-    dev_t vm_dev; 
+    dev_t       vm_dev; 
     struct cdev cdev;
 };
 
-// For now MAX_VMS must be a multiple of 8
-// This is due to the minor number bitmap
 #define MAX_VMS 32
 
 
@@ -117,15 +111,12 @@ int palacios_vmm_init( void );
 int palacios_vmm_exit( void );
 
 
-// This is how a component finds the proc dir we are using for global state
+/* Exported Proc Directory for global VMM state */
 extern struct proc_dir_entry * palacios_proc_dir;
 
-// Selected exported stubs, for use in other palacios components, like vnet
-// The idea is that everything uses the same stubs
-void *palacios_start_kernel_thread(int (*fn)(void * arg), void *arg, char *thread_name);
-void *palacios_start_thread_on_cpu(int cpu_id, int (*fn)(void * arg), void *arg, char *thread_name);
-int   palacios_move_thread_to_cpu(int new_cpu_id, void *thread_ptr);
-void palacios_yield_cpu_timed(unsigned int us);
+/* Exported stubs required by VNET */
+void       * palacios_start_kernel_thread(int (*fn)(void * arg), void * arg, char * thread_name);
+void         palacios_yield_cpu_timed(unsigned int us);
 unsigned int palacios_get_cpu(void);
 
 

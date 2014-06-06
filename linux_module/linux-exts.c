@@ -27,7 +27,7 @@ init_global_ctrls(void)
 void
 deinit_global_ctrls(void) 
 {
-    struct rb_node     * node = rb_first(&global_ctrls);
+    struct rb_node     * node     = rb_first(&global_ctrls);
     struct global_ctrl * tmp_ctrl = NULL;
     
     while (node) {

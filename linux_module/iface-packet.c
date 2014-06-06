@@ -32,7 +32,7 @@ struct raw_interface {
     struct socket * raw_sock;
     uint8_t inited;
 
-    struct list_head brdcast_recvers;
+    struct list_head   brdcast_recvers;
     struct hashtable * mac_to_recver;
 
     struct task_struct * recv_thread;
@@ -60,31 +60,34 @@ static inline int hash_eq(addr_t key1, addr_t key2) {
 
 
 static int 
-recv_pkt(struct socket * raw_sock, unsigned char * pkt, unsigned int len) {
+recv_pkt(struct socket * raw_sock, 
+	 unsigned char * pkt, 
+	 unsigned int    len) 
+{
     struct msghdr msg;
-    struct iovec iov;
-    mm_segment_t oldfs;
-    unsigned int size = 0;
+    struct iovec  iov;
+    mm_segment_t  oldfs;
+    unsigned int  size  = 0;
     
     if (raw_sock == NULL) {
 	return -1;
     }
 
     iov.iov_base = pkt;
-    iov.iov_len = len;
+    iov.iov_len  = len;
     
-    msg.msg_flags = 0;
-    msg.msg_name = NULL;
-    msg.msg_namelen = 0;
-    msg.msg_control = NULL;
+    msg.msg_flags      = 0;
+    msg.msg_name       = NULL;
+    msg.msg_namelen    = 0;
+    msg.msg_control    = NULL;
     msg.msg_controllen = 0;
-    msg.msg_iov = &iov;
-    msg.msg_iovlen = 1;
-    msg.msg_control = NULL;
+    msg.msg_iov        = &iov;
+    msg.msg_iovlen     = 1;
+    msg.msg_control    = NULL;
     
     oldfs = get_fs();
     set_fs(KERNEL_DS);
-    size = sock_recvmsg(raw_sock, &msg, len, msg.msg_flags);
+    size  = sock_recvmsg(raw_sock, &msg, len, msg.msg_flags);
     set_fs(oldfs);
     
     return size;
@@ -92,28 +95,32 @@ recv_pkt(struct socket * raw_sock, unsigned char * pkt, unsigned int len) {
 
 
 static int 
-init_socket(struct raw_interface * iface, const char * eth_dev){
-    int err;
-    struct sockaddr_ll sock_addr;
+init_socket(struct raw_interface * iface, 
+	    const char           * eth_dev)
+{
+    struct sockaddr_ll  sock_addr;
     struct net_device * net_dev;
+    int err;
 
     err = sock_create(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL), &(iface->raw_sock)); 
+
     if (err < 0) {
 	ERROR("Could not create a PF_PACKET Socket, err %d\n", err);
 	return -1;
     }
 
     net_dev = dev_get_by_name(&init_net, eth_dev);
-    if(net_dev == NULL) {
+
+    if (net_dev == NULL) {
 	ERROR("Palacios Packet: Unable to get index for device %s\n", eth_dev);
 	sock_release(iface->raw_sock);
 	return -1;
     }
 
     memset(&sock_addr, 0, sizeof(sock_addr));
-    sock_addr.sll_family = PF_PACKET;
+    sock_addr.sll_family   = PF_PACKET;
     sock_addr.sll_protocol = htons(ETH_P_ALL);
-    sock_addr.sll_ifindex = net_dev->ifindex;
+    sock_addr.sll_ifindex  = net_dev->ifindex;
 
     err = iface->raw_sock->ops->bind(iface->raw_sock, 
 				     (struct sockaddr *)&sock_addr, 
@@ -145,18 +152,20 @@ is_broadcast_ethaddr(const unsigned char * addr)
     unsigned char ret = 0xff;
     int i;
 	
-    for(i=0; i<ETH_ALEN; i++) {
+    for(i = 0; i < ETH_ALEN; i++) {
 	ret &= addr[i];
     }
 	
     return (ret == 0xff);
 }
 
-static int packet_recv_thread( void * arg ) {
-    unsigned char * pkt;
+static int 
+packet_recv_thread( void * arg ) 
+{
+    struct raw_interface * iface        = (struct raw_interface *)arg;
+    unsigned char        * pkt          = NULL;
+    struct v3_packet     * recver_state = NULL;
     int size;
-    struct v3_packet * recver_state;
-    struct raw_interface * iface = (struct raw_interface *)arg;
 
     pkt = (unsigned char *)palacios_kmalloc(ETHERNET_PACKET_LEN, GFP_KERNEL);
     
@@ -166,7 +175,7 @@ static int packet_recv_thread( void * arg ) {
     }
 
     v3_lnx_printk("Palacios Raw Packet Bridge: Staring receiving on ethernet device %s\n", 
-	   iface->eth_dev);
+		  iface->eth_dev);
 
     while (!kthread_should_stop()) {
 	size = recv_pkt(iface->raw_sock, pkt, ETHERNET_PACKET_LEN);
@@ -200,7 +209,9 @@ static int packet_recv_thread( void * arg ) {
 
 
 static int 
-init_raw_interface(struct raw_interface * iface, const char * eth_dev){
+init_raw_interface(struct raw_interface * iface, 
+		   const char           * eth_dev)
+{
 
     memcpy(iface->eth_dev, eth_dev, V3_ETHINT_NAMELEN);	
    
@@ -212,16 +223,17 @@ init_raw_interface(struct raw_interface * iface, const char * eth_dev){
     
     INIT_LIST_HEAD(&(iface->brdcast_recvers));
     iface->mac_to_recver = palacios_create_htable(0, &hash_fn, &hash_eq);
-    iface->recv_thread = kthread_run(packet_recv_thread, (void *)iface, "bridge-recver");
-    
-    iface->inited = 1;
+    iface->recv_thread   = kthread_run(packet_recv_thread, (void *)iface, "bridge-recver");
+    iface->inited        = 1;
     
     return 0;
 }
 
 static void inline 
-deinit_raw_interface(struct raw_interface * iface){
-    struct v3_packet * recver_state, * tmp_state;
+deinit_raw_interface(struct raw_interface * iface)
+{
+    struct v3_packet * recver_state = NULL;
+    struct v3_packet * tmp_state    = NULL;
 
     kthread_stop(iface->recv_thread);
     sock_release(iface->raw_sock);
@@ -234,8 +246,9 @@ deinit_raw_interface(struct raw_interface * iface){
 
 
 static inline struct raw_interface * 
-find_interface(const char * eth_dev) {
-    struct raw_interface * iface;
+find_interface(const char * eth_dev) 
+{
+    struct raw_interface * iface = NULL;
     
     list_for_each_entry(iface, &(packet_state.open_interfaces), node) {
 	if (strncmp(iface->eth_dev, eth_dev, V3_ETHINT_NAMELEN) == 0) {
@@ -249,13 +262,16 @@ find_interface(const char * eth_dev) {
 
 static int
 palacios_packet_connect(struct v3_packet * packet, 
-			const char * host_nic, 
-			void * host_vm_data) {
-    struct raw_interface * iface;
+			const char       * host_nic, 
+			void             * host_vm_data)
+{
+    struct raw_interface * iface = NULL;
     unsigned long flags;
     
     spin_lock_irqsave(&(packet_state.lock), flags);
-    iface = find_interface(host_nic);
+    {
+	iface = find_interface(host_nic);
+    }
     spin_unlock_irqrestore(&(packet_state.lock),flags);
 
     if (iface == NULL){
@@ -273,8 +289,10 @@ palacios_packet_connect(struct v3_packet * packet,
 	    return -1;
 	}
 
-	spin_lock_irqsave(&(packet_state.lock), flags);	
-	list_add(&(iface->node), &(packet_state.open_interfaces));
+	spin_lock_irqsave(&(packet_state.lock), flags);
+	{
+	    list_add(&(iface->node), &(packet_state.open_interfaces));
+	}
 	spin_unlock_irqrestore(&(packet_state.lock),flags);
     }
     
@@ -282,47 +300,52 @@ palacios_packet_connect(struct v3_packet * packet,
     
     list_add(&(packet->node), &(iface->brdcast_recvers));
     palacios_htable_insert(iface->mac_to_recver, 
-			   (addr_t)packet->dev_mac, 
+			   (addr_t)packet->dev_mac,
 			   (addr_t)packet);
 
     v3_lnx_printk("Packet: Add Receiver MAC to ethernet device %s: %2x:%2x:%2x:%2x:%2x:%2x\n", 
 		  iface->eth_dev, 
-		  packet->dev_mac[0], packet->dev_mac[1], 
-		  packet->dev_mac[2], packet->dev_mac[3], 
-		  packet->dev_mac[4], packet->dev_mac[5]);
+		  packet->dev_mac[0], 
+		  packet->dev_mac[1], 
+		  packet->dev_mac[2], 
+		  packet->dev_mac[3], 
+		  packet->dev_mac[4], 
+		  packet->dev_mac[5]);
     
     return 0;
 }
 
 static int
 palacios_packet_send(struct v3_packet * packet, 
-		     unsigned char * pkt, 
-		     unsigned int len) {
+		     unsigned char    * pkt, 
+		     unsigned int       len) 
+{
     struct raw_interface * iface = (struct raw_interface *)packet->host_packet_data;
     struct msghdr msg;
-    struct iovec iov;
-    mm_segment_t oldfs;
+    struct iovec  iov;
+    mm_segment_t  oldfs;
     int size = 0;
 	
-    if ((iface->inited == 0) || (iface->raw_sock == NULL)) {
+    if ( (iface->inited   == 0) || 
+	 (iface->raw_sock == NULL) ) {
 	ERROR("Palacios Packet Interface: Send fails due to inapproriate interface\n");
 	return -1;
     }
 	
     iov.iov_base = (void *)pkt;
-    iov.iov_len = (__kernel_size_t)len;
+    iov.iov_len  = (__kernel_size_t)len;
 
-    msg.msg_iov = &iov;
-    msg.msg_iovlen = 1;
-    msg.msg_control = NULL;
+    msg.msg_iov        = &iov;
+    msg.msg_iovlen     = 1;
+    msg.msg_control    = NULL;
     msg.msg_controllen = 0;
-    msg.msg_name = NULL;
-    msg.msg_namelen = 0;
-    msg.msg_flags = 0;
+    msg.msg_name       = NULL;
+    msg.msg_namelen    = 0;
+    msg.msg_flags      = 0;
 
     oldfs = get_fs();
     set_fs(KERNEL_DS);
-    size = sock_sendmsg(iface->raw_sock, &msg, len);
+    size  = sock_sendmsg(iface->raw_sock, &msg, len);
     set_fs(oldfs);
 
     return size;
@@ -330,7 +353,8 @@ palacios_packet_send(struct v3_packet * packet,
 
 
 static void
-palacios_packet_close(struct v3_packet * packet) {
+palacios_packet_close(struct v3_packet * packet) 
+{
     struct raw_interface * iface = (struct raw_interface *)packet->host_packet_data;
     
     list_del(&(packet->node));
@@ -342,11 +366,13 @@ palacios_packet_close(struct v3_packet * packet) {
 
 static struct v3_packet_hooks palacios_packet_hooks = {
     .connect = palacios_packet_connect,
-    .send = palacios_packet_send,
-    .close = palacios_packet_close,
+    .send    = palacios_packet_send,
+    .close   = palacios_packet_close,
 };
 
-static int packet_init( void ) {
+static int 
+packet_init( void ) 
+{
     V3_Init_Packet(&palacios_packet_hooks);
     
     memset(&packet_state, 0, sizeof(struct palacios_packet_state));
@@ -358,8 +384,11 @@ static int packet_init( void ) {
     return 0;
 }
 
-static int packet_deinit( void ) {
-    struct raw_interface * iface, * tmp;
+static int
+packet_deinit( void ) 
+{
+    struct raw_interface * iface = NULL;
+    struct raw_interface * tmp   = NULL;
     
     list_for_each_entry_safe(iface, tmp, &(packet_state.open_interfaces), node) {
 	deinit_raw_interface(iface);
@@ -370,10 +399,10 @@ static int packet_deinit( void ) {
 }
 
 static struct linux_ext pkt_ext = {
-    .name = "PACKET_INTERFACE",
-    .init = packet_init,
-    .deinit = packet_deinit,
-    .guest_init = NULL,
+    .name         = "PACKET_INTERFACE",
+    .init         = packet_init,
+    .deinit       = packet_deinit,
+    .guest_init   = NULL,
     .guest_deinit = NULL
 };
 

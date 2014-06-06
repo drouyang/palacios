@@ -15,7 +15,7 @@
 #include <interfaces/host_pci.h>
 
 static struct list_head device_list;
-static spinlock_t lock;
+static spinlock_t       lock;
 
 
 

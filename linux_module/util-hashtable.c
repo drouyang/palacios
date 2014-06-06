@@ -45,29 +45,30 @@
 
 
 struct hash_entry {
-    addr_t key;
-    addr_t value;
-    uint_t hash;
+    uintptr_t key;
+    uintptr_t value;
+    u32       hash;
     struct hash_entry * next;
 };
 
 struct hashtable {
-    uint_t table_length;
+    u32 table_length;
     struct hash_entry ** table;
-    uint_t entry_count;
-    uint_t load_limit;
-    uint_t prime_index;
-    uint_t (*hash_fn) (addr_t key);
-    int (*eq_fn) (addr_t key1, addr_t key2);
+    u32 entry_count;
+    u32 load_limit;
+    u32 prime_index;
+    u32 (*hash_fn)(uintptr_t key);
+    int (*eq_fn)  (uintptr_t key1, uintptr_t key2);
 };
 
 
 /* HASH FUNCTIONS */
 
-static inline uint_t do_hash(struct hashtable * htable, addr_t key) {
+static inline u32 do_hash(struct hashtable * htable, uintptr_t key) {
     /* Aim to protect against poor hash functions by adding logic here
      * - logic taken from java 1.4 hashtable source */
-    uint_t i = htable->hash_fn(key);
+    u32 i = htable->hash_fn(key);
+
     i += ~(i << 9);
     i ^=  ((i >> 14) | (i << 18)); /* >>> */
     i +=  (i << 4);
@@ -91,27 +92,27 @@ static inline uint_t do_hash(struct hashtable * htable, addr_t key) {
 #error Define GOLDEN_RATIO_PRIME for your wordsize.
 #endif
 
-ulong_t palacios_hash_long(ulong_t val, uint_t bits) {
-    ulong_t hash = val;
+unsigned long palacios_hash_long(unsigned long val, u32 bits) {
+    unsigned long hash = val;
 
 #ifdef __PALACIOS_64BIT__
     /*  Sigh, gcc can't optimise this alone like it does for 32 bits. */
-    ulong_t n = hash;
-    n <<= 18;
-    hash -= n;
-    n <<= 33;
-    hash -= n;
-    n <<= 3;
-    hash += n;
-    n <<= 3;
-    hash -= n;
-    n <<= 4;
-    hash += n;
-    n <<= 2;
-    hash += n;
+    unsigned long n = hash;
+    n    <<= 18;
+    hash  -= n;
+    n    <<= 33;
+    hash  -= n;
+    n    <<= 3;
+    hash  += n;
+    n    <<= 3;
+    hash  -= n;
+    n    <<= 4;
+    hash  += n;
+    n    <<= 2;
+    hash  += n;
 #else
     /* On some cpus multiply is faster, on others gcc will do shifts */
-    hash *= GOLDEN_RATIO_PRIME;
+    hash  *= GOLDEN_RATIO_PRIME;
 #endif
 
     /* High bits are more random, so use them. */
@@ -120,30 +121,39 @@ ulong_t palacios_hash_long(ulong_t val, uint_t bits) {
 
 /* HASH GENERIC MEMORY BUFFER */
 /* ELF HEADER HASH FUNCTION */
-ulong_t palacios_hash_buffer(uchar_t * msg, uint_t length) {
-    ulong_t hash = 0;
-    ulong_t temp = 0;
-    uint_t i;
+unsigned long
+palacios_hash_buffer(u8 * msg,
+		     u32  length)
+{
+    unsigned long hash = 0;
+    unsigned long temp = 0;
+    u32 i;
 
     for (i = 0; i < length; i++) {
-	hash = (hash << 4) + *(msg + i) + i;
+	hash  = (hash << 4) + *(msg + i) + i;
+
 	if ((temp = (hash & 0xF0000000))) {
 	    hash ^= (temp >> 24);
 	}
+
 	hash &= ~temp;
     }
     return hash;
 }
 
 /* indexFor */
-static inline uint_t indexFor(uint_t table_length, uint_t hash_value) {
+static inline u32 indexFor(u32 table_length, u32 hash_value) {
     return (hash_value % table_length);
 };
 
 #define freekey(X) palacios_kfree(X)
 
 
-static void * tmp_realloc(void * old_ptr, uint_t old_size, uint_t new_size) {
+static void * 
+tmp_realloc(void * old_ptr,
+	    u32    old_size, 
+	    u32    new_size)
+{
     void * new_buf = palacios_kmalloc(new_size, GFP_KERNEL);
 
     if (new_buf == NULL) {
@@ -162,7 +172,7 @@ static void * tmp_realloc(void * old_ptr, uint_t old_size, uint_t new_size) {
   http://br.endernet.org/~akrowne/
   http://planetmath.org/encyclopedia/GoodHashTablePrimes.html
 */
-static const uint_t primes[] = { 
+static const u32 primes[] = { 
     53, 97, 193, 389,
     769, 1543, 3079, 6151,
     12289, 24593, 49157, 98317,
@@ -173,7 +183,7 @@ static const uint_t primes[] = {
 
 
 // this assumes that the max load factor is .65
-static const uint_t load_factors[] = {
+static const u32 load_factors[] = {
     35, 64, 126, 253,
     500, 1003, 2002, 3999,
     7988, 15986, 31953, 63907,
@@ -182,14 +192,16 @@ static const uint_t load_factors[] = {
     32715575, 65431158, 130862298, 261724573,
     523449198, 1046898282 };
 
-const uint_t prime_table_len = sizeof(primes) / sizeof(primes[0]);
+const u32 prime_table_len = sizeof(primes) / sizeof(primes[0]);
 
-struct hashtable * palacios_create_htable(uint_t min_size,
-				    uint_t (*hash_fn) (addr_t),
-				    int (*eq_fn) (addr_t, addr_t)) {
-    struct hashtable * htable;
-    uint_t prime_index;
-    uint_t size = primes[0];
+struct hashtable * 
+palacios_create_htable(u32 min_size,
+		       u32 (*hash_fn)(uintptr_t),
+		       int (*eq_fn)  (uintptr_t, uintptr_t)) 
+{
+    struct hashtable * htable = NULL;
+    u32 prime_index           = 0;
+    u32 size                  = primes[0];
 
     /* Check requested hashtable isn't too large */
     if (min_size > (1u << 30)) {
@@ -230,21 +242,24 @@ struct hashtable * palacios_create_htable(uint_t min_size,
 }
 
 
-static int hashtable_expand(struct hashtable * htable) {
+static int
+hashtable_expand(struct hashtable * htable) 
+{
     /* Double the size of the table to accomodate more entries */
-    struct hash_entry ** new_table;
-    struct hash_entry * tmp_entry;
-    struct hash_entry ** entry_ptr;
-    uint_t new_size;
-    uint_t i;
-    uint_t index;
+    struct hash_entry ** new_table = NULL;
+    struct hash_entry  * tmp_entry = NULL;
+    struct hash_entry ** entry_ptr = NULL;
+
+    u32 new_size = 0;
+    u32 index    = 0;
+    u32 i        = 0;
 
     /* Check we're not hitting max capacity */
     if (htable->prime_index == (prime_table_len - 1)) {
 	return 0;
     }
 
-    new_size = primes[++(htable->prime_index)];
+    new_size  = primes[++(htable->prime_index)];
 
     new_table = (struct hash_entry **)palacios_kmalloc(sizeof(struct hash_entry*) * new_size, GFP_KERNEL);
 
@@ -257,11 +272,8 @@ static int hashtable_expand(struct hashtable * htable) {
 
 	    while ((tmp_entry = htable->table[i]) != NULL) {
 		htable->table[i] = tmp_entry->next;
-	   
-		index = indexFor(new_size, tmp_entry->hash);
-	    
-		tmp_entry->next = new_table[index];
-	    
+		index            = indexFor(new_size, tmp_entry->hash);
+		tmp_entry->next  = new_table[index];
 		new_table[index] = tmp_entry;
 	    }
         }
@@ -273,7 +285,8 @@ static int hashtable_expand(struct hashtable * htable) {
 	/* Plan B: realloc instead */
 
 	//new_table = (struct hash_entry **)realloc(htable->table, new_size * sizeof(struct hash_entry *));
-	new_table = (struct hash_entry **)tmp_realloc(htable->table, primes[htable->prime_index - 1], 
+	new_table = (struct hash_entry **)tmp_realloc(htable->table, 
+						      primes[htable->prime_index - 1], 
 						      new_size * sizeof(struct hash_entry *));
 
 	if (new_table == NULL) {
@@ -287,17 +300,19 @@ static int hashtable_expand(struct hashtable * htable) {
 
 	for (i = 0; i < htable->table_length; i++) {
 
-	    for (entry_ptr = &(new_table[i]), tmp_entry = *entry_ptr; 
+	    entry_ptr  = &(new_table[i]);
+
+	    for (tmp_entry  = *entry_ptr; 
 		 tmp_entry != NULL; 
-		 tmp_entry = *entry_ptr) {
+		 tmp_entry  = *entry_ptr) {
 
 		index = indexFor(new_size, tmp_entry->hash);
 
 		if (i == index) {
-		    entry_ptr = &(tmp_entry->next);
+		    entry_ptr        = &(tmp_entry->next);
 		} else {
-		    *entry_ptr = tmp_entry->next;
-		    tmp_entry->next = new_table[index];
+		    *entry_ptr       = tmp_entry->next;
+		    tmp_entry->next  = new_table[index];
 		    new_table[index] = tmp_entry;
 		}
 	    }
@@ -311,14 +326,20 @@ static int hashtable_expand(struct hashtable * htable) {
     return -1;
 }
 
-uint_t palacios_htable_count(struct hashtable * htable) {
+u32 
+palacios_htable_count(struct hashtable * htable) 
+{
     return htable->entry_count;
 }
 
-int palacios_htable_insert(struct hashtable * htable, addr_t key, addr_t value) {
+int 
+palacios_htable_insert(struct hashtable * htable,
+		       uintptr_t          key, 
+		       uintptr_t          value) 
+{
     /* This method allows duplicate keys - but they shouldn't be used */
-    uint_t index;
-    struct hash_entry * new_entry;
+    struct hash_entry * new_entry = NULL;
+    u32 index                     = 0;
 
     if (++(htable->entry_count) > htable->load_limit) {
 	/* Ignore the return value. If expand fails, we should
@@ -335,35 +356,37 @@ int palacios_htable_insert(struct hashtable * htable, addr_t key, addr_t value) 
 	return 0; /*oom*/
     }
 
-    new_entry->hash = do_hash(htable, key);
+    new_entry->hash      = do_hash(htable, key);
+    index                = indexFor(htable->table_length, new_entry->hash);
 
-    index = indexFor(htable->table_length, new_entry->hash);
+    new_entry->key       = key;
+    new_entry->value     = value;
 
-    new_entry->key = key;
-    new_entry->value = value;
-
-    new_entry->next = htable->table[index];
-
+    new_entry->next      = htable->table[index];
     htable->table[index] = new_entry;
 
     return -1;
 }
 
 
-int palacios_htable_change(struct hashtable * htable, addr_t key, addr_t value, int free_value) {
-    struct hash_entry * tmp_entry;
-    uint_t hash_value;
-    uint_t index;
+int 
+palacios_htable_change(struct hashtable * htable, 
+		       uintptr_t          key, 
+		       uintptr_t          value, 
+		       int                free_value) 
+{
+    struct hash_entry * tmp_entry = NULL;
+    u32 hash_value                = 0;
+    u32 index                     = 0;
 
     hash_value = do_hash(htable, key);
-
-    index = indexFor(htable->table_length, hash_value);
-
-    tmp_entry = htable->table[index];
+    index      = indexFor(htable->table_length, hash_value);
+    tmp_entry  = htable->table[index];
 
     while (tmp_entry != NULL) {
         /* Check hash value to short circuit heavier comparison */
-        if ((hash_value == tmp_entry->hash) && (htable->eq_fn(key, tmp_entry->key))) {
+        if ( (hash_value == tmp_entry->hash) && 
+	     (htable->eq_fn(key, tmp_entry->key)) ) {
 
 	    if (free_value) {
 		palacios_kfree((void *)(tmp_entry->value));
@@ -372,6 +395,7 @@ int palacios_htable_change(struct hashtable * htable, addr_t key, addr_t value, 
 	    tmp_entry->value = value;
 	    return -1;
         }
+
         tmp_entry = tmp_entry->next;
     }
     return 0;
@@ -379,48 +403,56 @@ int palacios_htable_change(struct hashtable * htable, addr_t key, addr_t value, 
 
 
 
-int palacios_htable_inc(struct hashtable * htable, addr_t key, addr_t value) {
-    struct hash_entry * tmp_entry;
-    uint_t hash_value;
-    uint_t index;
+int 
+palacios_htable_inc(struct hashtable * htable, 
+		    uintptr_t          key,
+		    uintptr_t          value) 
+{
+    struct hash_entry * tmp_entry = NULL;
+    u32 hash_value = 0;
+    u32 index      = 0;
 
     hash_value = do_hash(htable, key);
-
-    index = indexFor(htable->table_length, hash_value);
-
-    tmp_entry = htable->table[index];
+    index      = indexFor(htable->table_length, hash_value);
+    tmp_entry  = htable->table[index];
 
     while (tmp_entry != NULL) {
         /* Check hash value to short circuit heavier comparison */
-        if ((hash_value == tmp_entry->hash) && (htable->eq_fn(key, tmp_entry->key))) {
+        if ( (hash_value == tmp_entry->hash) && 
+	     (htable->eq_fn(key, tmp_entry->key)) ) {
 
 	    tmp_entry->value += value;
 	    return -1;
         }
+
         tmp_entry = tmp_entry->next;
     }
     return 0;
 }
 
 
-int palacios_htable_dec(struct hashtable * htable, addr_t key, addr_t value) {
-    struct hash_entry * tmp_entry;
-    uint_t hash_value;
-    uint_t index;
+int 
+palacios_htable_dec(struct hashtable * htable, 
+		    uintptr_t          key,
+		    uintptr_t          value) 
+{
+    struct hash_entry * tmp_entry = NULL;
+    u32 hash_value  = 0;
+    u32 index       = 0;
 
     hash_value = do_hash(htable, key);
-
-    index = indexFor(htable->table_length, hash_value);
-
-    tmp_entry = htable->table[index];
+    index      = indexFor(htable->table_length, hash_value);
+    tmp_entry  = htable->table[index];
 
     while (tmp_entry != NULL) {
         /* Check hash value to short circuit heavier comparison */
-        if ((hash_value == tmp_entry->hash) && (htable->eq_fn(key, tmp_entry->key))) {
+        if ( (hash_value == tmp_entry->hash) && 
+	     (htable->eq_fn(key, tmp_entry->key)) ) {
 
 	    tmp_entry->value -= value;
 	    return -1;
         }
+
         tmp_entry = tmp_entry->next;
     }
     return 0;
@@ -428,108 +460,124 @@ int palacios_htable_dec(struct hashtable * htable, addr_t key, addr_t value) {
 
 
 /* returns value associated with key */
-addr_t palacios_htable_search(struct hashtable * htable, addr_t key) {
-    struct hash_entry * cursor;
-    uint_t hash_value;
-    uint_t index;
+uintptr_t
+palacios_htable_search(struct hashtable * htable, 
+		       uintptr_t          key) 
+{
+    struct hash_entry * cursor = NULL;
+    u32 hash_value = 0;
+    u32 index      = 0;
   
     hash_value = do_hash(htable, key);
-  
-    index = indexFor(htable->table_length, hash_value);
-  
-    cursor = htable->table[index];
+    index      = indexFor(htable->table_length, hash_value);
+    cursor     = htable->table[index];
   
     while (cursor != NULL) {
 	/* Check hash value to short circuit heavier comparison */
-	if ((hash_value == cursor->hash) && 
-	    (htable->eq_fn(key, cursor->key))) {
+	if ( (hash_value == cursor->hash) && 
+	     (htable->eq_fn(key, cursor->key)) ) {
+
 	    return cursor->value;
 	}
     
 	cursor = cursor->next;
     }
   
-    return (addr_t)NULL;
+    return (uintptr_t)NULL;
 }
 
 
 /* returns value associated with key */
-addr_t palacios_htable_remove(struct hashtable * htable, addr_t key, int free_key) {
+uintptr_t 
+palacios_htable_remove(struct hashtable * htable, 
+		       uintptr_t          key, 
+		       int                free_key) 
+{
     /* TODO: consider compacting the table when the load factor drops enough,
      *       or provide a 'compact' method. */
   
-    struct hash_entry * cursor;
-    struct hash_entry ** entry_ptr;
-    addr_t value;
-    uint_t hash_value;
-    uint_t index;
+    struct hash_entry  * cursor    = NULL;
+    struct hash_entry ** entry_ptr = NULL;
+    uintptr_t value = 0;
+    u32 hash_value  = 0;
+    u32 index       = 0;
   
     hash_value = do_hash(htable, key);
-
-    index = indexFor(htable->table_length, hash_value);
-
-    entry_ptr = &(htable->table[index]);
-    cursor = *entry_ptr;
+    index      = indexFor(htable->table_length, hash_value);
+    entry_ptr  = &(htable->table[index]);
+    cursor     = *entry_ptr;
 
     while (cursor != NULL) {
+
 	/* Check hash value to short circuit heavier comparison */
-	if ((hash_value == cursor->hash) && 
-	    (htable->eq_fn(key, cursor->key))) {
+	if ( (hash_value == cursor->hash) && 
+	     (htable->eq_fn(key, cursor->key)) ) {
      
-	    *entry_ptr = cursor->next;
-	    htable->entry_count--;
-	    value = cursor->value;
+	    *entry_ptr           = cursor->next;
+	    htable->entry_count -= 1;
+	    value                = cursor->value;
       
 	    if (free_key) {
 		freekey((void *)(cursor->key));
 	    }
+
 	    palacios_kfree(cursor);
       
 	    return value;
 	}
 
 	entry_ptr = &(cursor->next);
-	cursor = cursor->next;
+	cursor    = cursor->next;
     }
-    return (addr_t)NULL;
+
+    return (uintptr_t)NULL;
 }
 
 
 /* destroy */
-void palacios_free_htable(struct hashtable * htable, int free_values, int free_keys) {
-    uint_t i;
-    struct hash_entry * cursor;
-    struct hash_entry * tmp;
-    struct hash_entry **table = htable->table;
+void 
+palacios_free_htable(struct hashtable * htable,
+		     int                free_values,
+		     int                free_keys) 
+{
+    struct hash_entry  * cursor = NULL;
+    struct hash_entry  * tmp    = NULL;
+    struct hash_entry ** table  = htable->table;
+    u32 i = 0;
 
     if (free_values) {
+
 	for (i = 0; i < htable->table_length; i++) {
 	    cursor = table[i];
       
 	    while (cursor != NULL) { 
-		tmp = cursor; 
+		tmp    = cursor; 
 		cursor = cursor->next; 
 
 		if (free_keys) {
 		    freekey((void *)(tmp->key)); 
 		}
+
 		palacios_kfree((void *)(tmp->value)); 
 		palacios_kfree(tmp); 
 	    }
 	}
+
     } else {
+
 	for (i = 0; i < htable->table_length; i++) {
 	    cursor = table[i];
 
 	    while (cursor != NULL) { 
-		struct hash_entry * tmp;
+		struct hash_entry * tmp = NULL;
 
-		tmp = cursor; 
+		tmp    = cursor; 
 		cursor = cursor->next; 
 	
 		if (free_keys) {
 		    freekey((void *)(tmp->key)); 
 		}
+
 		palacios_kfree(tmp); 
 	    }
 	}

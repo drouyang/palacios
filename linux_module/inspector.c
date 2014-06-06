@@ -21,8 +21,11 @@ static struct dentry * v3_dir = NULL;
 
 
 
-static int dfs_register_tree(struct dentry * dir, v3_inspect_node_t * root) {
-    v3_inspect_node_t * tmp_node = v3_inspection_first_child(root);
+static int 
+dfs_register_tree(struct dentry     * dir,
+		  v3_inspect_node_t * root) 
+{
+    v3_inspect_node_t        * tmp_node = v3_inspection_first_child(root);
     struct v3_inspection_value tmp_value;
 
     while (tmp_node) {
@@ -32,7 +35,7 @@ static int dfs_register_tree(struct dentry * dir, v3_inspect_node_t * root) {
 	    struct dentry * new_dir = debugfs_create_dir(tmp_value.name, dir);
 	    dfs_register_tree(new_dir, tmp_node);
 	} else if (tmp_value.size == 1) {
-	    debugfs_create_u8(tmp_value.name, 0644, dir, (u8 *)tmp_value.value);
+	    debugfs_create_u8(tmp_value.name,  0644, dir, (u8  *)tmp_value.value);
 	} else if (tmp_value.size == 2) {
 	    debugfs_create_u16(tmp_value.name, 0644, dir, (u16 *)tmp_value.value);
 	} else if (tmp_value.size == 4) {
@@ -52,10 +55,14 @@ static int dfs_register_tree(struct dentry * dir, v3_inspect_node_t * root) {
 }
 
 
-static int inspect_vm(struct v3_guest * guest, unsigned int cmd, unsigned long arg,
-		      void * priv_data) {
-    v3_inspect_node_t * root = v3_get_inspection_root(guest->v3_ctx);
-    struct dentry * guest_dir = NULL;
+static int 
+inspect_vm(struct v3_guest * guest, 
+	   unsigned int      cmd, 
+	   unsigned long     arg,
+	   void            * priv_data) 
+{
+    v3_inspect_node_t * root      = v3_get_inspection_root(guest->v3_ctx);
+    struct dentry     * guest_dir = NULL;
 
 
     if (root == NULL) {
@@ -76,7 +83,9 @@ static int inspect_vm(struct v3_guest * guest, unsigned int cmd, unsigned long a
 
 
 
-static int init_inspector( void ) {
+static int 
+init_inspector( void ) 
+{
 
     v3_dir = debugfs_create_dir("v3vee", NULL);
 
@@ -89,29 +98,37 @@ static int init_inspector( void ) {
 }
 
 
-static int deinit_inspector( void ) {
+static int 
+deinit_inspector( void ) 
+{
     debugfs_remove(v3_dir);
     return 0;
 }
 
 
-static int guest_init(struct v3_guest * guest, void ** vm_data) {
+static int
+guest_init(struct v3_guest  * guest, 
+	   void            ** vm_data) 
+{
 
     add_guest_ctrl(guest, V3_VM_INSPECT, inspect_vm, NULL);
     return 0;
 }
 
-static int guest_deinit(struct v3_guest * guest, void * vm_data) {
+static int
+guest_deinit(struct v3_guest * guest, 
+	     void            * vm_data)
+{
     
     return 0;
 }
 
 
 struct linux_ext inspector_ext = {
-    .name = "INSPECTOR",
-    .init = init_inspector, 
-    .deinit = deinit_inspector,
-    .guest_init = guest_init, 
+    .name         = "INSPECTOR",
+    .init         = init_inspector, 
+    .deinit       = deinit_inspector,
+    .guest_init   = guest_init, 
     .guest_deinit = guest_deinit
 };
 

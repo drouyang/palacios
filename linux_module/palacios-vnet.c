@@ -22,37 +22,47 @@
 
 
 
-static void host_kthread_sleep(long timeout){
+static void 
+host_kthread_sleep(long timeout)
+{
     set_current_state(TASK_INTERRUPTIBLE);
 
-    if(timeout <= 0){
+    if (timeout <= 0){
     	schedule();
-    }else {
-       schedule_timeout(timeout);
+    } else {
+	schedule_timeout(timeout);
     }
-
+    
     return;
 }
 
-static void host_kthread_wakeup(void * thread){
+static void 
+host_kthread_wakeup(void * thread)
+{
     struct task_struct * kthread = (struct task_struct *)thread;
 	
     wake_up_process(kthread);
 }
 
-static void host_kthread_stop(void * thread){
+static void 
+host_kthread_stop(void * thread)
+{
     struct task_struct * kthread = (struct task_struct *)thread;
 
-    while (kthread_stop(kthread)==-EINTR)
-	;
+    while (kthread_stop(kthread) == -EINTR);
 }
 
-static int host_kthread_should_stop(void){
+
+static int 
+host_kthread_should_stop(void)
+{
     return kthread_should_stop();
 }
 
 
-static void host_udelay(unsigned long usecs){
+static void 
+host_udelay(unsigned long usecs)
+{
     udelay(usecs);
 }
 
@@ -64,15 +74,17 @@ static void host_udelay(unsigned long usecs){
 
 struct host_timer {
     struct timer_list timer;
-    unsigned long interval;
+    unsigned long     interval;
+    int               active;
 
-    int active;
-    void (* timer_fun)(void * private_data);
-    void * pri_data;
+    void (*timer_fun)(void * private_data);
+    void  * pri_data;
 };
 
 
-void timeout_fn(unsigned long arg){
+void 
+timeout_fn(unsigned long arg)
+{
     struct host_timer * timer = (struct host_timer *)arg;
 
     if(timer->active){
@@ -83,9 +95,10 @@ void timeout_fn(unsigned long arg){
 }
 
 static void *
-host_create_timer(unsigned long interval, 
-		  void (* timer_fun)(void * priv_data), 
-		  void * data){
+host_create_timer(unsigned long  interval, 
+		  void         (*timer_fun)(void * priv_data), 
+		  void          * data)
+{
     struct host_timer * timer = (struct host_timer *)palacios_kmalloc(sizeof(struct host_timer), GFP_KERNEL);
 
     if (!timer) { 
@@ -93,21 +106,22 @@ host_create_timer(unsigned long interval,
 	return NULL;
     }
 
-    timer->interval = interval;
-    timer->timer_fun = timer_fun;
-    timer->pri_data = data;
+    timer->interval       = interval;
+    timer->timer_fun      = timer_fun;
+    timer->pri_data       = data;
 
     init_timer(&(timer->timer));
 
-    timer->timer.data = (unsigned long)timer;
+    timer->timer.data     = (unsigned long)timer;
     timer->timer.function = timeout_fn;
-    timer->timer.expires = interval;
+    timer->timer.expires  = interval;
 
     return timer;
 }
 
 static void
-host_start_timer(void * vnet_timer){
+host_start_timer(void * vnet_timer)
+{
     struct host_timer * timer = (struct host_timer *)vnet_timer;
 
     timer->active = 1;
@@ -115,22 +129,27 @@ host_start_timer(void * vnet_timer){
 }
 
 static void
-host_reset_timer(void * vnet_timer, unsigned long interval){
+host_reset_timer(void          * vnet_timer, 
+		 unsigned long   interval)
+{
     struct host_timer * timer = (struct host_timer *)timer;
 
     timer->interval = interval;
 }
 
 static void
-host_stop_timer(void * vnet_timer){
+host_stop_timer(void * vnet_timer)
+{
     struct host_timer * timer = (struct host_timer *)vnet_timer;
 
     timer->active = 0;
     del_timer(&(timer->timer));
 }
 
+
 static void
-host_del_timer(void * vnet_timer){
+host_del_timer(void * vnet_timer)
+{
     struct host_timer * timer = (struct host_timer *)vnet_timer;
 
     del_timer(&(timer->timer));
@@ -142,19 +161,17 @@ host_del_timer(void * vnet_timer){
 
 /* Enable access to main palacios stub functions */
 extern void * palacios_allocate_pages(int num_pages, unsigned int alignment);
-extern void palacios_free_pages(void * page_paddr, int num_pages);
-extern void palacios_print(const char * fmt, ...);
+extern void   palacios_free_pages(void * page_paddr, int num_pages);
+extern void   palacios_print(const char * fmt, ...);
 extern void * palacios_alloc(unsigned int size);
-extern void palacios_free(void * addr);
+extern void   palacios_free(void * addr);
 extern void * palacios_vaddr_to_paddr(void * vaddr);
 extern void * palacios_paddr_to_vaddr(void * paddr);
-extern void palacios_yield_cpu(void);
+extern void   palacios_yield_cpu(void);
 extern void * palacios_mutex_alloc(void);
-extern void palacios_mutex_free(void * mutex);
-extern void palacios_mutex_lock(void * mutex, int must_spin);
-extern void * palacios_mutex_lock_irqsave(void * mutex, int must_spin);
-extern void palacios_mutex_unlock(void * mutex);
-extern void palacios_mutex_unlock_irqrestore(void *mutex, void *flags);
+extern void   palacios_mutex_free(void * mutex);
+extern void   palacios_mutex_lock(void * mutex, int must_spin);
+extern void   palacios_mutex_unlock(void * mutex);
 
 static struct vnet_host_hooks vnet_host_hooks = {
     .timer_create	        = host_create_timer,
@@ -175,8 +192,6 @@ static struct vnet_host_hooks vnet_host_hooks = {
     .mutex_free	                = palacios_mutex_free,
     .mutex_lock	                = palacios_mutex_lock, 
     .mutex_unlock	        = palacios_mutex_unlock,
-    .mutex_lock_irqsave         = palacios_mutex_lock_irqsave, 
-    .mutex_unlock_irqrestore    = palacios_mutex_unlock_irqrestore,
 
     .print			= palacios_print,
     .allocate_pages	        = palacios_allocate_pages,
@@ -189,7 +204,9 @@ static struct vnet_host_hooks vnet_host_hooks = {
 
 
 
-static int vnet_init( void ) {
+static int 
+vnet_init( void ) 
+{
     init_vnet(&vnet_host_hooks);
 	
     vnet_bridge_init();
@@ -201,7 +218,9 @@ static int vnet_init( void ) {
 }
 
 
-static int vnet_deinit( void ) {
+static int 
+vnet_deinit( void ) 
+{
 
     INFO("V3 Control Deinit Start\n");
 
@@ -221,10 +240,10 @@ static int vnet_deinit( void ) {
 }
 
 static struct linux_ext vnet_ext = {
-    .name = "VNET",
-    .init = vnet_init,
-    .deinit = vnet_deinit,
-    .guest_init = NULL,
+    .name         = "VNET",
+    .init         = vnet_init,
+    .deinit       = vnet_deinit,
+    .guest_init   = NULL,
     .guest_deinit = NULL
 };
 
