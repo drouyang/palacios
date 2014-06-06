@@ -596,26 +596,31 @@ lower_pci_irq(struct pci_device * pci_dev,
 	      struct v3_irq     * vec) 
 {
     struct v3_southbridge     * southbridge = dev_data;
-    //struct piix4_internal     * piix4 = (struct piix4_internal *)container_of(southbridge, struct piix4_internal, southbridge);
-    struct pci_device         * piix4_pci = southbridge->southbridge_pci;
-    struct piix4_config_space * piix4_cfg = (struct piix4_config_space *)(piix4_pci->config_data);
+    //struct piix4_internal     * piix4       = (struct piix4_internal *)container_of(southbridge, struct piix4_internal, southbridge);
+    struct pci_device         * piix4_pci   = southbridge->southbridge_pci;
+    struct piix4_config_space * piix4_cfg   = (struct piix4_config_space *)(piix4_pci->config_data);
+
     int intr_pin  = pci_dev->config_header.intr_pin - 1;
     int irq_index = (intr_pin + pci_dev->dev_num - 1) & 0x3;
+
     struct v3_irq irq; // Make a copy of the irq state because we will switch the irq number
 
+    // First, lower the pin on the ioapic
     irq.ack          = vec->ack;
     irq.private_data = vec->private_data;
+    irq.irq          = (irq_index + 1) + 16;
 
     //    PrintDebug("Lowering PCI IRQ %d\n", piix4_cfg->pirq_rc[irq_index]);
 
-    // First, lower the pin on the ioapic
-    irq.irq = (irq_index + 1) + 16;
     v3_lower_acked_irq(southbridge->vm, irq);
     
     // Next, lower whatever we asserted by the PIRQs
     if (piix4_cfg->pirq_rc[irq_index] < 16) {
+	
 	irq.irq = piix4_cfg->pirq_rc[irq_index] & 0xf;
+
 	v3_lower_acked_irq(southbridge->vm, irq);
+
     } else {
       // not an error
     }
