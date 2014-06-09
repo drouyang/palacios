@@ -159,7 +159,7 @@ palacios_init_mm( void )
 	// See: alloc_pages_node()
 
 	{
-	    struct page * pgs  = alloc_pages_node(node_id, GFP_KERNEL, MAX_ORDER - 1);
+	    struct page * pgs   = alloc_pages_node(node_id, GFP_KERNEL, MAX_ORDER - 1);
 
 	    if (!pgs) {
 		ERROR("Could not allocate initial memory block for node %d\n", node_id);
@@ -230,10 +230,12 @@ palacios_kmalloc(size_t size,
     void * addr = NULL;
 
     if ((irqs_disabled() || in_atomic()) && ((flags & GFP_ATOMIC) == 0)) {
-	//	WARNING("Allocating memory with Interrupts disabled!!!\n");
-	//	WARNING("This is probably NOT want you want to do 99%% of the time\n");
-	//	WARNING("If still want to do this, you may dismiss this warning by setting the GFP_ATOMIC flag directly\n");
-	//	dump_stack();
+#if V3_CONFIG_DEBUG_MEM_ERRORS
+	WARNING("Allocating memory with Interrupts disabled!!!\n");
+	WARNING("This is probably NOT want you want to do 99%% of the time\n");
+	WARNING("If still want to do this, you may dismiss this warning by setting the GFP_ATOMIC flag directly\n");
+	dump_stack();
+#endif
 
 	flags &= ~GFP_KERNEL;
 	flags |= GFP_ATOMIC;
