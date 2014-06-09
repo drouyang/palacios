@@ -104,8 +104,20 @@ palacios_xpmem_host_disconnect(void * private_data)
         return -1;
     }
 
+    if (!state->part) {
+	ERROR("XPMEM: cannot remove XPMEM connection for NULL partition\n");
+	return -1;
+    }
+
+    if (xpmem_remove_connection(state->part, state->link) != 0) {
+	ERROR("XPMEM: failed to remove XPMEM connection\n");
+	return -1;
+    }
+
     palacios_kfree(state);
     state = NULL;
+
+    v3_lnx_printk("Guest deinitialized XPMEM host channel (Guest=%s)\n", state->guest->name);
 
     return 0;
 }
