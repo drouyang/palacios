@@ -32,7 +32,8 @@ struct vm_ctrl {
 
 static inline struct vm_ctrl * 
 __insert_ctrl(struct v3_guest * vm, 
-	      struct vm_ctrl * ctrl) {
+	      struct vm_ctrl * ctrl)
+{
     struct rb_node ** p        = &(vm->vm_ctrls.rb_node);
     struct rb_node  * parent   = NULL;
     struct vm_ctrl  * tmp_ctrl = NULL;

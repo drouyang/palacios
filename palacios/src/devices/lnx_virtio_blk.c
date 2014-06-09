@@ -327,8 +327,12 @@ _handle_kick(struct virtio_blk_state * blk_state)
 	    iov_arr[i].iov_base = (void *)buf_desc->addr_hva;
 	    iov_arr[i].iov_len  = buf_desc->length;
 
-            PrintDebug("Buffer Descriptor (ptr=%p) hva=%p, len=%d, flags=%x, next=%d\n", buf_desc, 
-		       (void *)(buf_desc->addr_hva), buf_desc->length, buf_desc->flags, buf_desc->next);
+            PrintDebug("Buffer Descriptor (ptr=%p) hva=%p, len=%d, flags=%x, next=%d\n", 
+		       buf_desc, 
+		       (void *)(buf_desc->addr_hva), 
+		       buf_desc->length, 
+		       buf_desc->flags, 
+		       buf_desc->next);
 
             req_len    += buf_desc->length;
             desc_idx    = buf_desc->next;
@@ -467,11 +471,10 @@ virtio_io_write(struct v3_core_info * core,
 		blk_state->queue.ring_desc_addr  = page_addr ;
 		blk_state->queue.ring_avail_addr = page_addr + (QUEUE_SIZE * sizeof(struct vring_desc));
 		blk_state->queue.ring_used_addr  = blk_state->queue.ring_avail_addr + sizeof(struct vring_avail) + (QUEUE_SIZE * sizeof(uint16_t));
-		
-		// round up to next page boundary.
-		blk_state->queue.ring_used_addr = (blk_state->queue.ring_used_addr + 0xfff) & ~0xfff;
+		blk_state->queue.ring_used_addr  = (blk_state->queue.ring_used_addr + 0xfff) & ~0xfff;     /*  Round up to the next page boundary */
 
-		if (v3_gpa_to_hva(core, blk_state->queue.ring_desc_addr, (addr_t *)&(blk_state->queue.desc)) == -1) {
+
+		if (v3_gpa_to_hva(core, blk_state->queue.ring_desc_addr,  (addr_t *)&(blk_state->queue.desc))  == -1) {
 		    PrintError("Could not translate ring descriptor address\n");
 		    return -1;
 		}
@@ -483,7 +486,7 @@ virtio_io_write(struct v3_core_info * core,
 		}
 
 
-		if (v3_gpa_to_hva(core, blk_state->queue.ring_used_addr, (addr_t *)&(blk_state->queue.used)) == -1) {
+		if (v3_gpa_to_hva(core, blk_state->queue.ring_used_addr,  (addr_t *)&(blk_state->queue.used))  == -1) {
 		    PrintError("Could not translate ring used address\n");
 		    return -1;
 		}
@@ -798,18 +801,21 @@ connect_fn(struct v3_vm_info     * vm,
 
     register_dev(virtio, blk_state);
 
+
+    v3_spinlock_init(&blk_state->isr_lock);
     blk_state->ops                = ops;
     blk_state->backend_data       = private_data;
+    blk_state->shadow_used_idx    = 0;
+    blk_state->shadow_avail_idx   = 0;
     blk_state->block_cfg.capacity = ops->get_capacity(private_data) / SECTOR_SIZE;
+
+
 
     PrintDebug("Virtio Capacity = %d -- 0x%p\n", 
 	       (int)(blk_state->block_cfg.capacity), 
 	       (void *)(addr_t)(blk_state->block_cfg.capacity));
 
-    v3_spinlock_init(&blk_state->isr_lock);
 
-    blk_state->shadow_used_idx  = 0;
-    blk_state->shadow_avail_idx = 0;
 
     if (blk_state->async_enabled) {
         V3_Print("virtio-blk: creating IO thread\n");

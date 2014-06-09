@@ -30,7 +30,7 @@ static struct hashtable * ext_table = NULL;
  * This is a place holder to ensure that the _v3_extensions section gets created by gcc
  */
 static struct {} null_ext  __attribute__((__used__))                    \
-    __attribute__((unused, __section__ ("_v3_extensions"),                \
+__attribute__((unused, __section__ ("_v3_extensions"),			\
                    aligned(sizeof(addr_t))));
 
 
@@ -111,8 +111,8 @@ int
 v3_deinit_ext_manager(struct v3_vm_info * vm)  
 {
     struct v3_extensions * ext_state = &(vm->extensions);
-    struct v3_extension  * ext = NULL;
-    struct v3_extension  * tmp = NULL;
+    struct v3_extension  * ext       = NULL;
+    struct v3_extension  * tmp       = NULL;
     int i;
 
     /* deinit per-core state first */

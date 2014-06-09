@@ -516,7 +516,9 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 
 	if ((vmx_state->pin_ctrls.value & hw_info.pin_ctrls.req_mask) != (hw_info.pin_ctrls.req_val)) {
 	    PrintError("INTEL COMPAT ERROR: Pin Controls (val=0x%x, req_mask=0x%x, req_val=0x%x)\n", 
-		       vmx_state->pin_ctrls.value, hw_info.pin_ctrls.req_mask, hw_info.pin_ctrls.req_val);
+		       vmx_state->pin_ctrls.value, 
+		       hw_info.pin_ctrls.req_mask,
+		       hw_info.pin_ctrls.req_val);
 	    PrintError("Bit Errors: 0x%x\n", 
 		       (vmx_state->pin_ctrls.value & hw_info.pin_ctrls.req_mask) ^ (hw_info.pin_ctrls.req_val));
 	    ret = -1;
@@ -524,7 +526,9 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 
 	if ((vmx_state->pri_proc_ctrls.value & hw_info.proc_ctrls.req_mask) != (hw_info.proc_ctrls.req_val)) {
 	    PrintError("INTEL COMPAT ERROR: Proc Controls (val=0x%x, req_mask=0x%x, req_val=0x%x)\n", 
-		       vmx_state->pri_proc_ctrls.value, hw_info.proc_ctrls.req_mask, hw_info.proc_ctrls.req_val);
+		       vmx_state->pri_proc_ctrls.value, 
+		       hw_info.proc_ctrls.req_mask, 
+		       hw_info.proc_ctrls.req_val);
 	    PrintError("Bit Errors: 0x%x\n", 
 		       (vmx_state->pri_proc_ctrls.value & hw_info.proc_ctrls.req_mask) ^ (hw_info.proc_ctrls.req_val));
 	    ret = -1;
@@ -532,7 +536,9 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 
 	if ((vmx_state->exit_ctrls.value & hw_info.exit_ctrls.req_mask) != (hw_info.exit_ctrls.req_val)) {
 	    PrintError("INTEL COMPAT ERROR: Exit Controls (val=0x%x, req_mask=0x%x, req_val=0x%x)\n", 
-		       vmx_state->exit_ctrls.value, hw_info.exit_ctrls.req_mask, hw_info.exit_ctrls.req_val);
+		       vmx_state->exit_ctrls.value, 
+		       hw_info.exit_ctrls.req_mask, 
+		       hw_info.exit_ctrls.req_val);
 	    PrintError("Bit Errors: 0x%x\n", 
 		       (vmx_state->exit_ctrls.value & hw_info.exit_ctrls.req_mask) ^ (hw_info.exit_ctrls.req_val));
 	    ret = -1;
@@ -540,7 +546,9 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 
 	if ((vmx_state->entry_ctrls.value & hw_info.entry_ctrls.req_mask) != (hw_info.entry_ctrls.req_val)) {
 	    PrintError("INTEL COMPAT ERROR: Entry Controls (val=0x%x, req_mask=0x%x, req_val=0x%x)\n", 
-		       vmx_state->entry_ctrls.value, hw_info.entry_ctrls.req_mask, hw_info.entry_ctrls.req_val);
+		       vmx_state->entry_ctrls.value, 
+		       hw_info.entry_ctrls.req_mask, 
+		       hw_info.entry_ctrls.req_val);
 	    PrintError("Bit Errors: 0x%x\n", 
 		       (vmx_state->entry_ctrls.value & hw_info.entry_ctrls.req_mask) ^ (hw_info.entry_ctrls.req_val));
 	    ret = -1;
@@ -548,7 +556,8 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 
 	if ((vmx_state->sec_proc_ctrls.value & hw_info.sec_proc_ctrls.req_mask) != (hw_info.sec_proc_ctrls.req_val)) {
 	    PrintError("INTEL COMPAT ERROR: Sec Controls (val=0x%x, req_mask=0x%x, req_val=0x%x)\n", 
-		       vmx_state->sec_proc_ctrls.value, hw_info.sec_proc_ctrls.req_mask, 
+		       vmx_state->sec_proc_ctrls.value, 
+		       hw_info.sec_proc_ctrls.req_mask, 
 		       hw_info.sec_proc_ctrls.req_val);
 	    PrintError("Bit Errors: 0x%x\n", 
 		       (vmx_state->sec_proc_ctrls.value & hw_info.sec_proc_ctrls.req_mask) ^ (hw_info.sec_proc_ctrls.req_val));
@@ -870,22 +879,22 @@ update_irq_entry_state(struct v3_core_info * core)
 #endif
 	}
 	    
-        int_info.valid = 1;                                        /*  Mark as Valid  */
+        int_info.valid = 1;                                                    /*  Mark as Valid  */
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
         V3_Print("Injecting exception %d (EIP=%p)\n", excp_vector, (void *)(addr_t)core->rip);
 #endif
 
-        check_vmcs_write(VMCS_ENTRY_INT_INFO, int_info.value);     /* Serialize injection info to VMCS  */
+        check_vmcs_write(VMCS_ENTRY_INT_INFO, int_info.value);                 /* Serialize injection info to VMCS  */
 
-        v3_injecting_excp(core, excp_vector);                      /* Signal that EXCP has been injected */
+        v3_injecting_excp(core, excp_vector);                                  /* Signal that EXCP has been injected */
 
 
     } else if ((((struct rflags *)&(core->ctrl_regs.rflags))->intr == 1) &&    /* Guest has interrupts enabled       */
 	       (vmcs_intr_state.val == 0)) {                                   /* VMCS intr blocking is not enabled  */
        
-        if ((core->intr_core_state.irq_started == 1) &&              /* IRQ has previously been injected  */
-	    (idt_vec_info.valid                == 1)) {              /* But, IRQ is still pending in VMCS */ 
+        if ((core->intr_core_state.irq_started == 1) &&                        /* IRQ has previously been injected  */
+	    (idt_vec_info.valid                == 1)) {                        /* But, IRQ is still pending in VMCS */ 
 
 #ifdef V3_CONFIG_DEBUG_INTERRUPTS
             V3_Print("IRQ pending from previous injection\n");
@@ -908,9 +917,9 @@ update_irq_entry_state(struct v3_core_info * core)
             idt_vec_info.undef = 0;
             check_vmcs_write(VMCS_ENTRY_INT_INFO, idt_vec_info.value);
 
-        } else {                                                     /* Injecting a new IRQ */
+        } else {                                                                          /* Injecting a new IRQ */
             struct vmx_entry_int_info ent_int;
-            ent_int.value = 0;                                       /* Clear irq entry fields */
+            ent_int.value = 0;                                                            /* Clear irq entry fields */
 
             switch (v3_intr_pending(core)) {
                 case V3_EXTERNAL_IRQ: {
