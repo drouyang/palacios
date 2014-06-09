@@ -45,7 +45,7 @@ struct xpmem_bar_state {
     uint32_t xpmem_hcall_id;
     uint32_t xpmem_irq_clear_hcall_id;
     uint32_t xpmem_read_cmd_hcall_id;
-
+ 
     /* interrupt status */
     uint8_t irq_handled;
 
@@ -78,7 +78,8 @@ struct v3_xpmem_state {
 
 struct xpmem_cmd_ex_iter {
     struct xpmem_cmd_ex * cmd;
-    struct list_head node;
+    uint64_t              cmd_size;
+    struct list_head      node;
 };
 
 struct xpmem_mem_iter {
@@ -120,13 +121,25 @@ static int
 xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem)
 {
     struct pci_device * pci_dev = v3_xpmem->pci_dev;
-    struct vm_device  * pci_bus = v3_xpmem->pci_bus;
-    struct v3_irq       vec;
+    struct vm_device  * pci_bus =  v3_xpmem->pci_bus;
+
+
+    /* Set up the bar */
+    {
+	struct xpmem_cmd_ex_iter * iter =
+		list_first_entry(&(v3_xpmem->cmd_list), struct xpmem_cmd_ex_iter, node);
+
+	V3_Print("Raising XPMEM irq for command %d\n", iter->cmd->type);
+
+	v3_xpmem->bar_state->xpmem_cmd_size = iter->cmd_size;
+	v3_xpmem->bar_state->irq_handled    = 0;
+    }
 
     if (pci_dev->irq_type == IRQ_NONE) {
         PrintError("XPMEM: no IRQ type set\n");
         return -1;
     } else if (pci_dev->irq_type == IRQ_INTX) { 
+	struct v3_irq vec;
         vec.irq = pci_dev->config_header.intr_line;
         vec.ack = irq_ack;
         vec.private_data = v3_xpmem;
@@ -244,10 +257,12 @@ xpmem_irq_clear_hcall(struct v3_core_info * core,
 
     flags = v3_spin_lock_irqsave(&(state->lock));
     {
+	state->bar_state->xpmem_cmd_size = 0;
+	state->bar_state->irq_handled    = 1;
+
+
 	if (!list_empty(&(state->cmd_list))) {
 	    raise_irq = 1;
-	} else {
-	    state->bar_state->irq_handled = 1;
 	}
     }
     v3_spin_unlock_irqrestore(&(state->lock), flags);
@@ -281,6 +296,7 @@ xpmem_read_cmd_hcall(struct v3_core_info * core,
     }
     v3_spin_unlock_irqrestore(&(state->lock), flags);
 
+    /* The guest should not be reading a command when there's nothing in it */
     if (!cmd_ready) {
 	return -1;
     }
@@ -533,12 +549,17 @@ xpmem_init(struct v3_vm_info * vm,
     state->bar_state->xpmem_irq_clear_hcall_id = XPMEM_IRQ_CLEAR_HCALL;
     state->bar_state->xpmem_read_cmd_hcall_id  = XPMEM_READ_CMD_HCALL;
 
+    /* Setup other bar information */
+    state->bar_state->xpmem_cmd_size = 0;
+    state->bar_state->irq_handled    = 0;
+
     /* Register hypercall callbacks with Palacios */
     v3_register_hypercall(vm, XPMEM_HCALL, xpmem_hcall, state);
     v3_register_hypercall(vm, XPMEM_IRQ_CLEAR_HCALL, xpmem_irq_clear_hcall, state);
     v3_register_hypercall(vm, XPMEM_READ_CMD_HCALL, xpmem_read_cmd_hcall, state);
 
     v3_spinlock_init(&(state->lock));
+    INIT_LIST_HEAD(&(state->cmd_list));
 
     // Initialize guest memory map
     // init_xpmem_mem_map(state);
@@ -580,6 +601,9 @@ v3_xpmem_command(struct v3_xpmem_state * v3_xpmem,
     uint64_t                   pfn_len = 0;
     int                        ret     = 0;
 
+
+    V3_Print("v3_xpmem_command: shooting command into the guest\n");
+
     iter = (struct xpmem_cmd_ex_iter *)V3_Malloc(sizeof(struct xpmem_cmd_ex_iter));
     if (!iter) {
 	PrintError("XPMEM: out of memory\n");
@@ -590,7 +614,10 @@ v3_xpmem_command(struct v3_xpmem_state * v3_xpmem,
 	pfn_len = cmd->attach.num_pfns * sizeof(uint64_t);
     }
 
-    iter->cmd = V3_Malloc(sizeof(struct xpmem_cmd_ex) + pfn_len);
+    /* Remember command size */
+    iter->cmd_size = sizeof(struct xpmem_cmd_ex) + pfn_len;
+
+    iter->cmd = V3_Malloc(iter->cmd_size);
     if (!iter->cmd) {
 	PrintError("XPMEM: out of memory\n");
 	V3_Free(iter);
@@ -649,7 +676,6 @@ v3_xpmem_command(struct v3_xpmem_state * v3_xpmem,
 
 	    if (v3_xpmem->bar_state->irq_handled) {
 		raise_irq = 1;
-		v3_xpmem->bar_state->irq_handled = 0;
 	    }
 	}
 	v3_spin_unlock_irqrestore(&(v3_xpmem->lock), flags);

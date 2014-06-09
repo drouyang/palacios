@@ -89,4 +89,12 @@ config HOST_XPMEM
 	help 
 	  This enables host support for XPMEM communication
 
+config XPMEM_KERN
+        depends on HOST_XPMEM
+        string "XPMEM module source directory" 
+        default "/path/to/xpmem"
+        help 
+          This is the directory containing the XPMEM kernel source code
+
+
 endmenu
