@@ -43,9 +43,6 @@
 
 
 
-#define V3_VM_XPMEM_CONNECT      12000
-
-
 
 static const char * v3_dev = "/dev/v3vee";
 
