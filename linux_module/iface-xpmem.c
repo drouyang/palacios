@@ -114,10 +114,9 @@ palacios_xpmem_host_disconnect(void * private_data)
 	return -1;
     }
 
-    palacios_kfree(state);
-    state = NULL;
-
     v3_lnx_printk("Guest deinitialized XPMEM host channel (Guest=%s)\n", state->guest->name);
+
+    palacios_kfree(state);
 
     return 0;
 }
@@ -130,7 +129,7 @@ palacios_xpmem_command(void                * private_data,
     struct host_xpmem_state * state = (struct host_xpmem_state *)private_data;
 
     if (!state) {
-	ERROR("XPMEM: cannot process command or NULL state\n");
+	ERROR("XPMEM: cannot process command on NULL state\n");
 	return -1;
     }
 
