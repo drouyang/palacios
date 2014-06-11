@@ -45,9 +45,7 @@ typedef enum {GENERIC_IGNORE,
 
 struct generic_internal {
     enum {GENERIC_PHYSICAL, GENERIC_HOST} forward_type;
-#ifdef V3_CONFIG_HOST_DEVICE
-    v3_host_dev_t                         host_dev;
-#endif
+
     struct vm_device                      *dev; // me
 
     char                                  name[MAX_NAME];
@@ -88,15 +86,7 @@ static int generic_write_port_passthrough(struct v3_core_info * core,
 	    }
 	    return length;
 	    break;
-#ifdef V3_CONFIG_HOST_DEVICE
-	case GENERIC_HOST:
-	    if (state->host_dev) { 
-		return v3_host_dev_write_io(state->host_dev,port,src,length);
-	    } else {
-		return -1;
-	    }
-	    break;
-#endif
+
 	default:
 	    PrintError("generic (%s): unknown forwarding type\n", state->name);
 	    return -1;
@@ -162,13 +152,7 @@ static int generic_read_port_passthrough(struct v3_core_info * core,
 	    }
 	    return length;
 	    break;
-#ifdef V3_CONFIG_HOST_DEVICE
-	case GENERIC_HOST:
-	    if (state->host_dev) { 
-		return v3_host_dev_read_io(state->host_dev,port,dst,length);
-	    }
-	    break;
-#endif
+
 	default:
 	    PrintError("generic (%s): unknown forwarding type\n", state->name);
 	    return -1;
@@ -278,15 +262,7 @@ static int generic_write_mem_passthrough(struct v3_core_info * core,
 	    memcpy(V3_VAddr((void*)gpa),src,len);
 	    return len;
 	    break;
-#ifdef V3_CONFIG_HOST_DEVICE
-	case GENERIC_HOST:
-	    if (state->host_dev) { 
-		return v3_host_dev_write_mem(state->host_dev,gpa,src,len);
-	    } else {
-		return -1;
-	    }
-	    break;
-#endif
+
 	default:
 	    PrintError("generic (%s): unknown forwarding type\n", state->name);
 	    return -1;
@@ -359,15 +335,7 @@ static int generic_read_mem_passthrough(struct v3_core_info * core,
 	    memcpy(dst,V3_VAddr((void*)gpa),len);
 	    return len;
 	    break;
-#ifdef V3_CONFIG_HOST_DEVICE
-	case GENERIC_HOST:
-	    if (state->host_dev) { 
-		return v3_host_dev_read_mem(state->host_dev,gpa,dst,len);
-	    } else {
-		return -1;
-	    }
-	    break;
-#endif
+
 	default:
 	    PrintError("generic (%s): unknown forwarding type\n", state->name);
 	    break;
@@ -439,13 +407,7 @@ static int generic_free(struct generic_internal * state) {
     
     PrintDebug("generic (%s): deinit_device\n", state->name);
     
-#ifdef V3_CONFIG_HOST_DEVICE
-    if (state->host_dev) { 
-	v3_host_dev_close(state->host_dev);
-	state->host_dev=0;
-    }
-#endif
-    
+
     // Note that the device manager handles unhooking the I/O ports
     // We need to handle unhooking memory regions    
     for (i=0;i<state->num_mem_hooks;i++) {
@@ -583,89 +545,15 @@ static int add_mem_range(struct vm_device * dev, addr_t start, addr_t end, gener
 }
 
 
-#if 1
-
-//This is a hack for host device testing and will be removed
-
-static int osdebug_hcall(struct v3_core_info *core, uint_t hcall_id, void * priv_data) 
-{
-    struct generic_internal * state = (struct generic_internal *)priv_data;
-
-    int msg_len = core->vm_regs.rcx;
-    addr_t msg_gpa = core->vm_regs.rbx;
-    int buf_is_va = core->vm_regs.rdx;
-    int i;
-    uint8_t c;
-
-    PrintDebug("generic (%s): handling hypercall (len=%d) as sequence of port writes\n",
-	       state->name, msg_len);
 
 
-    for (i=0;i<msg_len;i++) { 
-	if (buf_is_va == 1) {
-	    if (v3_read_gva_memory(core, msg_gpa+i, 1, &c) != 1) {
-		PrintError("generic (%s): could not read debug message\n",state->name);
-		return -1;
-	    }
-	} else {
-	    if (v3_read_gpa_memory(core, msg_gpa+i, 1, &c) != 1) { 
-		PrintError("generic (%s): Could not read debug message\n",state->name);
-		return -1;
-	    }
-	}
-	if (generic_write_port_print_and_passthrough(core,0xc0c0,&c,1,priv_data)!=1) { 
-	    PrintError("generic (%s): write port passthrough failed\n",state->name);
-	    return -1;
-	}
-    }	
 
-    return 0;
-}
-
-#endif
-
-
-/*
-   The device can be used to forward to the underlying physical device 
-   or to a host device that has a given url.   Both memory and ports can be forwarded as
-
-        GENERIC_PASSTHROUGH => send writes and reads to physical device or host
-        GENERIC_PRINT_AND_PASSTHROUGH => also print what it's doing
-
-        GENERIC_IGNORE => ignore writes and reads
-        GENERIC_PRINT_AND_PASSTHROUGH => also print what it's doing
-
-
-	The purpose of the "PRINT" variants is to make it easy to spy on
-	device interactions (although you will not see DMA or interrupts)
-
-
-   <device class="generic" id="my_id" 
-         empty | forward="physical_device" or forward="host_device" host_device="url">
-
-  (empty implies physical_dev)
-
-     <ports>
-         <start>portno1</start>
-         <end>portno2</end>   => portno1 through portno2 (inclusive)
-         <mode>PRINT_AND_PASSTHROUGH</mode>  (as above)
-     </ports>
-
-     <memory>
-         <start>gpa1</start>
-         <end>gpa2</end>     => memory addreses gpa1 through gpa2 (inclusive); page granularity
-         <mode> ... as above </mode>
-     </memory>
-
-*/
 
 static int generic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     struct generic_internal * state = NULL;
     char * dev_id = v3_cfg_val(cfg, "ID");
     char * forward = v3_cfg_val(cfg, "forward");
-#ifdef V3_CONFIG_HOST_DEVICE
-    char * host_dev = v3_cfg_val(cfg, "hostdev");
-#endif
+
     v3_cfg_tree_t * port_cfg = v3_cfg_subtree(cfg, "ports");
     v3_cfg_tree_t * mem_cfg = v3_cfg_subtree(cfg, "memory");
 
@@ -685,14 +573,6 @@ static int generic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     } else {
 	if (!strcasecmp(forward,"physical_device")) { 
 	    state->forward_type=GENERIC_PHYSICAL;
-	} else if (!strcasecmp(forward,"host_device")) { 
-#ifdef V3_CONFIG_HOST_DEVICE
-	    state->forward_type=GENERIC_HOST;
-#else
-	    PrintError("generic (%s): cannot configure host device since host device support is not built in\n", state->name);
-	    V3_Free(state);
-	    return -1;
-#endif
 	} else {
 	    PrintError("generic (%s): unknown forwarding type \"%s\"\n", state->name, forward);
 	    V3_Free(state);
@@ -711,24 +591,6 @@ static int generic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
     state->dev=dev;
 
 
-#ifdef V3_CONFIG_HOST_DEVICE
-    if (state->forward_type==GENERIC_HOST) { 
-	if (!host_dev) { 
-	    PrintError("generic (%s): host forwarding requested, but no host device given\n", state->name);
-	    v3_remove_device(dev);
-	    return -1;
-	} else {
-	    state->host_dev = v3_host_dev_open(host_dev,V3_BUS_CLASS_DIRECT,dev,vm);
-	    if (!(state->host_dev)) { 
-		PrintError("generic (%s): unable to open host device \"%s\"\n", state->name,host_dev);
-		v3_remove_device(dev);
-		return -1;
-	    } else {
-		PrintDebug("generic (%s): successfully attached host device \"%s\"\n", state->name,host_dev);
-	    }
-	}
-    }
-#endif
 
     PrintDebug("generic (%s): init_device\n", state->name);
 
@@ -738,6 +600,7 @@ static int generic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	uint16_t end = atox(v3_cfg_val(port_cfg, "end"));
 	char * mode_str = v3_cfg_val(port_cfg, "mode");
 	generic_mode_t mode = GENERIC_IGNORE;
+
 	if (strcasecmp(mode_str, "print_and_ignore") == 0) {
 	    mode = GENERIC_PRINT_AND_IGNORE;
 	} else if (strcasecmp(mode_str, "print_and_passthrough") == 0) {
@@ -801,13 +664,7 @@ static int generic_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	mem_cfg = v3_cfg_next_branch(port_cfg);
     }
 
-#if 1
-    // hack for os debug testing
-    if (strcasecmp(state->name,"os debug")==0) { 
-	PrintDebug("generic (%s): adding hypercall for os debug device\n", state->name);
-	v3_register_hypercall(vm,0xc0c0,osdebug_hcall,state);
-    }
-#endif
+
     
     PrintDebug("generic (%s): initialization complete\n", state->name);
 

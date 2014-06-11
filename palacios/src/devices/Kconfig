@@ -306,26 +306,6 @@ config DEBUG_PCI
 	  Enable debugging for the PCI 	
 
 
-config PCI_FRONT
-	bool "PCI front-end device"
-	default n
-	depends on PCI && HOST_DEVICE
-	help 
-	  PCI front-end device for a host-based PCI device implementation
-          This device allows you to project a host-based *virtual* device 
-          into the guest as a PCI device.   If you want to project a 
-          physical PCI device, use Passthrough PCI instead.  If you want
-          to project a non-PCI virtual or physical device, 
-          use the generic device.
-          
-
-config DEBUG_PCI_FRONT
-	bool "PCI front-end debugging"
-	depends on PCI_FRONT && DEBUG_ON
-	help 
-	  Enable debugging for the PCI front-end device 
-          
-
 
 config PIC
 	bool "8259A PIC"

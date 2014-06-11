@@ -32,59 +32,59 @@
 /* SVM Intercept Exit Codes               */
 /* AMD Arch Vol 3, Appendix C, pg 477-478 */
 /******************************************/
-#define SVM_EXIT_CR_READ_MASK 0xfffffff0
-#define SVM_EXIT_CR0_READ     0x00000000
-#define SVM_EXIT_CR1_READ     0x00000001
-#define SVM_EXIT_CR2_READ     0x00000002
-#define SVM_EXIT_CR3_READ     0x00000003
-#define SVM_EXIT_CR4_READ     0x00000004
-#define SVM_EXIT_CR5_READ     0x00000005
-#define SVM_EXIT_CR6_READ     0x00000006
-#define SVM_EXIT_CR7_READ     0x00000007
-#define SVM_EXIT_CR8_READ     0x00000008
-#define SVM_EXIT_CR9_READ     0x00000009
-#define SVM_EXIT_CR10_READ    0x0000000a
-#define SVM_EXIT_CR11_READ    0x0000000b
-#define SVM_EXIT_CR12_READ    0x0000000c
-#define SVM_EXIT_CR13_READ    0x0000000d
-#define SVM_EXIT_CR14_READ    0x0000000e
-#define SVM_EXIT_CR15_READ    0x0000000f
+#define SVM_EXIT_CR_READ_MASK   0xfffffff0
+#define SVM_EXIT_CR0_READ       0x00000000
+#define SVM_EXIT_CR1_READ       0x00000001
+#define SVM_EXIT_CR2_READ       0x00000002
+#define SVM_EXIT_CR3_READ       0x00000003
+#define SVM_EXIT_CR4_READ       0x00000004
+#define SVM_EXIT_CR5_READ       0x00000005
+#define SVM_EXIT_CR6_READ       0x00000006
+#define SVM_EXIT_CR7_READ       0x00000007
+#define SVM_EXIT_CR8_READ       0x00000008
+#define SVM_EXIT_CR9_READ       0x00000009
+#define SVM_EXIT_CR10_READ      0x0000000a
+#define SVM_EXIT_CR11_READ      0x0000000b
+#define SVM_EXIT_CR12_READ      0x0000000c
+#define SVM_EXIT_CR13_READ      0x0000000d
+#define SVM_EXIT_CR14_READ      0x0000000e
+#define SVM_EXIT_CR15_READ      0x0000000f
 
-#define SVM_EXIT_CR_WRITE_MASK 0xffffffe0
-#define SVM_EXIT_CR0_WRITE     0x00000010
-#define SVM_EXIT_CR1_WRITE     0x00000011
-#define SVM_EXIT_CR2_WRITE     0x00000012
-#define SVM_EXIT_CR3_WRITE     0x00000013
-#define SVM_EXIT_CR4_WRITE     0x00000014
-#define SVM_EXIT_CR5_WRITE     0x00000015
-#define SVM_EXIT_CR6_WRITE     0x00000016
-#define SVM_EXIT_CR7_WRITE     0x00000017
-#define SVM_EXIT_CR8_WRITE     0x00000018
-#define SVM_EXIT_CR9_WRITE     0x00000019
-#define SVM_EXIT_CR10_WRITE    0x0000001a
-#define SVM_EXIT_CR11_WRITE    0x0000001b
-#define SVM_EXIT_CR12_WRITE    0x0000001c
-#define SVM_EXIT_CR13_WRITE    0x0000001d
-#define SVM_EXIT_CR14_WRITE    0x0000001e
-#define SVM_EXIT_CR15_WRITE    0x0000001f
+#define SVM_EXIT_CR_WRITE_MASK  0xffffffe0
+#define SVM_EXIT_CR0_WRITE      0x00000010
+#define SVM_EXIT_CR1_WRITE      0x00000011
+#define SVM_EXIT_CR2_WRITE      0x00000012
+#define SVM_EXIT_CR3_WRITE      0x00000013
+#define SVM_EXIT_CR4_WRITE      0x00000014
+#define SVM_EXIT_CR5_WRITE      0x00000015
+#define SVM_EXIT_CR6_WRITE      0x00000016
+#define SVM_EXIT_CR7_WRITE      0x00000017
+#define SVM_EXIT_CR8_WRITE      0x00000018
+#define SVM_EXIT_CR9_WRITE      0x00000019
+#define SVM_EXIT_CR10_WRITE     0x0000001a
+#define SVM_EXIT_CR11_WRITE     0x0000001b
+#define SVM_EXIT_CR12_WRITE     0x0000001c
+#define SVM_EXIT_CR13_WRITE     0x0000001d
+#define SVM_EXIT_CR14_WRITE     0x0000001e
+#define SVM_EXIT_CR15_WRITE     0x0000001f
 
-#define SVM_EXIT_DR_READ_MASK 0xffffffd0
-#define SVM_EXIT_DR0_READ     0x00000020
-#define SVM_EXIT_DR1_READ     0x00000021
-#define SVM_EXIT_DR2_READ     0x00000022
-#define SVM_EXIT_DR3_READ     0x00000023
-#define SVM_EXIT_DR4_READ     0x00000024
-#define SVM_EXIT_DR5_READ     0x00000025
-#define SVM_EXIT_DR6_READ     0x00000026
-#define SVM_EXIT_DR7_READ     0x00000027
-#define SVM_EXIT_DR8_READ     0x00000028
-#define SVM_EXIT_DR9_READ     0x00000029
-#define SVM_EXIT_DR10_READ    0x0000002a
-#define SVM_EXIT_DR11_READ    0x0000002b
-#define SVM_EXIT_DR12_READ    0x0000002c
-#define SVM_EXIT_DR13_READ    0x0000002d
-#define SVM_EXIT_DR14_READ    0x0000002e
-#define SVM_EXIT_DR15_READ    0x0000002f
+#define SVM_EXIT_DR_READ_MASK   0xffffffd0
+#define SVM_EXIT_DR0_READ       0x00000020
+#define SVM_EXIT_DR1_READ       0x00000021
+#define SVM_EXIT_DR2_READ       0x00000022
+#define SVM_EXIT_DR3_READ       0x00000023
+#define SVM_EXIT_DR4_READ       0x00000024
+#define SVM_EXIT_DR5_READ       0x00000025
+#define SVM_EXIT_DR6_READ       0x00000026
+#define SVM_EXIT_DR7_READ       0x00000027
+#define SVM_EXIT_DR8_READ       0x00000028
+#define SVM_EXIT_DR9_READ       0x00000029
+#define SVM_EXIT_DR10_READ      0x0000002a
+#define SVM_EXIT_DR11_READ      0x0000002b
+#define SVM_EXIT_DR12_READ      0x0000002c
+#define SVM_EXIT_DR13_READ      0x0000002d
+#define SVM_EXIT_DR14_READ      0x0000002e
+#define SVM_EXIT_DR15_READ      0x0000002f
 
 #define SVM_EXIT_DR_WRITE_MASK  0xffffffc0
 #define SVM_EXIT_DR0_WRITE      0x00000030 // ? this was previously 3f
@@ -104,39 +104,39 @@
 #define SVM_EXIT_DR14_WRITE     0x0000003e
 #define SVM_EXIT_DR15_WRITE     0x0000003f
 
-#define SVM_EXIT_EXCP_MASK     0xffffffa0
-#define SVM_EXIT_EXCP0         0x00000040
-#define SVM_EXIT_EXCP1         0x00000041
-#define SVM_EXIT_EXCP2         0x00000042
-#define SVM_EXIT_EXCP3         0x00000043
-#define SVM_EXIT_EXCP4         0x00000044
-#define SVM_EXIT_EXCP5         0x00000045
-#define SVM_EXIT_EXCP6         0x00000046
-#define SVM_EXIT_EXCP7         0x00000047
-#define SVM_EXIT_EXCP8         0x00000048
-#define SVM_EXIT_EXCP9         0x00000049
-#define SVM_EXIT_EXCP10        0x0000004a
-#define SVM_EXIT_EXCP11        0x0000004b
-#define SVM_EXIT_EXCP12        0x0000004c
-#define SVM_EXIT_EXCP13        0x0000004d
-#define SVM_EXIT_EXCP14        0x0000004e
-#define SVM_EXIT_EXCP15        0x0000004f
-#define SVM_EXIT_EXCP16        0x00000050
-#define SVM_EXIT_EXCP17        0x00000051
-#define SVM_EXIT_EXCP18        0x00000052
-#define SVM_EXIT_EXCP19        0x00000053
-#define SVM_EXIT_EXCP20        0x00000054
-#define SVM_EXIT_EXCP21        0x00000055
-#define SVM_EXIT_EXCP22        0x00000056
-#define SVM_EXIT_EXCP23        0x00000057
-#define SVM_EXIT_EXCP24        0x00000058
-#define SVM_EXIT_EXCP25        0x00000059
-#define SVM_EXIT_EXCP26        0x0000005a
-#define SVM_EXIT_EXCP27        0x0000005b
-#define SVM_EXIT_EXCP28        0x0000005c
-#define SVM_EXIT_EXCP29        0x0000005d
-#define SVM_EXIT_EXCP30        0x0000005e
-#define SVM_EXIT_EXCP31        0x0000005f
+#define SVM_EXIT_EXCP_MASK      0xffffffa0
+#define SVM_EXIT_EXCP0          0x00000040
+#define SVM_EXIT_EXCP1          0x00000041
+#define SVM_EXIT_EXCP2          0x00000042
+#define SVM_EXIT_EXCP3          0x00000043
+#define SVM_EXIT_EXCP4          0x00000044
+#define SVM_EXIT_EXCP5          0x00000045
+#define SVM_EXIT_EXCP6          0x00000046
+#define SVM_EXIT_EXCP7          0x00000047
+#define SVM_EXIT_EXCP8          0x00000048
+#define SVM_EXIT_EXCP9          0x00000049
+#define SVM_EXIT_EXCP10         0x0000004a
+#define SVM_EXIT_EXCP11         0x0000004b
+#define SVM_EXIT_EXCP12         0x0000004c
+#define SVM_EXIT_EXCP13         0x0000004d
+#define SVM_EXIT_EXCP14         0x0000004e
+#define SVM_EXIT_EXCP15         0x0000004f
+#define SVM_EXIT_EXCP16         0x00000050
+#define SVM_EXIT_EXCP17         0x00000051
+#define SVM_EXIT_EXCP18         0x00000052
+#define SVM_EXIT_EXCP19         0x00000053
+#define SVM_EXIT_EXCP20         0x00000054
+#define SVM_EXIT_EXCP21         0x00000055
+#define SVM_EXIT_EXCP22         0x00000056
+#define SVM_EXIT_EXCP23         0x00000057
+#define SVM_EXIT_EXCP24         0x00000058
+#define SVM_EXIT_EXCP25         0x00000059
+#define SVM_EXIT_EXCP26         0x0000005a
+#define SVM_EXIT_EXCP27         0x0000005b
+#define SVM_EXIT_EXCP28         0x0000005c
+#define SVM_EXIT_EXCP29         0x0000005d
+#define SVM_EXIT_EXCP30         0x0000005e
+#define SVM_EXIT_EXCP31         0x0000005f
 
 
 #define SVM_EXIT_INTR                 0x00000060
@@ -192,8 +192,11 @@
 /******************************************/
 
 
-int v3_handle_svm_exit(struct v3_core_info * core, uint64_t exit_code, 
-		       uint64_t exit_info1, uint64_t exit_info2);
+int 
+v3_handle_svm_exit(struct v3_core_info * core, 
+		   uint64_t              exit_code, 
+		   uint64_t              exit_info1, 
+		   uint64_t              exit_info2);
 
 const char * 
 v3_svm_exit_code_to_str(uint_t exit_code);

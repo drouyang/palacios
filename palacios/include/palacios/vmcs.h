@@ -36,8 +36,8 @@
 #define   ACK_IRQ_ON_EXIT               0x00008000
 
 /* Control register exit masks */
-#define   CR4_VMXE      0x00002000
-#define   CR4_PAE       0x00000020
+#define   CR4_VMXE                      0x00002000
+#define   CR4_PAE                       0x00000020
 
 
 
@@ -53,24 +53,24 @@ struct vmcs_field_encoding {
 
 typedef enum {
     /* 16 bit control field */
-    VMCS_VPID                    = 0x00000000,
+    VMCS_VPID                         = 0x00000000,
     /* 16 bit guest state */
-    VMCS_GUEST_ES_SELECTOR       = 0x00000800,
-    VMCS_GUEST_CS_SELECTOR       = 0x00000802,
-    VMCS_GUEST_SS_SELECTOR       = 0x00000804,
-    VMCS_GUEST_DS_SELECTOR       = 0x00000806,
-    VMCS_GUEST_FS_SELECTOR       = 0x00000808,
-    VMCS_GUEST_GS_SELECTOR       = 0x0000080A,
-    VMCS_GUEST_LDTR_SELECTOR     = 0x0000080C,
-    VMCS_GUEST_TR_SELECTOR       = 0x0000080E,
+    VMCS_GUEST_ES_SELECTOR            = 0x00000800,
+    VMCS_GUEST_CS_SELECTOR            = 0x00000802,
+    VMCS_GUEST_SS_SELECTOR            = 0x00000804,
+    VMCS_GUEST_DS_SELECTOR            = 0x00000806,
+    VMCS_GUEST_FS_SELECTOR            = 0x00000808,
+    VMCS_GUEST_GS_SELECTOR            = 0x0000080A,
+    VMCS_GUEST_LDTR_SELECTOR          = 0x0000080C,
+    VMCS_GUEST_TR_SELECTOR            = 0x0000080E,
     /* 16 bit host state */
-    VMCS_HOST_ES_SELECTOR        = 0x00000C00,
-    VMCS_HOST_CS_SELECTOR        = 0x00000C02,
-    VMCS_HOST_SS_SELECTOR        = 0x00000C04,
-    VMCS_HOST_DS_SELECTOR        = 0x00000C06,
-    VMCS_HOST_FS_SELECTOR        = 0x00000C08,
-    VMCS_HOST_GS_SELECTOR        = 0x00000C0A,
-    VMCS_HOST_TR_SELECTOR        = 0x00000C0C,
+    VMCS_HOST_ES_SELECTOR             = 0x00000C00,
+    VMCS_HOST_CS_SELECTOR             = 0x00000C02,
+    VMCS_HOST_SS_SELECTOR             = 0x00000C04,
+    VMCS_HOST_DS_SELECTOR             = 0x00000C06,
+    VMCS_HOST_FS_SELECTOR             = 0x00000C08,
+    VMCS_HOST_GS_SELECTOR             = 0x00000C0A,
+    VMCS_HOST_TR_SELECTOR             = 0x00000C0C,
     /* 64 bit control fields */
     VMCS_IO_BITMAP_A_ADDR             = 0x00002000,
     VMCS_IO_BITMAP_A_ADDR_HIGH        = 0x00002001,
@@ -281,7 +281,7 @@ struct vmx_intr_state {
 	    uint32_t block_mov_ss : 1;
 	    uint32_t block_smi    : 1;
 	    uint32_t block_nmi    : 1;
-	    uint32_t rsvd        : 28;
+	    uint32_t rsvd         : 28;
 	} __attribute__((packed));
     } __attribute__((packed));
 } __attribute__((packed));
@@ -305,7 +305,7 @@ struct vmx_pending_dbg_excps {
 	    uint64_t bp_set   : 1;
 	    uint64_t rsvd2    : 1;
 	    uint64_t bp_ss    : 1;
-	    uint64_t rsvd3   : 49;
+	    uint64_t rsvd3    : 49;
 	} __attribute__((packed));
     } __attribute__((packed));
 } __attribute__((packed));
@@ -384,6 +384,7 @@ int v3_update_vmcs_ctrl_fields(struct v3_core_info * core);
 
 int v3_read_vmcs_segments(struct v3_segments * segs);
 int v3_write_vmcs_segments(struct v3_segments * segs);
+
 void v3_vmxseg_to_seg(struct vmcs_segment * vmcs_seg, struct v3_segment * seg);
 void v3_seg_to_vmxseg(struct v3_segment * seg, struct vmcs_segment * vmcs_seg);
 

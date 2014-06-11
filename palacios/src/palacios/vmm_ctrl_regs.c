@@ -38,8 +38,7 @@ static int handle_clts(struct v3_core_info * core, struct x86_instr * dec_instr)
 static int handle_mov_to_cr0(struct v3_core_info * core, struct x86_instr * dec_instr);
 
 
-// First Attempt = 494 lines
-// current = 106 lines
+
 int 
 v3_handle_cr0_write(struct v3_core_info * core) 
 {
@@ -48,9 +47,9 @@ v3_handle_cr0_write(struct v3_core_info * core)
     int ret;
     
     if (core->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gpa(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gva(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     }
     
     if (v3_decode(core, (addr_t)instr, &dec_instr) == -1) {
@@ -61,16 +60,19 @@ v3_handle_cr0_write(struct v3_core_info * core)
     
     if (dec_instr.op_type == V3_OP_LMSW) {
 	v3_telemetry_inc_core_counter(core, "LMSW traps");
+
 	if (handle_lmsw(core, &dec_instr) == -1) {
 	    return -1;
 	}
     } else if (dec_instr.op_type == V3_OP_MOV2CR) {
 	v3_telemetry_inc_core_counter(core, "MOV_TO_CR0 traps");
+
 	if (handle_mov_to_cr0(core, &dec_instr) == -1) {
 	    return -1;
 	}
     } else if (dec_instr.op_type == V3_OP_CLTS) {
 	v3_telemetry_inc_core_counter(core, "CLTS traps");
+
 	if (handle_clts(core, &dec_instr) == -1) {
 	    return -1;
 	}
@@ -96,13 +98,15 @@ handle_mov_to_cr0(struct v3_core_info * core,
 {
     // 32 bit registers
     struct cr0_32 * shadow_cr0 = (struct cr0_32 *)&(core->ctrl_regs.cr0);
-    struct cr0_32 * new_cr0    = (struct cr0_32 *)(dec_instr->src_operand.operand);
+    struct cr0_32 * new_cr0    = (struct cr0_32 *) (dec_instr->src_operand.operand);
     struct cr0_32 * guest_cr0  = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
     uint_t paging_transition   = 0;
     
     PrintDebug("MOV2CR0 (MODE=%s)\n", v3_cpu_mode_to_str(core->cpu_mode));
     
-    PrintDebug("OperandVal = %x, length=%d\n", *(uint32_t *)new_cr0, dec_instr->src_operand.size);
+    PrintDebug("OperandVal = %x, length=%d\n", 
+	       *(uint32_t *)new_cr0, 
+	       dec_instr->src_operand.size);
     
     PrintDebug("Old CR0=%x\n",       *(uint32_t *)shadow_cr0);
     PrintDebug("Old Guest CR0=%x\n", *(uint32_t *)guest_cr0);	
@@ -246,10 +250,6 @@ handle_lmsw(struct v3_core_info * core,
 
 
 
-
-
-// First attempt = 253 lines
-// current = 51 lines
 int 
 v3_handle_cr0_read(struct v3_core_info * core)
 {
@@ -259,9 +259,9 @@ v3_handle_cr0_read(struct v3_core_info * core)
 
     
     if (core->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gpa(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gva(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     }
     
     
@@ -275,34 +275,33 @@ v3_handle_cr0_read(struct v3_core_info * core)
 
 	if ((v3_get_vm_cpu_mode(core) == LONG) || 
 	    (v3_get_vm_cpu_mode(core) == LONG_32_COMPAT)) {
-	    struct cr0_64 * dst_reg   = (struct cr0_64 *)(dec_instr.dst_operand.operand);
-	    struct cr0_64 * guest_cr0 = (struct cr0_64 *)&(core->shdw_pg_state.guest_cr0);
 
-	    *dst_reg = *guest_cr0;
+	    struct cr0_64 * dst_reg   = (struct cr0_64 *) (dec_instr.dst_operand.operand);
+	    struct cr0_64 * guest_cr0 = (struct cr0_64 *)&(core->shdw_pg_state.guest_cr0);
+	    *dst_reg                  = *guest_cr0;
 
 
 	    PrintDebug("returned CR0: %p\n", (void *)*(addr_t *)dst_reg);
 	} else {
-	    struct cr0_32 * dst_reg   = (struct cr0_32 *)(dec_instr.dst_operand.operand);
+
+	    struct cr0_32 * dst_reg   = (struct cr0_32 *) (dec_instr.dst_operand.operand);
 	    struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
-
-	    *dst_reg = *guest_cr0;
-
+	    *dst_reg                  = *guest_cr0;
 
 	    PrintDebug("returned CR0: %x\n", *(uint32_t*)dst_reg);
 	}
 
     } else if (dec_instr.op_type == V3_OP_SMSW) {
+
 	struct cr0_real * shadow_cr0 = (struct cr0_real *)&(core->ctrl_regs.cr0);
-	struct cr0_real * dst_reg    = (struct cr0_real *)(dec_instr.dst_operand.operand);
+	struct cr0_real * dst_reg    = (struct cr0_real *) (dec_instr.dst_operand.operand);
 	uint8_t           cr0_val    = *(uint8_t *)shadow_cr0 & 0x0f;
 	
 	PrintDebug("SMSW\n");
 	
-	// The lower 4 bits of the guest/shadow CR0 are mapped through
-	// We can treat nested and shadow paging the same here
-	*(uint8_t *)dst_reg &= 0xf0;
-	*(uint8_t *)dst_reg |= cr0_val;
+	/* The lower 4 bits of the guest/shadow CR0 are mapped through */
+	*(uint8_t *)dst_reg         &= 0xf0;
+	*(uint8_t *)dst_reg         |= cr0_val;
 	
     } else {
 	PrintError("Unhandled opcode in handle_cr0_read\n");
@@ -316,9 +315,6 @@ v3_handle_cr0_read(struct v3_core_info * core)
 
 
 
-
-// First Attempt = 256 lines
-// current = 65 lines
 int 
 v3_handle_cr3_write(struct v3_core_info * core) 
 {
@@ -327,9 +323,9 @@ v3_handle_cr3_write(struct v3_core_info * core)
     int ret;
     
     if (core->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gpa(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gva(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     }
     
     if (v3_decode(core, (addr_t)instr, &dec_instr) == -1) {
@@ -348,11 +344,11 @@ v3_handle_cr3_write(struct v3_core_info * core)
 	    
 	    // We update the guest CR3    
 	    if (core->cpu_mode == LONG) {
-		struct cr3_64 * new_cr3   = (struct cr3_64 *)(dec_instr.src_operand.operand);
+		struct cr3_64 * new_cr3   = (struct cr3_64 *) (dec_instr.src_operand.operand);
 		struct cr3_64 * guest_cr3 = (struct cr3_64 *)&(core->shdw_pg_state.guest_cr3);
 		*guest_cr3                = *new_cr3;
 	    } else {
-		struct cr3_32 * new_cr3   = (struct cr3_32 *)(dec_instr.src_operand.operand);
+		struct cr3_32 * new_cr3   = (struct cr3_32 *) (dec_instr.src_operand.operand);
 		struct cr3_32 * guest_cr3 = (struct cr3_32 *)&(core->shdw_pg_state.guest_cr3);
 		*guest_cr3                = *new_cr3;
 	    }
@@ -374,11 +370,11 @@ v3_handle_cr3_write(struct v3_core_info * core)
 	    
 	    // This is just a passthrough operation which we probably don't need here
 	    if (core->cpu_mode == LONG) {
-		struct cr3_64 * new_cr3   = (struct cr3_64 *)(dec_instr.src_operand.operand);
+		struct cr3_64 * new_cr3   = (struct cr3_64 *) (dec_instr.src_operand.operand);
 		struct cr3_64 * guest_cr3 = (struct cr3_64 *)&(core->ctrl_regs.cr3);
 		*guest_cr3                = *new_cr3;
 	    } else {
-		struct cr3_32 * new_cr3   = (struct cr3_32 *)(dec_instr.src_operand.operand);
+		struct cr3_32 * new_cr3   = (struct cr3_32 *) (dec_instr.src_operand.operand);
 		struct cr3_32 * guest_cr3 = (struct cr3_32 *)&(core->ctrl_regs.cr3);
 		*guest_cr3                = *new_cr3;
 	    } 
@@ -395,9 +391,6 @@ v3_handle_cr3_write(struct v3_core_info * core)
 }
 
 
-
-// first attempt = 156 lines
-// current = 36 lines
 int 
 v3_handle_cr3_read(struct v3_core_info * core)
 {
@@ -406,9 +399,9 @@ v3_handle_cr3_read(struct v3_core_info * core)
     int ret;
     
     if (core->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gpa(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gva(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     }
     
     if (v3_decode(core, (addr_t)instr, &dec_instr) == -1) {
@@ -423,11 +416,11 @@ v3_handle_cr3_read(struct v3_core_info * core)
 	    
 	    if ((v3_get_vm_cpu_mode(core) == LONG) || 
 		(v3_get_vm_cpu_mode(core) == LONG_32_COMPAT)) {
-		struct cr3_64 * dst_reg   = (struct cr3_64 *)(dec_instr.dst_operand.operand);
+		struct cr3_64 * dst_reg   = (struct cr3_64 *) (dec_instr.dst_operand.operand);
 		struct cr3_64 * guest_cr3 = (struct cr3_64 *)&(core->shdw_pg_state.guest_cr3);
 		*dst_reg                  = *guest_cr3;
 	    } else {
-		struct cr3_32 * dst_reg   = (struct cr3_32 *)(dec_instr.dst_operand.operand);
+		struct cr3_32 * dst_reg   = (struct cr3_32 *) (dec_instr.dst_operand.operand);
 		struct cr3_32 * guest_cr3 = (struct cr3_32 *)&(core->shdw_pg_state.guest_cr3);
 		*dst_reg                  = *guest_cr3;
 	    }
@@ -437,11 +430,11 @@ v3_handle_cr3_read(struct v3_core_info * core)
 	    // This is just a passthrough operation which we probably don't need here
 	    if ((v3_get_vm_cpu_mode(core) == LONG) || 
 		(v3_get_vm_cpu_mode(core) == LONG_32_COMPAT)) {
-		struct cr3_64 * dst_reg   = (struct cr3_64 *)(dec_instr.dst_operand.operand);
+		struct cr3_64 * dst_reg   = (struct cr3_64 *) (dec_instr.dst_operand.operand);
 		struct cr3_64 * guest_cr3 = (struct cr3_64 *)&(core->ctrl_regs.cr3);
 		*dst_reg                  = *guest_cr3;
 	    } else {
-		struct cr3_32 * dst_reg   = (struct cr3_32 *)(dec_instr.dst_operand.operand);
+		struct cr3_32 * dst_reg   = (struct cr3_32 *) (dec_instr.dst_operand.operand);
 		struct cr3_32 * guest_cr3 = (struct cr3_32 *)&(core->ctrl_regs.cr3);
 		*dst_reg                  = *guest_cr3;
 	    }
@@ -478,9 +471,9 @@ v3_handle_cr4_write(struct v3_core_info * core)
  
     
     if (core->mem_mode == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gpa(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gva(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     }
     
     if (v3_decode(core, (addr_t)instr, &dec_instr) == -1) {
@@ -497,15 +490,13 @@ v3_handle_cr4_write(struct v3_core_info * core)
     
 
     if (v3_get_vm_mem_mode(core) == VIRTUAL_MEM) { 
-	struct cr4_32 * new_cr4 = (struct cr4_32 *)(dec_instr.src_operand.operand);
+	struct cr4_32 * new_cr4 = (struct cr4_32 *) (dec_instr.src_operand.operand);
 	struct cr4_32 * cr4     = (struct cr4_32 *)&(core->ctrl_regs.cr4);
 	
 	// if pse, pge, or pae have changed while PG (in any mode) is on
 	// the side effect is a TLB flush, which means we need to
 	// toss the current shadow page tables too
-	//
-	// 
-	// TODO - PAE FLAG needs to be special cased
+
 	if ((cr4->pse != new_cr4->pse) || 
 	    (cr4->pge != new_cr4->pge) || 
 	    (cr4->pae != new_cr4->pae)) { 
@@ -517,7 +508,7 @@ v3_handle_cr4_write(struct v3_core_info * core)
     
 
     if ((cpu_mode == PROTECTED) || (cpu_mode == PROTECTED_PAE)) {
-	struct cr4_32 * new_cr4 = (struct cr4_32 *)(dec_instr.src_operand.operand);
+	struct cr4_32 * new_cr4 = (struct cr4_32 *) (dec_instr.src_operand.operand);
 	struct cr4_32 * cr4     = (struct cr4_32 *)&(core->ctrl_regs.cr4);
 	
 	PrintDebug("OperandVal = %x, length = %d\n", *(uint32_t *)new_cr4, dec_instr.src_operand.size);
@@ -550,7 +541,7 @@ v3_handle_cr4_write(struct v3_core_info * core)
 	PrintDebug("New CR4=%x\n", *(uint32_t *)cr4);
 	
     } else if ((cpu_mode == LONG) || (cpu_mode == LONG_32_COMPAT)) {
-	struct cr4_64 * new_cr4 = (struct cr4_64 *)(dec_instr.src_operand.operand);
+	struct cr4_64 * new_cr4 = (struct cr4_64 *) (dec_instr.src_operand.operand);
 	struct cr4_64 * cr4     = (struct cr4_64 *)&(core->ctrl_regs.cr4);
 	
 	PrintDebug("Old CR4=%p\n", (void *)*(addr_t *)cr4);
@@ -604,46 +595,44 @@ v3_handle_efer_write(struct v3_core_info * core,
 		     struct v3_msr         src, 
 		     void                * priv_data) 
 {
-    struct v3_msr  * vm_efer     = &(core->shdw_pg_state.guest_efer);
-    struct efer_64 * hw_efer     = (struct efer_64 *)&(core->ctrl_regs.efer);
-    struct efer_64   old_hw_efer = *((struct efer_64 *)&core->ctrl_regs.efer);
+    struct v3_msr  * vm_efer     =  &(core->shdw_pg_state.guest_efer);
+    struct efer_64 * hw_efer     =   (struct efer_64 *)&(core->ctrl_regs.efer);
+    struct efer_64   old_hw_efer = *((struct efer_64 *)&(core->ctrl_regs.efer));
     
     PrintDebug("EFER Write (val=%p)\n", (void *)src.value);
 
-    // Set EFER value seen by guest if it reads EFER
-    vm_efer->value = src.value;
+    vm_efer->value       = src.value;   /* Guest Visible EFER value */
+    *(uint64_t *)hw_efer = src.value;   /* Actual EFER value        */
 
-    // Set EFER value seen by hardware while the guest is running
-    *(uint64_t *)hw_efer = src.value;
-
-    // We have gotten here either because we are using
-    // shadow paging, or we are using nested paging on SVM
-    // In the latter case, we don't need to do anything
-    // like the following
     if (core->shdw_pg_mode == SHADOW_PAGING) { 
-      // Catch unsupported features
-      if ((old_hw_efer.lme == 1) && (hw_efer->lme == 0)) {
-	PrintError("Disabling long mode once it has been enabled is not supported\n");
-	return -1;
-      }
+
+	if ((old_hw_efer.lme == 1) &&
+	    (hw_efer->lme    == 0)) {
+	    PrintError("Disabling long mode once it has been enabled is not supported\n");
+	    return -1;
+	}
       
-      // Set LME and LMA bits seen by hardware
-      if (old_hw_efer.lme == 0) {
-	// Long mode was not previously enabled, so the lme bit cannot
-	// be set yet. It will be set later when the guest sets CR0.PG
-	// to enable paging.
-    	hw_efer->lme = 0;
-      } else {
-	// Long mode was previously enabled. Ensure LMA bit is set.
-	// VMX does not automatically set LMA, and this should not affect SVM.
-	hw_efer->lma = 1;
-      }
+	if (old_hw_efer.lme == 0) {
+	    /*
+	     * Long mode was not previously enabled, so the lme bit cannot
+	     *   be set yet. It will be set later when the guest sets CR0.PG
+	     */
+	    hw_efer->lme = 0;
+	} else {
+	    /* 
+	     * Long mode was previously enabled. Ensure LMA bit is set.
+	     *   VMX does not automatically set LMA, and this should not affect SVM.
+	     */
+	    hw_efer->lma = 1;
+	}
     }
       
       
-    PrintDebug("RIP=%p\n",                              (void *)core->rip);
-    PrintDebug("New EFER value HW(hi=%p), VM(hi=%p)\n", (void *)*(uint64_t *)hw_efer, 
-	                                                (void *)vm_efer->value); 
+    PrintDebug("RIP=%p\n",                             
+	       (void *)core->rip);
+    PrintDebug("New EFER value HW(hi=%p), VM(hi=%p)\n", 
+	       (void *)*(uint64_t *)hw_efer, 
+	       (void *)vm_efer->value); 
 
 
     return 0;
@@ -655,12 +644,13 @@ v3_handle_vm_cr_read(struct v3_core_info * core,
 		     struct v3_msr       * dst, 
 		     void                * priv_data) 
 {
-    /* tell the guest that the BIOS disabled SVM, that way it doesn't get 
-     * confused by the fact that CPUID reports SVM as available but it still
-     * cannot be used 
+    /* 
+     * Mark SVM as beeing Disabled by the BIOS
      */
     dst->value = SVM_VM_CR_MSR_lock | SVM_VM_CR_MSR_svmdis;
+
     PrintDebug("VM_CR Read Value=%p\n", (void *)dst->value);
+
     return 0;
 }
 
@@ -672,9 +662,9 @@ v3_handle_vm_cr_write(struct v3_core_info * core,
 {
     PrintDebug("VM_CR Write Value=%p\n", (void *)src.value);
 
-    /* writes to LOCK and SVMDIS are silently ignored (according to the spec), 
-     * other writes indicate the guest wants to use some feature we haven't
-     * implemented
+    /* 
+     * writes to LOCK and SVMDIS are silently ignored (according to the spec), 
+     *    otherwise its unsupported
      */
     if (src.value & ~(SVM_VM_CR_MSR_lock | SVM_VM_CR_MSR_svmdis)) {
 	PrintDebug("VM_CR write sets unsupported bits: value=%p\n", (void *)src.value);

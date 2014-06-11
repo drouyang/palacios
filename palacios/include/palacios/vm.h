@@ -87,43 +87,39 @@ struct v3_core_info {
     } __attribute__((packed));
 
 
-    /* This structure is how we get interrupts for the guest */
-    struct v3_intr_core_state intr_core_state;
-
-    /* This structure is how we get exceptions for the guest */
-    struct v3_excp_state excp_state;
+    struct v3_intr_core_state intr_core_state;  /* Per-Core Interrupt state */
+    struct v3_excp_state      excp_state;       /* Per-core Exception state */
 
 
-    v3_cpu_mode_t            cpu_mode;
-    v3_mem_mode_t            mem_mode;
-    v3_core_operating_mode_t core_run_state;
 
-    struct v3_gprs      vm_regs;
-    struct v3_ctrl_regs ctrl_regs;
-    struct v3_dbg_regs  dbg_regs;
-    struct v3_segments  segments;
-    struct v3_msrs      msrs;
-    struct v3_fpu_state fpu_state;
+    v3_cpu_mode_t             cpu_mode;
+    v3_mem_mode_t             mem_mode;
+    v3_core_operating_mode_t  core_run_state;
+
+    struct v3_gprs            vm_regs;
+    struct v3_ctrl_regs       ctrl_regs;
+    struct v3_dbg_regs        dbg_regs;
+    struct v3_segments        segments;
+    struct v3_msrs            msrs;
+    struct v3_fpu_state       fpu_state;
 
 
-    void * vmm_data;
+    void    * vmm_data;
 
-    uint64_t yield_start_cycle;
+    uint64_t  yield_start_cycle;
     
-    uint64_t num_exits;
-    uint64_t brk_exit;
+    uint64_t  num_exits;
+    uint64_t  brk_exit;
 
 #ifdef V3_CONFIG_TELEMETRY
     struct v3_core_telemetry core_telem;
 #endif
 
 
-    // struct v3_core_dev_mgr core_dev_mgr;
-
     void * decoder_state;
 
 
-    v3_cfg_tree_t * core_cfg_data;        /* Per-core config tree data. */
+    v3_cfg_tree_t     * core_cfg_data;    /* Per-core config tree data. */
 
     struct v3_vm_info * vm_info;          /* Ptr to VM this core is assigned to */
 
@@ -146,38 +142,38 @@ struct v3_core_info {
 struct v3_vm_info {
     char name[128];
 
-    v3_vm_class_t            vm_class;
-    struct v3_config       * cfg_data;
-    v3_vm_operating_mode_t   run_state;
+    v3_vm_class_t             vm_class;
+    struct v3_config        * cfg_data;
+    v3_vm_operating_mode_t    run_state;
 
 
-    struct v3_fw_cfg_state   fw_cfg_state;
+    struct v3_fw_cfg_state    fw_cfg_state;
 
 
-    addr_t              mem_size;     /* In bytes for now */
-    uint32_t            mem_align;
-    struct v3_mem_map   mem_map;
-    struct v3_mem_hooks mem_hooks;
+    addr_t                    mem_size;     /* In bytes for now */
+    uint32_t                  mem_align;
+    struct v3_mem_map         mem_map;
+    struct v3_mem_hooks       mem_hooks;
 
     struct v3_shdw_impl_state shdw_impl;
 
-    struct v3_io_map     io_map;
-    struct v3_msr_map    msr_map;
-    struct v3_cpuid_map  cpuid_map;
-    v3_hypercall_map_t   hcall_map;
+    struct v3_io_map          io_map;
+    struct v3_msr_map         msr_map;
+    struct v3_cpuid_map       cpuid_map;
+    v3_hypercall_map_t        hcall_map;
 
-    struct vmm_dev_mgr     dev_mgr;      /* device_map */
+    struct vmm_dev_mgr        dev_mgr;      /* device_map */
 
-    struct v3_extensions   extensions;
+    struct v3_extensions      extensions;
 
-    struct v3_time         time_state;
-    uint64_t               yield_cycle_period;  
+    struct v3_time            time_state;
+    uint64_t                  yield_cycle_period;  
 
-    struct v3_host_events  host_event_hooks;
-    struct v3_intr_routers intr_routers;
+    struct v3_host_events     host_event_hooks;
+    struct v3_intr_routers    intr_routers;
 
 
-    struct v3_barrier      barrier;
+    struct v3_barrier         barrier;
 
 
 
@@ -186,15 +182,12 @@ struct v3_vm_info {
     struct v3_telemetry_state telemetry;
 #endif
 
-    struct list_head   vm_list_node;  /* List entry for global VM list (v3_vm_list) */
+    struct list_head          vm_list_node;  /* List entry for global VM list (v3_vm_list) */
 
-
-    void * host_priv_data;
+    void                    * host_priv_data;
 
     int num_cores;
-
-    // JRL: This MUST be the last entry...
-    struct v3_core_info cores[0];
+    struct v3_core_info cores[0];  /*  This MUST be the last entry.. */
 };
 
 

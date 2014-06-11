@@ -83,12 +83,17 @@ void v3_deinit_svm_cpu(int cpu_id);
 
 
 
-int v3_init_svm_vmcb(struct v3_core_info * core, v3_vm_class_t vm_class);
+int 
+v3_init_svm_vmcb(struct v3_core_info * core, 
+		 v3_vm_class_t         vm_class);
+
+
 int v3_deinit_svm_vmcb(struct v3_core_info * core);
 
-int v3_svm_enter(struct v3_core_info * info);
-int v3_start_svm_guest(struct v3_core_info *info);
+int v3_svm_enter(struct v3_core_info * core);
+int v3_start_svm_guest(struct v3_core_info * core);
 int v3_reset_svm_vm_core(struct v3_core_info * core, addr_t rip);
+
 
 int v3_svm_load_core(struct v3_core_info * core, void * ctx);
 int v3_svm_save_core(struct v3_core_info * core, void * ctx);
