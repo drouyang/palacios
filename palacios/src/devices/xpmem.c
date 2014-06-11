@@ -432,7 +432,7 @@ xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem)
 	struct xpmem_cmd_ex_iter * iter =
 		list_first_entry(&(v3_xpmem->cmd_list), struct xpmem_cmd_ex_iter, node);
 
-	Print("Raising XPMEM irq for command %d\n", iter->cmd->type);
+	PrintDebug("Raising XPMEM irq for command %d\n", iter->cmd->type);
 
 	if (iter->cmd->type == XPMEM_ATTACH_COMPLETE) {
 	    v3_xpmem->bar_state->xpmem_pfn_size = iter->cmd->attach.num_pfns * sizeof(uint64_t);
