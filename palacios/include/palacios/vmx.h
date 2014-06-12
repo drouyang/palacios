@@ -247,8 +247,8 @@ int v3_is_vmx_capable();
 void v3_init_vmx_cpu(int cpu_id);
 void v3_deinit_vmx_cpu(int cpu_id);
 
-int v3_init_vmx_vmcs(struct v3_core_info * core, v3_vm_class_t vm_class);
-int v3_deinit_vmx_vmcs(struct v3_core_info * core);
+int v3_init_vmx_core(struct v3_core_info * core, v3_vm_class_t vm_class);
+int v3_free_vmx_core(struct v3_core_info * core);
 
 int v3_start_vmx_guest(struct v3_core_info* info);
 int v3_reset_vmx_vm_core(struct v3_core_info * core, addr_t rip);

@@ -119,9 +119,17 @@ debug_efer_write(struct v3_core_info * core, uint_t msr, struct v3_msr src, void
 
 
 static int 
-init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state) 
+init_vmcs(struct v3_core_info * core) 
 {
+    struct vmx_data * vmx_state = (struct vmx_data *)core->vmm_data;
     int vmx_ret = 0;
+
+    vmx_ret = vmcs_clear(vmx_state->vmcs_ptr_phys);
+
+    if (vmx_ret != VMX_SUCCESS) {
+        PrintError("VMCLEAR failed (vmx_ret = %d)\n", vmx_ret);
+        return -1; 
+    }
 
     // disable global interrupts for vm state initialization
     v3_disable_ints();
@@ -135,9 +143,162 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
         return -1;
     }
 
+ 
+    vmx_ret |= check_vmcs_write(VMCS_IO_BITMAP_A_ADDR, 
+				(addr_t)V3_PAddr(core->vm_info->io_map.arch_data));
+    vmx_ret |= check_vmcs_write(VMCS_IO_BITMAP_B_ADDR, 
+				(addr_t)V3_PAddr(core->vm_info->io_map.arch_data) + PAGE_SIZE_4KB);
 
+    vmx_ret |= check_vmcs_write(VMCS_MSR_BITMAP, 
+				(addr_t)V3_PAddr(core->vm_info->msr_map.arch_data));
+
+
+    /* Setup paging */
+    if (core->shdw_pg_mode == SHADOW_PAGING) {
+   
+#define CR0_PE 0x00000001
+#define CR0_PG 0x80000000
+#define CR0_WP 0x00010000 // To ensure mem hooks work
+#define CR0_NE 0x00000020
+        vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, (CR0_PE | CR0_PG | CR0_WP | CR0_NE));
+
+
+	// Cause VM_EXIT whenever CR4.VMXE or CR4.PAE bits are written
+	vmx_ret |= check_vmcs_write(VMCS_CR4_MASK, CR4_VMXE | CR4_PAE);
+
+     
+
+        // vmx_state->pinbased_ctrls |= NMI_EXIT;
+
+    
+	// Hook all accesses to EFER register
+
+
+    } else if ((core->shdw_pg_mode == NESTED_PAGING) && 
+	       (v3_mach_type == V3_VMX_EPT_CPU)) {
+
+#define CR0_PE 0x00000001
+#define CR0_PG 0x80000000
+#define CR0_WP 0x00010000 // To ensure mem hooks work
+#define CR0_NE 0x00000020
+        vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, (CR0_PE | CR0_PG | CR0_WP | CR0_NE));
+
+        // vmx_state->pinbased_ctrls |= NMI_EXIT;
+
+	// Cause VM_EXIT whenever CR4.VMXE or CR4.PAE bits are written
+	vmx_ret |= check_vmcs_write(VMCS_CR4_MASK, CR4_VMXE | CR4_PAE);
+	
+      	check_vmcs_write(VMCS_VPID, 2);
+
+
+
+
+    } else if ((core->shdw_pg_mode == NESTED_PAGING) && 
+	       (v3_mach_type == V3_VMX_EPT_UG_CPU)) {
+
+	check_vmcs_write(VMCS_VPID, 2);
+
+
+	// Cause VM_EXIT whenever the CR4.VMXE bit is set
+	vmx_ret |= check_vmcs_write(VMCS_CR4_MASK, CR4_VMXE);
+#define CR0_NE 0x00000020
+#define CR0_CD 0x40000000
+	vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, CR0_NE | CR0_CD);
+
+    } else {
+	PrintError("Invalid Virtual paging mode (pg_mode=%d) (mach_type=%d)\n", core->shdw_pg_mode, v3_mach_type);
+	return -1;
+    }
+
+
+    {
+	struct vmcs_msr_save_area * msr_entries  = (struct vmcs_msr_save_area *)V3_VAddr((void *)(vmx_state->msr_area_paddr));
+	/* Write the MSR Save/Store areas to the VMCS */
+	vmx_ret |= check_vmcs_write(VMCS_EXIT_MSR_STORE_CNT,  4);
+	vmx_ret |= check_vmcs_write(VMCS_EXIT_MSR_LOAD_CNT,   4);
+	vmx_ret |= check_vmcs_write(VMCS_ENTRY_MSR_LOAD_CNT,  4);
+	
+	vmx_ret |= check_vmcs_write(VMCS_EXIT_MSR_STORE_ADDR, (addr_t)V3_PAddr(msr_entries->guest_msrs));
+	vmx_ret |= check_vmcs_write(VMCS_ENTRY_MSR_LOAD_ADDR, (addr_t)V3_PAddr(msr_entries->guest_msrs));
+	vmx_ret |= check_vmcs_write(VMCS_EXIT_MSR_LOAD_ADDR,  (addr_t)V3_PAddr(msr_entries->host_msrs));
+    }
+
+    /*** Write all the info to the VMCS ***/
+  
+    /*
+    {
+	// IS THIS NECESSARY???
+#define DEBUGCTL_MSR 0x1d9
+	struct v3_msr tmp_msr;
+	v3_get_msr(DEBUGCTL_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
+	vmx_ret |= check_vmcs_write(VMCS_GUEST_DBG_CTL, tmp_msr.value);
+	core->dbg_regs.dr7 = 0x400;
+    }
+    */
+
+#ifdef __V3_64BIT__
+    vmx_ret |= check_vmcs_write(VMCS_LINK_PTR,      (addr_t)0xffffffffffffffffULL);
+#else
+    vmx_ret |= check_vmcs_write(VMCS_LINK_PTR,      (addr_t)0xffffffffUL);
+    vmx_ret |= check_vmcs_write(VMCS_LINK_PTR_HIGH, (addr_t)0xffffffffUL);
+#endif
+
+
+    if (vmx_ret != 0) {
+	PrintError("Error writing VMCS fields\n");
+	return -1;
+    }
+
+
+    if (v3_update_vmcs_ctrl_fields(core)) {
+        PrintError("Could not write control fields!\n");
+        return -1;
+    }
+    
+    /*
+    if (v3_update_vmcs_host_state(core)) {
+        PrintError("Could not write host state\n");
+        return -1;
+    }
+    */
+
+    /* Serialize VMCS to HW */
+    vmx_ret = vmcs_clear(vmx_state->vmcs_ptr_phys);
+
+
+    // reenable global interrupts for vm state initialization now
+    // that the vm state is initialized. If another VM kicks us off, 
+    // it'll update our vmx state so that we know to reload ourself
+    v3_enable_ints();
+
+    return 0;
+}
+
+
+
+int 
+v3_init_vmx_core(struct v3_core_info * core,
+		  v3_vm_class_t         vm_class) 
+{
+    struct vmx_data     * vmx_state = NULL;
+    int vmx_ret = 0;
+    
+    vmx_state = (struct vmx_data *)V3_Malloc(sizeof(struct vmx_data));
+
+    if (!vmx_state) {
+	PrintError("Unable to allocate in initializing vmx vmcs\n");
+	return -1;
+    }
+
+    memset(vmx_state, 0, sizeof(struct vmx_data));
+
+    core->vmm_data           = vmx_state;
+    vmx_state->state         = VMX_UNLAUNCHED;
+    vmx_state->vmcs_ptr_phys = allocate_vmcs();
+    
+     
     /*** Setup default state from HW ***/
-
+    
     vmx_state->pin_ctrls.value       = hw_info.pin_ctrls.def_val;
     vmx_state->pri_proc_ctrls.value  = hw_info.proc_ctrls.def_val;
     vmx_state->exit_ctrls.value      = hw_info.exit_ctrls.def_val;
@@ -151,12 +312,6 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
     V3_Print("CR4 MSR: req_val=%p, req_mask=%p\n", 
 	     (void *)(addr_t)hw_info.cr4.req_val, 
 	     (void *)(addr_t)hw_info.cr4.req_mask);
-
-
-
-    /******* Setup Host State **********/
-
-    /* Cache GDTR, IDTR, and TR in host struct */
 
 
     /********** Setup VMX Control Fields ***********/
@@ -175,37 +330,34 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
     }
 
     // we want it to use this when halting
-    vmx_state->pri_proc_ctrls.hlt_exit      = 1;
+    vmx_state->pri_proc_ctrls.hlt_exit       = 1;
 
     // cpuid tells it that it does not have these instructions
-    vmx_state->pri_proc_ctrls.monitor_exit  = 1;
-    vmx_state->pri_proc_ctrls.mwait_exit    = 1;
-    vmx_state->pri_proc_ctrls.pause_exit    = 0;
-    vmx_state->pri_proc_ctrls.tsc_offset    = 1;
+    vmx_state->pri_proc_ctrls.monitor_exit   = 1;
+    vmx_state->pri_proc_ctrls.mwait_exit     = 1;
+    vmx_state->pri_proc_ctrls.pause_exit     = 0;
+    vmx_state->pri_proc_ctrls.tsc_offset     = 1;
 
 #ifdef V3_CONFIG_TIME_VIRTUALIZE_TSC
-    vmx_state->pri_proc_ctrls.rdtsc_exit    = 1;
+    vmx_state->pri_proc_ctrls.rdtsc_exit     = 1;
 #endif
 
     /* Setup IO map */
-    vmx_state->pri_proc_ctrls.use_io_bitmap = 1;
-
-    vmx_ret |= check_vmcs_write(VMCS_IO_BITMAP_A_ADDR, 
-				(addr_t)V3_PAddr(core->vm_info->io_map.arch_data));
-    vmx_ret |= check_vmcs_write(VMCS_IO_BITMAP_B_ADDR, 
-				(addr_t)V3_PAddr(core->vm_info->io_map.arch_data) + PAGE_SIZE_4KB);
-
-
+    vmx_state->pri_proc_ctrls.use_io_bitmap  = 1;
     vmx_state->pri_proc_ctrls.use_msr_bitmap = 1;
-    vmx_ret |= check_vmcs_write(VMCS_MSR_BITMAP, 
-				(addr_t)V3_PAddr(core->vm_info->msr_map.arch_data));
-
 
 
 #ifdef __V3_64BIT__
     // Ensure host runs in 64-bit mode at each VM EXIT
-    vmx_state->exit_ctrls.host_64_on    = 1;
+    vmx_state->exit_ctrls.host_64_on         = 1;
 #endif
+
+
+    /* Temporary GPF trap */
+    //  vmx_state->excp_bmap.gp = 1;
+
+    //vmx_state->excp_bmap.ud = 1;
+
 
     if (hw_info.caps.virt_efer) {
 	// Restore host's EFER register on each VM EXIT
@@ -225,36 +377,20 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 	vmx_ret |= check_vmcs_write(VMCS_GUEST_PAT, 0x0007040600070406LL);
     }
 
-    /* Temporary GPF trap */
-    //  vmx_state->excp_bmap.gp = 1;
 
-    //vmx_state->excp_bmap.ud = 1;
-
-
-    /* Setup paging */
     if (core->shdw_pg_mode == SHADOW_PAGING) {
-        PrintDebug("Creating initial shadow page table\n");
+	PrintDebug("Creating initial shadow page table\n");
 
         if (v3_init_passthrough_pts(core) == -1) {
             PrintError("Could not initialize passthrough page tables\n");
             return -1;
         }
         
-#define CR0_PE 0x00000001
-#define CR0_PG 0x80000000
-#define CR0_WP 0x00010000 // To ensure mem hooks work
-#define CR0_NE 0x00000020
-        vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, (CR0_PE | CR0_PG | CR0_WP | CR0_NE));
+
+	core->ctrl_regs.cr3 = core->direct_map_pt;
 
 
-	// Cause VM_EXIT whenever CR4.VMXE or CR4.PAE bits are written
-	vmx_ret |= check_vmcs_write(VMCS_CR4_MASK, CR4_VMXE | CR4_PAE);
-
-        core->ctrl_regs.cr3 = core->direct_map_pt;
-
-        // vmx_state->pinbased_ctrls |= NMI_EXIT;
-
-        /* Add CR exits */
+	/* Add CR exits */
         vmx_state->pri_proc_ctrls.cr3_ld_exit  = 1;
         vmx_state->pri_proc_ctrls.cr3_str_exit = 1;
 	vmx_state->pri_proc_ctrls.invlpg_exit  = 1;
@@ -265,27 +401,12 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 	// Setup VMX Assist
 	v3_vmxassist_init(core, vmx_state);
 
-	// Hook all accesses to EFER register
-	v3_hook_msr(core->vm_info, EFER_MSR, 
-		    &v3_handle_efer_read,
-		    &v3_handle_efer_write, 
-		    core);
 
     } else if ((core->shdw_pg_mode == NESTED_PAGING) && 
 	       (v3_mach_type == V3_VMX_EPT_CPU)) {
 
-#define CR0_PE 0x00000001
-#define CR0_PG 0x80000000
-#define CR0_WP 0x00010000 // To ensure mem hooks work
-#define CR0_NE 0x00000020
-        vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, (CR0_PE | CR0_PG | CR0_WP | CR0_NE));
 
-        // vmx_state->pinbased_ctrls |= NMI_EXIT;
-
-	// Cause VM_EXIT whenever CR4.VMXE or CR4.PAE bits are written
-	vmx_ret |= check_vmcs_write(VMCS_CR4_MASK, CR4_VMXE | CR4_PAE);
-	
-        /* Disable CR exits */
+	/* Disable CR exits */
 	vmx_state->pri_proc_ctrls.cr3_ld_exit  = 0;
 	vmx_state->pri_proc_ctrls.cr3_str_exit = 0;
 	vmx_state->pri_proc_ctrls.invlpg_exit  = 0;
@@ -300,23 +421,15 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 	vmx_state->pri_proc_ctrls.sec_ctrls    = 1; // Enable secondary proc controls
 	vmx_state->sec_proc_ctrls.enable_ept   = 1; // enable EPT paging
 	vmx_state->sec_proc_ctrls.enable_vpid  = 1;
-	check_vmcs_write(VMCS_VPID, 2);
+
 
 	if (v3_init_ept(core, &hw_info) == -1) {
 	    PrintError("Error initializing EPT\n");
 	    return -1;
 	}
-
-	if (hw_info.caps.virt_efer) {
-	    // Hook all accesses to EFER register
-	    v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
-	} else {
-	    PrintError("Sweet merciful christ.... EFER virtualization not supported with EPT\n");
-	    return -1;
-	}
-
     } else if ((core->shdw_pg_mode == NESTED_PAGING) && 
 	       (v3_mach_type == V3_VMX_EPT_UG_CPU)) {
+
 	int i = 0;
 	// For now we will assume that unrestricted guest mode is assured w/ EPT
 
@@ -361,6 +474,8 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 	}
 
 
+
+
 	core->segments.gdtr.limit    = 0x0000ffff;
 	core->segments.gdtr.base     = 0x0000000000000000LL;
 
@@ -389,7 +504,9 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 
 
 	vmx_state->sec_proc_ctrls.enable_vpid    = 1;
-	check_vmcs_write(VMCS_VPID, 2);
+
+
+
 
 
 	/* Disable shadow paging stuff */
@@ -398,11 +515,6 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 	vmx_state->pri_proc_ctrls.invlpg_exit    = 0;
 
 
-	// Cause VM_EXIT whenever the CR4.VMXE bit is set
-	vmx_ret |= check_vmcs_write(VMCS_CR4_MASK, CR4_VMXE);
-#define CR0_NE 0x00000020
-#define CR0_CD 0x40000000
-	vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, CR0_NE | CR0_CD);
 	((struct cr0_32 *)&(core->shdw_pg_state.guest_cr0))->ne = 1;
 	((struct cr0_32 *)&(core->shdw_pg_state.guest_cr0))->cd = 0;
 
@@ -411,29 +523,43 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 	    return -1;
 	}
 
-	if (hw_info.caps.virt_efer) {
-	    // Hook all accesses to EFER register
-	    //	v3_hook_msr(core->vm_info, EFER_MSR, &debug_efer_read, &debug_efer_write, core);
-	    v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
-	} else {
-	    PrintError("Sweet merciful christ.... EFER virtualization not supported with EPT\n");
-	    return -1;
-	}
-
-    } else {
-	PrintError("Invalid Virtual paging mode (pg_mode=%d) (mach_type=%d)\n", core->shdw_pg_mode, v3_mach_type);
-	return -1;
     }
 
 
-    // hook vmx msrs
+    if (core->vcpu_id == 0) {
+	
+	if (core->shdw_pg_mode == SHADOW_PAGING) {
+	    v3_hook_msr(core->vm_info, EFER_MSR, 
+			&v3_handle_efer_read,
+			&v3_handle_efer_write, 
+			core);
+	} else if ((core->shdw_pg_mode == NESTED_PAGING) && 
+		   (v3_mach_type == V3_VMX_EPT_CPU)) {
 
-    // Setup SYSCALL/SYSENTER MSRs in load/store area
-    
-    // save STAR, LSTAR, FMASK, KERNEL_GS_BASE MSRs in MSR load/store area
+	    if (hw_info.caps.virt_efer) {
+		/* Passthrough EFER Reads/Writes */
+		v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
+	    } else {
+		PrintError("Sweet merciful christ.... EFER virtualization not supported with EPT\n");
+		return -1;
+	    }
+	} else if ((core->shdw_pg_mode == NESTED_PAGING) && 
+		   (v3_mach_type == V3_VMX_EPT_UG_CPU)) {
+	    
+	    if (hw_info.caps.virt_efer) {
+		/* PAssthrough all EFER reads/writes */
+		v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
+	    } else {
+		PrintError("Sweet merciful christ.... EFER virtualization not supported with EPT\n");
+		return -1;
+	    }
+	}
+
+
+    }
+
     {
-
-	struct vmcs_msr_save_area * msr_entries = NULL;
+	struct vmcs_msr_save_area * msr_entries = NULL;	
 	int max_msrs = (hw_info.misc_info.max_msr_cache_size + 1) * 4;
 	int msr_ret = 0;
 
@@ -466,48 +592,43 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 	msr_entries->host_fmask.index    = IA32_FMASK_MSR;
 	msr_entries->host_kern_gs.index  = IA32_KERN_GS_BASE_MSR;
 
-	msr_ret |= check_vmcs_write(VMCS_EXIT_MSR_STORE_CNT,  4);
-	msr_ret |= check_vmcs_write(VMCS_EXIT_MSR_LOAD_CNT,   4);
-	msr_ret |= check_vmcs_write(VMCS_ENTRY_MSR_LOAD_CNT,  4);
 
-	msr_ret |= check_vmcs_write(VMCS_EXIT_MSR_STORE_ADDR, (addr_t)V3_PAddr(msr_entries->guest_msrs));
-	msr_ret |= check_vmcs_write(VMCS_ENTRY_MSR_LOAD_ADDR, (addr_t)V3_PAddr(msr_entries->guest_msrs));
-	msr_ret |= check_vmcs_write(VMCS_EXIT_MSR_LOAD_ADDR,  (addr_t)V3_PAddr(msr_entries->host_msrs));
-
-
-	msr_ret |= v3_hook_msr(core->vm_info, IA32_STAR_MSR,         NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, IA32_LSTAR_MSR,        NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, IA32_FMASK_MSR,        NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, IA32_KERN_GS_BASE_MSR, NULL, NULL, NULL);
-
-
-	// IMPORTANT: These MSRs appear to be cached by the hardware....
-	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_CS_MSR,       NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_ESP_MSR,      NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_EIP_MSR,      NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, FS_BASE_MSR,           NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, GS_BASE_MSR,           NULL, NULL, NULL);
-
-	if (hw_info.caps.virt_pat) {
-	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
-	} else {
-	    // Handle these ops, and serialize on entry/exit
-	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
-	}
-	// Not sure what to do about this... Does not appear to be an explicit hardware cache version...
-	msr_ret |= v3_hook_msr(core->vm_info, IA32_CSTAR_MSR,        NULL, NULL, NULL);
-
-	if (msr_ret != 0) {
-	    PrintError("Error configuring MSR save/restore area\n");
-	    return -1;
+	if (core->vcpu_id == 0) {
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_STAR_MSR,         NULL, NULL, NULL);
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_LSTAR_MSR,        NULL, NULL, NULL);
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_FMASK_MSR,        NULL, NULL, NULL);
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_KERN_GS_BASE_MSR, NULL, NULL, NULL);
+	    
+	    
+	    // IMPORTANT: These MSRs appear to be cached by the hardware....
+	    msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_CS_MSR,       NULL, NULL, NULL);
+	    msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_ESP_MSR,      NULL, NULL, NULL);
+	    msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_EIP_MSR,      NULL, NULL, NULL);
+	    msr_ret |= v3_hook_msr(core->vm_info, FS_BASE_MSR,           NULL, NULL, NULL);
+	    msr_ret |= v3_hook_msr(core->vm_info, GS_BASE_MSR,           NULL, NULL, NULL);
+	    
+	    if (hw_info.caps.virt_pat) {
+		msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
+	    } else {
+		// Handle these ops, and serialize on entry/exit
+		msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
+	    }
+	    // Not sure what to do about this... Does not appear to be an explicit hardware cache version...
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_CSTAR_MSR,        NULL, NULL, NULL);
+	    
+	    if (msr_ret != 0) {
+		PrintError("Error configuring MSR save/restore area\n");
+		return -1;
+	    }
 	}
 
+    }
 
-    }    
 
 
     /* Initialize FPU context. This is hacky and not well documented.... */
     v3_fpu_init(core);
+
 
     /* Sanity check ctrl/reg fields against hw_defaults */
 
@@ -590,139 +711,29 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
     }
 
 
-    /*** Write all the info to the VMCS ***/
-  
-    /*
-    {
-	// IS THIS NECESSARY???
-#define DEBUGCTL_MSR 0x1d9
-	struct v3_msr tmp_msr;
-	v3_get_msr(DEBUGCTL_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
-	vmx_ret |= check_vmcs_write(VMCS_GUEST_DBG_CTL, tmp_msr.value);
-	core->dbg_regs.dr7 = 0x400;
-    }
-    */
-
-#ifdef __V3_64BIT__
-    vmx_ret |= check_vmcs_write(VMCS_LINK_PTR,      (addr_t)0xffffffffffffffffULL);
-#else
-    vmx_ret |= check_vmcs_write(VMCS_LINK_PTR,      (addr_t)0xffffffffUL);
-    vmx_ret |= check_vmcs_write(VMCS_LINK_PTR_HIGH, (addr_t)0xffffffffUL);
-#endif
-
-
- 
-
-    if (v3_update_vmcs_ctrl_fields(core)) {
-        PrintError("Could not write control fields!\n");
-        return -1;
-    }
-    
-    /*
-    if (v3_update_vmcs_host_state(core)) {
-        PrintError("Could not write host state\n");
-        return -1;
-    }
-    */
-
-    // reenable global interrupts for vm state initialization now
-    // that the vm state is initialized. If another VM kicks us off, 
-    // it'll update our vmx state so that we know to reload ourself
-    v3_enable_ints();
-
-    return 0;
-}
-
-
-static void 
-__init_vmx_vmcs(void * arg) 
-{
-    struct v3_core_info * core      = arg;
-    struct vmx_data     * vmx_state = NULL;
-    int vmx_ret = 0;
-    
-    vmx_state = (struct vmx_data *)V3_Malloc(sizeof(struct vmx_data));
-
-    if (!vmx_state) {
-	PrintError("Unable to allocate in initializing vmx vmcs\n");
-	return;
-    }
-
-    memset(vmx_state, 0, sizeof(struct vmx_data));
-
-    core->vmm_data           = vmx_state;
-    vmx_state->state         = VMX_UNLAUNCHED;
-    vmx_state->vmcs_ptr_phys = allocate_vmcs();
-    
-    /* Clear VMCS */
-    vmx_ret = vmcs_clear(vmx_state->vmcs_ptr_phys);
-
-    if (vmx_ret != VMX_SUCCESS) {
-        PrintError("VMCLEAR failed (vmx_ret = %d)\n", vmx_ret);
-        return; 
-    }
-
-    /* Initialize VMCS */
-    if (core->vm_info->vm_class == V3_PC_VM) {
-	if (init_vmcs_bios(core, vmx_state) == -1) {
-	    PrintError("Error initializing VMCS to BIOS state\n");
-	    return;
-	}
-    } else {
-	PrintError("Invalid VM Class\n");
-	return;
-    }
-
-    /* Serialize VMCS to HW */
-    vmx_ret = vmcs_clear(vmx_state->vmcs_ptr_phys);
 
     core->core_run_state = CORE_STOPPED;
-    return;
-}
-
-
-
-int 
-v3_init_vmx_vmcs(struct v3_core_info * core, v3_vm_class_t vm_class) 
-{
-    extern v3_cpu_arch_t v3_cpu_types[];
-
-    if (v3_cpu_types[V3_Get_CPU()] == V3_INVALID_CPU) {
-	int i = 0;
-
-	for (i = 0; i < V3_CONFIG_MAX_CPUS; i++) {
-	    if (v3_cpu_types[i] != V3_INVALID_CPU) {
-		break;
-	    }
-	}
-
-	if (i == V3_CONFIG_MAX_CPUS) {
-	    PrintError("Could not find VALID CPU for VMX guest initialization\n");
-	    return -1;
-	}
-
-	V3_Call_On_CPU(i, __init_vmx_vmcs, core);
-
-    } else {
-	__init_vmx_vmcs(core);
-    }
-
-    if (core->core_run_state != CORE_STOPPED) {
-	PrintError("Error initializing VMX Core\n");
-	return -1;
-    }
 
     return 0;
 }
 
 
 int 
-v3_deinit_vmx_vmcs(struct v3_core_info * core) 
+v3_free_vmx_core(struct v3_core_info * core) 
 {
     struct vmx_data * vmx_state = core->vmm_data;
 
-    V3_FreePages((void *)(vmx_state->vmcs_ptr_phys), 1);
-    V3_FreePages(V3_PAddr(vmx_state->msr_area),      1);
+    if (vmx_state == NULL) {
+	return 0;
+    }
+
+    if (vmx_state->vmcs_ptr_phys != 0) {
+	V3_FreePages((void *)(vmx_state->vmcs_ptr_phys), 1);
+    }
+
+    if (vmx_state->msr_area != NULL) {
+	V3_FreePages(V3_PAddr(vmx_state->msr_area),      1);
+    }
 
     V3_Free(vmx_state);
 
@@ -1264,6 +1275,12 @@ v3_start_vmx_guest(struct v3_core_info * core)
 
     V3_Print("Starting VMX core %u\n", core->vcpu_id);
     
+
+    if (init_vmcs(core) == -1) {
+	PrintError("Failed to initialize VMCS for core (%d)\n", core->vcpu_id);
+	return -1;
+    }
+
     while (1) {
 
 	if (core->core_run_state == CORE_STOPPED) {
@@ -1321,7 +1338,8 @@ v3_start_vmx_guest(struct v3_core_info * core)
             
 	    v3_print_vmcs();
 	    print_exit_log(core);
-	    return -1;
+
+	    break;
 	}
 
 	// Check for single step mode...
@@ -1350,6 +1368,7 @@ v3_start_vmx_guest(struct v3_core_info * core)
 */
 
     }
+
 
     return 0;
 }
