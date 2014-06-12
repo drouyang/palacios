@@ -7,7 +7,7 @@
 #include <linux/module.h>
 #include <linux/list.h>
 
-#include <xpmem_ns.h>
+#include <xpmem_iface.h>
 
 #include "palacios.h"
 #include "vm.h"
@@ -20,15 +20,15 @@
 
 struct host_xpmem_state {
     /* Guest pointer */
-    struct v3_guest        * guest;
+    struct v3_guest              * guest;
 
     /* Pointer to internal Palacios state */
-    struct v3_xpmem_state  * v3_xpmem;
+    struct v3_xpmem_state        * v3_xpmem;
 
     /* XPMEM kernel interface */
-    int                      connected;
-    xpmem_link_t             link;
-    struct xpmem_partition * part;
+    int                            connected;
+    xpmem_link_t                   link;
+    struct xpmem_partition_state * part;
 }; 
 
 

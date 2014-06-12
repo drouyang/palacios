@@ -43,6 +43,7 @@
 struct xpmem_bar_state {
     /* Hypercall numbers */
     uint32_t xpmem_hcall_id;
+    uint32_t xpmem_detach_hcall_id;
     uint32_t xpmem_irq_clear_hcall_id;
     uint32_t xpmem_read_cmd_hcall_id;
  
@@ -568,51 +569,49 @@ xpmem_hcall(struct v3_core_info * core,
         return -1;
     }
 
-    /* Update guest shadow map on detachments */
-    if (cmd->type == XPMEM_DETACH) {
-	struct xpmem_memory_region region;
-
-	int    status = 0;
-	addr_t len    = 0;
-
-	addr_t gva    = (addr_t)cmd->detach.vaddr;
-	addr_t gpa    = 0;
-
-	if (v3_gva_to_gpa(core, gva, &gpa)) {
-	    PrintError("XPMEM: Unable to convert guest virtual address to guest physical address"
-		       " (GVA: %p)\n", (void *)gva);
-	    return -1;
-	}
-
-	status = xpmem_find_and_remove_region(&(state->mem_map.alloc_list), gpa, &region);
-	if (status != 0) {
-	    PrintError("XPMEM: cannot find region at address %p in guest shadow map\n",
-	         (void *)cmd->detach.vaddr);
-	    return -1;
-	}
-
-	len = region.guest_end - region.guest_start;
-
-	status = xpmem_insert_memory_region(&(state->mem_map.free_list), region.guest_start, len);
-	if (status != 0) {
-	    PrintError("XPMEM: cannot insert region [%p, %p) into guest free list\n",
-	         (void *)region.guest_start, (void *)(region.guest_end));
-	    return -1;
-	}
-
-        status = xpmem_remove_shadow_region(state, region.guest_start, len);
-	if (status != 0) {
-	    PrintError("XPMEM: cannot shadow remove region [%p, %p) from guest memory map\n",
-	         (void *)region.guest_start, (void *)(region.guest_end));
-	    return -1;
-	}
-    }
-
     ret = v3_xpmem_host_command(state->host_handle, cmd);
 
     V3_Free(cmd);
 
     return ret;
+}
+
+static int
+xpmem_detach_hcall(struct v3_core_info * core,
+                   hcall_id_t            hcall_id,
+		   void                * priv_data)
+{
+    struct v3_xpmem_state    * state = (struct v3_xpmem_state *)priv_data;
+    struct xpmem_memory_region region;
+
+    int    status = 0;
+    addr_t len    = 0;
+    addr_t gpa    = (addr_t)core->vm_regs.rbx;
+
+    status = xpmem_find_and_remove_region(&(state->mem_map.alloc_list), gpa, &region);
+    if (status != 0) {
+	PrintError("XPMEM: cannot find region at address %p in guest shadow map\n",
+	     (void *)gpa);
+	return 0;
+    }
+
+    len = region.guest_end - region.guest_start;
+
+    status = xpmem_insert_memory_region(&(state->mem_map.free_list), region.guest_start, len);
+    if (status != 0) {
+	PrintError("XPMEM: cannot insert region [%p, %p) into guest free list\n",
+	     (void *)region.guest_start, (void *)(region.guest_end));
+	return 0;
+    }
+
+    status = xpmem_remove_shadow_region(state, region.guest_start, len);
+    if (status != 0) {
+	PrintError("XPMEM: cannot shadow remove region [%p, %p) from guest memory map\n",
+	     (void *)region.guest_start, (void *)(region.guest_end));
+	return 0;
+    }
+
+    return 0;
 }
 
 static int
@@ -806,6 +805,7 @@ xpmem_init(struct v3_vm_info * vm,
 
     /* Save hypercall ids in the bar */
     state->bar_state->xpmem_hcall_id           = XPMEM_HCALL;
+    state->bar_state->xpmem_detach_hcall_id    = XPMEM_DETACH_HCALL;
     state->bar_state->xpmem_irq_clear_hcall_id = XPMEM_IRQ_CLEAR_HCALL;
     state->bar_state->xpmem_read_cmd_hcall_id  = XPMEM_READ_CMD_HCALL;
 
@@ -816,6 +816,7 @@ xpmem_init(struct v3_vm_info * vm,
 
     /* Register hypercall callbacks with Palacios */
     v3_register_hypercall(vm, XPMEM_HCALL, xpmem_hcall, state);
+    v3_register_hypercall(vm, XPMEM_DETACH_HCALL, xpmem_detach_hcall, state);
     v3_register_hypercall(vm, XPMEM_IRQ_CLEAR_HCALL, xpmem_irq_clear_hcall, state);
     v3_register_hypercall(vm, XPMEM_READ_CMD_HCALL, xpmem_read_cmd_hcall, state);
 
