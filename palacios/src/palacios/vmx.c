@@ -217,9 +217,9 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
     }
 
     if (hw_info.caps.virt_pat) {
-	vmx_state->exit_ctrls.save_pat = 1;
-	vmx_state->exit_ctrls.ld_pat   = 1;
-	vmx_state->entry_ctrls.ld_pat  = 1;
+	vmx_state->exit_ctrls.save_pat  = 1;
+	vmx_state->exit_ctrls.ld_pat    = 1;
+	vmx_state->entry_ctrls.ld_pat   = 1;
 
 	// Setup Guests initial PAT field
 	vmx_ret |= check_vmcs_write(VMCS_GUEST_PAT, 0x0007040600070406LL);
@@ -321,12 +321,12 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 	// For now we will assume that unrestricted guest mode is assured w/ EPT
 
 
-	core->vm_regs.rsp      = 0x00;
-	core->rip              = 0xfff0;
-	core->vm_regs.rdx      = 0x00000f00;
-	core->ctrl_regs.rflags = 0x00000002; // The reserved bit is always 1
-	core->ctrl_regs.cr0    = 0x60010030; 
-	core->ctrl_regs.cr4    = 0x00002010; // Enable VMX and PSE flag
+	core->vm_regs.rsp          = 0x00;
+	core->rip                  = 0xfff0;
+	core->vm_regs.rdx          = 0x00000f00;
+	core->ctrl_regs.rflags     = 0x00000002; // The reserved bit is always 1
+	core->ctrl_regs.cr0        = 0x60010030; 
+	core->ctrl_regs.cr4        = 0x00002010; // Enable VMX and PSE flag
 	
 
 	core->segments.cs.selector = 0xf000;
@@ -466,9 +466,9 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 	msr_entries->host_fmask.index    = IA32_FMASK_MSR;
 	msr_entries->host_kern_gs.index  = IA32_KERN_GS_BASE_MSR;
 
-	msr_ret |= check_vmcs_write(VMCS_EXIT_MSR_STORE_CNT, 4);
-	msr_ret |= check_vmcs_write(VMCS_EXIT_MSR_LOAD_CNT,  4);
-	msr_ret |= check_vmcs_write(VMCS_ENTRY_MSR_LOAD_CNT, 4);
+	msr_ret |= check_vmcs_write(VMCS_EXIT_MSR_STORE_CNT,  4);
+	msr_ret |= check_vmcs_write(VMCS_EXIT_MSR_LOAD_CNT,   4);
+	msr_ret |= check_vmcs_write(VMCS_ENTRY_MSR_LOAD_CNT,  4);
 
 	msr_ret |= check_vmcs_write(VMCS_EXIT_MSR_STORE_ADDR, (addr_t)V3_PAddr(msr_entries->guest_msrs));
 	msr_ret |= check_vmcs_write(VMCS_ENTRY_MSR_LOAD_ADDR, (addr_t)V3_PAddr(msr_entries->guest_msrs));
@@ -482,20 +482,20 @@ init_vmcs_bios(struct v3_core_info * core, struct vmx_data * vmx_state)
 
 
 	// IMPORTANT: These MSRs appear to be cached by the hardware....
-	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_CS_MSR,  NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_ESP_MSR, NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_EIP_MSR, NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, FS_BASE_MSR,      NULL, NULL, NULL);
-	msr_ret |= v3_hook_msr(core->vm_info, GS_BASE_MSR,      NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_CS_MSR,       NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_ESP_MSR,      NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_EIP_MSR,      NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, FS_BASE_MSR,           NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, GS_BASE_MSR,           NULL, NULL, NULL);
 
 	if (hw_info.caps.virt_pat) {
-	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR, NULL, NULL, NULL);
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
 	} else {
 	    // Handle these ops, and serialize on entry/exit
-	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR, NULL, NULL, NULL);
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
 	}
 	// Not sure what to do about this... Does not appear to be an explicit hardware cache version...
-	msr_ret |= v3_hook_msr(core->vm_info, IA32_CSTAR_MSR,   NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, IA32_CSTAR_MSR,        NULL, NULL, NULL);
 
 	if (msr_ret != 0) {
 	    PrintError("Error configuring MSR save/restore area\n");

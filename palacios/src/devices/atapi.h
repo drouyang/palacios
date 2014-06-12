@@ -149,10 +149,12 @@ atapi_read_chunk(struct ide_internal * ide,
 		 struct ide_channel  * channel)
 {
     struct ide_drive * drive = get_selected_drive(channel);
+    int ret = 0;
 
-    int ret = drive->ops->read(drive->data_buf, 
-			       drive->current_lba * ATAPI_BLOCK_SIZE, 
-			       ATAPI_BLOCK_SIZE, drive->private_data);
+    ret = drive->ops->read(drive->data_buf, 
+			   drive->current_lba * ATAPI_BLOCK_SIZE, 
+			   ATAPI_BLOCK_SIZE, 
+			   drive->private_data);
     
     if (ret == -1) {
 	PrintError("IDE: Error reading CD block (LBA=%p)\n", (void *)(addr_t)(drive->current_lba));
@@ -210,11 +212,16 @@ atapi_read10(struct v3_core_info * core,
     }
     
     if ((lba + xfer_len) > (drive->ops->get_capacity(drive->private_data) / ATAPI_BLOCK_SIZE)) {
+
 	PrintError("IDE: xfer len exceeded capacity (lba=%d) (xfer_len=%d) (ReadEnd=%d) (capacity=%d)\n", 
-		   lba, xfer_len, lba + xfer_len, 
+		   lba, 
+		   xfer_len, 
+		   lba + xfer_len, 
 		   (uint32_t)drive->ops->get_capacity(drive->private_data));
+
 	atapi_cmd_error(ide, channel, ATAPI_SEN_ILL_REQ, ASC_LOG_BLK_OOR);
 	ide_raise_irq(ide, channel);
+
 	return 0;
     }
 	
@@ -329,7 +336,8 @@ atapi_read_toc(struct ide_internal * ide,
 
     // we don't handle multi session
     // we'll just treat it the same as single session
-    if ((cmd->format == 0) || (cmd->format == 1)) {
+    if ( (cmd->format == 0) || 
+	 (cmd->format == 1) ) {
 	memset(&(resp->track_descs[0]), 0, 8);
 	
 	if (alloc_len < xfer_len) {
@@ -387,7 +395,7 @@ atapi_mode_sense_cur_values(struct ide_internal         * ide,
 
 	    PrintError("mode sense (caps/mechs v2) resp_len=%d\n", resp_len);
 
-	    *((uint16_t *)buf) = le_to_be_16(28 + 6);
+	    *((uint16_t *)buf)        = le_to_be_16(28 + 6);
 	    buf[2]                    = 0x70;
 	    buf[3]                    = 0;
 	    buf[4]                    = 0;
@@ -427,8 +435,8 @@ atapi_mode_sense_cur_values(struct ide_internal         * ide,
 
 	    memset(caps, 0, sizeof(struct atapi_cdrom_caps));
 
-	    resp_len          += sizeof(struct atapi_cdrom_caps);
-	    hdr->mode_data_len = le_to_be_16(resp_len - 2);
+	    resp_len           += sizeof(struct atapi_cdrom_caps);
+	    hdr->mode_data_len  = le_to_be_16(resp_len - 2);
 
 
 	    PrintError("mode sense (caps/mechs v2) resp_len=%d\n", resp_len);

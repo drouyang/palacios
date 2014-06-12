@@ -56,8 +56,8 @@ struct ide_drive_head_reg {
 	} __attribute__((packed));
 
 	struct {
-	    uint_t lba3      : 4;
-	    uint_t rsvd3     : 4;
+	    uint_t lba3          : 4;
+	    uint_t rsvd3         : 4;
 	} __attribute__((packed));
 	
     } __attribute__((packed));
@@ -86,10 +86,10 @@ struct ide_ctrl_reg {
     union {
 	uint8_t val;
 	struct {
-	    uint_t rsvd0        : 1;
+	    uint_t rsvd0         : 1;
 	    uint_t irq_disable   : 1;
-	    uint_t soft_reset   : 1;
-	    uint_t rsvd1        : 5;
+	    uint_t soft_reset    : 1;
+	    uint_t rsvd1         : 5;
 	} __attribute__((packed));
     } __attribute__((packed));
 } __attribute__((packed));
@@ -121,10 +121,10 @@ struct ide_dma_status_reg {
     union {
 	uint8_t val;
 	struct {
-	    uint8_t active  : 1;
-	    uint8_t err     : 1;
-	    uint8_t int_gen : 1;
-	    uint8_t rsvd1   : 4;
+	    uint8_t active         : 1;
+	    uint8_t err            : 1;
+	    uint8_t int_gen        : 1;
+	    uint8_t rsvd1          : 4;
 	    uint8_t prd_int_status : 1;
 	} __attribute__((packed));
     } __attribute__((packed));
@@ -149,22 +149,22 @@ struct ide_drive_id {
 	uint16_t buf[256];
 	struct {
 	    // 0
-	    uint_t rsvd1           : 1;
-	    uint_t hard_sectors    : 1;
-	    uint_t no_soft_sectors : 1;
-	    uint_t no_mfm_enc      : 1;
-	    uint_t head_switch_time : 1;
-	    uint_t spnd_mot_ctrl   : 1;
-	    uint_t fixed_drive     : 1;
-	    uint_t removable_media : 1;
-	    uint_t disk_speed1     : 1;
-	    uint_t disk_speed2     : 1;
-	    uint_t disk_speed3     : 1;
-	    uint_t rpm_tolerance   : 1;
-	    uint_t data_strobe_offset : 1;
+	    uint_t rsvd1               : 1;
+	    uint_t hard_sectors        : 1;
+	    uint_t no_soft_sectors     : 1;
+	    uint_t no_mfm_enc          : 1;
+	    uint_t head_switch_time    : 1;
+	    uint_t spnd_mot_ctrl       : 1;
+	    uint_t fixed_drive         : 1;
+	    uint_t removable_media     : 1;
+	    uint_t disk_speed1         : 1;
+	    uint_t disk_speed2         : 1;
+	    uint_t disk_speed3         : 1;
+	    uint_t rpm_tolerance       : 1;
+	    uint_t data_strobe_offset  : 1;
 	    uint_t track_offset_option : 1;
-	    uint_t fmt_speed_tol   : 1;
-	    uint_t cdrom_flag      : 1;
+	    uint_t fmt_speed_tol       : 1;
+	    uint_t cdrom_flag          : 1;
 
 	    // 1
 	    uint16_t num_cylinders;

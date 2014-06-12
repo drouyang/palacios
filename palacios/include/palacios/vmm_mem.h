@@ -39,13 +39,13 @@ struct v3_vm_info;
 #define V3_MEM_CORE_ANY ((uint16_t)-1)
 
 
-// Memory region flags 
-#define V3_MEM_RD     0x0001
-#define V3_MEM_WR     0x0002
-#define V3_MEM_EXEC   0x0004
-#define V3_MEM_BASE   0x0008
-#define V3_MEM_ALLOC  0x0010
-#define V3_MEM_UC     0x0020
+/* Memory region flags */
+#define V3_MEM_RD     0x0001          /* Readable     */
+#define V3_MEM_WR     0x0002          /* Writable     */
+#define V3_MEM_EXEC   0x0004          /* Executable   */
+#define V3_MEM_BASE   0x0008          /* This region is a base region             */
+#define V3_MEM_ALLOC  0x0010          /* This region is backed by physical memory */
+#define V3_MEM_UC     0x0020          /* Disable caching of this memory region    */
 
 
 
@@ -53,15 +53,12 @@ typedef struct {
     union {
 	uint16_t value;
 	struct {
-	    // These reflect the VMM's intent for the shadow or nested pts 
-	    // that will implement the region.   The guest's intent is in
-	    // its own page tables.
-	    uint16_t read   : 1;
-	    uint16_t write  : 1;
-	    uint16_t exec   : 1;
-	    uint16_t base   : 1;
-	    uint16_t alloced : 1;
-	    uint16_t uncached : 1;
+	    uint16_t read      : 1;   /* Readable     */
+	    uint16_t write     : 1;   /* Writable     */
+	    uint16_t exec      : 1;   /* Executable   */
+	    uint16_t base      : 1;   /* This region is a base region             */
+	    uint16_t alloced   : 1;   /* This region is backed by physical memory */
+	    uint16_t uncached  : 1;   /* Disable caching of this memory region    */
 	} __attribute__((packed));
     } __attribute__((packed));
 } __attribute__((packed)) v3_mem_flags_t;
@@ -74,31 +71,97 @@ struct v3_mem_region {
 
     v3_mem_flags_t          flags;
 
-    addr_t                  host_addr; // This either points to a host address mapping
+    addr_t                  host_addr;    
 
-    int (*unhandled)(struct v3_core_info * info, addr_t guest_va, addr_t guest_pa, 
-		     struct v3_mem_region * reg, pf_error_t access_info);
+    int (*unhandled)(struct v3_core_info  * info, 
+		     addr_t                 guest_va, 
+		     addr_t                 guest_pa, 
+		     struct v3_mem_region * reg, 
+		     pf_error_t             access_info);
 
     void * priv_data;
 
-    int core_id;  // The virtual core this region is assigned to (-1 means all cores)
-    int numa_id;  // The NUMA node this region is allocated from 
+    int core_id;                         /* The virtual core this region is assigned to (-1 means all cores) */
+    int numa_id;                         /* The NUMA node this region is allocated from                      */
 
-    struct rb_node tree_node; // This for memory regions mapped to the global map
+    struct rb_node tree_node;            /* This for memory regions mapped to the global map                 */
 };
 
 
+
+/*
+ * There are two layers of memory regions in Palacios
+ * -- The base regions are fixed sized blocks preallocated at initialization time
+ *        and cover the entirety of the guest's physical memory 
+ * 
+ * -- A red-black tree of overlay regions that supersede the base regions and 
+ *        and can be created at any time
+ */
 struct v3_mem_map {
+    struct rb_root         mem_regions;      /* Red black tree regions, overlaid on the base regions */
 
-    struct rb_root mem_regions;
-
-    uint32_t num_base_blocks;
-    struct v3_mem_region * base_regions;
+    uint32_t               num_base_blocks;  /* Number of base regions spanning guest's physical mem */
+    struct v3_mem_region * base_regions;     /* A pointer to an array of fixed size base regions     */
 };
 
 
-int v3_init_mem_map(struct v3_vm_info * vm);
-void v3_delete_mem_map(struct v3_vm_info * vm);
+int 
+v3_init_mem_map(struct v3_vm_info * vm);
+
+
+void 
+v3_delete_mem_map(struct v3_vm_info * vm);
+
+
+
+struct v3_mem_region * 
+v3_create_mem_region(struct v3_vm_info * vm, 
+		     uint16_t            core_id, 
+		     uint16_t            flags,  
+		     addr_t              gpa_start, 
+		     addr_t              gpa_end);
+
+int
+v3_insert_mem_region(struct v3_vm_info    * vm, 
+		     struct v3_mem_region * reg);
+
+void 
+v3_delete_mem_region(struct v3_vm_info    * vm, 
+		     struct v3_mem_region * reg);
+
+
+/**
+ *  This is a shortcut function for creating + inserting
+ *   a memory region which redirects to host memory 
+ */
+int 
+v3_add_shadow_mem(struct v3_vm_info * vm, 
+		  uint16_t            core_id,
+		  uint16_t            mem_flags, 
+		  addr_t              gpa_start, 
+		  addr_t              gpa_end, 
+		  addr_t              hpa);
+
+
+
+struct v3_mem_region * 
+v3_get_mem_region(struct v3_vm_info * vm, 
+		  uint16_t            core_id, 
+		  addr_t              guest_addr);
+
+struct v3_mem_region * 
+v3_get_base_region(struct v3_vm_info * vm, 
+		   addr_t              gpa);
+
+
+uint32_t 
+v3_get_max_page_size(struct v3_core_info * core, 
+		     addr_t                fault_addr, 
+		     v3_cpu_mode_t         mode);
+
+
+void v3_print_mem_map(struct v3_vm_info * vm);
+
 
 
 
@@ -107,33 +170,6 @@ void v3_delete_mem_map(struct v3_vm_info * vm);
 int v3_mem_save(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
 int v3_mem_load(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
 #endif
-
-struct v3_mem_region * v3_create_mem_region(struct v3_vm_info * vm, uint16_t core_id, uint16_t flags,  
-					       addr_t guest_addr_start, addr_t guest_addr_end);
-
-int v3_insert_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg);
-
-void v3_delete_mem_region(struct v3_vm_info * vm, struct v3_mem_region * reg);
-
-
-/* This is a shortcut function for creating + inserting a memory region which redirects to host memory */
-int v3_add_shadow_mem(struct v3_vm_info * vm, uint16_t core_id, uint16_t mem_flags, 
-		      addr_t guest_addr_start, addr_t guest_addr_end, addr_t host_addr);
-
-
-
-struct v3_mem_region * v3_get_mem_region(struct v3_vm_info * vm, uint16_t core_id, addr_t guest_addr);
-struct v3_mem_region * v3_get_base_region(struct v3_vm_info * vm, addr_t gpa);
-
-
-uint32_t v3_get_max_page_size(struct v3_core_info * core, addr_t fault_addr, v3_cpu_mode_t mode);
-
-
-void v3_print_mem_map(struct v3_vm_info * vm);
-
-
-int v3_mem_write(struct v3_core_info * core, addr_t gpa, uint8_t * src, uint64_t len);
-int v3_mem_read(struct v3_core_info * core, addr_t gpa, uint8_t * src, uint64_t len);
 
 
 #endif /* ! __V3VEE__ */

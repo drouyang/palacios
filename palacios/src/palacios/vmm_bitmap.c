@@ -65,10 +65,10 @@ int
 v3_bitmap_set(struct v3_bitmap * bitmap, 
 	      int                index) 
 {
-    int major   = index / 8;
-    int minor   = index % 8;
-    int old_val = 0;
-    uint32_t flags   = 0;
+    int major      = (index / 8);
+    int minor      = (index % 8);
+    int old_val    = 0;
+    uint32_t flags = 0;
 
     if (index > (bitmap->num_bits - 1)) {
 	PrintError("Index out of bitmap range: (pos = %d) (num_bits = %d)\n", 
@@ -92,9 +92,9 @@ int
 v3_bitmap_clear(struct v3_bitmap * bitmap, 
 		int                index) 
 {
-    int major   = index / 8;
-    int minor   = index % 8;
-    int old_val = 0;
+    int major      = (index / 8);
+    int minor      = (index % 8);
+    int old_val    = 0;
     uint32_t flags = 0;
 
     if (index > (bitmap->num_bits - 1)) {
@@ -117,8 +117,8 @@ int
 v3_bitmap_check(struct v3_bitmap * bitmap, 
 		int                index) 
 {
-    int major = index / 8;
-    int minor = index % 8;
+    int major = (index / 8);
+    int minor = (index % 8);
 
     if (index > (bitmap->num_bits - 1)) {
 	PrintError("Index out of bitmap range: (pos = %d) (num_bits = %d)\n", 

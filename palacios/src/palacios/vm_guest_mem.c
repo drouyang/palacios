@@ -369,21 +369,19 @@ v3_hva_to_gva(struct v3_core_info * core,
 /* This is a straight address conversion + copy, 
  *   except for the tiny little issue of crossing page boundries.....
  */
-int 
-v3_read_gva_memory(struct v3_core_info * core, 
-		   addr_t                gva, 
-		   int                   count, 
-		   uint8_t             * dest) 
+size_t 
+v3_read_gva(struct v3_core_info * core, 
+	    addr_t                gva, 
+	    size_t                count, 
+	    uint8_t             * dest) 
 {
     addr_t cursor     = gva;
-    int    bytes_read = 0;
-
-
+    size_t bytes_read = 0;
 
     while (count > 0) {
-	int    dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
-	int    bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
-	addr_t host_addr       = 0;
+	uint32_t dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
+	size_t   bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
+	addr_t   host_addr       = 0;
 
     
 	if (v3_gva_to_hva(core, cursor, &host_addr) != 0) {
@@ -391,8 +389,6 @@ v3_read_gva_memory(struct v3_core_info * core,
 	    return bytes_read;
 	}
     
-    
-
 	memcpy(dest + bytes_read, (void *)host_addr, bytes_to_copy);
     
 	bytes_read += bytes_to_copy;
@@ -411,30 +407,23 @@ v3_read_gva_memory(struct v3_core_info * core,
 /* This is a straight address conversion + copy, 
  *   except for the tiny little issue of crossing page boundries.....
  */
-int 
-v3_read_gpa_memory(struct v3_core_info * core,
-		   addr_t                gpa, 
-		   int                   count, 
-		   uint8_t             * dest) 
+size_t 
+v3_read_gpa(struct v3_core_info * core,
+	    addr_t                gpa, 
+	    size_t                count, 
+	    uint8_t             * dest) 
 {
     addr_t cursor     = gpa;
-    int    bytes_read = 0;
+    size_t bytes_read = 0;
 
     while (count > 0) {
-	int    dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
-	int    bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
-	addr_t host_addr       = 0;
+	uint32_t dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
+	size_t   bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
+	addr_t   host_addr       = 0;
 
 	if (v3_gpa_to_hva(core, cursor, &host_addr) != 0) {
 	    return bytes_read;
 	}    
-    
-	/*
-	  PrintDebug("Trying to read %d bytes\n", bytes_to_copy);
-	  PrintDebug("Dist to page edge=%d\n", dist_to_pg_edge);
-	  PrintDebug("PAGE_ADDR=0x%x\n", PAGE_ADDR(cursor));
-	  PrintDebug("guest_pa=0x%x\n", guest_pa);
-	*/
     
 	memcpy(dest + bytes_read, (void *)host_addr, bytes_to_copy);
 
@@ -450,21 +439,21 @@ v3_read_gpa_memory(struct v3_core_info * core,
 /* This clones v3_read_gva_memory
  *   We write only as far as page translations are available 
  */
-int 
-v3_write_gva_memory(struct v3_core_info * core,
-		    addr_t                gva, 
-		    int                   count,
-		    uint8_t             * src) 
+size_t
+v3_write_gva(struct v3_core_info * core,
+	     addr_t                gva, 
+	     size_t                count,
+	     uint8_t             * src) 
 {
     addr_t cursor        = gva;
-    int    bytes_written = 0;
+    size_t bytes_written = 0;
 
 
 
     while (count > 0) {
-	int    dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
-	int    bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
-	addr_t host_addr       = 0;
+	uint32_t dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
+	size_t   bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
+	addr_t   host_addr       = 0;
 
     
 	if (v3_gva_to_hva(core, cursor, &host_addr) != 0) {
@@ -489,19 +478,19 @@ v3_write_gva_memory(struct v3_core_info * core,
 /* This is a straight address conversion + copy, 
  *   except for the tiny little issue of crossing page boundries.....
  */
-int 
-v3_write_gpa_memory(struct v3_core_info * core, 
-		    addr_t                gpa, 
-		    int                   count, 
-		    uint8_t             * src) 
+size_t 
+v3_write_gpa(struct v3_core_info * core, 
+	     addr_t                gpa, 
+	     size_t                count, 
+	     uint8_t             * src) 
 {
     addr_t cursor        = gpa;
-    int    bytes_written = 0;
+    size_t bytes_written = 0;
 
     while (count > 0) {
-	int    dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
-	int    bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
-	addr_t host_addr       = 0;
+	uint32_t dist_to_pg_edge = (PAGE_ADDR(cursor) + PAGE_SIZE) - cursor;
+	size_t   bytes_to_copy   = (dist_to_pg_edge > count) ? count : dist_to_pg_edge;
+	addr_t   host_addr       = 0;
 
 	if (v3_gpa_to_hva(core, cursor, &host_addr) != 0) {
 	    return bytes_written;

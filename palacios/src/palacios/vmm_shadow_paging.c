@@ -300,9 +300,9 @@ v3_handle_shadow_invlpg(struct v3_core_info * core)
     }
 
     if (v3_get_vm_mem_mode(core) == PHYSICAL_MEM) { 
-	ret = v3_read_gpa_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gpa(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     } else { 
-	ret = v3_read_gva_memory(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
+	ret = v3_read_gva(core, get_addr_linear(core, core->rip, V3_SEG_CS), 15, instr);
     }
 
     if (ret == -1) {

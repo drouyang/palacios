@@ -28,27 +28,27 @@
 
 
 struct svm_io_info {
-    uint_t type        : 1;  // (0=out, 1=in)
-    uint_t rsvd        : 1;  // Must be Zero
-    uint_t str         : 1;  // string based io
-    uint_t rep         : 1;  // repeated io
-    uint_t sz8         : 1;  // 8 bit op size
-    uint_t sz16        : 1;  // 16 bit op size
-    uint_t sz32        : 1;  // 32 bit op size
-    uint_t addr16      : 1;  // 16 bit addr
-    uint_t addr32      : 1;  // 32 bit addr
-    uint_t addr64      : 1;  // 64 bit addr
-    uint_t rsvd2       : 6;  // Should be Zero
-    uint16_t port;           // port number
+    uint_t type        : 1;  /*  out: 0, in: 1    */
+    uint_t rsvd        : 1;  /*  MBZ              */
+    uint_t str         : 1;  /*  string based I/O */
+    uint_t rep         : 1;  /*  repeated I/O     */
+    uint_t sz8         : 1;  /*  8 bit op size    */
+    uint_t sz16        : 1;  /*  16 bit op size   */
+    uint_t sz32        : 1;  /*  32 bit op size   */
+    uint_t addr16      : 1;  /*  16 bit addr      */
+    uint_t addr32      : 1;  /*  32 bit addr      */
+    uint_t addr64      : 1;  /*  64 bit addr      */
+    uint_t rsvd2       : 6;  /*  SBZ              */
+    uint16_t port;           /*  port number      */
 } __attribute__((packed));
 
 
 int v3_init_svm_io_map(struct v3_vm_info * vm);
 int v3_deinit_svm_io_map(struct v3_vm_info * vm);
 
-int v3_handle_svm_io_in(struct v3_core_info * core, struct svm_io_info * io_info);
-int v3_handle_svm_io_ins(struct v3_core_info * core, struct svm_io_info * io_info);
-int v3_handle_svm_io_out(struct v3_core_info * core, struct svm_io_info * io_info);
+int v3_handle_svm_io_in(struct v3_core_info * core,   struct svm_io_info * io_info);
+int v3_handle_svm_io_ins(struct v3_core_info * core,  struct svm_io_info * io_info);
+int v3_handle_svm_io_out(struct v3_core_info * core,  struct svm_io_info * io_info);
 int v3_handle_svm_io_outs(struct v3_core_info * core, struct svm_io_info * io_info);
 
 #endif // !__V3VEE__

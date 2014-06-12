@@ -98,17 +98,17 @@ static inline void xsetbv(uint64_t value) {
 static int 
 vmx_disable_fpu_exits(struct v3_core_info * core) 
 {
-    struct vmx_data * vmx_state  = (struct vmx_data *)core->vmm_data;
-    struct cr0_32   * cr0        = (struct cr0_32 *)&(core->ctrl_regs.cr0);
-    struct cr0_32   * guest_cr0  = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
+    struct vmx_data * vmx_state  = (struct vmx_data *)  core->vmm_data;
+    struct cr0_32   * cr0        = (struct cr0_32   *)&(core->ctrl_regs.cr0);
+    struct cr0_32   * guest_cr0  = (struct cr0_32   *)&(core->shdw_pg_state.guest_cr0);
     addr_t            cr0_mask   = 0;
     int vmx_ret = 0;
 
     vmx_state->excp_bmap.nm = 0;
-    vmx_ret |= check_vmcs_write(VMCS_EXCP_BITMAP, vmx_state->excp_bmap.value);
+    vmx_ret  |= check_vmcs_write(VMCS_EXCP_BITMAP, vmx_state->excp_bmap.value);
 
-    cr0->ts = guest_cr0->ts;
-    cr0->mp = guest_cr0->mp;
+    cr0->ts   = guest_cr0->ts;
+    cr0->mp   = guest_cr0->mp;
 
     vmx_ret  |= check_vmcs_read(VMCS_CR0_MASK, &cr0_mask);
     cr0_mask &= ~(CR0_TS);
@@ -120,16 +120,16 @@ vmx_disable_fpu_exits(struct v3_core_info * core)
 static int 
 vmx_enable_fpu_exits(struct v3_core_info * core) 
 {
-    struct vmx_data * vmx_state  = (struct vmx_data *)core->vmm_data;
-    struct cr0_32   * cr0        = (struct cr0_32 *)&(core->ctrl_regs.cr0);
+    struct vmx_data * vmx_state  = (struct vmx_data *)  core->vmm_data;
+    struct cr0_32   * cr0        = (struct cr0_32   *)&(core->ctrl_regs.cr0);
     addr_t            cr0_mask   = 0;
     int vmx_ret = 0;
 
     vmx_state->excp_bmap.nm = 1;
-    vmx_ret |= check_vmcs_write(VMCS_EXCP_BITMAP, vmx_state->excp_bmap.value);
+    vmx_ret  |= check_vmcs_write(VMCS_EXCP_BITMAP, vmx_state->excp_bmap.value);
 
-    cr0->ts = 1;
-    cr0->mp = 1;
+    cr0->ts   = 1;
+    cr0->mp   = 1;
 
     vmx_ret  |= check_vmcs_read(VMCS_CR0_MASK, &cr0_mask);
     cr0_mask |= (CR0_TS);
@@ -150,8 +150,8 @@ svm_disable_fpu_exits(struct v3_core_info * core)
     struct cr0_32 * guest_cr0 = (struct cr0_32 *)&(core->shdw_pg_state.guest_cr0);
     vmcb_ctrl_t   * ctrl_area = GET_VMCB_CTRL_AREA((vmcb_t *)(core->vmm_data));
 
-    ctrl_area->exceptions.nm = 0;
-    *cr0 = *guest_cr0;
+    ctrl_area->exceptions.nm  = 0;
+    *cr0                      = *guest_cr0;
 
     if (core->shdw_pg_mode == NESTED_PAGING) {
 	ctrl_area->cr_reads.cr0  = 0;
@@ -180,9 +180,8 @@ svm_enable_fpu_exits(struct v3_core_info * core)
 
     /* Cache current Guest CR0 value, before we modify it */
     *guest_cr0 = *cr0;
-
-    cr0->ts = 1;
-    cr0->mp = 1;
+    cr0->ts    = 1;
+    cr0->mp    = 1;
 
     ctrl_area->exceptions.nm = 1;
 
@@ -208,7 +207,7 @@ v3_fpu_init(struct v3_core_info * core)
     
     struct v3_fpu_state * fpu          = &(core->fpu_state);
     struct v3_fpu_arch  * arch_state   = &(fpu->arch_state);
-    addr_t                host_cr4_val = get_cr4();
+    addr_t                host_cr4_val =  get_cr4();
     struct cr4_32       * host_cr4     = (struct cr4_32 *)&host_cr4_val;
     //    struct cr4_32 * guest_cr4 = (struct cr4_32 *)&(core->ctrl_regs.cr4);
 
@@ -220,6 +219,7 @@ v3_fpu_init(struct v3_core_info * core)
 
     // is OSXSAVE supported 
     if (host_cr4->osxsave == 1) {
+
 	fpu->osxsave_enabled = 1;
 	V3_Print("ENabling OSXSAVE for Guest\n");
 
@@ -248,7 +248,7 @@ v3_fpu_init(struct v3_core_info * core)
     arch_state->cwd   = 0x37f;
     arch_state->mxcsr = 0x1f80;
 
-    if (fpu->osxsave_enabled) {
+    if (fpu->osxsave_enabled == 1) {
 	fpu->guest_xcr0 = XCR0_INIT_STATE;
 	fpu->host_xcr0  = xgetbv();
 	
@@ -301,6 +301,7 @@ v3_fpu_on_entry(struct v3_core_info * core)
 	fpu->disable_fpu_exits = 0;	
 	
     } else if (fpu->enable_fpu_exits == 1) {
+
 	switch (v3_cpu_types[core->vcpu_id]) {
 #ifdef V3_CONFIG_VMX
 	    case V3_VMX_CPU:
@@ -344,7 +345,8 @@ v3_fpu_deactivate(struct v3_core_info * core)
 	//	V3_Print("Saving FPU state for core %d\n", core->vcpu_id);
 	v3_telemetry_inc_core_counter(core, "FPU_DEACTIVATE");
 	
-	if ((fpu->osxsave_enabled) && (core->ctrl_regs.cr4 & 0x40000)) {
+	if ( (fpu->osxsave_enabled            == 1) && 
+	     ((core->ctrl_regs.cr4 & 0x40000) != 0) ) {
 
 	    __asm__ __volatile__ ("xsave %0\r\n"
 				  : 
@@ -376,7 +378,7 @@ v3_fpu_deactivate(struct v3_core_info * core)
 	V3_RestoreFPU();
     }
 
-    if (fpu->osxsave_enabled) {
+    if (fpu->osxsave_enabled == 1) {
 	fpu->guest_xcr0 = xgetbv();
 	xsetbv(fpu->host_xcr0);
     }
@@ -408,7 +410,8 @@ v3_fpu_activate(struct v3_core_info * core)
     }
     
     
-    if ((fpu->osxsave_enabled) && (core->ctrl_regs.cr4 & 0x40000)) {
+    if ( (fpu->osxsave_enabled) &&
+	 ((core->ctrl_regs.cr4 & 0x40000) != 0) ) {
 	    // restore state
 	    __asm__ __volatile__ ("xrstor %0 \r\n"
 				  : 
@@ -416,7 +419,8 @@ v3_fpu_activate(struct v3_core_info * core)
 				  : "memory"
 				  );
 
-    } else if ((fpu->osfxsr_enabled) && (core->ctrl_regs.cr4 & (0x1 << 9))) {
+    } else if ( (fpu->osfxsr_enabled) && 
+		((core->ctrl_regs.cr4 & (0x1 << 9)) != 0) ) {
 	// restore state
 	__asm__ __volatile__ ("fxrstor %0 \r\n"
 			      : 
@@ -445,7 +449,7 @@ int
 v3_fpu_handle_xsetbv(struct v3_core_info * core)
 {
     struct v3_fpu_state * fpu   = &(core->fpu_state);
-    uint32_t              index = core->vm_regs.rcx;
+    uint32_t              index =   core->vm_regs.rcx;
 
 
     if (index != 0) {
@@ -453,11 +457,11 @@ v3_fpu_handle_xsetbv(struct v3_core_info * core)
 	return -1;
     }
 
-    if (core->ctrl_regs.cr4 & 0x40000) {
+    if ((core->ctrl_regs.cr4 & 0x40000) != 0) {
 	fpu->guest_xcr0  = (uint32_t)(core->vm_regs.rax);
 	fpu->guest_xcr0 += (core->vm_regs.rdx << 32);
 
-	if (fpu->osxsave_enabled) { // This should always evaluate to true
+	if (fpu->osxsave_enabled == 1) { // This should always evaluate to true
 	    PrintDebug("Calling xsetbv\n");
 	    
 	    xsetbv(fpu->guest_xcr0);

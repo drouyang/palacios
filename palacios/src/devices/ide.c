@@ -31,8 +31,8 @@
 #define PrintDebug(fmt, args...)
 #endif
 
-#define PRI_DEFAULT_IRQ 14
-#define SEC_DEFAULT_IRQ 15
+#define PRI_DEFAULT_IRQ       14
+#define SEC_DEFAULT_IRQ       15
 
 
 #define PRI_DATA_PORT         0x1f0
@@ -58,39 +58,74 @@
 #define SEC_ADDR_REG_PORT     0x377
 
 
-#define PRI_DEFAULT_DMA_PORT 0xc000
-#define SEC_DEFAULT_DMA_PORT 0xc008
+#define PRI_DEFAULT_DMA_PORT  0xc000
+#define SEC_DEFAULT_DMA_PORT  0xc008
 
-#define DATA_BUFFER_SIZE 2048
+#define DATA_BUFFER_SIZE      2048
 
-#define ATAPI_BLOCK_SIZE 2048
-#define HD_SECTOR_SIZE 512
-
-
-static const char * ide_pri_port_strs[] = {"PRI_DATA", "PRI_FEATURES", "PRI_SECT_CNT", "PRI_SECT_NUM", 
-					  "PRI_CYL_LOW", "PRI_CYL_HIGH", "PRI_DRV_SEL", "PRI_CMD",
-					   "PRI_CTRL", "PRI_ADDR_REG"};
+#define ATAPI_BLOCK_SIZE      2048
+#define HD_SECTOR_SIZE        512
 
 
-static const char * ide_sec_port_strs[] = {"SEC_DATA", "SEC_FEATURES", "SEC_SECT_CNT", "SEC_SECT_NUM", 
-					  "SEC_CYL_LOW", "SEC_CYL_HIGH", "SEC_DRV_SEL", "SEC_CMD",
-					   "SEC_CTRL", "SEC_ADDR_REG"};
+static const char * ide_pri_port_strs[] = { "PRI_DATA", 
+					    "PRI_FEATURES",
+					    "PRI_SECT_CNT", 
+					    "PRI_SECT_NUM", 
+					    "PRI_CYL_LOW", 
+					    "PRI_CYL_HIGH",
+					    "PRI_DRV_SEL", 
+					    "PRI_CMD",
+					    "PRI_CTRL", 
+					    "PRI_ADDR_REG" };
 
-static const char * ide_dma_port_strs[] = {"DMA_CMD", NULL, "DMA_STATUS", NULL,
-					   "DMA_PRD0", "DMA_PRD1", "DMA_PRD2", "DMA_PRD3"};
+
+static const char * ide_sec_port_strs[] = { "SEC_DATA", 
+					    "SEC_FEATURES", 
+					    "SEC_SECT_CNT", 
+					    "SEC_SECT_NUM", 
+					    "SEC_CYL_LOW", 
+					    "SEC_CYL_HIGH",
+					    "SEC_DRV_SEL", 
+					    "SEC_CMD",
+					    "SEC_CTRL", 
+					    "SEC_ADDR_REG" };
+
+static const char * ide_dma_port_strs[] = { "DMA_CMD", 
+					    NULL, 
+					    "DMA_STATUS", 
+					    NULL,
+					    "DMA_PRD0", 
+					    "DMA_PRD1", 
+					    "DMA_PRD2", 
+					    "DMA_PRD3"};
 
 
 typedef enum {BLOCK_NONE, BLOCK_DISK, BLOCK_CDROM} v3_block_type_t;
 
-static inline const char * io_port_to_str(uint16_t port) {
-    if ((port >= PRI_DATA_PORT) && (port <= PRI_CMD_PORT)) {
+static inline const char * 
+io_port_to_str(uint16_t port) 
+{
+
+    if ( (port >= PRI_DATA_PORT) && 
+	 (port <= PRI_CMD_PORT) ) {
+
 	return ide_pri_port_strs[port - PRI_DATA_PORT];
-    } else if ((port >= SEC_DATA_PORT) && (port <= SEC_CMD_PORT)) {
+
+    } else if ( (port >= SEC_DATA_PORT) && 
+		(port <= SEC_CMD_PORT) ) {
+
 	return ide_sec_port_strs[port - SEC_DATA_PORT];
-    } else if ((port == PRI_CTRL_PORT) || (port == PRI_ADDR_REG_PORT)) {
+
+    } else if ( (port == PRI_CTRL_PORT) || 
+		(port == PRI_ADDR_REG_PORT)) {
+
 	return ide_pri_port_strs[port - PRI_CTRL_PORT + 8];
-    } else if ((port == SEC_CTRL_PORT) || (port == SEC_ADDR_REG_PORT)) {
+
+    } else if ( (port == SEC_CTRL_PORT) || 
+		(port == SEC_ADDR_REG_PORT)) {
+
 	return ide_sec_port_strs[port - SEC_CTRL_PORT + 8];
+
     } 
     return NULL;
 }
@@ -109,6 +144,7 @@ struct ide_cd_state {
     struct atapi_error_recovery err_recovery;
 };
 
+
 struct ide_hd_state {
     uint32_t accessed;
 
@@ -121,6 +157,8 @@ struct ide_hd_state {
      */
     uint32_t cur_sector_num;
 };
+
+
 
 struct ide_drive {
     // Command Registers
@@ -191,46 +229,44 @@ struct ide_drive {
 struct ide_channel {
     struct ide_drive drives[2];
 
-    // Command Registers
-    struct ide_error_reg error_reg;     // [read] 0x1f1,0x171
+    /* Command Registers */
+    struct ide_error_reg      error_reg;    // [read] 0x1f1,0x171
+    struct ide_features_reg   features;
+    struct ide_drive_head_reg drive_head;   // 0x1f6,0x176
+    struct ide_status_reg     status;       // [read] 0x1f7,0x177
+    uint8_t                   cmd_reg;      // [write] 0x1f7,0x177
 
-    struct ide_features_reg features;
+    /* Control Registers */
+    struct ide_ctrl_reg       ctrl_reg;     // [write] 0x3f6,0x376
 
-    struct ide_drive_head_reg drive_head; // 0x1f6,0x176
-
-    struct ide_status_reg status;       // [read] 0x1f7,0x177
-    uint8_t cmd_reg;                // [write] 0x1f7,0x177
-
-    int irq; // this is temporary until we add PCI support
-
-    // Control Registers
-    struct ide_ctrl_reg ctrl_reg; // [write] 0x3f6,0x376
-
+    /* DMA Registers */
     union {
 	uint8_t dma_ports[8];
 	struct {
-	    struct ide_dma_cmd_reg dma_cmd;
-	    uint8_t rsvd1;
+	    struct ide_dma_cmd_reg    dma_cmd;
+	    uint8_t                   rsvd1;
 	    struct ide_dma_status_reg dma_status;
-	    uint8_t rsvd2;
-	    uint32_t dma_prd_addr;
+	    uint8_t                   rsvd2;
+	    uint32_t                  dma_prd_addr;
 	} __attribute__((packed));
     } __attribute__((packed));
 
     uint32_t dma_tbl_index;
+
+    int irq; // this is temporary until we add PCI support
 };
 
 
 
 struct ide_internal {
-    struct ide_channel channels[2];
+    struct ide_channel      channels[2];
 
     struct v3_southbridge * southbridge;
-    struct vm_device * pci_bus;
+    struct vm_device      * pci_bus;
 
-    struct pci_device * ide_pci;
+    struct pci_device     * ide_pci;
 
-    struct v3_vm_info * vm;
+    struct v3_vm_info     * vm;
 };
 
 
@@ -251,7 +287,10 @@ static inline uint16_t le_to_be_16(const uint16_t val) {
 
 static inline uint32_t be_to_le_32(const uint32_t val) {
     uint8_t * buf = (uint8_t *)&val;
-    return (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+    return ((buf[0] << 24) | 
+	    (buf[1] << 16) | 
+	    (buf[2] <<  8) |
+	    (buf[3]));
 }
 
 static inline uint32_t le_to_be_32(const uint32_t val) {
@@ -273,36 +312,47 @@ static inline int get_channel_index(uint16_t port) {
     return -1;
 }
 
-static inline struct ide_channel * get_selected_channel(struct ide_internal * ide, uint16_t port) {
+static inline struct ide_channel * 
+get_selected_channel(struct ide_internal * ide, 
+		     uint16_t              port) 
+{
     int channel_idx = get_channel_index(port);    
     return &(ide->channels[channel_idx]);
 }
 
-static inline struct ide_drive * get_selected_drive(struct ide_channel * channel) {
+static inline struct ide_drive * 
+get_selected_drive(struct ide_channel * channel)
+{
     return &(channel->drives[channel->drive_head.drive_sel]);
 }
 
 
-static inline int is_lba_enabled(struct ide_channel * channel) {
+static inline int 
+is_lba_enabled(struct ide_channel * channel) 
+{
     return channel->drive_head.lba_mode;
 }
 
 
 /* Drive Commands */
-static void ide_raise_irq(struct ide_internal * ide, struct ide_channel * channel) {
+static void 
+ide_raise_irq(struct ide_internal * ide,
+	      struct ide_channel  * channel) 
+{
     if (channel->ctrl_reg.irq_disable == 0) {
 
 	//PrintError("Raising IDE Interrupt %d\n", channel->irq);
-
         channel->dma_status.int_gen = 1;
         v3_raise_irq(ide->vm, channel->irq);
     }
 }
 
 
-static void drive_reset(struct ide_drive * drive) {
+static void
+drive_reset(struct ide_drive * drive) 
+{
     drive->sector_count = 0x01;
-    drive->sector_num = 0x01;
+    drive->sector_num   = 0x01;
 
     PrintDebug("Resetting drive %s\n", drive->model);
     
@@ -322,24 +372,21 @@ static void drive_reset(struct ide_drive * drive) {
     //    channel->drives[1].reset();
 }
 
-static void channel_reset(struct ide_channel * channel) {
+static void 
+channel_reset(struct ide_channel * channel) 
+{
     
-    // set busy and seek complete flags
-    channel->status.val = 0x90;
-
-    // Clear errors
-    channel->error_reg.val = 0x01;
-
-    // clear commands
-    channel->cmd_reg = 0x00;
-
-    channel->ctrl_reg.irq_disable = 0;
+    channel->status.val           = 0x90;   /* set busy and seek complete flags */
+    channel->error_reg.val        = 0x01;   /* Clear Errors   */
+    channel->cmd_reg              = 0x00;   /* Clear Commands */
+    channel->ctrl_reg.irq_disable = 0;      /* Enable IRQ     */
 }
 
-static void channel_reset_complete(struct ide_channel * channel) {
-    channel->status.busy = 0;
-    channel->status.ready = 1;
-
+static void 
+channel_reset_complete(struct ide_channel * channel) 
+{
+    channel->status.busy         = 0;
+    channel->status.ready        = 1;
     channel->drive_head.head_num = 0;    
     
     drive_reset(&(channel->drives[0]));
@@ -347,15 +394,18 @@ static void channel_reset_complete(struct ide_channel * channel) {
 }
 
 
-static void ide_abort_command(struct ide_internal * ide, struct ide_channel * channel) {
-    channel->status.val = 0x41; // Error + ready
-    channel->error_reg.val = 0x04; // No idea...
+static void 
+ide_abort_command(struct ide_internal * ide, 
+		  struct ide_channel  * channel) 
+{
+    channel->status.val    = 0x41; /* Error + ready */
+    channel->error_reg.val = 0x04; /* No idea... */
 
     ide_raise_irq(ide, channel);
 }
 
 
-static int dma_read(struct v3_core_info * core, struct ide_internal * ide, struct ide_channel * channel);
+static int dma_read(struct v3_core_info * core,  struct ide_internal * ide, struct ide_channel * channel);
 static int dma_write(struct v3_core_info * core, struct ide_internal * ide, struct ide_channel * channel);
 
 
@@ -367,7 +417,10 @@ static int dma_write(struct v3_core_info * core, struct ide_internal * ide, stru
 
 
 
-static void print_prd_table(struct ide_internal * ide, struct ide_channel * channel) {
+static void 
+print_prd_table(struct ide_internal * ide, 
+		struct ide_channel  * channel) 
+{
     struct ide_dma_prd prd_entry;
     int index = 0;
 
@@ -375,9 +428,9 @@ static void print_prd_table(struct ide_internal * ide, struct ide_channel * chan
 
     while (1) {
 	uint32_t prd_entry_addr = channel->dma_prd_addr + (sizeof(struct ide_dma_prd) * index);
-	int ret;
+	int      ret = 0;
 
-	ret = v3_read_gpa_memory(&(ide->vm->cores[0]), prd_entry_addr, sizeof(struct ide_dma_prd), (void *)&prd_entry);
+	ret = v3_read_gpa(&(ide->vm->cores[0]), prd_entry_addr, sizeof(struct ide_dma_prd), (void *)&prd_entry);
 	
 	if (ret != sizeof(struct ide_dma_prd)) {
 	    PrintError("Could not read PRD\n");
@@ -385,9 +438,9 @@ static void print_prd_table(struct ide_internal * ide, struct ide_channel * chan
 	}
 
 	V3_Print("\tPRD Addr: %x, PRD Len: %d, EOT: %d\n", 
-		   prd_entry.base_addr, 
-		   (prd_entry.size == 0) ? 0x10000 : prd_entry.size, 
-		   prd_entry.end_of_table);
+		 prd_entry.base_addr, 
+		 (prd_entry.size == 0) ? 0x10000 : prd_entry.size, 
+		 prd_entry.end_of_table);
 
 	if (prd_entry.end_of_table) {
 	    break;
@@ -401,11 +454,15 @@ static void print_prd_table(struct ide_internal * ide, struct ide_channel * chan
 
 
 /* IO Operations */
-static int dma_read(struct v3_core_info * core, struct ide_internal * ide, struct ide_channel * channel) {
-    struct ide_drive * drive = get_selected_drive(channel);
-    // This is at top level scope to do the EOT test at the end
-    struct ide_dma_prd prd_entry = {};
-    uint_t bytes_left = drive->transfer_length;
+static int 
+dma_read(struct v3_core_info * core, 
+	 struct ide_internal * ide, 
+	 struct ide_channel  * channel) 
+{
+    struct ide_drive  * drive      = get_selected_drive(channel);
+    uint_t              bytes_left = drive->transfer_length;
+
+    struct ide_dma_prd  prd_entry  = {};         /*  This is at top level scope to do the EOT test at the end */
 
     // Read in the data buffer....
     // Read a sector/block at a time until the prd entry is full.
@@ -419,13 +476,13 @@ static int dma_read(struct v3_core_info * core, struct ide_internal * ide, struc
     // Loop through the disk data
     while (bytes_left > 0) {
 	uint32_t prd_entry_addr = channel->dma_prd_addr + (sizeof(struct ide_dma_prd) * channel->dma_tbl_index);
-	uint_t prd_bytes_left = 0;
-	uint_t prd_offset = 0;
-	int ret;
+	uint_t   prd_bytes_left = 0;
+	uint_t   prd_offset     = 0;
+	int      ret = 0;
 
 	PrintDebug("PRD table address = %x\n", channel->dma_prd_addr);
 
-	ret = v3_read_gpa_memory(core, prd_entry_addr, sizeof(struct ide_dma_prd), (void *)&prd_entry);
+	ret = v3_read_gpa(core, prd_entry_addr, sizeof(struct ide_dma_prd), (void *)&prd_entry);
 
 	if (ret != sizeof(struct ide_dma_prd)) {
 	    PrintError("Could not read PRD\n");
@@ -433,7 +490,9 @@ static int dma_read(struct v3_core_info * core, struct ide_internal * ide, struc
 	}
 
 	PrintDebug("PRD Addr: %x, PRD Len: %d, EOT: %d\n", 
-		   prd_entry.base_addr, prd_entry.size, prd_entry.end_of_table);
+		   prd_entry.base_addr,
+		   prd_entry.size, 
+		   prd_entry.end_of_table);
 
 	// loop through the PRD data....
 
@@ -449,21 +508,24 @@ static int dma_read(struct v3_core_info * core, struct ide_internal * ide, struc
 	    uint_t bytes_to_write = 0;
 
 	    if (drive->drive_type == BLOCK_DISK) {
-		bytes_to_write = (prd_bytes_left > HD_SECTOR_SIZE) ? HD_SECTOR_SIZE : prd_bytes_left;
 
+		bytes_to_write = (prd_bytes_left > HD_SECTOR_SIZE) ? HD_SECTOR_SIZE : prd_bytes_left;
 
 		if (ata_read(ide, channel, drive->data_buf, 1) == -1) {
 		    PrintError("Failed to read next disk sector\n");
 		    return -1;
 		}
+
 	    } else if (drive->drive_type == BLOCK_CDROM) {
 		if (atapi_cmd_is_data_op(drive->cd_state.atapi_cmd)) {
+
 		    bytes_to_write = (prd_bytes_left > ATAPI_BLOCK_SIZE) ? ATAPI_BLOCK_SIZE : prd_bytes_left;
 
 		    if (atapi_read_chunk(ide, channel) == -1) {
 			PrintError("Failed to read next disk sector\n");
 			return -1;
 		    }
+
 		} else {
 		    /*
 		    PrintError("How does this work (ATAPI CMD=%x)???\n", drive->cd_state.atapi_cmd);
@@ -478,24 +540,26 @@ static int dma_read(struct v3_core_info * core, struct ide_internal * ide, struc
 
 
 		    // V3_Print("Writing ATAPI cmd OP DMA (cmd=%x) (len=%d)\n", drive->cd_state.atapi_cmd, prd_bytes_left);
-		    cmd_ret = v3_write_gpa_memory(core, prd_entry.base_addr + prd_offset, 
-						  bytes_to_write, drive->data_buf); 
+		    cmd_ret = v3_write_gpa(core, 
+					   prd_entry.base_addr + prd_offset, 
+					   bytes_to_write, 
+					   drive->data_buf); 
 
 		    // check cmd_ret
 
 
-		    bytes_to_write = 0;
-		    prd_bytes_left = 0;
-		    drive->transfer_index += bytes_to_write;
+		    bytes_to_write                = 0;
+		    prd_bytes_left                = 0;
+		    drive->transfer_index        += bytes_to_write;
 
-		    channel->status.busy = 0;
-		    channel->status.ready = 1;
-		    channel->status.data_req = 0;
-		    channel->status.error = 0;
+		    channel->status.busy          = 0;
+		    channel->status.ready         = 1;
+		    channel->status.data_req      = 0;
+		    channel->status.error         = 0;
 		    channel->status.seek_complete = 1;
 
-		    channel->dma_status.active = 0;
-		    channel->dma_status.err = 0;
+		    channel->dma_status.active    = 0;
+		    channel->dma_status.err       = 0;
 
 		    ide_raise_irq(ide, channel);
 		    
@@ -504,47 +568,60 @@ static int dma_read(struct v3_core_info * core, struct ide_internal * ide, struc
 	    }
 
 	    PrintDebug("Writing DMA data to guest Memory ptr=%p, len=%d\n", 
-		       (void *)(addr_t)(prd_entry.base_addr + prd_offset), bytes_to_write);
+		       (void *)(addr_t)(prd_entry.base_addr + prd_offset), 
+		       bytes_to_write);
 
 	    drive->current_lba++;
 
-	    ret = v3_write_gpa_memory(core, prd_entry.base_addr + prd_offset, bytes_to_write, drive->data_buf); 
+	    ret = v3_write_gpa(core, prd_entry.base_addr + prd_offset, bytes_to_write, drive->data_buf); 
 
 	    if (ret != bytes_to_write) {
 		PrintError("Failed to copy data into guest memory... (ret=%d)\n", ret);
 		return -1;
 	    }
 
-	    PrintDebug("\t DMA ret=%d, (prd_bytes_left=%d) (bytes_left=%d)\n", ret, prd_bytes_left, bytes_left);
+	    PrintDebug("\t DMA ret=%d, (prd_bytes_left=%d) (bytes_left=%d)\n", 
+		       ret,
+		       prd_bytes_left, 
+		       bytes_left);
 
 	    drive->transfer_index += ret;
-	    prd_bytes_left -= ret;
-	    prd_offset += ret;
-	    bytes_left -= ret;
+	    prd_bytes_left        -= ret;
+	    prd_offset            += ret;
+	    bytes_left            -= ret;
 	}
 
 	channel->dma_tbl_index++;
 
 	if (drive->drive_type == BLOCK_DISK) {
+
 	    if (drive->transfer_index % HD_SECTOR_SIZE) {
 		PrintError("We currently don't handle sectors that span PRD descriptors\n");
 		return -1;
 	    }
+
 	} else if (drive->drive_type == BLOCK_CDROM) {
+
 	    if (atapi_cmd_is_data_op(drive->cd_state.atapi_cmd)) {
 		if (drive->transfer_index % ATAPI_BLOCK_SIZE) {
+
 		    PrintError("We currently don't handle ATAPI BLOCKS that span PRD descriptors\n");
 		    PrintError("transfer_index=%d, transfer_length=%d\n", 
-			       drive->transfer_index, drive->transfer_length);
+			       drive->transfer_index, 
+			       drive->transfer_length);
+
 		    return -1;
 		}
 	    }
 	}
 
 
-	if ((prd_entry.end_of_table == 1) && (bytes_left > 0)) {
+	if ((prd_entry.end_of_table == 1) &&
+	    (bytes_left              > 0)) {
+
 	    PrintError("DMA table not large enough for data transfer...\n");
 	    return -1;
+
 	}
     }
 
@@ -560,14 +637,14 @@ static int dma_read(struct v3_core_info * core, struct ide_internal * ide, struc
     // set DMA status
 
     if (prd_entry.end_of_table) {
-	channel->status.busy = 0;
-	channel->status.ready = 1;
-	channel->status.data_req = 0;
-	channel->status.error = 0;
+	channel->status.busy          = 0;
+	channel->status.ready         = 1;
+	channel->status.data_req      = 0;
+	channel->status.error         = 0;
 	channel->status.seek_complete = 1;
 
-	channel->dma_status.active = 0;
-	channel->dma_status.err = 0;
+	channel->dma_status.active    = 0;
+	channel->dma_status.err       = 0;
     }
 
     ide_raise_irq(ide, channel);
@@ -576,11 +653,15 @@ static int dma_read(struct v3_core_info * core, struct ide_internal * ide, struc
 }
 
 
-static int dma_write(struct v3_core_info * core, struct ide_internal * ide, struct ide_channel * channel) {
-    struct ide_drive * drive = get_selected_drive(channel);
-    // This is at top level scope to do the EOT test at the end
-    struct ide_dma_prd prd_entry = {};
-    uint_t bytes_left = drive->transfer_length;
+static int 
+dma_write(struct v3_core_info * core, 
+	  struct ide_internal * ide, 
+	  struct ide_channel  * channel)
+{
+    struct ide_drive   * drive      = get_selected_drive(channel);
+    uint_t               bytes_left = drive->transfer_length;
+
+    struct ide_dma_prd   prd_entry  = {};    /*   This is at top level scope to do the EOT test at the end */
 
 
     PrintDebug("DMA write from %d bytes\n", bytes_left);
@@ -588,13 +669,13 @@ static int dma_write(struct v3_core_info * core, struct ide_internal * ide, stru
     // Loop through disk data
     while (bytes_left > 0) {
 	uint32_t prd_entry_addr = channel->dma_prd_addr + (sizeof(struct ide_dma_prd) * channel->dma_tbl_index);
-	uint_t prd_bytes_left = 0;
-	uint_t prd_offset = 0;
-	int ret;
+	uint_t   prd_bytes_left = 0;
+	uint_t   prd_offset     = 0;
+	int      ret = 0;
 	
 	PrintDebug("PRD Table address = %x\n", channel->dma_prd_addr);
 
-	ret = v3_read_gpa_memory(core, prd_entry_addr, sizeof(struct ide_dma_prd), (void *)&prd_entry);
+	ret = v3_read_gpa(core, prd_entry_addr, sizeof(struct ide_dma_prd), (void *)&prd_entry);
 
 	if (ret != sizeof(struct ide_dma_prd)) {
 	    PrintError("Could not read PRD\n");
@@ -602,12 +683,13 @@ static int dma_write(struct v3_core_info * core, struct ide_internal * ide, stru
 	}
 
 	PrintDebug("PRD Addr: %x, PRD Len: %d, EOT: %d\n", 
-		   prd_entry.base_addr, prd_entry.size, prd_entry.end_of_table);
+		   prd_entry.base_addr, 
+		   prd_entry.size, 
+		   prd_entry.end_of_table);
 
 
 	if (prd_entry.size == 0) {
-	    // a size of 0 means 64k
-	    prd_bytes_left = 0x10000;
+	    prd_bytes_left = 0x10000; /* a size of 0 means 64k */
 	} else {
 	    prd_bytes_left = prd_entry.size;
 	}
@@ -618,15 +700,17 @@ static int dma_write(struct v3_core_info * core, struct ide_internal * ide, stru
 
 	    bytes_to_write = (prd_bytes_left > HD_SECTOR_SIZE) ? HD_SECTOR_SIZE : prd_bytes_left;
 
-
-	    ret = v3_read_gpa_memory(core, prd_entry.base_addr + prd_offset, bytes_to_write, drive->data_buf);
+	    ret = v3_read_gpa(core, prd_entry.base_addr + prd_offset, bytes_to_write, drive->data_buf);
 
 	    if (ret != bytes_to_write) {
-		PrintError("Faild to copy data from guest memory... (ret=%d)\n", ret);
+		PrintError("Failed to copy data from guest memory... (ret=%d)\n", ret);
 		return -1;
 	    }
 
-	    PrintDebug("\t DMA ret=%d (prd_bytes_left=%d) (bytes_left=%d)\n", ret, prd_bytes_left, bytes_left);
+	    PrintDebug("\t DMA ret=%d (prd_bytes_left=%d) (bytes_left=%d)\n", 
+		       ret, 
+		       prd_bytes_left, 
+		       bytes_left);
 
 
 	    if (ata_write(ide, channel, drive->data_buf, 1) == -1) {
@@ -637,9 +721,9 @@ static int dma_write(struct v3_core_info * core, struct ide_internal * ide, stru
 	    drive->current_lba++;
 
 	    drive->transfer_index += ret;
-	    prd_bytes_left -= ret;
-	    prd_offset += ret;
-	    bytes_left -= ret;
+	    prd_bytes_left        -= ret;
+	    prd_offset            += ret;
+	    bytes_left            -= ret;
 	}
 
 	channel->dma_tbl_index++;
@@ -649,12 +733,18 @@ static int dma_write(struct v3_core_info * core, struct ide_internal * ide, stru
 	    return -1;
 	}
 
-	if ((prd_entry.end_of_table == 1) && (bytes_left > 0)) {
+	if ( (prd_entry.end_of_table == 1) && 
+	     (bytes_left              > 0) ) {
+
 	    PrintError("DMA table not large enough for data transfer...\n");
 	    PrintError("\t(bytes_left=%u) (transfer_length=%u)...\n", 
-		       bytes_left, drive->transfer_length);
+		       bytes_left, 
+		       drive->transfer_length);
+
 	    PrintError("PRD Addr: %x, PRD Len: %d, EOT: %d\n", 
-		       prd_entry.base_addr, prd_entry.size, prd_entry.end_of_table);
+		       prd_entry.base_addr, 
+		       prd_entry.size,
+		       prd_entry.end_of_table);
 
 	    print_prd_table(ide, channel);
 	    return -1;
@@ -662,14 +752,14 @@ static int dma_write(struct v3_core_info * core, struct ide_internal * ide, stru
     }
 
     if (prd_entry.end_of_table) {
-	channel->status.busy = 0;
-	channel->status.ready = 1;
-	channel->status.data_req = 0;
-	channel->status.error = 0;
+	channel->status.busy          = 0;
+	channel->status.ready         = 1;
+	channel->status.data_req      = 0;
+	channel->status.error         = 0;
 	channel->status.seek_complete = 1;
 
-	channel->dma_status.active = 0;
-	channel->dma_status.err = 0;
+	channel->dma_status.active    = 0;
+	channel->dma_status.err       = 0;
     }
 
     ide_raise_irq(ide, channel);
@@ -688,17 +778,29 @@ static int dma_write(struct v3_core_info * core, struct ide_internal * ide, stru
 
 #define DMA_CHANNEL_FLAG  0x08
 
-static int write_dma_port(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * private_data) {
-    struct ide_internal * ide = (struct ide_internal *)private_data;
-    uint16_t port_offset = port & (DMA_CHANNEL_FLAG - 1);
-    uint_t channel_flag = (port & DMA_CHANNEL_FLAG) >> 3;
-    struct ide_channel * channel = &(ide->channels[channel_flag]);
+static int 
+write_dma_port(struct v3_core_info * core, 
+	       uint16_t              port, 
+	       void                * src, 
+	       uint_t                length, 
+	       void                * private_data)
+{
+    uint16_t port_offset               = (port & (DMA_CHANNEL_FLAG - 1));
+    uint_t   channel_flag              = (port & DMA_CHANNEL_FLAG) >> 3;
+
+    struct ide_internal * ide          = (struct ide_internal *)private_data;
+    struct ide_channel  * channel      = &(ide->channels[channel_flag]);
 
     PrintDebug("IDE: Writing DMA Port %x (%s) (val=%x) (len=%d) (channel=%d)\n", 
-	       port, dma_port_to_str(port_offset), *(uint32_t *)src, length, channel_flag);
+	       port, 
+	       dma_port_to_str(port_offset), 
+	       *(uint32_t *)src, 
+	       length, 
+	       channel_flag);
 
     switch (port_offset) {
 	case DMA_CMD_PORT:
+
 	    channel->dma_cmd.val = *(uint8_t *)src;
 
 	    if (channel->dma_cmd.start == 0) {
@@ -744,9 +846,9 @@ static int write_dma_port(struct v3_core_info * core, uint16_t port, void * src,
 	case DMA_PRD_PORT1:
 	case DMA_PRD_PORT2:
 	case DMA_PRD_PORT3: {
-	    uint_t addr_index = port_offset & 0x3;
-	    uint8_t * addr_buf = (uint8_t *)&(channel->dma_prd_addr);
-	    int i = 0;
+	    uint_t    addr_index = port_offset & 0x3;
+	    uint8_t * addr_buf   = (uint8_t *)&(channel->dma_prd_addr);
+	    int       i = 0;
 
 	    if (addr_index + length > 4) {
 		PrintError("DMA Port space overrun port=%x len=%d\n", port_offset, length);
@@ -770,11 +872,18 @@ static int write_dma_port(struct v3_core_info * core, uint16_t port, void * src,
 }
 
 
-static int read_dma_port(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * private_data) {
-    struct ide_internal * ide = (struct ide_internal *)private_data;
-    uint16_t port_offset = port & (DMA_CHANNEL_FLAG - 1);
-    uint_t channel_flag = (port & DMA_CHANNEL_FLAG) >> 3;
-    struct ide_channel * channel = &(ide->channels[channel_flag]);
+static int 
+read_dma_port(struct v3_core_info * core, 
+	      uint16_t              port, 
+	      void                * dst, 
+	      uint_t                length,
+	      void                * private_data) 
+{
+    uint16_t port_offset          = (port & (DMA_CHANNEL_FLAG - 1));
+    uint_t   channel_flag         = (port & DMA_CHANNEL_FLAG) >> 3;
+
+    struct ide_internal * ide     = (struct ide_internal *)private_data;
+    struct ide_channel  * channel = &(ide->channels[channel_flag]);
 
     PrintDebug("Reading DMA port %d (%x) (channel=%d)\n", port, port, channel_flag);
 
@@ -792,10 +901,16 @@ static int read_dma_port(struct v3_core_info * core, uint16_t port, void * dst, 
 
 
 
-static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
-    struct ide_internal * ide = priv_data;
-    struct ide_channel * channel = get_selected_channel(ide, port);
-    struct ide_drive * drive = get_selected_drive(channel);
+static int 
+write_cmd_port(struct v3_core_info * core, 
+	       uint16_t              port,
+	       void                * src,
+	       uint_t                length, 
+	       void                * priv_data) 
+{
+    struct ide_internal * ide     = priv_data;
+    struct ide_channel  * channel = get_selected_channel(ide, port);
+    struct ide_drive    * drive   = get_selected_drive(channel);
 
     if (length != 1) {
 	PrintError("Invalid Write Length on IDE command Port %x\n", port);
@@ -819,7 +934,7 @@ static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src,
 		atapi_identify_device(drive);
 		
 		channel->error_reg.val = 0;
-		channel->status.val = 0x58; // ready, data_req, seek_complete
+		channel->status.val    = 0x58; // ready, data_req, seek_complete
 	    
 		ide_raise_irq(ide, channel);
 	    }
@@ -834,7 +949,7 @@ static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src,
 		ata_identify_device(drive);
 
 		channel->error_reg.val = 0;
-		channel->status.val = 0x58;
+		channel->status.val    = 0x58;
 
 		ide_raise_irq(ide, channel);
 	    }
@@ -845,16 +960,16 @@ static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src,
 		ide_abort_command(ide, channel);
 	    }
 	    
-	    drive->sector_count = 1;
+	    drive->sector_count         = 1;
 
-	    channel->status.busy = 0;
+	    channel->status.busy        = 0;
 	    channel->status.write_fault = 0;
-	    channel->status.data_req = 1;
-	    channel->status.error = 0;
+	    channel->status.data_req    = 1;
+	    channel->status.error       = 0;
 
 	    // reset the data buffer...
-	    drive->transfer_length = ATAPI_PACKET_SIZE;
-	    drive->transfer_index = 0;
+	    drive->transfer_length      = ATAPI_PACKET_SIZE;
+	    drive->transfer_index       = 0;
 
 	    break;
 
@@ -887,9 +1002,8 @@ static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src,
 	    }
 	    
 	    drive->hd_state.cur_sector_num = 1;
-	    
-	    drive->transfer_length = sect_cnt * HD_SECTOR_SIZE;
-	    drive->transfer_index = 0;
+	    drive->transfer_length         = sect_cnt * HD_SECTOR_SIZE;
+	    drive->transfer_index          = 0;
 
 	    if (channel->dma_status.active == 1) {
 		// DMA Read
@@ -910,9 +1024,8 @@ static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src,
 	    }
 
 	    drive->hd_state.cur_sector_num = 1;
-
-	    drive->transfer_length = sect_cnt * HD_SECTOR_SIZE;
-	    drive->transfer_index = 0;
+	    drive->transfer_length         = sect_cnt * HD_SECTOR_SIZE;
+	    drive->transfer_index          = 0;
 
 	    if (channel->dma_status.active == 1) {
 		// DMA Write
@@ -933,7 +1046,7 @@ static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src,
 	case 0x96: // Standby 2
 	case 0x97: // Set idle 2
 	case 0x99: // Sleep Now 2
-	    channel->status.val = 0;
+	    channel->status.val   = 0;
 	    channel->status.ready = 1;
 	    ide_raise_irq(ide, channel);
 	    break;
@@ -946,19 +1059,19 @@ static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src,
 
 	    // Do some checking here...
 
-	    channel->status.busy = 0;
-	    channel->status.write_fault = 0;
-	    channel->status.error = 0;
-	    channel->status.ready = 1;
+	    channel->status.busy          = 0;
+	    channel->status.write_fault   = 0;
+	    channel->status.error         = 0;
+	    channel->status.ready         = 1;
 	    channel->status.seek_complete = 1;
 	    
-	    ide_raise_irq(ide, channel);
+	    ide_raise_irq(ide, channel); 
 	    break;
 
 	case 0x91:  // Initialize Drive Parameters
 	case 0x10:  // recalibrate?
-	    channel->status.error = 0;
-	    channel->status.ready = 1;
+	    channel->status.error         = 0;
+	    channel->status.ready         = 1;
 	    channel->status.seek_complete = 1;
 	    ide_raise_irq(ide, channel);
 	    break;
@@ -972,7 +1085,7 @@ static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src,
 	    }
 
 	    if (drive->sector_count == 0) {
-		drive->hd_state.mult_sector_num= 1;
+		drive->hd_state.mult_sector_num = 1;
 	    } else {
 		drive->hd_state.mult_sector_num = drive->sector_count;
 	    }
@@ -987,21 +1100,22 @@ static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src,
 
 	case 0x08: // Reset Device
 	    drive_reset(drive);
-    	    channel->error_reg.val = 0x01;
-    	    channel->status.busy = 0;
-    	    channel->status.ready = 1;
+
+    	    channel->error_reg.val        = 0x01;
+    	    channel->status.busy          = 0;
+    	    channel->status.ready         = 1;
     	    channel->status.seek_complete = 1;
-    	    channel->status.write_fault = 0;
-    	    channel->status.error = 0;
+    	    channel->status.write_fault   = 0;
+    	    channel->status.error         = 0;
     	    break;
 
 	case 0xe5: // Check power mode
-    	    drive->sector_count = 0xff; /* 0x00=standby, 0x80=idle, 0xff=active or idle */
-    	    channel->status.busy = 0;
-    	    channel->status.ready = 1;
-    	    channel->status.write_fault = 0;
-    	    channel->status.data_req = 0;
-    	    channel->status.error = 0;
+    	    drive->sector_count           = 0xff; /* 0x00=standby, 0x80=idle, 0xff=active or idle */
+    	    channel->status.busy          = 0;
+    	    channel->status.ready         = 1;
+    	    channel->status.write_fault   = 0;
+    	    channel->status.data_req      = 0;
+    	    channel->status.error         = 0;
     	    break;
 
 	case 0xc4:  // read multiple sectors
@@ -1015,10 +1129,16 @@ static int write_cmd_port(struct v3_core_info * core, uint16_t port, void * src,
 }
 
 
-static int write_data_port(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
-    struct ide_internal * ide = priv_data;
-    struct ide_channel * channel = get_selected_channel(ide, port);
-    struct ide_drive * drive = get_selected_drive(channel);
+static int
+write_data_port(struct v3_core_info * core, 
+		uint16_t              port, 
+		void                * src, 
+		uint_t                length, 
+		void                * priv_data)
+{
+    struct ide_internal * ide     = priv_data;
+    struct ide_channel  * channel = get_selected_channel(ide, port);
+    struct ide_drive    * drive   = get_selected_drive(channel);
 
     //    PrintDebug("IDE: Writing Data Port %x (val=%x, len=%d)\n", 
     //	       port, *(uint32_t *)src, length);
@@ -1028,6 +1148,7 @@ static int write_data_port(struct v3_core_info * core, uint16_t port, void * src
 
     // Transfer is complete, dispatch the command
     if (drive->transfer_index >= drive->transfer_length) {
+
 	switch (channel->cmd_reg) {
 	    case 0x30: // Write Sectors
 		PrintError("Writing Data not yet implemented\n");
@@ -1049,21 +1170,31 @@ static int write_data_port(struct v3_core_info * core, uint16_t port, void * src
 }
 
 
-static int read_hd_data(uint8_t * dst, uint_t length, struct ide_internal * ide, struct ide_channel * channel) {
-    struct ide_drive * drive = get_selected_drive(channel);
-    int data_offset = drive->transfer_index % HD_SECTOR_SIZE;
+static int
+read_hd_data(uint8_t             * dst, 
+	     uint_t                length, 
+	     struct ide_internal * ide,
+	     struct ide_channel  * channel) 
+{
+    struct ide_drive * drive       = get_selected_drive(channel);
+    int                data_offset = drive->transfer_index % HD_SECTOR_SIZE;
 
 
 
     if (drive->transfer_index >= drive->transfer_length) {
+
 	PrintError("Buffer overrun... (xfer_len=%d) (cur_idx=%x) (post_idx=%d)\n",
-		   drive->transfer_length, drive->transfer_index,
+		   drive->transfer_length, 
+		   drive->transfer_index,
 		   drive->transfer_index + length);
+
 	return -1;
     }
 
     
-    if ((data_offset == 0) && (drive->transfer_index > 0)) {
+    if ( (data_offset           == 0) && 
+	 (drive->transfer_index  > 0)) {
+
 	drive->current_lba++;
 
 	if (ata_read(ide, channel, drive->data_buf, 1) == -1) {
@@ -1088,27 +1219,29 @@ static int read_hd_data(uint8_t * dst, uint_t length, struct ide_internal * ide,
      * cur_sector_num is configured depending on the operation we are currently running
      * We also trigger an interrupt if this is the last byte to transfer, regardless of sector count
      */
-    if (((drive->transfer_index % (HD_SECTOR_SIZE * drive->hd_state.cur_sector_num)) == 0) || 
-	(drive->transfer_index == drive->transfer_length)) {
+    if ( ((drive->transfer_index % (HD_SECTOR_SIZE * drive->hd_state.cur_sector_num)) == 0) || 
+	 (drive->transfer_index   == drive->transfer_length)) {
+
 	if (drive->transfer_index < drive->transfer_length) {
 	    // An increment is complete, but there is still more data to be transferred...
-	    PrintDebug("Integral Complete, still transferring more sectors\n");
-	    channel->status.data_req = 1;
 
-	    drive->irq_flags.c_d = 0;
+	    PrintDebug("Integral Complete, still transferring more sectors\n");
+
+	    channel->status.data_req = 1;
+	    drive->irq_flags.c_d     = 0;
 	} else {
+
 	    PrintDebug("Final Sector Transferred\n");
+
 	    // This was the final read of the request
 	    channel->status.data_req = 0;
-
-	    
-	    drive->irq_flags.c_d = 1;
-	    drive->irq_flags.rel = 0;
+	    drive->irq_flags.c_d     = 1;
+	    drive->irq_flags.rel     = 0;
 	}
 
-	channel->status.ready = 1;
+	channel->status.ready   = 1;
 	drive->irq_flags.io_dir = 1;
-	channel->status.busy = 0;
+	channel->status.busy    = 0;
 
 	ide_raise_irq(ide, channel);
     }
@@ -1119,27 +1252,40 @@ static int read_hd_data(uint8_t * dst, uint_t length, struct ide_internal * ide,
 
 
 
-static int read_cd_data(uint8_t * dst, uint_t length, struct ide_internal * ide, struct ide_channel * channel) {
-    struct ide_drive * drive = get_selected_drive(channel);
-    int data_offset = drive->transfer_index % ATAPI_BLOCK_SIZE;
+static int 
+read_cd_data(uint8_t             * dst, 
+	     uint_t                length, 
+	     struct ide_internal * ide,
+	     struct ide_channel  * channel) 
+{
+    struct ide_drive * drive       = get_selected_drive(channel);
+    int                data_offset = drive->transfer_index % ATAPI_BLOCK_SIZE;
     //  int req_offset = drive->transfer_index % drive->req_len;
     
     if (drive->cd_state.atapi_cmd != 0x28) {
+
         PrintDebug("IDE: Reading CD Data (len=%d) (req_len=%d)\n", length, drive->req_len);
-	PrintDebug("IDE: transfer len=%d, transfer idx=%d\n", drive->transfer_length, drive->transfer_index);
+	PrintDebug("IDE: transfer len=%d, transfer idx=%d\n", 
+		   drive->transfer_length, 
+		   drive->transfer_index);
     }
 
     
 
     if (drive->transfer_index >= drive->transfer_length) {
+
 	PrintError("Buffer Overrun... (xfer_len=%d) (cur_idx=%d) (post_idx=%d)\n", 
-		   drive->transfer_length, drive->transfer_index, 
+		   drive->transfer_length, 
+		   drive->transfer_index, 
 		   drive->transfer_index + length);
+
 	return -1;
     }
 
     
-    if ((data_offset == 0) && (drive->transfer_index > 0)) {
+    if ( (data_offset           == 0) && 
+	 (drive->transfer_index  > 0)) {
+
 	if (atapi_update_data_buf(ide, channel) == -1) {
 	    PrintError("Could not update CDROM data buffer\n");
 	    return -1;
@@ -1153,12 +1299,12 @@ static int read_cd_data(uint8_t * dst, uint_t length, struct ide_internal * ide,
 
     // Should the req_offset be recalculated here?????
     if (/*(req_offset == 0) &&*/ (drive->transfer_index > 0)) {
+
 	if (drive->transfer_index < drive->transfer_length) {
 	    // An increment is complete, but there is still more data to be transferred...
 	    
 	    channel->status.data_req = 1;
-
-	    drive->irq_flags.c_d = 0;
+	    drive->irq_flags.c_d     = 0;
 
 	    // Update the request length in the cylinder regs
 	    if (atapi_update_req_len(ide, channel, drive->transfer_length - drive->transfer_index) == -1) {
@@ -1168,16 +1314,16 @@ static int read_cd_data(uint8_t * dst, uint_t length, struct ide_internal * ide,
 	} else {
 	    // This was the final read of the request
 
-	    drive->req_len = 0;
+	    drive->req_len           = 0;
 	    channel->status.data_req = 0;
-	    channel->status.ready = 1;
+	    channel->status.ready    = 1;
 	    
-	    drive->irq_flags.c_d = 1;
-	    drive->irq_flags.rel = 0;
+	    drive->irq_flags.c_d     = 1;
+	    drive->irq_flags.rel     = 0;
 	}
 
 	drive->irq_flags.io_dir = 1;
-	channel->status.busy = 0;
+	channel->status.busy    = 0;
 
 	ide_raise_irq(ide, channel);
     }
@@ -1186,15 +1332,20 @@ static int read_cd_data(uint8_t * dst, uint_t length, struct ide_internal * ide,
 }
 
 
-static int read_drive_id( uint8_t * dst, uint_t length, struct ide_internal * ide, struct ide_channel * channel) {
+static int 
+read_drive_id(uint8_t             * dst, 
+	      uint_t                length, 
+	      struct ide_internal * ide, 
+	      struct ide_channel  * channel) 
+{
     struct ide_drive * drive = get_selected_drive(channel);
 
-    channel->status.busy = 0;
-    channel->status.ready = 1;
-    channel->status.write_fault = 0;
+    channel->status.busy          = 0;
+    channel->status.ready         = 1;
+    channel->status.write_fault   = 0;
     channel->status.seek_complete = 1;
-    channel->status.corrected = 0;
-    channel->status.error = 0;
+    channel->status.corrected     = 0;
+    channel->status.error         = 0;
 		
     
     memcpy(dst, drive->data_buf + drive->transfer_index, length);
@@ -1208,28 +1359,38 @@ static int read_drive_id( uint8_t * dst, uint_t length, struct ide_internal * id
 }
 
 
-static int ide_read_data_port(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
-    struct ide_internal * ide = priv_data;
-    struct ide_channel * channel = get_selected_channel(ide, port);
-    struct ide_drive * drive = get_selected_drive(channel);
+static int 
+ide_read_data_port(struct v3_core_info * core, 
+		   uint16_t              port, 
+		   void                * dst,
+		   uint_t                length, 
+		   void                * priv_data) 
+{
+    struct ide_internal * ide     = priv_data;
+    struct ide_channel  * channel = get_selected_channel(ide, port);
+    struct ide_drive    * drive   = get_selected_drive(channel);
 
     //       PrintDebug("IDE: Reading Data Port %x (len=%d)\n", port, length);
 
-    if ((channel->cmd_reg == 0xec) ||
-	(channel->cmd_reg == 0xa1)) {
+    if ( (channel->cmd_reg == 0xec) ||
+	 (channel->cmd_reg == 0xa1)) {
 	return read_drive_id((uint8_t *)dst, length, ide, channel);
     }
 
     if (drive->drive_type == BLOCK_CDROM) {
+
 	if (read_cd_data((uint8_t *)dst, length, ide, channel) == -1) {
 	    PrintError("IDE: Could not read CD Data (atapi cmd=%x)\n", drive->cd_state.atapi_cmd);
 	    return -1;
 	}
+
     } else if (drive->drive_type == BLOCK_DISK) {
+
 	if (read_hd_data((uint8_t *)dst, length, ide, channel) == -1) {
 	    PrintError("IDE: Could not read HD Data\n");
 	    return -1;
 	}
+
     } else {
 	memset((uint8_t *)dst, 0, length);
     }
@@ -1237,10 +1398,16 @@ static int ide_read_data_port(struct v3_core_info * core, uint16_t port, void * 
     return length;
 }
 
-static int write_port_std(struct v3_core_info * core, uint16_t port, void * src, uint_t length, void * priv_data) {
-    struct ide_internal * ide = priv_data;
-    struct ide_channel * channel = get_selected_channel(ide, port);
-    struct ide_drive * drive = get_selected_drive(channel);
+static int 
+write_port_std(struct v3_core_info * core, 
+	       uint16_t              port, 
+	       void                * src, 
+	       uint_t                length,
+	       void                * priv_data) 
+{
+    struct ide_internal * ide     = priv_data;
+    struct ide_channel  * channel = get_selected_channel(ide, port);
+    struct ide_drive    * drive   = get_selected_drive(channel);
 	    
     if (length != 1) {
 	PrintError("Invalid Write length on IDE port %x\n", port);
@@ -1256,10 +1423,16 @@ static int write_port_std(struct v3_core_info * core, uint16_t port, void * src,
 	    struct ide_ctrl_reg * tmp_ctrl = (struct ide_ctrl_reg *)src;
 
 	    // only reset channel on a 0->1 reset bit transition
-	    if ((!channel->ctrl_reg.soft_reset) && (tmp_ctrl->soft_reset)) {
+	    if ( (channel->ctrl_reg.soft_reset == 0) && 
+		 (tmp_ctrl->soft_reset         != 0)) {
+
 		channel_reset(channel);
-	    } else if ((channel->ctrl_reg.soft_reset) && (!tmp_ctrl->soft_reset)) {
+
+	    } else if ( (channel->ctrl_reg.soft_reset != 0) && 
+			(tmp_ctrl->soft_reset         == 0)) {
+
 		channel_reset_complete(channel);
+
 	    }
 
 	    channel->ctrl_reg.val = tmp_ctrl->val;	    
@@ -1305,18 +1478,20 @@ static int write_port_std(struct v3_core_info * core, uint16_t port, void * src,
 
 	    // Selecting a non-present device is a no-no
 	    if (drive->drive_type == BLOCK_NONE) {
+
 		PrintDebug("Attempting to select a non-present drive\n");
+
 		channel->error_reg.abort = 1;
-		channel->status.error = 1;
+		channel->status.error    = 1;
 	    } else {
-		channel->status.busy = 0;
-		channel->status.ready = 1;
-		channel->status.data_req = 0;
-		channel->status.error = 0;
+		channel->status.busy          = 0;
+		channel->status.ready         = 1;
+		channel->status.data_req      = 0;
+		channel->status.error         = 0;
 		channel->status.seek_complete = 1;
 		
-		channel->dma_status.active = 0;
-		channel->dma_status.err = 0;
+		channel->dma_status.active    = 0;
+		channel->dma_status.err       = 0;
 	    }
 
 	    break;
@@ -1325,14 +1500,21 @@ static int write_port_std(struct v3_core_info * core, uint16_t port, void * src,
 	    PrintError("IDE: Write to unknown Port %x\n", port);
 	    return -1;
     }
+
     return length;
 }
 
 
-static int read_port_std(struct v3_core_info * core, uint16_t port, void * dst, uint_t length, void * priv_data) {
-    struct ide_internal * ide = priv_data;
-    struct ide_channel * channel = get_selected_channel(ide, port);
-    struct ide_drive * drive = get_selected_drive(channel);
+static int 
+read_port_std(struct v3_core_info * core,
+	      uint16_t              port, 
+	      void                * dst,
+	      uint_t                length,
+	      void                * priv_data) 
+{
+    struct ide_internal * ide     = priv_data;
+    struct ide_channel  * channel = get_selected_channel(ide, port);
+    struct ide_drive    * drive   = get_selected_drive(channel);
     
     if (length != 1) {
 	PrintError("Invalid Read length on IDE port %x\n", port);
@@ -1341,8 +1523,8 @@ static int read_port_std(struct v3_core_info * core, uint16_t port, void * dst, 
     
     PrintDebug("IDE: Reading Standard Port %x (%s)\n", port, io_port_to_str(port));
 
-    if ((port == PRI_ADDR_REG_PORT) ||
-	(port == SEC_ADDR_REG_PORT)) {
+    if ( (port == PRI_ADDR_REG_PORT) ||
+	 (port == SEC_ADDR_REG_PORT)) {
 	// unused, return 0xff
 	*(uint8_t *)dst = 0xff;
 	return length;
@@ -1351,8 +1533,10 @@ static int read_port_std(struct v3_core_info * core, uint16_t port, void * dst, 
 
     // if no drive is present just return 0 + reserved bits
     if (drive->drive_type == BLOCK_NONE) {
-	if ((port == PRI_DRV_SEL_PORT) ||
-	    (port == SEC_DRV_SEL_PORT)) {
+
+	if ( (port == PRI_DRV_SEL_PORT) ||
+	     (port == SEC_DRV_SEL_PORT)) {
+
 	    *(uint8_t *)dst = 0xa0;
 	} else {
 	    *(uint8_t *)dst = 0;
@@ -1415,42 +1599,45 @@ static int read_port_std(struct v3_core_info * core, uint16_t port, void * dst, 
 
 
 
-static void init_drive(struct ide_drive * drive) {
+static void 
+init_drive(struct ide_drive * drive) 
+{
 
-    drive->sector_count = 0x01;
-    drive->sector_num = 0x01;
-    drive->cylinder = 0x0000;
+    drive->sector_count      = 0x01;
+    drive->sector_num        = 0x01;
+    drive->cylinder          = 0x0000;
 
-    drive->drive_type = BLOCK_NONE;
+    drive->drive_type        = BLOCK_NONE;
 
-    memset(drive->model, 0, sizeof(drive->model));
-
-    drive->transfer_index = 0;
-    drive->transfer_length = 0;
+    memset(drive->model,    0, sizeof(drive->model));
     memset(drive->data_buf, 0, sizeof(drive->data_buf));
 
-    drive->num_cylinders = 0;
-    drive->num_heads = 0;
-    drive->num_sectors = 0;
-    
+    drive->transfer_index    = 0;
+    drive->transfer_length   = 0;
 
-    drive->private_data = NULL;
-    drive->ops = NULL;
+    drive->num_cylinders     = 0;
+    drive->num_heads         = 0;
+    drive->num_sectors       = 0;
+
+    drive->private_data      = NULL;
+    drive->ops               = NULL;
 }
 
-static void init_channel(struct ide_channel * channel) {
+static void 
+init_channel(struct ide_channel * channel) 
+{
     int i = 0;
 
-    channel->error_reg.val = 0x01;
-    channel->drive_head.val = 0x00;
-    channel->status.val = 0x00;
-    channel->cmd_reg = 0x00;
-    channel->ctrl_reg.val = 0x08;
+    channel->error_reg.val   = 0x01;
+    channel->drive_head.val  = 0x00;
+    channel->status.val      = 0x00;
+    channel->cmd_reg         = 0x00;
+    channel->ctrl_reg.val    = 0x08;
 
-    channel->dma_cmd.val = 0;
-    channel->dma_status.val = 0;
-    channel->dma_prd_addr = 0;
-    channel->dma_tbl_index = 0;
+    channel->dma_cmd.val     = 0;
+    channel->dma_status.val  = 0;
+    channel->dma_prd_addr    = 0;
+    channel->dma_tbl_index   = 0;
 
     for (i = 0; i < 2; i++) {
 	init_drive(&(channel->drives[i]));
@@ -1459,18 +1646,26 @@ static void init_channel(struct ide_channel * channel) {
 }
 
 
-static int pci_config_update(struct pci_device * pci_dev, uint32_t reg_num, void * src, uint_t length, void * private_data) {
+static int 
+pci_config_update(struct pci_device * pci_dev, 
+		  uint32_t            reg_num, 
+		  void              * src, 
+		  uint_t              length,
+		  void              * private_data) 
+{
     PrintDebug("PCI Config Update\n");
-    /*
-    struct ide_internal * ide = (struct ide_internal *)(private_data);
 
-    PrintDebug("\t\tInterupt register (Dev=%s), irq=%d\n", ide->ide_pci->name, ide->ide_pci->config_header.intr_line);
+    /*
+      struct ide_internal * ide = (struct ide_internal *)(private_data);
+      PrintDebug("\t\tInterupt register (Dev=%s), irq=%d\n", ide->ide_pci->name, ide->ide_pci->config_header.intr_line);
     */
 
     return 0;
 }
 
-static int init_ide_state(struct ide_internal * ide) {
+static int 
+init_ide_state(struct ide_internal * ide) 
+{
     int i;
 
     /* 
@@ -1491,7 +1686,9 @@ static int init_ide_state(struct ide_internal * ide) {
 
 
 
-static int ide_free(struct ide_internal * ide) {
+static int 
+ide_free(struct ide_internal * ide) 
+{
 
     // deregister from PCI?
 
@@ -1503,61 +1700,70 @@ static int ide_free(struct ide_internal * ide) {
 #ifdef V3_CONFIG_CHECKPOINT
 
 #include <palacios/vmm_sprintf.h>
-static int ide_save(struct v3_chkpt_ctx * ctx, void * private_data) {
+
+static int 
+ide_save(struct v3_chkpt_ctx * ctx, 
+	 void                * private_data) 
+{
     struct ide_internal * ide = (struct ide_internal *)private_data;
-    int ch_num = 0;
-    int drive_num = 0;
+
+    int  ch_num    = 0;
+    int  drive_num = 0;
     char buf[128];
     
 
     for (ch_num = 0; ch_num < 2; ch_num++) {
 	struct v3_chkpt_ctx * ch_ctx = NULL;
-	struct ide_channel * ch = &(ide->channels[ch_num]);
+	struct ide_channel  * ch     = &(ide->channels[ch_num]);
 
 	snprintf(buf, 128, "channel-%d", ch_num);
 	ch_ctx = v3_chkpt_open_ctx(ctx->chkpt, ctx, buf);
 
-	v3_chkpt_save_8(ch_ctx, "ERROR", &(ch->error_reg.val));
-	v3_chkpt_save_8(ch_ctx, "FEATURES", &(ch->features.val));
-	v3_chkpt_save_8(ch_ctx, "DRIVE_HEAD", &(ch->drive_head.val));
-	v3_chkpt_save_8(ch_ctx, "STATUS", &(ch->status.val));
-	v3_chkpt_save_8(ch_ctx, "CMD_REG", &(ch->cmd_reg));
-	v3_chkpt_save_8(ch_ctx, "CTRL_REG", &(ch->ctrl_reg.val));
-	v3_chkpt_save_8(ch_ctx, "DMA_CMD", &(ch->dma_cmd.val));
-	v3_chkpt_save_8(ch_ctx, "DMA_STATUS", &(ch->dma_status.val));
-	v3_chkpt_save_32(ch_ctx, "PRD_ADDR", &(ch->dma_prd_addr));
+	v3_chkpt_save_8(ch_ctx   "ERROR",       &(ch->error_reg.val));
+	v3_chkpt_save_8(ch_ctx,  "FEATURES",    &(ch->features.val));
+	v3_chkpt_save_8(ch_ctx,  "DRIVE_HEAD",  &(ch->drive_head.val));
+	v3_chkpt_save_8(ch_ctx,  "STATUS",      &(ch->status.val));
+	v3_chkpt_save_8(ch_ctx,  "CMD_REG",     &(ch->cmd_reg));
+	v3_chkpt_save_8(ch_ctx,  "CTRL_REG",    &(ch->ctrl_reg.val));
+	v3_chkpt_save_8(ch_ctx,  "DMA_CMD",     &(ch->dma_cmd.val));
+	v3_chkpt_save_8(ch_ctx,  "DMA_STATUS",  &(ch->dma_status.val));
+	v3_chkpt_save_32(ch_ctx, "PRD_ADDR",    &(ch->dma_prd_addr));
 	v3_chkpt_save_32(ch_ctx, "DMA_TBL_IDX", &(ch->dma_tbl_index));
 
 
 	for (drive_num = 0; drive_num < 2; drive_num++) {
 	    struct v3_chkpt_ctx * drive_ctx = NULL;
-	    struct ide_drive * drive = &(ch->drives[drive_num]);
+	    struct ide_drive    * drive     = &(ch->drives[drive_num]);
 	    
 	    snprintf(buf, 128, "drive-%d-%d", ch_num, drive_num);
+
 	    drive_ctx = v3_chkpt_open_ctx(ctx->chkpt, ch_ctx, buf);
 	    
-	    v3_chkpt_save_8(drive_ctx, "DRIVE_TYPE", &(drive->drive_type));
-	    v3_chkpt_save_8(drive_ctx, "SECTOR_COUNT", &(drive->sector_count));
-	    v3_chkpt_save_8(drive_ctx, "SECTOR_NUM", &(drive->sector_num));
-	    v3_chkpt_save_16(drive_ctx, "CYLINDER", &(drive->cylinder));
+	    v3_chkpt_save_8(drive_ctx,  "DRIVE_TYPE",      &(drive->drive_type));
+	    v3_chkpt_save_8(drive_ctx,  "SECTOR_COUNT",    &(drive->sector_count));
+	    v3_chkpt_save_8(drive_ctx,  "SECTOR_NUM",      &(drive->sector_num));
+	    v3_chkpt_save_16(drive_ctx, "CYLINDER",        &(drive->cylinder));
 
-	    v3_chkpt_save_64(drive_ctx, "CURRENT_LBA", &(drive->current_lba));
+	    v3_chkpt_save_64(drive_ctx, "CURRENT_LBA",     &(drive->current_lba));
 	    v3_chkpt_save_32(drive_ctx, "TRANSFER_LENGTH", &(drive->transfer_length));
-	    v3_chkpt_save_32(drive_ctx, "TRANSFER_INDEX", &(drive->transfer_index));
+	    v3_chkpt_save_32(drive_ctx, "TRANSFER_INDEX",  &(drive->transfer_index));
 
-	    v3_chkpt_save(drive_ctx, "DATA_BUF", DATA_BUFFER_SIZE, drive->data_buf);
+	    v3_chkpt_save(drive_ctx,    "DATA_BUF",        DATA_BUFFER_SIZE, drive->data_buf);
 
 
 	    /* For now we'll just pack the type specific data at the end... */
 	    /* We should probably add a new context here in the future... */
 	    if (drive->drive_type == BLOCK_CDROM) {
-		v3_chkpt_save(drive_ctx, "ATAPI_SENSE_DATA", 18, drive->cd_state.sense.buf);
-		v3_chkpt_save_8(drive_ctx, "ATAPI_CMD", &(drive->cd_state.atapi_cmd));
-		v3_chkpt_save(drive_ctx, "ATAPI_ERR_RECOVERY", 12, drive->cd_state.err_recovery.buf);
+
+		v3_chkpt_save(drive_ctx,   "ATAPI_SENSE_DATA",   18,   drive->cd_state.sense.buf);
+		v3_chkpt_save_8(drive_ctx, "ATAPI_CMD",              &(drive->cd_state.atapi_cmd));
+		v3_chkpt_save(drive_ctx,   "ATAPI_ERR_RECOVERY", 12,   drive->cd_state.err_recovery.buf);
+
 	    } else if (drive->drive_type == BLOCK_DISK) {
-		v3_chkpt_save_32(drive_ctx, "ACCESSED", &(drive->hd_state.accessed));
+
+		v3_chkpt_save_32(drive_ctx, "ACCESSED",      &(drive->hd_state.accessed));
 		v3_chkpt_save_32(drive_ctx, "MULT_SECT_NUM", &(drive->hd_state.mult_sector_num));
-		v3_chkpt_save_32(drive_ctx, "CUR_SECT_NUM", &(drive->hd_state.cur_sector_num));
+		v3_chkpt_save_32(drive_ctx, "CUR_SECT_NUM",  &(drive->hd_state.cur_sector_num));
 	    }
 	}
     }
@@ -1567,61 +1773,68 @@ static int ide_save(struct v3_chkpt_ctx * ctx, void * private_data) {
 
 
 
-static int ide_load(struct v3_chkpt_ctx * ctx, void * private_data) {
+static int 
+ide_load(struct v3_chkpt_ctx * ctx,
+	 void                * private_data) 
+{
     struct ide_internal * ide = (struct ide_internal *)private_data;
-    int ch_num = 0;
-    int drive_num = 0;
-    char buf[128];
+    int  drive_num = 0;
+    int  ch_num    = 0;
+    char buf[128]  = {[0 ... 127] = 0};
     
 
     for (ch_num = 0; ch_num < 2; ch_num++) {
 	struct v3_chkpt_ctx * ch_ctx = NULL;
-	struct ide_channel * ch = &(ide->channels[ch_num]);
+	struct ide_channel  * ch     = &(ide->channels[ch_num]);
 
 	snprintf(buf, 128, "channel-%d", ch_num);
 	ch_ctx = v3_chkpt_open_ctx(ctx->chkpt, ctx, buf);
 
-	v3_chkpt_load_8(ch_ctx, "ERROR", &(ch->error_reg.val));
-	v3_chkpt_load_8(ch_ctx, "FEATURES", &(ch->features.val));
-	v3_chkpt_load_8(ch_ctx, "DRIVE_HEAD", &(ch->drive_head.val));
-	v3_chkpt_load_8(ch_ctx, "STATUS", &(ch->status.val));
-	v3_chkpt_load_8(ch_ctx, "CMD_REG", &(ch->cmd_reg));
-	v3_chkpt_load_8(ch_ctx, "CTRL_REG", &(ch->ctrl_reg.val));
-	v3_chkpt_load_8(ch_ctx, "DMA_CMD", &(ch->dma_cmd.val));
-	v3_chkpt_load_8(ch_ctx, "DMA_STATUS", &(ch->dma_status.val));
-	v3_chkpt_load_32(ch_ctx, "PRD_ADDR", &(ch->dma_prd_addr));
+	v3_chkpt_load_8(ch_ctx,  "ERROR",       &(ch->error_reg.val));
+	v3_chkpt_load_8(ch_ctx,  "FEATURES",    &(ch->features.val));
+	v3_chkpt_load_8(ch_ctx,  "DRIVE_HEAD",  &(ch->drive_head.val));
+	v3_chkpt_load_8(ch_ctx,  "STATUS",      &(ch->status.val));
+	v3_chkpt_load_8(ch_ctx,  "CMD_REG",     &(ch->cmd_reg));
+	v3_chkpt_load_8(ch_ctx,  "CTRL_REG",    &(ch->ctrl_reg.val));
+	v3_chkpt_load_8(ch_ctx,  "DMA_CMD",     &(ch->dma_cmd.val));
+	v3_chkpt_load_8(ch_ctx,  "DMA_STATUS",  &(ch->dma_status.val));
+	v3_chkpt_load_32(ch_ctx, "PRD_ADDR",    &(ch->dma_prd_addr));
 	v3_chkpt_load_32(ch_ctx, "DMA_TBL_IDX", &(ch->dma_tbl_index));
 
 
 	for (drive_num = 0; drive_num < 2; drive_num++) {
 	    struct v3_chkpt_ctx * drive_ctx = NULL;
-	    struct ide_drive * drive = &(ch->drives[drive_num]);
+	    struct ide_drive    * drive     = &(ch->drives[drive_num]);
 	    
 	    snprintf(buf, 128, "drive-%d-%d", ch_num, drive_num);
 	    drive_ctx = v3_chkpt_open_ctx(ctx->chkpt, ch_ctx, buf);
 	    
-	    v3_chkpt_load_8(drive_ctx, "DRIVE_TYPE", &(drive->drive_type));
-	    v3_chkpt_load_8(drive_ctx, "SECTOR_COUNT", &(drive->sector_count));
-	    v3_chkpt_load_8(drive_ctx, "SECTOR_NUM", &(drive->sector_num));
-	    v3_chkpt_load_16(drive_ctx, "CYLINDER", &(drive->cylinder));
+	    v3_chkpt_load_8(drive_ctx,  "DRIVE_TYPE",      &(drive->drive_type));
+	    v3_chkpt_load_8(drive_ctx,  "SECTOR_COUNT",    &(drive->sector_count));
+	    v3_chkpt_load_8(drive_ctx,  "SECTOR_NUM",      &(drive->sector_num));
+	    v3_chkpt_load_16(drive_ctx, "CYLINDER",        &(drive->cylinder));
 
-	    v3_chkpt_load_64(drive_ctx, "CURRENT_LBA", &(drive->current_lba));
+	    v3_chkpt_load_64(drive_ctx, "CURRENT_LBA",     &(drive->current_lba));
 	    v3_chkpt_load_32(drive_ctx, "TRANSFER_LENGTH", &(drive->transfer_length));
-	    v3_chkpt_load_32(drive_ctx, "TRANSFER_INDEX", &(drive->transfer_index));
+	    v3_chkpt_load_32(drive_ctx, "TRANSFER_INDEX",  &(drive->transfer_index));
 
-	    v3_chkpt_load(drive_ctx, "DATA_BUF", DATA_BUFFER_SIZE, drive->data_buf);
+	    v3_chkpt_load(drive_ctx,    "DATA_BUF",        DATA_BUFFER_SIZE, drive->data_buf);
 
 
 	    /* For now we'll just pack the type specific data at the end... */
 	    /* We should probably add a new context here in the future... */
 	    if (drive->drive_type == BLOCK_CDROM) {
-		v3_chkpt_load(drive_ctx, "ATAPI_SENSE_DATA", 18, drive->cd_state.sense.buf);
-		v3_chkpt_load_8(drive_ctx, "ATAPI_CMD", &(drive->cd_state.atapi_cmd));
-		v3_chkpt_load(drive_ctx, "ATAPI_ERR_RECOVERY", 12, drive->cd_state.err_recovery.buf);
+
+		v3_chkpt_load(drive_ctx,   "ATAPI_SENSE_DATA",   18,   drive->cd_state.sense.buf);
+		v3_chkpt_load_8(drive_ctx, "ATAPI_CMD",              &(drive->cd_state.atapi_cmd));
+		v3_chkpt_load(drive_ctx,   "ATAPI_ERR_RECOVERY", 12,   drive->cd_state.err_recovery.buf);
+
 	    } else if (drive->drive_type == BLOCK_DISK) {
-		v3_chkpt_load_32(drive_ctx, "ACCESSED", &(drive->hd_state.accessed));
+
+		v3_chkpt_load_32(drive_ctx, "ACCESSED",      &(drive->hd_state.accessed));
 		v3_chkpt_load_32(drive_ctx, "MULT_SECT_NUM", &(drive->hd_state.mult_sector_num));
-		v3_chkpt_load_32(drive_ctx, "CUR_SECT_NUM", &(drive->hd_state.cur_sector_num));
+		v3_chkpt_load_32(drive_ctx, "CUR_SECT_NUM",  &(drive->hd_state.cur_sector_num));
+
 	    }
 	}
     }
@@ -1646,33 +1859,36 @@ static struct v3_device_ops dev_ops = {
 
 
 
-static int connect_fn(struct v3_vm_info * vm, 
-		      void * frontend_data, 
+static int connect_fn(struct v3_vm_info     * vm, 
+		      void                  * frontend_data, 
 		      struct v3_dev_blk_ops * ops, 
-		      v3_cfg_tree_t * cfg, 
-		      void * private_data) {
-    struct ide_internal * ide  = (struct ide_internal *)(frontend_data);  
-    struct ide_channel * channel = NULL;
-    struct ide_drive * drive = NULL;
+		      v3_cfg_tree_t         * cfg, 
+		      void                  * private_data)
+{
+    struct ide_internal * ide     = (struct ide_internal *)(frontend_data);  
+    struct ide_channel  * channel = NULL;
+    struct ide_drive    * drive   = NULL;
 
-    char * bus_str = v3_cfg_val(cfg, "bus_num");
-    char * drive_str = v3_cfg_val(cfg, "drive_num");
-    char * type_str = v3_cfg_val(cfg, "type");
-    char * model_str = v3_cfg_val(cfg, "model");
-    uint_t bus_num = 0;
-    uint_t drive_num = 0;
+    char   * bus_str    = v3_cfg_val(cfg, "bus_num");
+    char   * drive_str  = v3_cfg_val(cfg, "drive_num");
+    char   * type_str   = v3_cfg_val(cfg, "type");
+    char   * model_str  = v3_cfg_val(cfg, "model");
+    uint_t   bus_num    = 0;
+    uint_t   drive_num  = 0;
 
 
-    if ((!type_str) || (!drive_str) || (!bus_str)) {
+    if ( (type_str  == NULL) || 
+	 (drive_str == NULL) || 
+	 (bus_str   == NULL) ) {
 	PrintError("Incomplete IDE Configuration\n");
 	return -1;
     }
 
-    bus_num = atoi(bus_str);
+    bus_num   = atoi(bus_str);
     drive_num = atoi(drive_str);
 
-    channel = &(ide->channels[bus_num]);
-    drive = &(channel->drives[drive_num]);
+    channel   = &(ide->channels[bus_num]);
+    drive     = &(channel->drives[drive_num]);
 
     if (drive->drive_type != BLOCK_NONE) {
 	PrintError("Device slot (bus=%d, drive=%d) already occupied\n", bus_num, drive_num);
@@ -1687,18 +1903,18 @@ static int connect_fn(struct v3_vm_info * vm,
 	drive->drive_type = BLOCK_CDROM;
 
 	while (strlen((char *)(drive->model)) < 40) {
-	    strcat((char*)(drive->model), " ");
+	    strcat((char *)(drive->model), " ");
 	}
 
     } else if (strcasecmp(type_str, "hd") == 0) {
-	drive->drive_type = BLOCK_DISK;
+	drive->drive_type               = BLOCK_DISK;
 
-	drive->hd_state.accessed = 0;
+	drive->hd_state.accessed        = 0;
 	drive->hd_state.mult_sector_num = 1;
 
-	drive->num_sectors = 63;
-	drive->num_heads = 16;
-	drive->num_cylinders = (ops->get_capacity(private_data) / HD_SECTOR_SIZE) / (drive->num_sectors * drive->num_heads);
+	drive->num_sectors              = 63;
+	drive->num_heads                = 16;
+	drive->num_cylinders            = (ops->get_capacity(private_data) / HD_SECTOR_SIZE) / (drive->num_sectors * drive->num_heads);
     } else {
 	PrintError("invalid IDE drive type\n");
 	return -1;
@@ -1719,10 +1935,13 @@ static int connect_fn(struct v3_vm_info * vm,
 
 
 
-static int ide_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
+static int 
+ide_init(struct v3_vm_info * vm, 
+	 v3_cfg_tree_t     * cfg) 
+{
     struct ide_internal * ide  = NULL;
-    char * dev_id = v3_cfg_val(cfg, "ID");
-    int ret = 0;
+    char * dev_id              = v3_cfg_val(cfg, "ID");
+    int    ret                 = 0;
 
     PrintDebug("IDE: Initializing IDE\n");
 
@@ -1735,19 +1954,20 @@ static int ide_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
     memset(ide, 0, sizeof(struct ide_internal));
 
-    ide->vm = vm;
+    ide->vm      = vm;
     ide->pci_bus = v3_find_dev(vm, v3_cfg_val(cfg, "bus"));
 
+    /* Lookup and store the southbridge the IDE bus is attached to */
     if (ide->pci_bus != NULL) {
-	struct vm_device * southbridge = v3_find_dev(vm, v3_cfg_val(cfg, "controller"));
+	struct vm_device * sb_dev = v3_find_dev(vm, v3_cfg_val(cfg, "controller"));
 
-	if (!southbridge) {
+	if (sb_dev == NULL) {
 	    PrintError("Could not find southbridge\n");
 	    V3_Free(ide);
 	    return -1;
 	}
 
-	ide->southbridge = (struct v3_southbridge *)(southbridge->private_data);
+	ide->southbridge = (struct v3_southbridge *)(sb_dev->private_data);
     }
 
     PrintDebug("IDE: Creating IDE bus x 2\n");
@@ -1768,53 +1988,29 @@ static int ide_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
     PrintDebug("Connecting to IDE IO ports\n");
 
-    ret |= v3_dev_hook_io(dev, PRI_DATA_PORT, 
-			  &ide_read_data_port, &write_data_port);
-    ret |= v3_dev_hook_io(dev, PRI_FEATURES_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, PRI_SECT_CNT_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, PRI_SECT_NUM_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, PRI_CYL_LOW_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, PRI_CYL_HIGH_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, PRI_DRV_SEL_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, PRI_CMD_PORT, 
-			  &read_port_std, &write_cmd_port);
+    ret |= v3_dev_hook_io(dev, PRI_DATA_PORT,      &ide_read_data_port, &write_data_port);
+    ret |= v3_dev_hook_io(dev, PRI_FEATURES_PORT,  &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, PRI_SECT_CNT_PORT,  &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, PRI_SECT_NUM_PORT,  &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, PRI_CYL_LOW_PORT,   &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, PRI_CYL_HIGH_PORT,  &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, PRI_DRV_SEL_PORT,   &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, PRI_CMD_PORT,       &read_port_std,      &write_cmd_port);
 
-    ret |= v3_dev_hook_io(dev, SEC_DATA_PORT, 
-			  &ide_read_data_port, &write_data_port);
-    ret |= v3_dev_hook_io(dev, SEC_FEATURES_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, SEC_SECT_CNT_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, SEC_SECT_NUM_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, SEC_CYL_LOW_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, SEC_CYL_HIGH_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, SEC_DRV_SEL_PORT, 
-			  &read_port_std, &write_port_std);
-    ret |= v3_dev_hook_io(dev, SEC_CMD_PORT, 
-			  &read_port_std, &write_cmd_port);
+    ret |= v3_dev_hook_io(dev, SEC_DATA_PORT,      &ide_read_data_port, &write_data_port);
+    ret |= v3_dev_hook_io(dev, SEC_FEATURES_PORT,  &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, SEC_SECT_CNT_PORT,  &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, SEC_SECT_NUM_PORT,  &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, SEC_CYL_LOW_PORT,   &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, SEC_CYL_HIGH_PORT,  &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, SEC_DRV_SEL_PORT,   &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, SEC_CMD_PORT,       &read_port_std,      &write_cmd_port);
   
 
-    ret |= v3_dev_hook_io(dev, PRI_CTRL_PORT, 
-			  &read_port_std, &write_port_std);
-
-    ret |= v3_dev_hook_io(dev, SEC_CTRL_PORT, 
-			  &read_port_std, &write_port_std);
-  
-
-    ret |= v3_dev_hook_io(dev, SEC_ADDR_REG_PORT, 
-			  &read_port_std, &write_port_std);
-
-    ret |= v3_dev_hook_io(dev, PRI_ADDR_REG_PORT, 
-			  &read_port_std, &write_port_std);
+    ret |= v3_dev_hook_io(dev, PRI_CTRL_PORT,      &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, SEC_CTRL_PORT,      &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, SEC_ADDR_REG_PORT,  &read_port_std,      &write_port_std);
+    ret |= v3_dev_hook_io(dev, PRI_ADDR_REG_PORT,  &read_port_std,      &write_port_std);
 
 
     if (ret != 0) {
@@ -1825,10 +2021,11 @@ static int ide_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 
 
     if (ide->pci_bus) {
-	struct v3_pci_bar bars[6];
 	struct v3_southbridge * southbridge = (struct v3_southbridge *)(ide->southbridge);
-	struct pci_device * sb_pci = (struct pci_device *)(southbridge->southbridge_pci);
-	struct pci_device * pci_dev = NULL;
+	struct pci_device     * sb_pci      = (struct pci_device *)(southbridge->southbridge_pci);
+	struct pci_device     * pci_dev     = NULL;
+	struct v3_pci_bar       bars[6];
+
 	int i;
 
 	PrintDebug("Connecting IDE to PCI bus\n");
@@ -1837,18 +2034,26 @@ static int ide_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	    bars[i].type = PCI_BAR_NONE;
 	}
 
-	bars[4].type = PCI_BAR_IO;
+	bars[4].type              =  PCI_BAR_IO;
 	//	bars[4].default_base_port = PRI_DEFAULT_DMA_PORT;
 	bars[4].default_base_port = -1;
-	bars[4].num_ports = 16;
+	bars[4].num_ports         =  16;
+	bars[4].io_read           =  read_dma_port;
+	bars[4].io_write          =  write_dma_port;
+	bars[4].private_data      =  ide;
 
-	bars[4].io_read = read_dma_port;
-	bars[4].io_write = write_dma_port;
-	bars[4].private_data = ide;
-
-	pci_dev = v3_pci_register_device(ide->pci_bus, PCI_STD_DEVICE, 0, sb_pci->dev_num, 1, 
-					 "PIIX3_IDE", bars,
-					 pci_config_update, NULL, NULL, NULL, ide);
+	pci_dev = v3_pci_register_device(ide->pci_bus, 
+					 PCI_STD_DEVICE, 
+					 0, 
+					 sb_pci->dev_num, 
+					 1, 
+					 "PIIX3_IDE", 
+					 bars,
+					 pci_config_update, 
+					 NULL, 
+					 NULL,
+					 NULL,
+					 ide);
 
 	if (pci_dev == NULL) {
 	    PrintError("Failed to register IDE BUS %d with PCI\n", i); 
@@ -1862,18 +2067,16 @@ static int ide_init(struct v3_vm_info * vm, v3_cfg_tree_t * cfg) {
 	   pci_dev->config_header.revision = 0x8f07;
 	*/
 
-	pci_dev->config_header.vendor_id = 0x8086;
-	pci_dev->config_header.device_id = 0x7010;
-	pci_dev->config_header.revision = 0x00;
+	pci_dev->config_header.vendor_id  = 0x8086;
+	pci_dev->config_header.device_id  = 0x7010;
+	pci_dev->config_header.revision   = 0x00;
+	pci_dev->config_header.prog_if    = 0x80; // Master IDE device
+	pci_dev->config_header.subclass   = PCI_STORAGE_SUBCLASS_IDE;
+	pci_dev->config_header.class      = PCI_CLASS_STORAGE;
+	pci_dev->config_header.command    = 0;
+	pci_dev->config_header.status     = 0x0280;
 
-	pci_dev->config_header.prog_if = 0x80; // Master IDE device
-	pci_dev->config_header.subclass = PCI_STORAGE_SUBCLASS_IDE;
-	pci_dev->config_header.class = PCI_CLASS_STORAGE;
-
-	pci_dev->config_header.command = 0;
-	pci_dev->config_header.status = 0x0280;
-
-	ide->ide_pci = pci_dev;
+	ide->ide_pci  = pci_dev;
 
 
     }
@@ -1896,20 +2099,26 @@ device_register("IDE", ide_init)
 
 
 
-int v3_ide_get_geometry(void * ide_data, int channel_num, int drive_num, 
-			uint32_t * cylinders, uint32_t * heads, uint32_t * sectors) {
+int 
+v3_ide_get_geometry(void     * ide_data, 
+		    int        channel_num, 
+		    int        drive_num, 
+		    uint32_t * cylinders, 
+		    uint32_t * heads, 
+		    uint32_t * sectors) 
+{
 
-    struct ide_internal * ide  = ide_data;  
-    struct ide_channel * channel = &(ide->channels[channel_num]);
-    struct ide_drive * drive = &(channel->drives[drive_num]);
+    struct ide_internal * ide     = ide_data;  
+    struct ide_channel  * channel = &(ide->channels[channel_num]);
+    struct ide_drive    * drive   = &(channel->drives[drive_num]);
     
     if (drive->drive_type == BLOCK_NONE) {
 	return -1;
     }
 
     *cylinders = drive->num_cylinders;
-    *heads = drive->num_heads;
-    *sectors = drive->num_sectors;
+    *heads     = drive->num_heads;
+    *sectors   = drive->num_sectors;
 
     return 0;
 }

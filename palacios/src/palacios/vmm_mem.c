@@ -131,26 +131,6 @@ gpa_to_node_from_cfg(struct v3_vm_info * vm,
 
 
 int 
-v3_mem_write_gpa(struct v3_core_info * core, 
-		 addr_t                gpa, 
-		 uint8_t             * src, 
-		 uint64_t              len) 
-{
-
-    return -1;
-}
-
-int 
-v3_mem_read_gpa(struct v3_core_info * core, 
-		addr_t                gpa, 
-		uint8_t             * dst, 
-		uint64_t              len) 
-{
-    return -1;
-}
-
-
-int 
 v3_init_mem_map(struct v3_vm_info * vm) 
 {
     struct v3_mem_map * map         = &(vm->mem_map);
@@ -248,8 +228,8 @@ struct v3_mem_region *
 v3_create_mem_region(struct v3_vm_info * vm, 
 		     uint16_t            core_id,
 		     uint16_t            flags, 
-		     addr_t              guest_addr_start, 
-		     addr_t              guest_addr_end) 
+		     addr_t              gpa_start, 
+		     addr_t              gpa_end) 
 {
     struct v3_mem_region * entry = NULL;
 
@@ -259,7 +239,7 @@ v3_create_mem_region(struct v3_vm_info * vm,
 	return NULL;
     }
 
-    if (guest_addr_start >= guest_addr_end) {
+    if (gpa_start >= gpa_end) {
 	PrintError("Region start is after region end\n");
 	return NULL;
     }
@@ -273,8 +253,8 @@ v3_create_mem_region(struct v3_vm_info * vm,
 
     memset(entry, 0, sizeof(struct v3_mem_region));
 
-    entry->guest_start = guest_addr_start;
-    entry->guest_end   = guest_addr_end;
+    entry->guest_start = gpa_start;
+    entry->guest_end   = gpa_end;
     entry->flags.value = flags;
     entry->core_id     = core_id;
     entry->unhandled   = unhandled_err;
@@ -289,18 +269,18 @@ int
 v3_add_shadow_mem(struct v3_vm_info * vm, 
 		  uint16_t            core_id,
 		  uint16_t            mem_flags, 
-		  addr_t              guest_addr_start,
-		  addr_t              guest_addr_end,
-		  addr_t              host_addr)
+		  addr_t              gpa_start,
+		  addr_t              gpa_end,
+		  addr_t              hpa)
 {
     struct v3_mem_region * entry = NULL;
 
     entry = v3_create_mem_region(vm, core_id, 
 				 mem_flags | V3_MEM_ALLOC, 
-				 guest_addr_start, 
-				 guest_addr_end);
+				 gpa_start, 
+				 gpa_end);
 
-    entry->host_addr = host_addr;
+    entry->host_addr = hpa;
 
     if (v3_insert_mem_region(vm, entry) == -1) {
 	V3_Free(entry);

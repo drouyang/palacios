@@ -105,10 +105,10 @@ int v3_hva_to_gva(struct v3_core_info * core, addr_t host_va, addr_t  * guest_va
 
 
 
-int v3_read_gva_memory(struct v3_core_info * core, addr_t guest_va, int count, uint8_t * dest);
-int v3_read_gpa_memory(struct v3_core_info * core, addr_t guest_pa, int count, uint8_t * dest);
-int v3_write_gpa_memory(struct v3_core_info * core, addr_t guest_pa, int count, uint8_t * src);
-int v3_write_gva_memory(struct v3_core_info * core, addr_t guest_va, int count, uint8_t * src);
+size_t v3_read_gva(struct v3_core_info * core,  addr_t gva, size_t count,  uint8_t * dest);
+size_t v3_read_gpa(struct v3_core_info * core,  addr_t gpa, size_t count,  uint8_t * dest);
+size_t v3_write_gva(struct v3_core_info * core, addr_t gva, size_t count,  uint8_t * src);
+size_t v3_write_gpa(struct v3_core_info * core, addr_t gpa, size_t count,  uint8_t * src);
 
 
 #endif // ! __V3VEE__

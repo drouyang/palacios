@@ -26,17 +26,17 @@
 #include <palacios/vmm_types.h>
 #include <palacios/vmm_list.h>
 
-#define IA32_PAT_MSR    0x277
-#define SYSENTER_CS_MSR 0x00000174
-#define SYSENTER_ESP_MSR 0x00000175
-#define SYSENTER_EIP_MSR 0x00000176
-#define EFER_MSR 0xc0000080
-#define IA32_STAR_MSR 0xc0000081
-#define IA32_LSTAR_MSR 0xc0000082
-#define IA32_CSTAR_MSR 0xc0000083 
-#define IA32_FMASK_MSR 0xc0000084
-#define FS_BASE_MSR 0xc0000100
-#define GS_BASE_MSR 0xc0000101
+#define IA32_PAT_MSR          0x00000277
+#define SYSENTER_CS_MSR       0x00000174
+#define SYSENTER_ESP_MSR      0x00000175
+#define SYSENTER_EIP_MSR      0x00000176
+#define EFER_MSR              0xc0000080
+#define IA32_STAR_MSR         0xc0000081
+#define IA32_LSTAR_MSR        0xc0000082
+#define IA32_CSTAR_MSR        0xc0000083 
+#define IA32_FMASK_MSR        0xc0000084
+#define FS_BASE_MSR           0xc0000100
+#define GS_BASE_MSR           0xc0000101
 #define IA32_KERN_GS_BASE_MSR 0xc0000102
 
 
@@ -61,8 +61,8 @@ typedef struct v3_msr v3_msr_t;
 struct v3_msr_hook {
     uint32_t msr;
   
-    int (*read)(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data);
-    int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data);
+    int (*read )(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data);
+    int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr   src, void * priv_data);
 
     void * priv_data;
 
@@ -89,13 +89,13 @@ int v3_deinit_msr_map(struct v3_vm_info * vm);
 int v3_unhook_msr(struct v3_vm_info * vm, uint32_t msr);
 
 int v3_hook_msr(struct v3_vm_info * vm, uint32_t msr,
-		int (*read)(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
-		int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data), 
+		int (*read )(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data),
+		int (*write)(struct v3_core_info * core, uint32_t msr, struct v3_msr   src, void * priv_data), 
 		void * priv_data);
 
 
-int v3_msr_unhandled_read(struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data);
-int v3_msr_unhandled_write(struct v3_core_info * core, uint32_t msr, struct v3_msr src, void * priv_data);
+int v3_msr_unhandled_read( struct v3_core_info * core, uint32_t msr, struct v3_msr * dst, void * priv_data);
+int v3_msr_unhandled_write(struct v3_core_info * core, uint32_t msr, struct v3_msr   src, void * priv_data);
 
 struct v3_msr_hook * v3_get_msr_hook(struct v3_vm_info * vm, uint32_t msr);
 

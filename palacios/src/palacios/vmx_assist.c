@@ -136,18 +136,16 @@ v3_vmxassist_ctx_switch(struct v3_core_info * core)
 
     if (vmx_info->assist_state == VMXASSIST_OFF) {
         
-        /* Save the old Context */
-	vmx_save_world_ctx(core, old_ctx);
-
-        /* restore new context, vmxassist should launch the bios the first time */
-        vmx_restore_world_ctx(core, new_ctx);
-
+   
+	vmx_save_world_ctx(core, old_ctx);     /* Save the old Context */
+	vmx_restore_world_ctx(core, new_ctx);  /* restore new context, 
+						*  -- vmxassist should launch the bios the first time 
+						*/
         vmx_info->assist_state = VMXASSIST_ON;
 
     } else if (vmx_info->assist_state == VMXASSIST_ON) {
-        /* restore old context */
-	vmx_restore_world_ctx(core, old_ctx);
 
+	vmx_restore_world_ctx(core, old_ctx);  /* restore old context */
         vmx_info->assist_state = VMXASSIST_OFF;
     }
 
@@ -224,9 +222,9 @@ static void vmx_restore_world_ctx(struct v3_core_info * core, struct vmx_assist_
 
     PrintDebug("ctx rip: %p\n", (void *)(addr_t)ctx->eip);
     
-    core->rip              = ctx->eip;
-    core->vm_regs.rsp      = ctx->esp;
-    core->ctrl_regs.rflags = ctx->eflags;
+    core->rip                     = ctx->eip;
+    core->vm_regs.rsp             = ctx->esp;
+    core->ctrl_regs.rflags        = ctx->eflags;
 
     core->shdw_pg_state.guest_cr0 = ctx->cr0;
     core->shdw_pg_state.guest_cr3 = ctx->cr3;
@@ -324,8 +322,8 @@ int v3_vmxassist_init(struct v3_core_info * core, struct vmx_data * vmx_state) {
 
 	memcpy((void *)vmxassist_gdt, gdt, sizeof(uint64_t) * 5);
         
-	core->segments.gdtr.base    = VMXASSIST_GDT;
-	uint64_t vmxassist_tss      = VMXASSIST_TSS;
+	core->segments.gdtr.base       = VMXASSIST_GDT;
+	uint64_t vmxassist_tss         = VMXASSIST_TSS;
 
 	gdt[0x08 / sizeof(gdt[0])] |=
 	    ((vmxassist_tss & 0xFF000000) << (56 - 24)) |
