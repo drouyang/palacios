@@ -124,15 +124,18 @@ init_vmcs(struct v3_core_info * core)
     struct vmx_data * vmx_state = (struct vmx_data *)core->vmm_data;
     int vmx_ret = 0;
 
+    // disable global interrupts for vm state initialization
+    v3_disable_ints();
+
+
     vmx_ret = vmcs_clear(vmx_state->vmcs_ptr_phys);
 
     if (vmx_ret != VMX_SUCCESS) {
         PrintError("VMCLEAR failed (vmx_ret = %d)\n", vmx_ret);
+	v3_enable_ints();
         return -1; 
     }
 
-    // disable global interrupts for vm state initialization
-    v3_disable_ints();
 
     PrintDebug("Loading VMCS\n");
     vmx_ret          = vmcs_load(vmx_state->vmcs_ptr_phys);
@@ -140,6 +143,7 @@ init_vmcs(struct v3_core_info * core)
 
     if (vmx_ret != VMX_SUCCESS) {
         PrintError("VMPTRLD failed\n");
+	v3_enable_ints();
         return -1;
     }
 
@@ -153,51 +157,9 @@ init_vmcs(struct v3_core_info * core)
 				(addr_t)V3_PAddr(core->vm_info->msr_map.arch_data));
 
 
-    /* Setup paging */
-    if (core->shdw_pg_mode == SHADOW_PAGING) {
-   
-#define CR0_PE 0x00000001
-#define CR0_PG 0x80000000
-#define CR0_WP 0x00010000 // To ensure mem hooks work
-#define CR0_NE 0x00000020
-        vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, (CR0_PE | CR0_PG | CR0_WP | CR0_NE));
 
-
-	// Cause VM_EXIT whenever CR4.VMXE or CR4.PAE bits are written
-	vmx_ret |= check_vmcs_write(VMCS_CR4_MASK, CR4_VMXE | CR4_PAE);
-
-     
-
-        // vmx_state->pinbased_ctrls |= NMI_EXIT;
-
-    
-	// Hook all accesses to EFER register
-
-
-    } else if ((core->shdw_pg_mode == NESTED_PAGING) && 
-	       (v3_mach_type == V3_VMX_EPT_CPU)) {
-
-#define CR0_PE 0x00000001
-#define CR0_PG 0x80000000
-#define CR0_WP 0x00010000 // To ensure mem hooks work
-#define CR0_NE 0x00000020
-        vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, (CR0_PE | CR0_PG | CR0_WP | CR0_NE));
-
-        // vmx_state->pinbased_ctrls |= NMI_EXIT;
-
-	// Cause VM_EXIT whenever CR4.VMXE or CR4.PAE bits are written
-	vmx_ret |= check_vmcs_write(VMCS_CR4_MASK, CR4_VMXE | CR4_PAE);
-	
-      	check_vmcs_write(VMCS_VPID, 2);
-
-
-
-
-    } else if ((core->shdw_pg_mode == NESTED_PAGING) && 
-	       (v3_mach_type == V3_VMX_EPT_UG_CPU)) {
-
-	check_vmcs_write(VMCS_VPID, 2);
-
+    if ((core->shdw_pg_mode == NESTED_PAGING) && 
+	(hw_info.caps.unrestricted_guest) ) {
 
 	// Cause VM_EXIT whenever the CR4.VMXE bit is set
 	vmx_ret |= check_vmcs_write(VMCS_CR4_MASK, CR4_VMXE);
@@ -206,14 +168,31 @@ init_vmcs(struct v3_core_info * core)
 	vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, CR0_NE | CR0_CD);
 
     } else {
-	PrintError("Invalid Virtual paging mode (pg_mode=%d) (mach_type=%d)\n", core->shdw_pg_mode, v3_mach_type);
-	return -1;
+#define CR0_PE 0x00000001
+#define CR0_PG 0x80000000
+#define CR0_WP 0x00010000 // To ensure mem hooks work
+#define CR0_NE 0x00000020
+        vmx_ret |= check_vmcs_write(VMCS_CR0_MASK, (CR0_PE | CR0_PG | CR0_WP | CR0_NE));
+
+
+	// Cause VM_EXIT whenever CR4.VMXE or CR4.PAE bits are written
+	vmx_ret |= check_vmcs_write(VMCS_CR4_MASK, CR4_VMXE | CR4_PAE);
+
+
     }
 
+    /* 
+     * Set the VPID
+     */
+    check_vmcs_write(VMCS_VPID, 2);
+  
 
+    /* 
+     * Serialize the MSR Save/Store areas to the VMCS 
+     */
     {
 	struct vmcs_msr_save_area * msr_entries  = (struct vmcs_msr_save_area *)V3_VAddr((void *)(vmx_state->msr_area_paddr));
-	/* Write the MSR Save/Store areas to the VMCS */
+
 	vmx_ret |= check_vmcs_write(VMCS_EXIT_MSR_STORE_CNT,  4);
 	vmx_ret |= check_vmcs_write(VMCS_EXIT_MSR_LOAD_CNT,   4);
 	vmx_ret |= check_vmcs_write(VMCS_ENTRY_MSR_LOAD_CNT,  4);
@@ -223,19 +202,11 @@ init_vmcs(struct v3_core_info * core)
 	vmx_ret |= check_vmcs_write(VMCS_EXIT_MSR_LOAD_ADDR,  (addr_t)V3_PAddr(msr_entries->host_msrs));
     }
 
-    /*** Write all the info to the VMCS ***/
   
-    /*
-    {
-	// IS THIS NECESSARY???
-#define DEBUGCTL_MSR 0x1d9
-	struct v3_msr tmp_msr;
-	v3_get_msr(DEBUGCTL_MSR, &(tmp_msr.hi), &(tmp_msr.lo));
-	vmx_ret |= check_vmcs_write(VMCS_GUEST_DBG_CTL, tmp_msr.value);
-	core->dbg_regs.dr7 = 0x400;
-    }
-    */
-
+ 
+    /* 
+     *   VMCS Link pointer must be hardcoded to all 1's
+     */
 #ifdef __V3_64BIT__
     vmx_ret |= check_vmcs_write(VMCS_LINK_PTR,      (addr_t)0xffffffffffffffffULL);
 #else
@@ -244,22 +215,27 @@ init_vmcs(struct v3_core_info * core)
 #endif
 
 
+    /*
+     * Check that all VMCS operations succeeded 
+     */
     if (vmx_ret != 0) {
 	PrintError("Error writing VMCS fields\n");
+	v3_enable_ints();
 	return -1;
     }
 
 
     if (v3_update_vmcs_ctrl_fields(core)) {
         PrintError("Could not write control fields!\n");
+	v3_enable_ints();
         return -1;
     }
     
     /*
-    if (v3_update_vmcs_host_state(core)) {
-        PrintError("Could not write host state\n");
-        return -1;
-    }
+      if (v3_update_vmcs_host_state(core)) {
+      PrintError("Could not write host state\n");
+      return -1;
+      }
     */
 
     /* Serialize VMCS to HW */
@@ -276,12 +252,91 @@ init_vmcs(struct v3_core_info * core)
 
 
 
+static void 
+init_uguest_core(struct v3_core_info * core) 
+{
+    int i = 0;
+    // For now we will assume that unrestricted guest mode is assured w/ EPT
+
+
+    core->vm_regs.rsp          = 0x00;
+    core->rip                  = 0xfff0;
+    core->vm_regs.rdx          = 0x00000f00;
+    core->ctrl_regs.rflags     = 0x00000002; // The reserved bit is always 1
+    core->ctrl_regs.cr0        = 0x60010030; 
+    core->ctrl_regs.cr4        = 0x00002010; // Enable VMX and PSE flag
+	
+
+    core->segments.cs.selector = 0xf000;
+    core->segments.cs.limit    = 0xffff;
+    core->segments.cs.base     = 0x0000000f0000LL;
+
+    // (raw attributes = 0xf3)
+    core->segments.cs.type     = 0xb;
+    core->segments.cs.system   = 0x1;
+    core->segments.cs.dpl      = 0x0;
+    core->segments.cs.present  = 1;
+
+
+
+    struct v3_segment * segregs [] = {&(core->segments.ss), &(core->segments.ds), 
+				      &(core->segments.es), &(core->segments.fs), 
+				      &(core->segments.gs), NULL};
+
+    for ( i = 0; segregs[i] != NULL; i++) {
+	struct v3_segment * seg = segregs[i];
+	
+	seg->selector = 0x0000;
+	// seg->base = seg->selector << 4;
+	seg->base     = 0x00000000;
+	seg->limit    = 0xffff;
+	seg->type     = 0x3;
+	seg->system   = 0x1;
+	seg->dpl      = 0x0;
+	seg->present  = 1;
+	//    seg->granularity = 1;
+
+    }
+
+
+
+
+    core->segments.gdtr.limit    = 0x0000ffff;
+    core->segments.gdtr.base     = 0x0000000000000000LL;
+
+    core->segments.idtr.limit    = 0x0000ffff;
+    core->segments.idtr.base     = 0x0000000000000000LL;
+
+    core->segments.ldtr.selector = 0x0000;
+    core->segments.ldtr.limit    = 0x0000ffff;
+    core->segments.ldtr.base     = 0x0000000000000000LL;
+    core->segments.ldtr.type     = 0x2;
+    core->segments.ldtr.present  = 1;
+
+    core->segments.tr.selector   = 0x0000;
+    core->segments.tr.limit      = 0x0000ffff;
+    core->segments.tr.base       = 0x0000000000000000LL;
+    core->segments.tr.type       = 0xb;
+    core->segments.tr.present    = 1;
+
+    // core->dbg_regs.dr6           = 0x00000000ffff0ff0LL;
+    core->dbg_regs.dr7           = 0x0000000000000400LL;
+
+
+    ((struct cr0_32 *)&(core->shdw_pg_state.guest_cr0))->ne = 1;
+    ((struct cr0_32 *)&(core->shdw_pg_state.guest_cr0))->cd = 0;
+
+
+    return;
+}
+
+
 int 
 v3_init_vmx_core(struct v3_core_info * core,
-		  v3_vm_class_t         vm_class) 
+		  v3_vm_class_t        vm_class) 
 {
-    struct vmx_data     * vmx_state = NULL;
-    int vmx_ret = 0;
+    struct vmx_data * vmx_state = NULL;
+    int               vmx_ret   = 0;
     
     vmx_state = (struct vmx_data *)V3_Malloc(sizeof(struct vmx_data));
 
@@ -329,10 +384,10 @@ v3_init_vmx_core(struct v3_core_info * core,
 	vmx_state->exit_ctrls.save_preempt_timer  = 1;
     }
 
-    // we want it to use this when halting
+    /* Capture hlt instructions */
     vmx_state->pri_proc_ctrls.hlt_exit       = 1;
 
-    // cpuid tells it that it does not have these instructions
+    /* cpuid tells it that it does not have these instructions */
     vmx_state->pri_proc_ctrls.monitor_exit   = 1;
     vmx_state->pri_proc_ctrls.mwait_exit     = 1;
     vmx_state->pri_proc_ctrls.pause_exit     = 0;
@@ -342,23 +397,25 @@ v3_init_vmx_core(struct v3_core_info * core,
     vmx_state->pri_proc_ctrls.rdtsc_exit     = 1;
 #endif
 
-    /* Setup IO map */
+    /* Use IO and MSR bitmaps */
     vmx_state->pri_proc_ctrls.use_io_bitmap  = 1;
     vmx_state->pri_proc_ctrls.use_msr_bitmap = 1;
 
 
 #ifdef __V3_64BIT__
-    // Ensure host runs in 64-bit mode at each VM EXIT
+    /* Ensure host runs in 64-bit mode at each VM EXIT */
     vmx_state->exit_ctrls.host_64_on         = 1;
 #endif
 
 
-    /* Temporary GPF trap */
+    /* Exception Traps for debugging */
     //  vmx_state->excp_bmap.gp = 1;
+    //  vmx_state->excp_bmap.ud = 1;
 
-    //vmx_state->excp_bmap.ud = 1;
 
-
+    /* 
+     * Determine whether we save/restore the EFER in the VMCS 
+     */
     if (hw_info.caps.virt_efer) {
 	// Restore host's EFER register on each VM EXIT
 	vmx_state->exit_ctrls.ld_efer   = 1;
@@ -368,6 +425,9 @@ v3_init_vmx_core(struct v3_core_info * core,
 	vmx_state->entry_ctrls.ld_efer  = 1;
     }
 
+    /* 
+     * Determine whether we can save/restore the PAT in the VMCS
+     */
     if (hw_info.caps.virt_pat) {
 	vmx_state->exit_ctrls.save_pat  = 1;
 	vmx_state->exit_ctrls.ld_pat    = 1;
@@ -378,14 +438,34 @@ v3_init_vmx_core(struct v3_core_info * core,
     }
 
 
+    /* 
+     * Setup CPU Init state
+     */
+    if ((core->shdw_pg_mode == NESTED_PAGING) && 
+	(hw_info.caps.unrestricted_guest) ) {
+
+	vmx_state->sec_proc_ctrls.unrstrct_guest = 1; /* enable unrestricted guest operation */
+	init_uguest_core(core);                       /* setup vcore state */
+
+    } else {
+
+	v3_vmxassist_init(core, vmx_state);           /*  Setup VMX Assist */
+
+    }
+    
+    
+    /* 
+     * Setup Guest Paging Controls 
+     */
     if (core->shdw_pg_mode == SHADOW_PAGING) {
 	PrintDebug("Creating initial shadow page table\n");
 
         if (v3_init_passthrough_pts(core) == -1) {
             PrintError("Could not initialize passthrough page tables\n");
+	    v3_free_vmx_core(core);
+
             return -1;
         }
-        
 
 	core->ctrl_regs.cr3 = core->direct_map_pt;
 
@@ -398,12 +478,7 @@ v3_init_vmx_core(struct v3_core_info * core,
 	/* Add page fault exits */
 	vmx_state->excp_bmap.pf                = 1;
 
-	// Setup VMX Assist
-	v3_vmxassist_init(core, vmx_state);
-
-
-    } else if ((core->shdw_pg_mode == NESTED_PAGING) && 
-	       (v3_mach_type == V3_VMX_EPT_CPU)) {
+    } else if (core->shdw_pg_mode == NESTED_PAGING) {
 
 
 	/* Disable CR exits */
@@ -411,11 +486,6 @@ v3_init_vmx_core(struct v3_core_info * core,
 	vmx_state->pri_proc_ctrls.cr3_str_exit = 0;
 	vmx_state->pri_proc_ctrls.invlpg_exit  = 0;
 
-	/* Add page fault exits */
-	//	vmx_state->excp_bmap.pf = 1; // This should never happen..., enabled to catch bugs
-	
-	// Setup VMX Assist
-	v3_vmxassist_init(core, vmx_state);
 
 	/* Enable EPT */
 	vmx_state->pri_proc_ctrls.sec_ctrls    = 1; // Enable secondary proc controls
@@ -425,213 +495,129 @@ v3_init_vmx_core(struct v3_core_info * core,
 
 	if (v3_init_ept(core, &hw_info) == -1) {
 	    PrintError("Error initializing EPT\n");
+	    v3_free_vmx_core(core);
+
 	    return -1;
 	}
-    } else if ((core->shdw_pg_mode == NESTED_PAGING) && 
-	       (v3_mach_type == V3_VMX_EPT_UG_CPU)) {
-
-	int i = 0;
-	// For now we will assume that unrestricted guest mode is assured w/ EPT
-
-
-	core->vm_regs.rsp          = 0x00;
-	core->rip                  = 0xfff0;
-	core->vm_regs.rdx          = 0x00000f00;
-	core->ctrl_regs.rflags     = 0x00000002; // The reserved bit is always 1
-	core->ctrl_regs.cr0        = 0x60010030; 
-	core->ctrl_regs.cr4        = 0x00002010; // Enable VMX and PSE flag
-	
-
-	core->segments.cs.selector = 0xf000;
-	core->segments.cs.limit    = 0xffff;
-	core->segments.cs.base     = 0x0000000f0000LL;
-
-	// (raw attributes = 0xf3)
-	core->segments.cs.type     = 0xb;
-	core->segments.cs.system   = 0x1;
-	core->segments.cs.dpl      = 0x0;
-	core->segments.cs.present  = 1;
-
-
-
-	struct v3_segment * segregs [] = {&(core->segments.ss), &(core->segments.ds), 
-					  &(core->segments.es), &(core->segments.fs), 
-					  &(core->segments.gs), NULL};
-
-	for ( i = 0; segregs[i] != NULL; i++) {
-	    struct v3_segment * seg = segregs[i];
-	
-	    seg->selector = 0x0000;
-	    // seg->base = seg->selector << 4;
-	    seg->base     = 0x00000000;
-	    seg->limit    = 0xffff;
-	    seg->type     = 0x3;
-	    seg->system   = 0x1;
-	    seg->dpl      = 0x0;
-	    seg->present  = 1;
-	    //    seg->granularity = 1;
-
-	}
-
-
-
-
-	core->segments.gdtr.limit    = 0x0000ffff;
-	core->segments.gdtr.base     = 0x0000000000000000LL;
-
-	core->segments.idtr.limit    = 0x0000ffff;
-	core->segments.idtr.base     = 0x0000000000000000LL;
-
-	core->segments.ldtr.selector = 0x0000;
-	core->segments.ldtr.limit    = 0x0000ffff;
-	core->segments.ldtr.base     = 0x0000000000000000LL;
-	core->segments.ldtr.type     = 0x2;
-	core->segments.ldtr.present  = 1;
-
-	core->segments.tr.selector   = 0x0000;
-	core->segments.tr.limit      = 0x0000ffff;
-	core->segments.tr.base       = 0x0000000000000000LL;
-	core->segments.tr.type       = 0xb;
-	core->segments.tr.present    = 1;
-
-	// core->dbg_regs.dr6           = 0x00000000ffff0ff0LL;
-	core->dbg_regs.dr7           = 0x0000000000000400LL;
-
-	/* Enable EPT */
-	vmx_state->pri_proc_ctrls.sec_ctrls      = 1; // Enable secondary proc controls
-	vmx_state->sec_proc_ctrls.enable_ept     = 1; // enable EPT paging
-	vmx_state->sec_proc_ctrls.unrstrct_guest = 1; // enable unrestricted guest operation
-
-
-	vmx_state->sec_proc_ctrls.enable_vpid    = 1;
-
-
-
-
-
-	/* Disable shadow paging stuff */
-	vmx_state->pri_proc_ctrls.cr3_ld_exit    = 0;
-	vmx_state->pri_proc_ctrls.cr3_str_exit   = 0;
-	vmx_state->pri_proc_ctrls.invlpg_exit    = 0;
-
-
-	((struct cr0_32 *)&(core->shdw_pg_state.guest_cr0))->ne = 1;
-	((struct cr0_32 *)&(core->shdw_pg_state.guest_cr0))->cd = 0;
-
-	if (v3_init_ept(core, &hw_info) == -1) {
-	    PrintError("Error initializing EPT\n");
-	    return -1;
-	}
-
     }
 
-
-    if (core->vcpu_id == 0) {
-	
-	if (core->shdw_pg_mode == SHADOW_PAGING) {
-	    v3_hook_msr(core->vm_info, EFER_MSR, 
-			&v3_handle_efer_read,
-			&v3_handle_efer_write, 
-			core);
-	} else if ((core->shdw_pg_mode == NESTED_PAGING) && 
-		   (v3_mach_type == V3_VMX_EPT_CPU)) {
-
-	    if (hw_info.caps.virt_efer) {
-		/* Passthrough EFER Reads/Writes */
-		v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
-	    } else {
-		PrintError("Sweet merciful christ.... EFER virtualization not supported with EPT\n");
-		return -1;
-	    }
-	} else if ((core->shdw_pg_mode == NESTED_PAGING) && 
-		   (v3_mach_type == V3_VMX_EPT_UG_CPU)) {
-	    
-	    if (hw_info.caps.virt_efer) {
-		/* PAssthrough all EFER reads/writes */
-		v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
-	    } else {
-		PrintError("Sweet merciful christ.... EFER virtualization not supported with EPT\n");
-		return -1;
-	    }
-	}
-
-
-    }
-
+    
+    /* 
+     * Setup MSR save/Restore Areas
+     */
     {
 	struct vmcs_msr_save_area * msr_entries = NULL;	
 	int max_msrs = (hw_info.misc_info.max_msr_cache_size + 1) * 4;
-	int msr_ret = 0;
-
+	    
 	V3_Print("Setting up MSR load/store areas (max_msr_count=%d)\n", max_msrs);
-
+	    
 	if (max_msrs < 4) {
 	    PrintError("Max MSR cache size is too small (%d)\n", max_msrs);
 	    return -1;
 	}
-
+	    
 	vmx_state->msr_area_paddr = (addr_t)V3_AllocPages(1);
-	
+	    
 	if (vmx_state->msr_area_paddr == (addr_t)NULL) {
 	    PrintError("could not allocate msr load/store area\n");
+	    v3_free_vmx_core(core);
+
 	    return -1;
 	}
-
+	    
 	msr_entries         = (struct vmcs_msr_save_area *)V3_VAddr((void *)(vmx_state->msr_area_paddr));
 	vmx_state->msr_area = msr_entries; // cache in vmx_info
-
+	    
 	memset(msr_entries, 0, PAGE_SIZE);
-
+	    
 	msr_entries->guest_star.index    = IA32_STAR_MSR;
 	msr_entries->guest_lstar.index   = IA32_LSTAR_MSR;
 	msr_entries->guest_fmask.index   = IA32_FMASK_MSR;
 	msr_entries->guest_kern_gs.index = IA32_KERN_GS_BASE_MSR;
-
+	    
 	msr_entries->host_star.index     = IA32_STAR_MSR;
 	msr_entries->host_lstar.index    = IA32_LSTAR_MSR;
 	msr_entries->host_fmask.index    = IA32_FMASK_MSR;
 	msr_entries->host_kern_gs.index  = IA32_KERN_GS_BASE_MSR;
+    }
+	    
+    /* 
+     * Hook Necessary MSRs on Core 0 
+     *   -- MSRs are hooked VM-wide so we only need to do it once
+     *   -- These include the MSRs saved by hardware as well as other special purpose MSRs
+     */
+    if (core->vcpu_id == 0) {
+	int msr_ret = 0;
 
+	/* These MSRs are handled by the MSR save/restore area */
+	msr_ret |= v3_hook_msr(core->vm_info, IA32_STAR_MSR,         NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, IA32_LSTAR_MSR,        NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, IA32_FMASK_MSR,        NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, IA32_KERN_GS_BASE_MSR, NULL, NULL, NULL);
+	
+	
+	/* IMPORTANT: These MSRs appear to be cached by the hardware.... */
+	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_CS_MSR,       NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_ESP_MSR,      NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_EIP_MSR,      NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, FS_BASE_MSR,           NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, GS_BASE_MSR,           NULL, NULL, NULL);
+	
 
-	if (core->vcpu_id == 0) {
-	    msr_ret |= v3_hook_msr(core->vm_info, IA32_STAR_MSR,         NULL, NULL, NULL);
-	    msr_ret |= v3_hook_msr(core->vm_info, IA32_LSTAR_MSR,        NULL, NULL, NULL);
-	    msr_ret |= v3_hook_msr(core->vm_info, IA32_FMASK_MSR,        NULL, NULL, NULL);
-	    msr_ret |= v3_hook_msr(core->vm_info, IA32_KERN_GS_BASE_MSR, NULL, NULL, NULL);
+	
+	/* PAT --- (???) */
+	if (hw_info.caps.virt_pat) {
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
+	} else {
+	    // Handle these ops, and serialize on entry/exit
+	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
+	}
+	
+
+	/* EFER -- depends on the paging mode */
+	if (core->shdw_pg_mode == SHADOW_PAGING) {
 	    
+	    msr_ret |= v3_hook_msr(core->vm_info, EFER_MSR, 
+				   &v3_handle_efer_read,
+				   &v3_handle_efer_write, 
+				   core);
 	    
-	    // IMPORTANT: These MSRs appear to be cached by the hardware....
-	    msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_CS_MSR,       NULL, NULL, NULL);
-	    msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_ESP_MSR,      NULL, NULL, NULL);
-	    msr_ret |= v3_hook_msr(core->vm_info, SYSENTER_EIP_MSR,      NULL, NULL, NULL);
-	    msr_ret |= v3_hook_msr(core->vm_info, FS_BASE_MSR,           NULL, NULL, NULL);
-	    msr_ret |= v3_hook_msr(core->vm_info, GS_BASE_MSR,           NULL, NULL, NULL);
+	} else if (core->shdw_pg_mode == NESTED_PAGING) {
 	    
-	    if (hw_info.caps.virt_pat) {
-		msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
+	    if (hw_info.caps.virt_efer) {
+		/* Passthrough EFER Reads/Writes */
+		msr_ret |= v3_hook_msr(core->vm_info, EFER_MSR, NULL, NULL, NULL);
 	    } else {
-		// Handle these ops, and serialize on entry/exit
-		msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
-	    }
-	    // Not sure what to do about this... Does not appear to be an explicit hardware cache version...
-	    msr_ret |= v3_hook_msr(core->vm_info, IA32_CSTAR_MSR,        NULL, NULL, NULL);
-	    
-	    if (msr_ret != 0) {
-		PrintError("Error configuring MSR save/restore area\n");
+		PrintError("Sweet merciful christ.... EFER virtualization not supported with EPT\n");
+		v3_free_vmx_core(core);
+
 		return -1;
 	    }
+	    
 	}
+	
+	/* Not sure what to do about this... 
+	 * -- Does not appear to be an explicit hardware cache version...
+	 */
+	msr_ret |= v3_hook_msr(core->vm_info, IA32_CSTAR_MSR,        NULL, NULL, NULL);
+	
+	if (msr_ret != 0) {
+	    PrintError("Error configuring MSR save/restore area\n");
+	    v3_free_vmx_core(core);
 
+	    return -1;
+	}
     }
 
-
-
-    /* Initialize FPU context. This is hacky and not well documented.... */
+    /*
+     * Initialize FPU context. This is hacky and not well documented.... 
+     */
     v3_fpu_init(core);
 
 
-    /* Sanity check ctrl/reg fields against hw_defaults */
-
+    /*
+     * Sanity check ctrl/reg fields against hw_defaults
+     */
     {
 	int ret = 0;
 
@@ -706,6 +692,8 @@ v3_init_vmx_core(struct v3_core_info * core,
 	}
 
 	if (ret == -1) {
+	    v3_free_vmx_core(core);
+
 	    return -1;
 	}
     }
