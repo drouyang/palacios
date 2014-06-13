@@ -155,7 +155,7 @@ v3_hook_msr(struct v3_vm_info * vm,
 
     if (v3_get_msr_hook(vm, msr) != NULL) {
 	PrintError("MSR (%u) is already hooked\n", msr);
-	return 0;
+	return -1;
     }
 
 
