@@ -45,6 +45,10 @@ v3_get_base_region(struct v3_vm_info * vm,
 		   (void *)gpa, (void *)vm->mem_size);
 	v3_print_mem_map(vm);
 
+	if (v3_get_current_core()) {
+	    v3_print_backtrace(v3_get_current_core());
+	}
+
 	return NULL;
     }
 

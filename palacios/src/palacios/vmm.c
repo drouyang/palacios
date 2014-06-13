@@ -1170,3 +1170,9 @@ v3_vm_enter(struct v3_core_info * core)
 	    return -1;
     }
 }
+
+
+struct v3_core_info * 
+v3_get_current_core( void ) {
+    return v3_cores_current[V3_Get_CPU()];
+}

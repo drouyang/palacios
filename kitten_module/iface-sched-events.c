@@ -122,7 +122,7 @@ static int palacios_unhook_sched_evts(int (*sched_in)(void * arg, int cpu),
 
     notifier = find_notifier(sched_in, sched_out, arg);
 
-    if (notifier != NULL) {
+    if (notifier == NULL) {
 	printk(KERN_ERR "Could not find scheduler event state\n");
 	return -1;
     }
@@ -159,7 +159,6 @@ static int sched_events_deinit( void ) {
     struct v3_sched_notifier * notifier = NULL;
 
     list_for_each_entry_safe(notifier, tmp, &notifier_list, node) {
-	preempt_notifier_unregister(&(notifier->preempt_notifier));
 	list_del(&(notifier->node));
 	kmem_free(notifier);
     }

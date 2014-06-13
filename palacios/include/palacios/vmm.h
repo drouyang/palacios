@@ -337,6 +337,7 @@ void v3_print_cond(const char * fmt, ...);
 
 void v3_interrupt_cpu(struct v3_vm_info * vm, int logical_cpu, int vector);
 
+struct v3_core_info * v3_get_current_core(void);
 
 
 v3_cpu_arch_t v3_get_cpu_type(int cpu_id);
