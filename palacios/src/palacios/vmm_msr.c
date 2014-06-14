@@ -152,6 +152,13 @@ v3_hook_msr(struct v3_vm_info * vm,
     struct v3_msr_map  * msr_map = &(vm->msr_map);
     struct v3_msr_hook * hook    = NULL;
 
+
+    if (v3_get_msr_hook(vm, msr) != NULL) {
+	PrintError("MSR (%u) is already hooked\n", msr);
+	return -1;
+    }
+
+
     hook = (struct v3_msr_hook *)V3_Malloc(sizeof(struct v3_msr_hook));
 
     if (hook == NULL) {

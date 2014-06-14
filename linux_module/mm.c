@@ -230,12 +230,10 @@ palacios_kmalloc(size_t size,
     void * addr = NULL;
 
     if ((irqs_disabled() || in_atomic()) && ((flags & GFP_ATOMIC) == 0)) {
-#ifdef V3_CONFIG_DEBUG_MEM_ERRORS
 	WARNING("Allocating memory with Interrupts disabled!!!\n");
 	WARNING("This is probably NOT want you want to do 99%% of the time\n");
 	WARNING("If still want to do this, you may dismiss this warning by setting the GFP_ATOMIC flag directly\n");
 	dump_stack();
-#endif
 
 	flags &= ~GFP_KERNEL;
 	flags |= GFP_ATOMIC;

@@ -379,8 +379,9 @@ v3_exit(void)
 	if (guest_map[i] != NULL) {
                 guest = (struct v3_guest *)guest_map[i];
 
-                if (v3_stop_vm(guest->v3_ctx) < 0) 
+                if (v3_stop_vm(guest->v3_ctx) < 0) {
                         ERROR("Couldn't stop VM %d\n", i);
+		}
 
                 free_palacios_vm(guest);
                 guest_map[i] = NULL;
@@ -391,9 +392,16 @@ v3_exit(void)
 
     v3_lnx_printk("Removing V3 Control device\n");
 
+    unregister_chrdev_region(MKDEV(v3_major_num, 0), MAX_VMS + 1);
+
+    cdev_del(&ctrl_dev);
+
+    device_destroy(v3_class, dev);
+    class_destroy(v3_class);
+
+
 
     palacios_vmm_exit();
-
 
     {
 	/*
@@ -415,12 +423,6 @@ v3_exit(void)
 	}
     }
 
-    unregister_chrdev_region(MKDEV(v3_major_num, 0), MAX_VMS + 1);
-
-    cdev_del(&ctrl_dev);
-
-    device_destroy(v3_class, dev);
-    class_destroy(v3_class);
 
 
     deinit_lnx_extensions();

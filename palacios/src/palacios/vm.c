@@ -442,7 +442,7 @@ v3_init_core(struct v3_core_info * core)
 	case V3_VMX_CPU:
 	case V3_VMX_EPT_CPU:
 	case V3_VMX_EPT_UG_CPU:
-	    if (v3_init_vmx_vmcs(core, vm->vm_class) == -1) {
+	    if (v3_init_vmx_core(core, vm->vm_class) == -1) {
 		PrintError("Error in VMX initialization\n");
 		return -1;
 	    }
@@ -499,7 +499,7 @@ v3_free_core(struct v3_core_info * core)
 	case V3_VMX_CPU:
 	case V3_VMX_EPT_CPU:
 	case V3_VMX_EPT_UG_CPU:
-	    if (v3_deinit_vmx_vmcs(core) == -1) {
+	    if (v3_free_vmx_core(core) == -1) {
 		PrintError("Error in VMX initialization\n");
 		return -1;
 	    }
