@@ -396,6 +396,48 @@ xpmem_remove_shadow_region(struct v3_xpmem_state * state,
 static int xpmem_free(void * private_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)private_data;
 
+    /* First, disconnect from host */
+    v3_xpmem_host_disconnect(state);
+
+    /* Free cmd list */
+    {
+	struct xpmem_cmd_ex_iter * iter = NULL;
+	struct xpmem_cmd_ex_iter * next = NULL;
+
+	list_for_each_entry_safe(iter, next, &(state->cmd_list), node) {
+	    list_del(&(iter->node));
+
+            if (iter->cmd->type == XPMEM_ATTACH_COMPLETE) {
+		V3_Free(iter->cmd->attach.pfns);
+	    }
+
+	    V3_Free(iter->cmd);
+	    V3_Free(iter);
+	}
+    }
+
+    /* Free memory map lists */
+    {
+	struct xpmem_memory_region * iter = NULL;
+	struct xpmem_memory_region * next = NULL;
+
+        /* Free free list */
+	list_for_each_entry_safe(iter, next, &(state->mem_map.free_list), node) {
+	    list_del(&(iter->node));
+	    V3_Free(iter);
+	}
+
+	/* Free alloc list */
+	list_for_each_entry_safe(iter, next, &(state->mem_map.alloc_list), node) {
+	    list_del(&(iter->node));
+	    V3_Free(iter);
+	}
+    }
+
+    /* Free bar page */
+    V3_FreePages(V3_PAddr(state->bar_state), 1);
+
+    /* Free state */
     V3_Free(state);
 
     return 0;

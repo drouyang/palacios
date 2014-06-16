@@ -24,9 +24,9 @@ struct host_xpmem_state {
 
     /* Pointer to internal Palacios state */
     struct v3_xpmem_state        * v3_xpmem;
+    int                            connected;
 
     /* XPMEM kernel interface */
-    int                            connected;
     xpmem_link_t                   link;
     struct xpmem_partition_state * part;
 }; 
@@ -38,6 +38,10 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 {
     struct host_xpmem_state * state    = (struct host_xpmem_state *)priv_data;
     struct v3_xpmem_state   * v3_state = state->v3_xpmem;
+
+    if (state->connected == 0) {
+	return -1;
+    }
 
     return V3_xpmem_command(v3_state, cmd);
 }
@@ -54,32 +58,12 @@ palacios_xpmem_host_connect(void                  * private_data,
 	return NULL;
     }
 
-    state = palacios_kmalloc(sizeof(struct host_xpmem_state), GFP_KERNEL);
+    state = get_vm_ext_data(guest, "XPMEM_INTERFACE");
     if (!state) {
-	ERROR("XPMEM: out of memory\n");
+	ERROR("XPMEM: cannot locate host state for guest extension XPMEM_INTERFACE\n");
 	return NULL;
     }
 
-    state->part = xpmem_get_partition();
-    if (!state->part) {
-	ERROR("XPMEM: cannot retrieve local XPMEM partition\n");
-	palacios_kfree(state);
-	return NULL;
-    }
-
-    state->link = xpmem_add_connection(
-	    state->part,
-	    XPMEM_CONN_REMOTE,
-	    xpmem_cmd_fn,
-	    state);
- 
-    if (state->link <= 0) {
-	ERROR("XPMEM: cannot create XPMEM connection\n");
-	palacios_kfree(state);
-	return NULL;
-    }
-    
-    state->guest     = guest;
     state->v3_xpmem  = v3_xpmem;
     state->connected = 1;
 
@@ -89,34 +73,23 @@ palacios_xpmem_host_connect(void                  * private_data,
 
 }
 
-static int 
+static int
 palacios_xpmem_host_disconnect(void * private_data)
 {
     struct host_xpmem_state * state = (struct host_xpmem_state *)private_data;
 
-    if (!state) {
-        ERROR("XPMEM: cannot disconnect NULL XPMEM state\n");
-        return -1;
-    }
-
     if (!state->guest) {
-        ERROR("XPMEM: cannot disconnect XPMEM state for NULL guest\n");
-        return -1;
-    }
-
-    if (!state->part) {
-	ERROR("XPMEM: cannot remove XPMEM connection for NULL partition\n");
+	ERROR("XPMEM: Cannot disconnect NULL guest\n");
 	return -1;
     }
 
-    if (xpmem_remove_connection(state->part, state->link) != 0) {
-	ERROR("XPMEM: failed to remove XPMEM connection\n");
+    if (!state->connected) {
+	ERROR("XPMEM: Cannot disconnect already disconnected guest\n");
 	return -1;
     }
 
-    v3_lnx_printk("Guest deinitialized XPMEM host channel (Guest=%s)\n", state->guest->name);
-
-    palacios_kfree(state);
+    state->v3_xpmem  = NULL;
+    state->connected = 0;
 
     return 0;
 }
@@ -128,11 +101,6 @@ palacios_xpmem_command(void                * private_data,
 {
     struct host_xpmem_state * state = (struct host_xpmem_state *)private_data;
 
-    if (!state) {
-	ERROR("XPMEM: cannot process command on NULL state\n");
-	return -1;
-    }
-
     if (!state->connected) {
 	ERROR("XPMEM: cannot process command: not connected to host channel\n");
 	return -1;
@@ -141,7 +109,9 @@ palacios_xpmem_command(void                * private_data,
     return xpmem_cmd_deliver(state->part, state->link, cmd);
 }
 
-static struct v3_xpmem_hooks palacios_xpmem_hooks = {
+static struct v3_xpmem_hooks 
+palacios_xpmem_hooks = 
+{
     .xpmem_host_connect     = palacios_xpmem_host_connect,
     .xpmem_host_disconnect  = palacios_xpmem_host_disconnect,
     .xpmem_command          = palacios_xpmem_command,
@@ -149,18 +119,82 @@ static struct v3_xpmem_hooks palacios_xpmem_hooks = {
 
 
 
-static int init_xpmem(void) {
+static int 
+init_xpmem(void)
+{
     V3_Init_Xpmem(&palacios_xpmem_hooks);
     return 0;
 }
 
 
+static int 
+init_xpmem_guest(struct v3_guest * guest, 
+                 void           ** vm_data)
+{
+    struct host_xpmem_state * state = NULL;
+
+    state = palacios_kmalloc(sizeof(struct host_xpmem_state), GFP_KERNEL);
+    if (!state) {
+	ERROR("XPMEM: out of memory\n");
+	return -1;
+    }
+
+    state->part = xpmem_get_partition();
+    if (!state->part) {
+	ERROR("XPMEM: cannot retrieve local XPMEM partition\n");
+	palacios_kfree(state);
+	return -1;
+    }
+
+    state->link = xpmem_add_connection(
+	    state->part,
+	    XPMEM_CONN_REMOTE,
+	    xpmem_cmd_fn,
+	    state);
+ 
+    if (state->link <= 0) {
+	ERROR("XPMEM: cannot create XPMEM connection\n");
+	palacios_kfree(state);
+	return -1;
+    }
+
+    state->guest     = guest;
+    state->v3_xpmem  = NULL;
+    state->connected = 0;
+
+    *vm_data         = state;
+
+    return 0;
+}
+
+static int
+deinit_xpmem_guest(struct v3_guest * guest,
+                   void            * vm_data)
+{
+    struct host_xpmem_state * state = (struct host_xpmem_state *)vm_data;
+
+    if (!state->part) {
+	ERROR("XPMEM: cannot remove XPMEM connection for NULL partition\n");
+	return -1;
+    }
+
+    if (xpmem_remove_connection(state->part, state->link) != 0) {
+	ERROR("XPMEM: failed to remove XPMEM connection\n");
+	return -1;
+    }
+
+    palacios_kfree(state);
+
+    return 0;
+}
+
+
 static struct linux_ext xpmem_ext = {
-    .name = "XPMEM_INTERFACE",
-    .init = init_xpmem,
-    .deinit = NULL,
-    .guest_init = NULL,
-    .guest_deinit = NULL,
+    .name         = "XPMEM_INTERFACE",
+    .init         = init_xpmem,
+    .deinit       = NULL,
+    .guest_init   = init_xpmem_guest,
+    .guest_deinit = deinit_xpmem_guest,
 };
 
 register_extension(&xpmem_ext);

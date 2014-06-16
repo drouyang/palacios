@@ -440,6 +440,7 @@ config CHAR_STREAM
 
 config XPMEM
         bool "XPMEM"
+	select HOST_XPMEM
 	default n
 	help
 	  Include XPMEM device

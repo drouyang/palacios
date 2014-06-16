@@ -24,6 +24,8 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_types.h>
 
+typedef sint64_t xpmem_domid_t;
+typedef sint64_t xpmem_link_t;
 typedef sint64_t xpmem_segid_t;
 typedef sint64_t xpmem_apid_t;
 
@@ -60,10 +62,6 @@ struct xpmem_cmd_detach_ex {
 };
 
 
-typedef sint64_t xpmem_domid_t;
-typedef sint64_t xpmem_link_t;
-
-
 struct xpmem_cmd_domid_req_ex {
     xpmem_domid_t domid;
 };
@@ -91,12 +89,6 @@ typedef enum {
     XPMEM_DOMID_RESPONSE,
 
 } xpmem_op_t;
-
-typedef enum {
-    LOCAL,
-    VM,
-    ENCLAVE,
-} xpmem_endpoint_t;
 
 
 struct xpmem_cmd_ex {
