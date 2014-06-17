@@ -40,6 +40,8 @@
 #define GUEST_DEFAULT_BAR   0xe0000000
 
 
+
+
 struct xpmem_bar_state {
     /* Hypercall numbers */
     uint32_t xpmem_hcall_id;
@@ -430,6 +432,12 @@ static int xpmem_free(void * private_data) {
 	/* Free alloc list */
 	list_for_each_entry_safe(iter, next, &(state->mem_map.alloc_list), node) {
 	    list_del(&(iter->node));
+
+	    /* We also need to remove these things from the shadow map */
+	    xpmem_remove_shadow_region(state, 
+		iter->guest_start,
+		iter->guest_end - iter->guest_start);
+
 	    V3_Free(iter);
 	}
     }
@@ -563,6 +571,7 @@ copy_guest_regs(struct v3_xpmem_state * state,
 	    if (v3_gva_to_hva(core, guest_pfn_list_entry, &guest_pfn_list_entry_host)) {
 		PrintError("XPMEM: Unable to convert guest pfn list entry to host address"
 			   " (GVA: %p)\n", (void *)guest_pfn_list_entry);
+		V3_Free(host_cmd->attach.pfns);
 		V3_Free(host_cmd);
 		return -1;
 	    }
@@ -576,6 +585,7 @@ copy_guest_regs(struct v3_xpmem_state * state,
 		if (v3_gpa_to_hpa(core, guest_paddr, &host_paddr)) {
 		    PrintError("XPMEM: Unable to convert guest PFN to host PFN"
 			       " (GPA: %p)\n", (void *)guest_paddr);
+		    V3_Free(host_cmd->attach.pfns);
 		    V3_Free(host_cmd);
 		    return -1;
 		}
@@ -604,6 +614,7 @@ xpmem_hcall(struct v3_core_info * core,
 {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex   * cmd   = NULL;
+    xpmem_op_t              op    = 0;
     int                     ret   = 0;
 
     if (copy_guest_regs(state, core, &cmd)) {
@@ -611,7 +622,13 @@ xpmem_hcall(struct v3_core_info * core,
         return -1;
     }
 
+    /* The command might be modified in the host, so save the type here */
+    op  = cmd->type;
     ret = v3_xpmem_host_command(state->host_handle, cmd);
+
+    if (op == XPMEM_ATTACH_COMPLETE) {
+	V3_Free(cmd->attach.pfns);
+    }
 
     V3_Free(cmd);
 
