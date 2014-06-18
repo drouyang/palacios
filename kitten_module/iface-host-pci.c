@@ -413,6 +413,32 @@ host_pci_request_dev(char * url,
 	}
 
 
+	/* Attach Device */
+	{
+		struct pci_attach_lcall    attach_lcall;
+		struct pisces_lcall_resp * lcall_resp = NULL;
+		int status = 0;
+
+		/* Setup LCALL Fields */
+		attach_lcall.lcall.lcall    = PISCES_LCALL_PCI_ATTACH;
+		attach_lcall.lcall.data_len = (sizeof(struct pci_attach_lcall) - 
+					       sizeof(struct pisces_lcall));
+		strncpy(attach_lcall.name, host_dev->name, 128);
+		attach_lcall.ipi_vector     = host_dev->intx_ipi_vector;
+
+		/* Issue LCALL to Linux */
+		pisces_lcall_exec((struct pisces_lcall       *)&attach_lcall,
+				  (struct pisces_lcall_resp **)&lcall_resp);
+
+		status = lcall_resp->status;
+		kmem_free(lcall_resp);
+		
+		if (status != 0) {
+			printk("Pisces PCI Attach lcall failed\n");
+			return NULL;
+		}
+	}
+
 	/* Map device with IOMMU (Done in Linux via LCALLs) */
 	{
 
@@ -450,32 +476,6 @@ host_pci_request_dev(char * url,
 			}
 			
 			gpa += (region.end - region.start);
-		}
-	}
-
-
-	/* Attach Device */
-	{
-		struct pci_attach_lcall    attach_lcall;
-		struct pisces_lcall_resp * lcall_resp = NULL;
-		int status = 0;
-
-		/* Setup LCALL Fields */
-		attach_lcall.lcall.lcall    = PISCES_LCALL_PCI_ATTACH;
-		attach_lcall.lcall.data_len = (sizeof(struct pci_attach_lcall) - 
-					       sizeof(struct pisces_lcall));
-		strncpy(attach_lcall.name, host_dev->name, 128);
-		attach_lcall.ipi_vector     = host_dev->intx_ipi_vector;
-
-		/* Issue LCALL to Linux */
-		pisces_lcall_exec((struct pisces_lcall       *)&attach_lcall,
-				  (struct pisces_lcall_resp **)&lcall_resp);
-
-		status = lcall_resp->status;
-		kmem_free(lcall_resp);
-		
-		if (status != 0) {
-			return NULL;
 		}
 	}
 
