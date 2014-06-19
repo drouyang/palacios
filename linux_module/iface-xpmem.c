@@ -100,7 +100,7 @@ palacios_xpmem_host_disconnect(void * private_data)
     state->connected = 0;
 
     /* Wait until all ongoing deliveries finish */
-    while (atomic_read(&(state->num_cmds)) == 0) {
+    while (atomic_read(&(state->num_cmds)) > 0) {
 	schedule();
 	mb();
     }

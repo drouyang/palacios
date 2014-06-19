@@ -221,10 +221,9 @@ xpmem_insert_free_memory_region(struct v3_xpmem_state * state,
 			        uint64_t                len)
 
 {
-    unsigned long flags = 0;
-    int           ret   = 0;
+    int ret = 0;
 
-    flags = v3_spin_lock_irqsave(&(state->lock));
+    v3_spin_lock(&(state->lock));
     {
 	ret = __xpmem_insert_free_memory_region(
 		&(state->mem_map),
@@ -232,7 +231,7 @@ xpmem_insert_free_memory_region(struct v3_xpmem_state * state,
 		len
 	);
     }
-    v3_spin_unlock_irqrestore(&(state->lock), flags);
+    v3_spin_unlock(&(state->lock));
 
     return ret;
 }
@@ -325,10 +324,9 @@ xpmem_insert_allocated_memory_region(struct v3_xpmem_state * state,
 		                     addr_t                  addr,
 			             uint64_t                len)
 {
-    unsigned long flags = 0;
-    int           ret   = 0;
+    int ret = 0;
 
-    flags = v3_spin_lock_irqsave(&(state->lock));
+    v3_spin_lock(&(state->lock));
     {
 	ret = __xpmem_insert_allocated_memory_region(
 		&(state->mem_map),
@@ -336,7 +334,7 @@ xpmem_insert_allocated_memory_region(struct v3_xpmem_state * state,
 		len
 	);
     }
-    v3_spin_unlock_irqrestore(&(state->lock), flags);
+    v3_spin_unlock(&(state->lock));
 
     return ret;
 }
@@ -386,10 +384,9 @@ xpmem_find_free_space(struct v3_xpmem_state * state,
 		      uint64_t                len,
 		      addr_t                * addr)
 {
-    unsigned long flags = 0;
-    int           ret   = 0;
+    int ret = 0;
 
-    flags = v3_spin_lock_irqsave(&(state->lock));
+    v3_spin_lock(&(state->lock));
     {
 	ret = __xpmem_find_free_space(
 		&(state->mem_map),
@@ -397,7 +394,7 @@ xpmem_find_free_space(struct v3_xpmem_state * state,
 		addr
 	);
     }
-    v3_spin_unlock_irqrestore(&(state->lock), flags);
+    v3_spin_unlock(&(state->lock));
 
     return ret;
 }
@@ -429,10 +426,9 @@ xpmem_find_and_remove_allocated_region(struct v3_xpmem_state      * state,
 		                       addr_t                       addr,
 				       struct xpmem_memory_region * region)
 {
-    unsigned long flags = 0;
-    int           ret   = 0;
+    int ret = 0;
 
-    flags = v3_spin_lock_irqsave(&(state->lock));
+    v3_spin_lock(&(state->lock));
     {
 	ret = __xpmem_find_and_remove_allocated_region(
 		&(state->mem_map),
@@ -440,7 +436,7 @@ xpmem_find_and_remove_allocated_region(struct v3_xpmem_state      * state,
 		region
 	);
     }
-    v3_spin_unlock_irqrestore(&(state->lock), flags);
+    v3_spin_unlock(&(state->lock));
 
     return ret;
 }
@@ -888,11 +884,10 @@ xpmem_irq_clear_hcall(struct v3_core_info * core,
 		      void                * priv_data)
 {
     struct v3_xpmem_state    * state     = (struct v3_xpmem_state *)priv_data;
-    unsigned long              flags     = 0;
     int                        raise_irq = 0;
     int                        ret       = 0;
 
-    flags = v3_spin_lock_irqsave(&(state->lock));
+    v3_spin_lock(&(state->lock));
     {
 	state->bar_state->xpmem_cmd_size = 0;
 	state->bar_state->xpmem_pfn_size = 0;
@@ -902,7 +897,7 @@ xpmem_irq_clear_hcall(struct v3_core_info * core,
 	    raise_irq = 1;
 	}
     }
-    v3_spin_unlock_irqrestore(&(state->lock), flags);
+    v3_spin_unlock(&(state->lock));
 
     if (raise_irq) {
 	ret = xpmem_raise_irq(state);
@@ -919,11 +914,9 @@ xpmem_read_cmd_hcall(struct v3_core_info * core,
 {
     struct v3_xpmem_state    * state     = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex_iter * iter      = NULL; 
-    unsigned long              flags     = 0;
     int                        cmd_ready = 0;
 
-
-    flags = v3_spin_lock_irqsave(&(state->lock));
+    v3_spin_lock(&(state->lock));
     {
 	if (!list_empty(&(state->cmd_list))) {
 	    iter = list_first_entry(&(state->cmd_list), struct xpmem_cmd_ex_iter, node);
@@ -931,7 +924,7 @@ xpmem_read_cmd_hcall(struct v3_core_info * core,
 	    cmd_ready = 1;
 	}
     }
-    v3_spin_unlock_irqrestore(&(state->lock), flags);
+    v3_spin_unlock(&(state->lock));
 
     /* The guest should not be reading a command when there's nothing pending */
     if (!cmd_ready) {
@@ -1132,7 +1125,6 @@ v3_xpmem_command(struct v3_xpmem_state * v3_xpmem,
                  struct xpmem_cmd_ex   * cmd)
 {
     struct xpmem_cmd_ex_iter * iter    =  NULL;
-    unsigned long              flags   = 0;
     uint64_t                   pfn_len = 0;
     int                        ret     = 0;
 
@@ -1207,7 +1199,7 @@ v3_xpmem_command(struct v3_xpmem_state * v3_xpmem,
     {
 	int raise_irq = 0;
 
-        flags = v3_spin_lock_irqsave(&(v3_xpmem->lock));
+        v3_spin_lock(&(v3_xpmem->lock));
 	{
 	    list_add_tail(&(iter->node), &(v3_xpmem->cmd_list));
 
@@ -1215,7 +1207,7 @@ v3_xpmem_command(struct v3_xpmem_state * v3_xpmem,
 		raise_irq = 1;
 	    }
 	}
-	v3_spin_unlock_irqrestore(&(v3_xpmem->lock), flags);
+	v3_spin_unlock(&(v3_xpmem->lock));
 
 
 	if (raise_irq) {
