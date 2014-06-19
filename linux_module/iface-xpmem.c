@@ -25,6 +25,7 @@ struct host_xpmem_state {
     /* Pointer to internal Palacios state */
     struct v3_xpmem_state        * v3_xpmem;
     int                            connected;
+    atomic_t                       num_cmds;
 
     /* XPMEM kernel interface */
     xpmem_link_t                   link;
@@ -38,12 +39,19 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 {
     struct host_xpmem_state * state    = (struct host_xpmem_state *)priv_data;
     struct v3_xpmem_state   * v3_state = state->v3_xpmem;
+    int                       ret      = 0;
 
     if (state->connected == 0) {
 	return -1;
     }
 
-    return V3_xpmem_command(v3_state, cmd);
+    atomic_inc(&(state->num_cmds));
+    {
+	ret = V3_xpmem_command(v3_state, cmd);
+    }
+    atomic_dec(&(state->num_cmds));
+
+    return ret;
 }
 
 static void * 
@@ -88,8 +96,16 @@ palacios_xpmem_host_disconnect(void * private_data)
 	return -1;
     }
 
-    state->v3_xpmem  = NULL;
+    /* Set the connected flag to 0 */
     state->connected = 0;
+
+    /* Wait until all ongoing deliveries finish */
+    while (atomic_read(&(state->num_cmds)) == 0) {
+	schedule();
+	mb();
+    }
+
+    state->v3_xpmem  = NULL;
 
     return 0;
 }
@@ -157,6 +173,8 @@ init_xpmem_guest(struct v3_guest * guest,
 	palacios_kfree(state);
 	return -1;
     }
+
+    atomic_set(&(state->num_cmds), 0);
 
     state->guest     = guest;
     state->v3_xpmem  = NULL;
