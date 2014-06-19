@@ -59,9 +59,9 @@ struct resolution_msg {
 struct cons_msg {
     unsigned char op;
     union {
-	struct cursor_msg cursor;
+	struct cursor_msg     cursor;
 	struct character_msg  character;
-	struct scroll_msg scroll;
+	struct scroll_msg     scroll;
 	struct resolution_msg resolution;
     };
 } __attribute__((packed)); 
@@ -87,6 +87,7 @@ struct palacios_console {
 
     int open;
     int connected;
+    int active;
 
     unsigned int width;
     unsigned int height;
@@ -101,10 +102,13 @@ struct palacios_console {
 
 
 static int 
-kbd_event(struct v3_guest * guest, unsigned int cmd, 
-	  unsigned long arg, void * priv_data) {
-    struct palacios_console * cons = priv_data;
-    struct v3_keyboard_event event = {0, 0};
+kbd_event(struct v3_guest * guest, 
+	  unsigned int      cmd, 
+	  unsigned long     arg, 
+	  void            * priv_data) 
+{
+    struct palacios_console * cons  = priv_data;
+    struct v3_keyboard_event  event = {0, 0};
     
     if (cons->open == 0) {
 	printk("Error: Console not open\n");
@@ -132,6 +136,9 @@ console_connect(struct v3_guest * guest,
 {
     void __user             * argp = (void __user *)arg;
     struct palacios_console * cons = priv_data;
+    
+    uintptr_t              ring_buf_pa  = 0;
+    struct cons_ring_buf * ring_buf_ptr = NULL;
 
     struct pmem_region result;
     int                acquired = 0;
@@ -144,17 +151,6 @@ console_connect(struct v3_guest * guest,
 	return -1;
     }
 
-    spin_lock_irqsave(&(cons->cons_lock), flags);
-    if (cons->connected == 0) {
-	cons->connected = 1;
-	acquired        = 1;
-    }
-    spin_unlock_irqrestore(&(cons->cons_lock), flags);
-
-    if (acquired == 0) {
-	printk(KERN_ERR "Console already connected\n");
-	return -1;
-    }
 
     if (pmem_alloc_umem(RING_BUF_SIZE, RING_BUF_SIZE, &result) != 0) {
 	printk(KERN_ERR "Error allocating Console Ring Buffer\n");
@@ -166,11 +162,40 @@ console_connect(struct v3_guest * guest,
 	return -1;
     }
 
-    cons->ring_buf_pg_addr = result.start;
-    cons->ring_buf         = __va(result.start);
+    ring_buf_pa  =      result.start;
+    ring_buf_ptr = __va(result.start);
 
-    pisces_lock_init(&(cons->ring_buf->lock));
-    cons->ring_buf->total_entries = ((RING_BUF_SIZE - sizeof(struct cons_ring_buf)) / sizeof(struct cons_msg));
+    pisces_lock_init(&(ring_buf_ptr->lock));
+    ring_buf_ptr->total_entries = ((RING_BUF_SIZE - sizeof(struct cons_ring_buf)) / sizeof(struct cons_msg));
+
+
+    spin_lock_irqsave(&(cons->cons_lock), flags);
+    {
+	if (cons->connected == 0) {
+	    cons->ring_buf_pg_addr = ring_buf_pa;
+	    cons->ring_buf         = ring_buf_ptr;
+	    cons->connected        = 1;
+	    acquired               = 1;
+	}
+    }
+    spin_unlock_irqrestore(&(cons->cons_lock), flags);
+
+    if (acquired == 0) {
+	int status = 0;
+
+	printk(KERN_ERR "Console already connected\n");
+
+	result.allocated = false;
+	status           = pmem_update(&result);
+	    
+	if (status) {
+	    panic("Failed to free page %p! (status=%d)",
+		  ring_buf_pa, status);
+	}
+	
+	return -1;
+    }
+
 
     if (copy_to_user(argp, &(cons->ring_buf_pg_addr), sizeof(u64))) {
 	printk("ERROR Copying Console Ring buffer to user space\n");
