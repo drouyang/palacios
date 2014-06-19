@@ -39,13 +39,13 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
     struct v3_xpmem_state   * v3_state = state->v3_xpmem;
     int                       ret      = 0;
 
-    if (state->connected == 0) {
-	return -1;
-    }
-
     atomic_inc(&(state->num_cmds));
     {
-	ret = V3_xpmem_command(v3_state, cmd);
+	if (state->connected == 0) {
+	    ret = -1;
+	} else {
+	    ret = V3_xpmem_command(v3_state, cmd);
+	}
     }
     atomic_dec(&(state->num_cmds));
 
