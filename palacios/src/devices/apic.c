@@ -654,17 +654,6 @@ apic_do_eoi(struct v3_core_info * core,
 	    apic->irq_ack_cbs[isr_irq].ack(core, isr_irq, apic->irq_ack_cbs[isr_irq].private_data);
 	}
 
-#ifdef V3_CONFIG_CRAY_XT
-	
-	if ( (isr_irq == 238) || 
-	     (isr_irq == 239) ) {
-	    PrintDebug("apic %u: core ?: Acking IRQ %d\n", apic->lapic_id.val,isr_irq);
-	}
-	
-	if (isr_irq == 238) {
-	    V3_ACK_IRQ(238);
-	}
-#endif
     } else {
 	//PrintError("apic %u: core ?: Spurious EOI...\n",apic->lapic_id.val);
     }

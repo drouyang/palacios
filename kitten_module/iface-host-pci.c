@@ -642,8 +642,13 @@ host_pci_setup_dev(struct host_pci_device * host_dev)
 		return -1;
 	}
 
+
+	/* Disable DMA/MMIO to prevent bad things from happening during setup */
+	pci_dma_disable(dev);
+	pci_mmio_disable(dev);
+
 	// record pointer in dev state
-	host_dev->pci_dev           = dev;
+	host_dev->pci_dev       = dev;
 	host_dev->intx_disabled = 1;
 
 	spin_lock_init(&(host_dev->intx_lock));
@@ -756,8 +761,9 @@ register_pci_hw_dev(unsigned int  cmd,
 	struct host_pci_device * host_dev     = NULL;
 	struct v3_hw_pci_dev     pci_dev_arg;
 
-	unsigned long flags = 0;
-	int           ret   = 0;
+	unsigned long flags   = 0;
+	int           ret     = 0;
+
 
 	if (copy_from_user(&pci_dev_arg, argp, sizeof(struct v3_hw_pci_dev))) {
 		printk("%s(%d): copy from user error...\n", __FILE__, __LINE__);
@@ -782,17 +788,24 @@ register_pci_hw_dev(unsigned int  cmd,
 	host_dev->devfn = PCI_DEVFN(pci_dev_arg.dev, pci_dev_arg.func);
 
 
-	if (!find_dev_by_name(pci_dev_arg.name)) {
-		spin_lock_irqsave(&lock, flags);
-		{
-			list_add(&(host_dev->dev_node), &device_list);
-		}
-		spin_unlock_irqrestore(&lock, flags);
-	} else {
-		// Error device already exists
-		printk(KERN_ERR "Error: Device %s is already registered\n", pci_dev_arg.name);
-		kmem_free(host_dev);
-		return -EFAULT;
+	spin_lock_irqsave(&lock, flags);
+	{
+	    ret = 0;
+
+	    if (!find_dev_by_name(pci_dev_arg.name)) {
+		
+		list_add(&(host_dev->dev_node), &device_list);
+		ret = 1;
+	    }
+	}
+	spin_unlock_irqrestore(&lock, flags);
+
+
+	if (ret == 0) {
+	    // Error device already exists
+	    printk(KERN_ERR "Error: Device %s is already registered\n", pci_dev_arg.name);
+	    kmem_free(host_dev);
+	    return -EFAULT;
 	}
 
 	ret = host_pci_setup_dev(host_dev);
@@ -808,6 +821,47 @@ register_pci_hw_dev(unsigned int  cmd,
 }
 
 
+static int 
+unregister_pci_hw_dev(unsigned int  cmd, 
+		      unsigned long arg)
+{
+	void __user            * argp         = (void __user *)arg;
+	struct host_pci_device * host_dev     = NULL;
+	struct v3_hw_pci_dev     pci_dev_arg;
+
+	unsigned long flags = 0;
+
+
+	if (copy_from_user(&pci_dev_arg, argp, sizeof(struct v3_hw_pci_dev))) {
+		printk("%s(%d): copy from user error...\n", __FILE__, __LINE__);
+		return -EFAULT;
+	}
+
+
+	spin_lock_irqsave(&lock, flags);
+	{
+	    host_dev = find_dev_by_name(pci_dev_arg.name);
+	    
+	    if ((host_dev) && (host_dev->in_use == 0)) {
+		list_del(&(host_dev->dev_node));
+	    } else {
+		host_dev = NULL;
+	    }
+	}
+	spin_unlock_irqrestore(&lock, flags);
+
+	if (host_dev == NULL) {
+	    printk(KERN_ERR "Could not find removable PCI device\n");
+	    return -1;
+	}
+
+	irq_free(host_dev->intx_ipi_vector, host_dev);
+
+	kmem_free(host_dev);
+
+	return 0;
+}
+
 
 static int
 host_pci_init( void ) 
@@ -817,7 +871,8 @@ host_pci_init( void )
 
 	V3_Init_Host_PCI(&host_pci_hooks);
 
-	add_global_ctrl(V3_ADD_PCI, register_pci_hw_dev);
+	add_global_ctrl(V3_ADD_PCI,    register_pci_hw_dev);
+	add_global_ctrl(V3_REMOVE_PCI, unregister_pci_hw_dev);
 
 	return 0;
 }
