@@ -72,11 +72,6 @@ struct host_pci_state {
     uint32_t msix_table_num_pages;
     uint16_t msix_table_bir;
     uint32_t msix_table_offset;
-
-    addr_t   msix_pba_pa;
-    uint32_t msix_pba_num_pages;
-    uint16_t msix_pba_bir;
-    uint32_t msix_pba_offset;
 };
 
 
@@ -892,6 +887,12 @@ static int
 host_dev_free(struct host_pci_state * state) 
 {
     v3_host_pci_release_dev(state->host_dev);
+
+    /* Free msix table pages */
+    if (state->msix_table_num_pages > 0) {
+	V3_FreePages((void *)state->msix_table_pa, state->msix_table_num_pages);
+    }
+
     V3_Free(state);
 
     return 0;

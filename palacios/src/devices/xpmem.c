@@ -40,6 +40,8 @@
 #define GUEST_DEFAULT_BAR   0xe0000000
 
 
+
+
 struct xpmem_bar_state {
     /* Hypercall numbers */
     uint32_t xpmem_hcall_id;
@@ -97,18 +99,20 @@ struct xpmem_cmd_ex_iter {
 
 
 /*
- * List insert function. We insert the region [addr, addr + len) into list,
+ * Free list insertion. We insert the region [addr, addr + len) into list,
  * merging with other entries in the list when possible 
  */
 static int
-xpmem_insert_memory_region(struct list_head           * list,
-			   addr_t                       addr,
-			   uint64_t                     len)
+__xpmem_insert_free_memory_region(struct xpmem_memory_map  * mem_map,
+		                addr_t                       addr,
+			        uint64_t                     len)
 {
     struct xpmem_memory_region * iter      = NULL;
     struct xpmem_memory_region * prev_iter = NULL;
     struct xpmem_memory_region * next      = NULL;
     struct xpmem_memory_region * new_reg   = NULL;
+
+    struct list_head           * list      = &(mem_map->free_list);
 
     addr_t start = addr;
     addr_t end   = (addr_t)(addr + len);
@@ -211,38 +215,149 @@ xpmem_insert_memory_region(struct list_head           * list,
     return 0;
 }
 
+static int
+xpmem_insert_free_memory_region(struct v3_xpmem_state * state,
+		                addr_t                  addr,
+			        uint64_t                len)
+
+{
+    unsigned long flags = 0;
+    int           ret   = 0;
+
+    flags = v3_spin_lock_irqsave(&(state->lock));
+    {
+	ret = __xpmem_insert_free_memory_region(
+		&(state->mem_map),
+		addr,
+		len
+	);
+    }
+    v3_spin_unlock_irqrestore(&(state->lock), flags);
+
+    return ret;
+}
+
+/*
+ * Allocated list insertion. We insert the region [addr, addr + len) into list,
+ * but we don't merge entries here
+ */
+static int
+__xpmem_insert_allocated_memory_region(struct xpmem_memory_map  * mem_map,
+		                     addr_t                       addr,
+			             uint64_t                     len)
+{
+    struct xpmem_memory_region * iter      = NULL;
+    struct xpmem_memory_region * prev_iter = NULL;
+    struct xpmem_memory_region * new_reg   = NULL;
+
+    struct list_head           * list = &(mem_map->alloc_list);
+
+    addr_t start = addr;
+    addr_t end   = (addr_t)(addr + len);
+
+    if (list_empty(list)) {
+	new_reg = V3_Malloc(sizeof(struct xpmem_memory_region));
+	if (!new_reg) {
+	    PrintError("XPMEM: out of memory\n");
+	    return -1;
+	}
+
+	new_reg->guest_start = start;
+	new_reg->guest_end   = end;
+
+	list_add(&(new_reg->node), list);
+	return 0;
+    }
+
+    /* Find the right location to insert */
+    list_for_each_entry(iter, list, node) {
+
+	/* Could be first */
+	if (end <= iter->guest_start) {
+
+	    /* Check for invalid overlap */
+	    if ((prev_iter) && (start < prev_iter->guest_end)) {
+		return -1;
+	    }
+
+	    /* OK, it's a match */
+	    new_reg = V3_Malloc(sizeof(struct xpmem_memory_region));
+	    if (!new_reg) {
+		PrintError("XPMEM: out of memory\n");
+		return -1;
+	    }
+
+	    new_reg->guest_start = start;
+	    new_reg->guest_end   = end;
+
+	    list_add_tail(&(new_reg->node), &(iter->node));
+
+	    return 0;
+	} 
+
+	prev_iter = iter;
+    }
+
+    /* Must be after the last region */
+
+    /* Invalid overlap */
+    if (start < prev_iter->guest_end) {
+	return -1;
+    }
+
+    /* OK, it's at the end */
+    new_reg = V3_Malloc(sizeof(struct xpmem_memory_region));
+    if (!new_reg) {
+	PrintError("XPMEM: out of memory\n");
+	return -1;
+    }
+
+    new_reg->guest_start = start;
+    new_reg->guest_end   = end;
+
+    list_add_tail(&(new_reg->node), &(prev_iter->node));
+
+    return 0;
+}
+
+static int
+xpmem_insert_allocated_memory_region(struct v3_xpmem_state * state,
+		                     addr_t                  addr,
+			             uint64_t                len)
+{
+    unsigned long flags = 0;
+    int           ret   = 0;
+
+    flags = v3_spin_lock_irqsave(&(state->lock));
+    {
+	ret = __xpmem_insert_allocated_memory_region(
+		&(state->mem_map),
+		addr,
+		len
+	);
+    }
+    v3_spin_unlock_irqrestore(&(state->lock), flags);
+
+    return ret;
+}
+
 // 1 TB: Start of XPMEM range
 #define XPMEM_MEM_START (1ULL << 40)
 
 // 1 TB of addressable XPMEM
 #define XPMEM_MEM_END   (1ULL << 41)
 
-/*
- * Initialize guest memory map
- */
-static int
-init_xpmem_mem_map(struct v3_xpmem_state * state)
-{
-    struct xpmem_memory_map * mem_map = &(state->mem_map);
-
-    memset(mem_map, 0, sizeof(struct xpmem_memory_map));
-
-    INIT_LIST_HEAD(&(mem_map->free_list));
-    INIT_LIST_HEAD(&(mem_map->alloc_list));
-
-    /* All is free to start */
-    return xpmem_insert_memory_region(&(mem_map->free_list), XPMEM_MEM_START, (XPMEM_MEM_END - XPMEM_MEM_START));
-}
-
 
 /* Find region of len bytes */
 static int
-xpmem_find_space(struct list_head * list,
-                 uint64_t           len,
-	         addr_t           * addr)
+__xpmem_find_free_space(struct xpmem_memory_map * mem_map,
+                        uint64_t                  len,
+                        addr_t                  * addr)
 {
     struct xpmem_memory_region * iter = NULL;
     struct xpmem_memory_region * next = NULL;
+
+    struct list_head           * list = &(mem_map->free_list);
 
     list_for_each_entry_safe(iter, next, list, node) {
 	addr_t region_len = iter->guest_end - iter->guest_start;
@@ -267,12 +382,35 @@ xpmem_find_space(struct list_head * list,
 }
 
 static int
-xpmem_find_and_remove_region(struct list_head           * list,
-                             addr_t                       addr,
-		             struct xpmem_memory_region * region)
+xpmem_find_free_space(struct v3_xpmem_state * state,
+		      uint64_t                len,
+		      addr_t                * addr)
+{
+    unsigned long flags = 0;
+    int           ret   = 0;
+
+    flags = v3_spin_lock_irqsave(&(state->lock));
+    {
+	ret = __xpmem_find_free_space(
+		&(state->mem_map),
+		len,
+		addr
+	);
+    }
+    v3_spin_unlock_irqrestore(&(state->lock), flags);
+
+    return ret;
+}
+
+static int
+__xpmem_find_and_remove_allocated_region(struct xpmem_memory_map    * mem_map,
+                                         addr_t                       addr,
+		                         struct xpmem_memory_region * region)
 {
     struct xpmem_memory_region * iter = NULL;
     struct xpmem_memory_region * next = NULL;
+
+    struct list_head           * list = &(mem_map->alloc_list);
 
     list_for_each_entry_safe(iter, next, list, node) {
 	if (iter->guest_start == addr) {
@@ -286,6 +424,49 @@ xpmem_find_and_remove_region(struct list_head           * list,
     return -1;
 }
 
+static int
+xpmem_find_and_remove_allocated_region(struct v3_xpmem_state      * state,
+		                       addr_t                       addr,
+				       struct xpmem_memory_region * region)
+{
+    unsigned long flags = 0;
+    int           ret   = 0;
+
+    flags = v3_spin_lock_irqsave(&(state->lock));
+    {
+	ret = __xpmem_find_and_remove_allocated_region(
+		&(state->mem_map),
+		addr,
+		region
+	);
+    }
+    v3_spin_unlock_irqrestore(&(state->lock), flags);
+
+    return ret;
+}
+
+
+/*
+ * Initialize guest memory map
+ */
+static int
+init_xpmem_mem_map(struct v3_xpmem_state * state)
+{
+    struct xpmem_memory_map * mem_map = &(state->mem_map);
+
+    memset(mem_map, 0, sizeof(struct xpmem_memory_map));
+
+    INIT_LIST_HEAD(&(mem_map->free_list));
+    INIT_LIST_HEAD(&(mem_map->alloc_list));
+
+    /* All is free to start */
+    return xpmem_insert_free_memory_region(
+	state,
+	XPMEM_MEM_START, 
+	XPMEM_MEM_END - XPMEM_MEM_START
+    );
+}
+
 
 /*
  * Map host pfns stored in pfn_list to guest memory
@@ -296,15 +477,19 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
 			uint64_t                num_pfns,
 			addr_t                * guest_addr_p)
 {
-    struct xpmem_memory_map * mem_map    = &(state->mem_map);
-    int                       status     = 0;
-    addr_t                    region_len = 0;
-    addr_t                    start_addr = 0;
+    int    status     = 0;
+    addr_t region_len = 0;
+    addr_t start_addr = 0;
 
     region_len = (addr_t)(num_pfns * PAGE_SIZE);
 
     /* Search for free space */
-    status = xpmem_find_space(&(mem_map->free_list), region_len, &start_addr);
+    status = xpmem_find_free_space(
+        state, 
+	region_len, 
+	&start_addr
+    );
+
     if (status != 0) {
 	PrintError("XPMEM: cannot find free region of %llu bytes: "
 		"cannot map host memory\n", (unsigned long long)region_len);
@@ -341,13 +526,23 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
 		    v3_delete_mem_region(state->vm, old_reg);
 		}
 
-		xpmem_insert_memory_region(&(mem_map->free_list), start_addr, region_len);
+		xpmem_insert_free_memory_region(
+		    state,
+		    start_addr, 
+		    region_len
+		);
+
 		return -1;
 	    }
 	}
 
 	/* OK, the shadow mapping is done - update the alloc list */
-	status = xpmem_insert_memory_region(&(mem_map->alloc_list), start_addr, region_len);
+	status = xpmem_insert_allocated_memory_region(
+	    state, 
+	    start_addr, 
+	    region_len
+	);
+
 	if (status != 0) {
 	    PrintError("XPMEM: cannot add region [%p, %p) to guest alloc list\n",
 		    (void *)start_addr, (void *)(start_addr + region_len));
@@ -396,6 +591,54 @@ xpmem_remove_shadow_region(struct v3_xpmem_state * state,
 static int xpmem_free(void * private_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)private_data;
 
+    /* First, disconnect from host */
+    v3_xpmem_host_disconnect(state);
+
+    /* Free cmd list */
+    {
+	struct xpmem_cmd_ex_iter * iter = NULL;
+	struct xpmem_cmd_ex_iter * next = NULL;
+
+	list_for_each_entry_safe(iter, next, &(state->cmd_list), node) {
+	    list_del(&(iter->node));
+
+	    if (iter->cmd->type == XPMEM_ATTACH_COMPLETE) {
+		V3_Free(iter->cmd->attach.pfns);
+	    }
+
+	    V3_Free(iter->cmd);
+	    V3_Free(iter);
+	}
+    }
+
+    /* Free memory map lists */
+    {
+	struct xpmem_memory_region * iter = NULL;
+	struct xpmem_memory_region * next = NULL;
+
+	/* Free free list */
+	list_for_each_entry_safe(iter, next, &(state->mem_map.free_list), node) {
+	    list_del(&(iter->node));
+	    V3_Free(iter);
+	}
+
+	/* Free alloc list */
+	list_for_each_entry_safe(iter, next, &(state->mem_map.alloc_list), node) {
+	    list_del(&(iter->node));
+
+	    /* We also need to remove these things from the shadow map */
+	    xpmem_remove_shadow_region(state, 
+		iter->guest_start,
+		iter->guest_end - iter->guest_start);
+
+	    V3_Free(iter);
+	}
+    }
+
+    /* Free bar page */
+    V3_FreePages(V3_PAddr(state->bar_state), 1);
+
+    /* Free state */
     V3_Free(state);
 
     return 0;
@@ -521,6 +764,7 @@ copy_guest_regs(struct v3_xpmem_state * state,
 	    if (v3_gva_to_hva(core, guest_pfn_list_entry, &guest_pfn_list_entry_host)) {
 		PrintError("XPMEM: Unable to convert guest pfn list entry to host address"
 			   " (GVA: %p)\n", (void *)guest_pfn_list_entry);
+		V3_Free(host_cmd->attach.pfns);
 		V3_Free(host_cmd);
 		return -1;
 	    }
@@ -534,6 +778,7 @@ copy_guest_regs(struct v3_xpmem_state * state,
 		if (v3_gpa_to_hpa(core, guest_paddr, &host_paddr)) {
 		    PrintError("XPMEM: Unable to convert guest PFN to host PFN"
 			       " (GPA: %p)\n", (void *)guest_paddr);
+		    V3_Free(host_cmd->attach.pfns);
 		    V3_Free(host_cmd);
 		    return -1;
 		}
@@ -550,6 +795,7 @@ copy_guest_regs(struct v3_xpmem_state * state,
 	}
     } 
 
+    
     *host_cmd_p = host_cmd;
     return 0;
 }
@@ -562,6 +808,7 @@ xpmem_hcall(struct v3_core_info * core,
 {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
     struct xpmem_cmd_ex   * cmd   = NULL;
+    xpmem_op_t              op    = 0;
     int                     ret   = 0;
 
     if (copy_guest_regs(state, core, &cmd)) {
@@ -569,7 +816,13 @@ xpmem_hcall(struct v3_core_info * core,
         return -1;
     }
 
+    /* The command might be modified in the host, so save the type here */
+    op  = cmd->type;
     ret = v3_xpmem_host_command(state->host_handle, cmd);
+
+    if (op == XPMEM_ATTACH_COMPLETE) {
+	V3_Free(cmd->attach.pfns);
+    }
 
     V3_Free(cmd);
 
@@ -588,7 +841,12 @@ xpmem_detach_hcall(struct v3_core_info * core,
     addr_t len    = 0;
     addr_t gpa    = (addr_t)core->vm_regs.rbx;
 
-    status = xpmem_find_and_remove_region(&(state->mem_map.alloc_list), gpa, &region);
+    status = xpmem_find_and_remove_allocated_region(
+        state, 
+	gpa, 
+	&region
+    );
+
     if (status != 0) {
 	PrintError("XPMEM: cannot find region at address %p in guest shadow map\n",
 	     (void *)gpa);
@@ -597,14 +855,24 @@ xpmem_detach_hcall(struct v3_core_info * core,
 
     len = region.guest_end - region.guest_start;
 
-    status = xpmem_insert_memory_region(&(state->mem_map.free_list), region.guest_start, len);
+    status = xpmem_insert_free_memory_region(
+	state, 
+	region.guest_start, 
+	len
+    );
+
     if (status != 0) {
 	PrintError("XPMEM: cannot insert region [%p, %p) into guest free list\n",
 	     (void *)region.guest_start, (void *)(region.guest_end));
 	return 0;
     }
 
-    status = xpmem_remove_shadow_region(state, region.guest_start, len);
+    status = xpmem_remove_shadow_region(
+        state, 
+	region.guest_start, 
+	len
+    );
+
     if (status != 0) {
 	PrintError("XPMEM: cannot shadow remove region [%p, %p) from guest memory map\n",
 	     (void *)region.guest_start, (void *)(region.guest_end));
@@ -958,6 +1226,7 @@ v3_xpmem_command(struct v3_xpmem_state * v3_xpmem,
 
     return ret;
 }
+
 
 
 device_register("XPMEM", xpmem_init)

@@ -434,10 +434,10 @@ host_pci_request_dev(char * url,
 		kmem_free(lcall_resp);
 		
 		if (status != 0) {
+			printk("Pisces PCI Attach lcall failed\n");
 			return NULL;
 		}
 	}
-
 
 	/* Map device with IOMMU (Done in Linux via LCALLs) */
 	{
@@ -478,8 +478,6 @@ host_pci_request_dev(char * url,
 			gpa += (region.end - region.start);
 		}
 	}
-
-
 
 	host_dev->v3_ctx = v3_ctx;
 
