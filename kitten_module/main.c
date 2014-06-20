@@ -49,6 +49,50 @@ static int register_vm(struct v3_guest * guest) {
 }
 
 
+static int free_vm(unsigned long vm_idx) {
+    struct pmem_region   query;
+    struct pmem_region   result;
+    struct v3_guest    * guest  = guest_map[vm_idx];
+
+    if (!guest) {
+	ERROR("No VM at index %ld\n", vm_idx);
+	return -1;
+    }
+    
+    v3_lwk_printk("Freeing VM (%s) (%p)\n", guest->name, guest);
+
+    if (palacios_free_vm(guest) < 0) { 
+	ERROR("Cannot free guest VM (%s)\n", guest->name);
+	return -1;
+    }
+
+    guest_map[vm_idx] = NULL;
+
+    /* Free Guest Image */
+    {
+	pmem_region_unset_all(&query);
+		
+	query.start            = (uintptr_t)__pa(guest->img);
+	query.end              = (uintptr_t)__pa(guest->img) + guest->img_size;
+	query.allocated        = true;
+	query.allocated_is_set = true;
+
+	if (pmem_query(&query, &result) == 0) {
+
+	    result.allocated       = false;
+		
+	    if (pmem_update(&result) != 0) {
+		ERROR("Could not Free guest image from PMEM\n");
+	    }
+	} else {
+	    ERROR("Could not find guest image in PMEM\n");
+	}
+    }
+
+    kmem_free(guest);
+
+    return 0;
+}
 
 static long
 palacios_ioctl(struct file  * filp,
@@ -149,50 +193,10 @@ palacios_ioctl(struct file  * filp,
 
 	}
 	case V3_FREE_GUEST: {
-	    struct pmem_region      query;
-	    struct pmem_region      result;
-
 	    unsigned long     vm_idx = arg;
-	    struct v3_guest * guest  = guest_map[vm_idx];
-
-	    if (!guest) {
-		ERROR("No VM at index %ld\n",vm_idx);
-		return -1;
-	    }
-
-	    v3_lwk_printk("Freeing VM (%s) (%p)\n", guest->name, guest);
-
-	    if (palacios_free_vm(guest) < 0) { 
-		ERROR("Cannot free guest at index %ld\n", vm_idx);
-		return -1;
-	    }
-
-	    guest_map[vm_idx] = NULL;
 
 
-	    /* Free Guest Image */
-	    {
-		pmem_region_unset_all(&query);
-		
-		query.start            = (uintptr_t)__pa(guest->img);
-		query.end              = (uintptr_t)__pa(guest->img) + guest->img_size;
-		query.allocated        = true;
-		query.allocated_is_set = true;
-
-		if (pmem_query(&query, &result) == 0) {
-
-		    result.allocated       = false;
-		
-		    if (pmem_update(&result) != 0) {
-			ERROR("Could not Free guest image from PMEM\n");
-		    }
-		} else {
-		    ERROR("Could not find guest image in PMEM\n");
-		}
-	    }
-
-	    kmem_free(guest);
-
+	    return free_vm(vm_idx);
 	    break;
 
 	}
@@ -215,6 +219,30 @@ palacios_ioctl(struct file  * filp,
                 return -1;
 	    }
 
+	    break;
+	}
+	case V3_SHUTDOWN: {
+	    unsigned long i = 0;
+
+	    for (i = 0; i < MAX_VMS; i++) {
+		if (guest_map[i] != NULL) {
+		    struct v3_guest * guest = guest_map[i];
+
+		    if (v3_stop_vm(guest->v3_ctx) < 0) {
+			printk(KERN_ERR "Couldn't stop VM %lu\n", i);
+		    }
+
+		    free_vm(i);
+		}
+	    }
+	    
+
+	    if (Shutdown_V3() == -1) {
+		printk(KERN_ERR "Error: Could not shutdown palacios\n");
+		return -1;
+	    }
+	    
+	
 	    break;
 	}
 	default: {

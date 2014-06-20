@@ -24,6 +24,8 @@
 #define V3_CREATE_GUEST          112
 #define V3_FREE_GUEST            113
 
+#define V3_SHUTDOWN              900
+
 /* VM Specific IOCTLs */
 #define V3_VM_PAUSE              123
 #define V3_VM_CONTINUE           124
@@ -47,6 +49,8 @@
 #define V3_VM_STREAM_CONNECT     145
 
 #define V3_VM_XPMEM_CONNECT      12000
+
+
 
 #define V3_CMD_PATH         "/palacios-cmd"
 #define V3_VM_PATH          "/palacios-vm"
