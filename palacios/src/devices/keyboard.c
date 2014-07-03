@@ -140,6 +140,26 @@ struct queue {
     int     count;
 };
 
+typedef enum {
+    NORMAL,                /* - Normal mode means we deliver keys  to the vm and accept commands from it  */
+    WRITING_CMD_BYTE,      /* - After receiving cmd 0x60 keybaord uC cmd will subsequently arrive         */
+    TRANSMIT_PASSWD,       /* - After recieving 0xa5 password arrives on data port, null terminated       */
+    WRITING_OUTPUT_PORT,   /* - After a d1 sent to 64 we wait for a new output byte on 60 (??)            */
+    INJECTING_KEY,         /* - After a d2 sent to 64 we wait for a new output byte on 60 (keystroke)     */
+    INJECTING_MOUSE,   	   /* - After a d3 sent to 64 we wait for a new output byte on 60 (mouse event)   */
+    IN_MOUSE,              /* - After a d4 sent to 64 we wait for a new output byte on 60 (send to mouse) */
+    SET_LEDS,	           /* - After Keyboard LEDs are enabled we wait for the output byte on 64(?)      */
+    SET_RATE,	           /* - After Keyboard SET_RATE is called we wait for the output byte on 64(?)    */
+    GETSET_SCANCODES,      /* - After having a f0 sent to 60 we wait for a new output byte on 60          */
+    SET_DEFAULTS,	   /* - First send ACK (0xfa) then wait for reception, and reset kb state         */
+} kbd_state_t;
+
+typedef enum {
+	STREAM,       	/* Normal mouse state                   */
+	SAMPLE, 	/* This is used for setting sample rate */
+	SET_RES,        /* Set resolution                       */
+} mouse_state_t;
+
 
 /* 
  * 0x60 is the port for the keyboard microcontroller
@@ -156,26 +176,10 @@ struct queue {
 struct keyboard_internal {
 
     // state of the onboard microcontroller
-    enum {
-        NORMAL,                	/* - Normal mode means we deliver keys  to the vm and accept commands from it  */
-	WRITING_CMD_BYTE,       /* - After receiving cmd 0x60 keybaord uC cmd will subsequently arrive         */
-	TRANSMIT_PASSWD,        /* - After recieving 0xa5 password arrives on data port, null terminated       */
-	WRITING_OUTPUT_PORT,    /* - After a d1 sent to 64 we wait for a new output byte on 60 (??)            */
-	INJECTING_KEY,          /* - After a d2 sent to 64 we wait for a new output byte on 60 (keystroke)     */
-	INJECTING_MOUSE,   	/* - After a d3 sent to 64 we wait for a new output byte on 60 (mouse event)   */
-	IN_MOUSE,               /* - After a d4 sent to 64 we wait for a new output byte on 60 (send to mouse) */
-	SET_LEDS,	        /* - After Keyboard LEDs are enabled we wait for the output byte on 64(?)      */
-	SET_RATE,	        /* - After Keyboard SET_RATE is called we wait for the output byte on 64(?)    */
-	GETSET_SCANCODES,       /* - After having a f0 sent to 60 we wait for a new output byte on 60          */
-	SET_DEFAULTS,	        /* - First send ACK (0xfa) then wait for reception, and reset kb state         */
-    } state;
+    kbd_state_t state;
 
 
-    enum {
-	STREAM,       	/* Normal mouse state                   */
-	SAMPLE, 	/* This is used for setting sample rate */
-	SET_RES,        /* Set resolution                       */
-    } mouse_state;
+    mouse_state_t mouse_state;
 
 
 

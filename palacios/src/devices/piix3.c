@@ -371,15 +371,21 @@ struct pirq_rc_reg {
 */
 
 
-static int raise_pci_irq(struct pci_device * pci_dev, void * dev_data, struct v3_irq * vec) {
-    struct v3_southbridge * piix3 = dev_data;
-    struct pci_device * piix3_pci = piix3->southbridge_pci;
+static int 
+raise_pci_irq(struct pci_device * pci_dev, 
+	      void              * dev_data, 
+	      struct v3_irq     * vec) 
+{
+    struct v3_southbridge     * piix3     = dev_data;
+    struct pci_device         * piix3_pci = piix3->southbridge_pci;
     struct piix3_config_space * piix3_cfg = (struct piix3_config_space *)(piix3_pci->config_data);
-    int intr_pin = pci_dev->config_header.intr_pin - 1;
+
+    int intr_pin  = pci_dev->config_header.intr_pin - 1;
     int irq_index = (intr_pin + pci_dev->dev_num) & 0x3;
+
     struct v3_irq irq; // Make a copy of the irq state because we will switch the irq number
 
-    irq.ack = vec->ack;
+    irq.ack          = vec->ack;
     irq.private_data = vec->private_data;
 
     /*

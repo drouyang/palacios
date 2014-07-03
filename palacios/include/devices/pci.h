@@ -36,7 +36,7 @@ struct vm_device;
 
 typedef enum { PCI_CMD_DMA_DISABLE  = 1,
 	       PCI_CMD_DMA_ENABLE   = 2,
-           PCI_CMD_MEM_ENABLE   = 3,
+	       PCI_CMD_MEM_ENABLE   = 3,
 	       PCI_CMD_INTX_DISABLE = 4, 
 	       PCI_CMD_INTX_ENABLE  = 5,
 	       PCI_CMD_MSI_DISABLE  = 6,
@@ -98,30 +98,66 @@ struct v3_pci_bar {
 };
 
 
-#define PCI_IO_MASK 0xfffffffc
-#define PCI_MEM24_MASK 0x000ffff0
-#define PCI_MEM_MASK 0xfffffff0
+#define PCI_IO_MASK       0xfffffffc
+#define PCI_MEM24_MASK    0x000ffff0
+#define PCI_MEM_MASK      0xfffffff0
 #define PCI_MEM64_MASK_HI 0xffffffff
 #define PCI_MEM64_MASK_LO 0xfffffff0
-#define PCI_EXP_ROM_MASK 0xfffff800
+#define PCI_EXP_ROM_MASK  0xfffff800
 
 
 
-#define PCI_IO_BASE(bar_val) (bar_val & PCI_IO_MASK)
-#define PCI_MEM24_BASE(bar_val) (bar_val & PCI_MEM24_MASK)
-#define PCI_MEM32_BASE(bar_val) (bar_val & PCI_MEM_MASK)
+#define PCI_IO_BASE(bar_val)       (bar_val & PCI_IO_MASK)
+#define PCI_MEM24_BASE(bar_val)    (bar_val & PCI_MEM24_MASK)
+#define PCI_MEM32_BASE(bar_val)    (bar_val & PCI_MEM_MASK)
 #define PCI_MEM64_BASE_HI(bar_val) (bar_val & PCI_MEM64_MASK_HI)
 #define PCI_MEM64_BASE_LO(bar_val) (bar_val & PCI_MEM64_MASK_LO)
-#define PCI_EXP_ROM_BASE(rom_val) (rom_val & PCI_EXP_ROM_MASK)
+#define PCI_EXP_ROM_BASE(rom_val)  (rom_val & PCI_EXP_ROM_MASK)
 
-#define PCI_IO_BAR_VAL(addr) ((addr & PCI_IO_MASK) | 0x1)
-#define PCI_MEM24_BAR_VAL(addr, prefetch) (((addr & PCI_MEM24_MASK) | 0x2) | ((prefetch) != 0) << 3)
-#define PCI_MEM32_BAR_VAL(addr, prefetch) (((addr & PCI_MEM_MASK) | ((prefetch) != 0) << 3))
-#define PCI_MEM64_HI_BAR_VAL(addr, prefetch) (addr & PCI_MEM64_MASK_HI)
+
+#define PCI_IO_BAR_VAL(addr)                 ((((addr) & PCI_IO_MASK)    | 0x1))
+#define PCI_MEM24_BAR_VAL(addr, prefetch)    ((((addr) & PCI_MEM24_MASK) | 0x2) | ((prefetch) != 0) << 3)
+#define PCI_MEM32_BAR_VAL(addr, prefetch)    ((((addr) & PCI_MEM_MASK)          | ((prefetch) != 0) << 3))
+#define PCI_MEM64_HI_BAR_VAL(addr, prefetch) ((((addr) & PCI_MEM64_MASK_HI)))
 #define PCI_MEM64_LO_BAR_VAL(addr, prefetch) ((((addr) & PCI_MEM64_MASK_LO) | 0x4) | ((prefetch) != 0) << 3)
-#define PCI_EXP_ROM_VAL(addr, enable) (((addr) & PCI_EXP_ROM_MASK) | ((enable) != 0))
+#define PCI_EXP_ROM_VAL(addr, enable)        ((((addr) & PCI_EXP_ROM_MASK)  | ((enable) != 0)))
 
 
+
+/* 
+ * PCI device configuration hook function prototypes
+ */
+
+    struct pci_device;
+
+typedef int (*pci_cfg_write_fn_t)(struct pci_device  * pci_dev, 
+				  uint32_t             reg_num, 
+				  void               * src, 
+				  uint_t               length, 
+				  void               * priv_data);
+
+typedef int (*pci_cfg_read_fn_t)(struct pci_device   * pci_dev, 
+				 uint32_t              reg_num,
+				 void                * dst, 
+				 uint_t                length, 
+				 void                * priv_data);
+
+typedef int (*pci_cfg_cmd_fn_t)(struct pci_device    * pci_dev, 
+				pci_cmd_t              cmd, 
+				uint64_t               arg, 
+				void                 * priv_data);
+
+typedef int (*pci_cfg_exprom_fn_t)(struct pci_device * pci_dev, 
+				   uint32_t          * src, 
+				   void              * priv_data);
+
+
+
+
+
+/* 
+ * Main PCI device state
+ */
 struct pci_device {
 
     pci_device_type_t type;
@@ -131,7 +167,7 @@ struct pci_device {
 
 	struct {
 	    struct pci_config_header config_header;
-	    uint8_t config_data[192];
+	    uint8_t                  config_data[192];
 	} __attribute__((packed));
     } __attribute__((packed));
 
@@ -152,12 +188,12 @@ struct pci_device {
 
     char name[64];
 
-    int (*config_write)(struct pci_device * pci_dev, uint32_t reg_num, void * src, 
-			uint_t length, void * priv_data);
-    int (*config_read)(struct pci_device * pci_dev, uint32_t reg_num, void * dst, 
-		       uint_t length, void * priv_data);
-    int (*cmd_update)(struct pci_device * pci_dev, pci_cmd_t cmd, uint64_t arg, void * priv_data);
-    int (*exp_rom_update)(struct pci_device * pci_dev, uint32_t * src, void * private_data);
+
+    /* PCI cfg space function hooks */
+    pci_cfg_write_fn_t  config_write;
+    pci_cfg_read_fn_t   config_read;
+    pci_cfg_cmd_fn_t    cmd_update;
+    pci_cfg_exprom_fn_t exp_rom_update;
 
     struct v3_vm_info * vm;
 
@@ -165,9 +201,9 @@ struct pci_device {
     struct list_head capabilities; 
 
     struct msi_msg_ctrl * msi_cap;
-    struct msix_cap * msix_cap;
-    struct vm_device * apic_dev;
-
+    struct msix_cap     * msix_cap;
+    struct vm_device    * apic_dev;
+    
     enum {IRQ_NONE, IRQ_INTX, IRQ_MSI, IRQ_MSIX} irq_type;
 
     void * priv_data;
@@ -192,41 +228,42 @@ int v3_pci_lower_irq(struct vm_device * pci_bus, struct pci_device * dev, uint32
 int v3_pci_raise_acked_irq(struct vm_device * pci_bus, struct pci_device * dev, struct v3_irq vec);
 int v3_pci_lower_acked_irq(struct vm_device * pci_bus, struct pci_device * dev, struct v3_irq vec);
 
+
+
+
+
 struct pci_device * 
-v3_pci_register_device(struct vm_device * pci,
-		       pci_device_type_t dev_type, 
-		       int bus_num,
-		       int dev_num,
-		       int fn_num,
-		       const char * name,
-		       struct v3_pci_bar * bars,
-		       int (*config_write)(struct pci_device * pci_dev, uint32_t reg_num, void * src, 
-					   uint_t length, void * private_data),
-		       int (*config_read)(struct pci_device * pci_dev, uint32_t reg_num, void * dst, 
-					  uint_t length, void * private_data),
-		       int (*cmd_update)(struct pci_device *pci_dev, pci_cmd_t cmd, uint64_t arg, void * priv_data),
-		       int (*exp_rom_update)(struct pci_device * pci_dev, uint32_t * src, void * private_data),
-		       void * priv_data);
+v3_pci_register_device(struct vm_device    * pci,
+		       pci_device_type_t     dev_type, 
+		       int                   bus_num,
+		       int                   dev_num,
+		       int                   fn_num,
+		       const char          * name,
+		       struct v3_pci_bar   * bars,
+		       pci_cfg_write_fn_t    config_write,
+		       pci_cfg_read_fn_t     config_read,
+		       pci_cfg_cmd_fn_t      cmd_update,
+		       pci_cfg_exprom_fn_t   exp_rom_update,
+		       void                * priv_data);
 
 
 
 int v3_pci_hook_config_range(struct pci_device * pci, 
-			     uint32_t start, uint32_t length, 
-			     int (*write)(struct pci_device * pci_dev, uint32_t offset, 
-						 void * src, uint_t length, void * private_data), 
-			     int (*read)(struct pci_device * pci_dev, uint32_t offset, 
-						 void * src, uint_t length, void * private_data), 
-			     void * private_data);
+			     uint32_t            start, 
+			     uint32_t            length, 
+			     pci_cfg_write_fn_t  write,
+			     pci_cfg_read_fn_t   read,			     
+			     void              * priv_data);
 
 
 
 
 typedef enum { PCI_CAP_INVALID = 0, 
-	       PCI_CAP_PM = 0x1,
-	       PCI_CAP_VPD = 0x3,
- 	       PCI_CAP_MSI = 0x5,
-	       PCI_CAP_MSIX = 0x11,
-               PCI_CAP_PCIE = 0x10 } pci_cap_type_t;
+	       PCI_CAP_PM      = 0x1,
+	       PCI_CAP_VPD     = 0x3,
+ 	       PCI_CAP_MSI     = 0x5,
+	       PCI_CAP_MSIX    = 0x11,
+               PCI_CAP_PCIE    = 0x10 } pci_cap_type_t;
 
 int v3_pci_enable_capability(struct pci_device * pci, pci_cap_type_t cap_type);
 

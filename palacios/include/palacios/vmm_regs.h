@@ -78,17 +78,17 @@ struct v3_dbg_regs {
 
 struct v3_segment {
     uint16_t selector;
-    uint_t limit;
+    uint32_t limit;
     uint64_t base;
-    uint_t type           : 4;
-    uint_t system         : 1;
-    uint_t dpl            : 2;
-    uint_t present        : 1;
-    uint_t avail          : 1;
-    uint_t long_mode      : 1;
-    uint_t db             : 1;
-    uint_t granularity    : 1;
-    uint_t unusable       : 1;
+    uint32_t type           : 4;
+    uint32_t system         : 1;
+    uint32_t dpl            : 2;
+    uint32_t present        : 1;
+    uint32_t avail          : 1;
+    uint32_t long_mode      : 1;
+    uint32_t db             : 1;
+    uint32_t granularity    : 1;
+    uint32_t unusable       : 1;
 } __attribute__((packed));
 
 

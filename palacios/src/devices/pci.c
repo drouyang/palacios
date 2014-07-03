@@ -114,11 +114,8 @@ struct cfg_range_hook {
     uint32_t start;
     uint32_t length;
 
-    int (*write)(struct pci_device * pci_dev, uint32_t offset, 
-		 void * src, uint_t length, void * private_data);
-
-    int (*read)(struct pci_device * pci_dev, uint32_t offset, 
-		void * dst, uint_t length, void * private_data);
+    pci_cfg_write_fn_t write;
+    pci_cfg_read_fn_t  read;
 
     void * private_data;
 
@@ -324,11 +321,9 @@ find_cfg_range_hook(struct pci_device * pci,
 int v3_pci_hook_config_range(struct pci_device * pci, 
 			     uint32_t            start,
 			     uint32_t            length, 
-			     int (*write)(struct pci_device * pci_dev, uint32_t offset, 
-					  void * src, uint_t length, void * private_data), 
-			     int (*read)(struct pci_device * pci_dev, uint32_t offset, 
-					 void * dst, uint_t length, void * private_data), 
-			     void              * private_data) 
+			     pci_cfg_write_fn_t  write,
+			     pci_cfg_read_fn_t   read,	
+			     void              * priv_data) 
 {
     struct cfg_range_hook * hook = NULL;    
     
@@ -349,7 +344,7 @@ int v3_pci_hook_config_range(struct pci_device * pci,
 
     hook->start        = start;
     hook->length       = length;
-    hook->private_data = private_data;
+    hook->private_data = priv_data;
     hook->write        = write;
     hook->read         = read;
 
@@ -1741,31 +1736,19 @@ v3_pci_lower_acked_irq(struct vm_device  * pci_bus,
 
 // if dev_num == -1, auto assign 
 struct pci_device * 
-v3_pci_register_device(struct vm_device   * pci,
-		       pci_device_type_t    dev_type, 
-		       int                  bus_num,
-		       int                  dev_num,
-		       int                  fn_num,
-		       const char         * name,
-		       struct v3_pci_bar  * bars,
-		       int (*config_write)(struct pci_device * pci_dev, 
-					   uint32_t            reg_num, 
-					   void              * src, 
-					   uint_t              length, 
-					   void              * priv_data),
-		       int (*config_read)(struct pci_device * pci_dev, 
-					  uint32_t            reg_num, 
-					  void              * dst, 
-					  uint_t              length, 
-					  void              * priv_data),
-		       int (*cmd_update)(struct pci_device * pci_dev, 
-					 pci_cmd_t           cmd, 
-					 uint64_t            arg, 
-					 void              * priv_data),
-		       int (*exp_rom_update)(struct pci_device * pci_dev, 
-					     uint32_t          * src, 
-					     void              * priv_data),
-		       void               * priv_data) {
+v3_pci_register_device(struct vm_device    * pci,
+		       pci_device_type_t     dev_type, 
+		       int                   bus_num,
+		       int                   dev_num,
+		       int                   fn_num,
+		       const char          * name,
+		       struct v3_pci_bar   * bars,
+		       pci_cfg_write_fn_t    config_write,
+		       pci_cfg_read_fn_t     config_read,
+		       pci_cfg_cmd_fn_t      cmd_update,
+		       pci_cfg_exprom_fn_t   exp_rom_update,
+		       void                * priv_data) 
+{
     
     struct pci_internal * pci_state = (struct pci_internal *)pci->private_data;
     struct pci_bus      * bus       = &(pci_state->bus_list[bus_num]);
@@ -1866,7 +1849,7 @@ v3_pci_register_device(struct vm_device   * pci,
 
     // hook important regions
     v3_pci_hook_config_range(pci_dev, 0x30, 4, exp_rom_write, NULL, NULL);  // ExpRom
-    v3_pci_hook_config_range(pci_dev, 0x04, 2, cmd_write,     NULL, NULL);      // CMD Reg
+    v3_pci_hook_config_range(pci_dev, 0x04, 2, cmd_write,     NULL, NULL);  // CMD Reg
     // * Status resets
     // * Drop BIST
     // 

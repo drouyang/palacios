@@ -56,6 +56,7 @@ struct misc_outp_reg {
     uint8_t reserved	: 2;
     uint8_t vsp		: 1;
     uint8_t hsp		: 1;
+    uint8_t rsvd        : 1;
 };
 
 struct seq_data_reg_clocking_mode {
@@ -194,17 +195,17 @@ struct video_internal {
 
     /* auxilary fields derived from register values */
     addr_t   activefb_addr;
-    uint_t   activefb_len;
+    uint32_t activefb_len;
     uint16_t iorange;
-    uint_t   vres;
-    uint_t   hres;
-    uint_t   vchars;
-    uint_t   hchars;
+    uint32_t vres;
+    uint32_t hres;
+    uint32_t vchars;
+    uint32_t hchars;
     int      graphmode;
     
     /* status */
-    int dirty;
-    int reschanged;
+    uint32_t dirty;
+    uint32_t reschanged;
 
     /* IMPORTANT: These are column offsets _NOT_ byte offsets */
     uint16_t screen_offset; // relative to the framebuffer

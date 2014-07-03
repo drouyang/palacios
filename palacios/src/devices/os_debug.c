@@ -30,7 +30,7 @@
 
 struct debug_state {
     char   debug_buf[BUF_SIZE];
-    uint_t debug_offset;
+    uint32_t debug_offset;
 
 };
 
