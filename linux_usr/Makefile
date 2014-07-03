@@ -111,10 +111,10 @@ include .dependencies
 #
 
 v3_cons: v3_cons.c v3_ctrl.h
-	$(call build,CC,$(CC) $(CFLAGS) $< -lcurses -o $@)
+	$(call build,CC,$(CC) $(CFLAGS) $< -lcurses -ltinfo -o $@)
 
 v3_cons_sc: v3_cons_sc.c v3_ctrl.h
-	$(call build,CC,$(CC) $(CFLAGS)  $< -lcurses -o $@)
+	$(call build,CC,$(CC) $(CFLAGS)  $< -lcurses -ltinfo -o $@)
 
 v3_create: v3_create.c ezxml.a v3_ctrl.h
 	$(call build,CC,$(CC) $(CFLAGS) $^ -o $@)
