@@ -30,9 +30,6 @@
 #include <palacios/vmm_config.h>
 
 
-#ifdef V3_CONFIG_CHECKPOINT
-#include <palacios/vmm_checkpoint.h>
-#endif
 
 struct v3_vm_info;
 
@@ -97,6 +94,9 @@ int v3_deinit_dev_mgr(struct v3_vm_info * vm);
 int v3_free_vm_devices(struct v3_vm_info * vm);
 
 #ifdef V3_CONFIG_CHECKPOINT
+struct v3_chkpt;
+struct v3_chkpt_ctx;
+
 int v3_save_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
 int v3_load_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
 #endif

@@ -140,6 +140,26 @@ struct queue {
     int     count;
 };
 
+typedef enum {
+    NORMAL,                /* - Normal mode means we deliver keys  to the vm and accept commands from it  */
+    WRITING_CMD_BYTE,      /* - After receiving cmd 0x60 keybaord uC cmd will subsequently arrive         */
+    TRANSMIT_PASSWD,       /* - After recieving 0xa5 password arrives on data port, null terminated       */
+    WRITING_OUTPUT_PORT,   /* - After a d1 sent to 64 we wait for a new output byte on 60 (??)            */
+    INJECTING_KEY,         /* - After a d2 sent to 64 we wait for a new output byte on 60 (keystroke)     */
+    INJECTING_MOUSE,   	   /* - After a d3 sent to 64 we wait for a new output byte on 60 (mouse event)   */
+    IN_MOUSE,              /* - After a d4 sent to 64 we wait for a new output byte on 60 (send to mouse) */
+    SET_LEDS,	           /* - After Keyboard LEDs are enabled we wait for the output byte on 64(?)      */
+    SET_RATE,	           /* - After Keyboard SET_RATE is called we wait for the output byte on 64(?)    */
+    GETSET_SCANCODES,      /* - After having a f0 sent to 60 we wait for a new output byte on 60          */
+    SET_DEFAULTS,	   /* - First send ACK (0xfa) then wait for reception, and reset kb state         */
+} kbd_state_t;
+
+typedef enum {
+	STREAM,       	/* Normal mouse state                   */
+	SAMPLE, 	/* This is used for setting sample rate */
+	SET_RES,        /* Set resolution                       */
+} mouse_state_t;
+
 
 /* 
  * 0x60 is the port for the keyboard microcontroller
@@ -156,26 +176,10 @@ struct queue {
 struct keyboard_internal {
 
     // state of the onboard microcontroller
-    enum {
-        NORMAL,                	/* - Normal mode means we deliver keys  to the vm and accept commands from it  */
-	WRITING_CMD_BYTE,       /* - After receiving cmd 0x60 keybaord uC cmd will subsequently arrive         */
-	TRANSMIT_PASSWD,        /* - After recieving 0xa5 password arrives on data port, null terminated       */
-	WRITING_OUTPUT_PORT,    /* - After a d1 sent to 64 we wait for a new output byte on 60 (??)            */
-	INJECTING_KEY,          /* - After a d2 sent to 64 we wait for a new output byte on 60 (keystroke)     */
-	INJECTING_MOUSE,   	/* - After a d3 sent to 64 we wait for a new output byte on 60 (mouse event)   */
-	IN_MOUSE,               /* - After a d4 sent to 64 we wait for a new output byte on 60 (send to mouse) */
-	SET_LEDS,	        /* - After Keyboard LEDs are enabled we wait for the output byte on 64(?)      */
-	SET_RATE,	        /* - After Keyboard SET_RATE is called we wait for the output byte on 64(?)    */
-	GETSET_SCANCODES,       /* - After having a f0 sent to 60 we wait for a new output byte on 60          */
-	SET_DEFAULTS,	        /* - First send ACK (0xfa) then wait for reception, and reset kb state         */
-    } state;
+    kbd_state_t state;
 
 
-    enum {
-	STREAM,       	/* Normal mouse state                   */
-	SAMPLE, 	/* This is used for setting sample rate */
-	SET_RES,        /* Set resolution                       */
-    } mouse_state;
+    mouse_state_t mouse_state;
 
 
 
@@ -1079,14 +1083,14 @@ keyboard_save(struct v3_chkpt_ctx * ctx,
 {
     struct keyboard_internal * kbd = (struct keyboard_internal *)private_data;
 
-    v3_chkpt_save_8(ctx, "CMD_REG",       &(kbd->cmd.val));
-    v3_chkpt_save_8(ctx, "STATUS_REG",    &(kbd->status.val));
-    v3_chkpt_save_8(ctx, "STATE",         &(kbd->state));
-    v3_chkpt_save_8(ctx, "MOUSE_STATE",   &(kbd->mouse_state));
-    v3_chkpt_save_8(ctx, "OUTPUT",        &(kbd->output_byte));
-    v3_chkpt_save_8(ctx, "INPUT",         &(kbd->input_byte));
-    v3_chkpt_save_8(ctx, "SCANCODE_SET",  &(kbd->scancode_set));
-    v3_chkpt_save_8(ctx, "MOUSE_ENABLED", &(kbd->mouse_enabled));
+    v3_chkpt_save_8(ctx,    "CMD_REG",       &(kbd->cmd.val));
+    v3_chkpt_save_8(ctx,    "STATUS_REG",    &(kbd->status.val));
+    v3_chkpt_save_enum(ctx, "STATE",         &(kbd->state),       sizeof(kbd_state_t));
+    v3_chkpt_save_enum(ctx, "MOUSE_STATE",   &(kbd->mouse_state), sizeof(mouse_state_t));
+    v3_chkpt_save_8(ctx,    "OUTPUT",        &(kbd->output_byte));
+    v3_chkpt_save_8(ctx,    "INPUT",         &(kbd->input_byte));
+    v3_chkpt_save_8(ctx,    "SCANCODE_SET",  &(kbd->scancode_set));
+    v3_chkpt_save_8(ctx,    "MOUSE_ENABLED", &(kbd->mouse_enabled));
 
 
     return 0;
@@ -1101,14 +1105,14 @@ keyboard_load(struct v3_chkpt_ctx * ctx,
 
     keyboard_reset_device(kbd);
 
-    v3_chkpt_load_8(ctx, "CMD_REG",       &(kbd->cmd.val));
-    v3_chkpt_load_8(ctx, "STATUS_REG",    &(kbd->status.val));
-    v3_chkpt_load_8(ctx, "STATE",         &(kbd->state));
-    v3_chkpt_load_8(ctx, "MOUSE_STATE",   &(kbd->mouse_state));
-    v3_chkpt_load_8(ctx, "OUTPUT",        &(kbd->output_byte));
-    v3_chkpt_load_8(ctx, "INPUT",         &(kbd->input_byte));
-    v3_chkpt_load_8(ctx, "SCANCODE_SET",  &(kbd->scancode_set));
-    v3_chkpt_load_8(ctx, "MOUSE_ENABLED", &(kbd->mouse_enabled));
+    v3_chkpt_load_8(ctx,    "CMD_REG",       &(kbd->cmd.val));
+    v3_chkpt_load_8(ctx,    "STATUS_REG",    &(kbd->status.val));
+    v3_chkpt_load_enum(ctx, "STATE",         &(kbd->state),       sizeof(kbd_state_t));
+    v3_chkpt_load_enum(ctx, "MOUSE_STATE",   &(kbd->mouse_state), sizeof(mouse_state_t));
+    v3_chkpt_load_8(ctx,    "OUTPUT",        &(kbd->output_byte));
+    v3_chkpt_load_8(ctx,    "INPUT",         &(kbd->input_byte));
+    v3_chkpt_load_8(ctx,    "SCANCODE_SET",  &(kbd->scancode_set));
+    v3_chkpt_load_8(ctx,    "MOUSE_ENABLED", &(kbd->mouse_enabled));
 
 
     return 0;

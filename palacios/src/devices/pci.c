@@ -1305,7 +1305,7 @@ pci_save(struct v3_chkpt_ctx * ctx,
             snprintf(buf, 128, "pci-%d.%d-%d", i, dev->dev_num, dev->fn_num);
             dev_ctx = v3_chkpt_open_ctx(bus_ctx->chkpt, bus_ctx, buf);
 
-            v3_chkpt_save(dev_ctx, "CONFIG_SPACE", 256, dev->config_space);
+            v3_chkpt_save(dev_ctx, "CONFIG_SPACE", dev->config_space, 256);
 
             for (bar_idx = 0; bar_idx < 6; bar_idx++) {
                 snprintf(buf, 128, "BAR-%d", bar_idx);
@@ -1351,7 +1351,7 @@ pci_load(struct v3_chkpt_ctx * ctx,
             snprintf(buf, 128, "pci-%d.%d-%d", i, dev->dev_num, dev->fn_num);
             dev_ctx = v3_chkpt_open_ctx(bus_ctx->chkpt, bus_ctx, buf);
 
-            v3_chkpt_load(dev_ctx, "CONFIG_SPACE", 256, dev->config_space);
+            v3_chkpt_load(dev_ctx, "CONFIG_SPACE", dev->config_space, 256);
 
             for (bar_idx = 0; bar_idx < 6; bar_idx++) {
                 snprintf(buf, 128, "BAR-%d", bar_idx);

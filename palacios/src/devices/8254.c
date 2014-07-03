@@ -52,7 +52,7 @@
 /* The order of these typedefs is important because the numerical values correspond to the 
  * values coming from the io ports
  */
-typedef enum {NOT_RUNNING, PENDING, RUNNING} channel_run_state_t;
+typedef enum {NOT_RUNNING, PENDING, RUNNING}               channel_run_state_t;
 typedef enum {NOT_WAITING, WAITING_LOBYTE, WAITING_HIBYTE} channel_access_state_t;
 
 typedef enum {LATCH_COUNT     = 0, 
@@ -755,12 +755,14 @@ pit_save(struct v3_chkpt_ctx * ctx,
 {
     struct pit * pit_state = (struct pit *)private_data; 
 
-    V3_CHKPT_STD_SAVE(ctx, pit_state->pit_counter);
-    V3_CHKPT_STD_SAVE(ctx, pit_state->pit_reload);
-    V3_CHKPT_STD_SAVE(ctx, pit_state->ch_0);
-    V3_CHKPT_STD_SAVE(ctx, pit_state->ch_1);
-    V3_CHKPT_STD_SAVE(ctx, pit_state->ch_2);
-    V3_CHKPT_STD_SAVE(ctx, pit_state->speaker);
+    v3_chkpt_save_64(ctx, "PIT_COUNTER", &(pit_state->pit_counter));
+    v3_chkpt_save_64(ctx, "PIT_RELOAD",  &(pit_state->pit_reload));
+
+    v3_chkpt_save(ctx,    "CHANNEL0",    &(pit_state->ch_0), sizeof(struct channel));
+    v3_chkpt_save(ctx,    "CHANNEL1",    &(pit_state->ch_1), sizeof(struct channel));
+    v3_chkpt_save(ctx,    "CHANNEL2",    &(pit_state->ch_2), sizeof(struct channel));
+
+    v3_chkpt_save_8(ctx,  "SPEAKER",     &(pit_state->speaker));
     
     return 0;
 }
@@ -771,12 +773,15 @@ pit_load(struct v3_chkpt_ctx * ctx,
 {
     struct pit * pit_state = (struct pit *)private_data;
 
-    V3_CHKPT_STD_LOAD(ctx, pit_state->pit_counter);
-    V3_CHKPT_STD_LOAD(ctx, pit_state->pit_reload);
-    V3_CHKPT_STD_LOAD(ctx, pit_state->ch_0);
-    V3_CHKPT_STD_LOAD(ctx, pit_state->ch_1);
-    V3_CHKPT_STD_LOAD(ctx, pit_state->ch_2);
-    V3_CHKPT_STD_LOAD(ctx, pit_state->speaker);
+    v3_chkpt_load_64(ctx, "PIT_COUNTER", &(pit_state->pit_counter));
+    v3_chkpt_load_64(ctx, "PIT_RELOAD",  &(pit_state->pit_reload));
+
+    v3_chkpt_load(ctx,    "CHANNEL0",    &(pit_state->ch_0), sizeof(struct channel));
+    v3_chkpt_load(ctx,    "CHANNEL1",    &(pit_state->ch_1), sizeof(struct channel));
+    v3_chkpt_load(ctx,    "CHANNEL2",    &(pit_state->ch_2), sizeof(struct channel)); 
+
+    v3_chkpt_load_8(ctx,  "SPEAKER",     &(pit_state->speaker));
+
 
     return 0;
 }

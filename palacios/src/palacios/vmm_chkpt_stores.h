@@ -44,7 +44,10 @@ static struct {} null_store __attribute__((__used__))			\
 #include <palacios/vmm_util.h>
 
 
-static void * debug_open_chkpt(char * url, chkpt_mode_t mode) {
+static void * 
+debug_open_chkpt(char        * url, 
+		 chkpt_mode_t  mode) 
+{
    
     if (mode == LOAD) {
 	V3_Print("Cannot load from debug store\n");
@@ -58,25 +61,37 @@ static void * debug_open_chkpt(char * url, chkpt_mode_t mode) {
 
 
 
-static int debug_close_chkpt(void * store_data) {
+static int 
+debug_close_chkpt(void * store_data) 
+{
     V3_Print("Closing Checkpoint\n");
     return 0;
 }
 
-static void * debug_open_ctx(void * store_data, 
-			     void * parent_ctx, 
-			     char * name) {
+static void * 
+debug_open_ctx(void * store_data, 
+	       void * parent_ctx, 
+	       char * name) 
+{
     V3_Print("[%s]\n", name);
     return (void *)1;
 }
 
-static int debug_close_ctx(void * store_data, void * ctx) {
+static int 
+debug_close_ctx(void * store_data, 
+		void * ctx)
+{
     V3_Print("[CLOSE]\n"); 
     return 0;
 }
 
-static int debug_save(void * store_data, void * ctx, 
-		      char * tag, uint64_t len, void * buf) {
+static int 
+debug_save(void     * store_data, 
+	   void     * ctx, 
+	   char     * tag, 
+	   uint64_t   len,
+	   void     * buf)
+{
     V3_Print("%s:\n", tag);
 
     if (len > 100) {
@@ -88,102 +103,30 @@ static int debug_save(void * store_data, void * ctx,
     return 0;
 }
 
-static int debug_load(void * store_data, void * ctx, 
-				  char * tag, uint64_t len, void * buf) {
+static int 
+debug_load(void     * store_data, 
+	   void     * ctx, 
+	   char     * tag,
+	   uint64_t   len, 
+	   void     * buf) 
+{
     V3_Print("Loading not supported !!!\n");
     return 0;
 }
 
 
 static struct chkpt_interface debug_store = {
-    .name = "DEBUG",
-    .open_chkpt = debug_open_chkpt,
+    .name        = "DEBUG",
+    .open_chkpt  = debug_open_chkpt,
     .close_chkpt = debug_close_chkpt,
-    .open_ctx = debug_open_ctx, 
-    .close_ctx = debug_close_ctx,
-    .save = debug_save,
-    .load = debug_load
+    .open_ctx    = debug_open_ctx, 
+    .close_ctx   = debug_close_ctx,
+    .save        = debug_save,
+    .load        = debug_load
 };
 
 register_chkpt_store(debug_store);
 
-
-
-
-#ifdef V3_CONFIG_KEYED_STREAMS
-#include <interfaces/vmm_keyed_stream.h>
-
-static void * keyed_stream_open_chkpt(char * url, chkpt_mode_t mode) {
-    if (mode == SAVE) {
-	return v3_keyed_stream_open(url, V3_KS_WR_ONLY_CREATE);
-    } else if (mode == LOAD) {
-	return v3_keyed_stream_open(url, V3_KS_RD_ONLY);
-    }
-
-    // Shouldn't get here
-    return NULL;
-}
-
-
-
-static int keyed_stream_close_chkpt(void * store_data) {
-    v3_keyed_stream_t stream = store_data;
-
-    v3_keyed_stream_close(stream);
-
-    return 0;
-}
-
-static void * keyed_stream_open_ctx(void * store_data, 
-				    void * parent_ctx, 
-				    char * name) {
-    v3_keyed_stream_t stream = store_data;
-
-    return v3_keyed_stream_open_key(stream, name);
-}
-
-static int keyed_stream_close_ctx(void * store_data, void * ctx) {
-    v3_keyed_stream_t stream = store_data;
-
-    v3_keyed_stream_close_key(stream, ctx);
-
-    return 0;
-}
-
-static int keyed_stream_save(void * store_data, void * ctx, 
-				  char * tag, uint64_t len, void * buf) {
-    if (v3_keyed_stream_write_key(store_data, ctx, buf, len) != len) { 
-	return -1;
-    } else {
-	return 0;
-    }
-}
-
-static int keyed_stream_load(void * store_data, void * ctx, 
-				  char * tag, uint64_t len, void * buf) {
-    if (v3_keyed_stream_read_key(store_data, ctx, buf, len) != len) { 
-	return -1;
-    } else {
-	return 0;
-    }
-}
-
-
-static struct chkpt_interface keyed_stream_store = {
-    .name = "KEYED_STREAM",
-    .open_chkpt = keyed_stream_open_chkpt,
-    .close_chkpt = keyed_stream_close_chkpt,
-    .open_ctx = keyed_stream_open_ctx, 
-    .close_ctx = keyed_stream_close_ctx,
-    .save = keyed_stream_save,
-    .load = keyed_stream_load
-};
-
-register_chkpt_store(keyed_stream_store);
-
-
-
-#endif
 
 
 
@@ -192,13 +135,16 @@ register_chkpt_store(keyed_stream_store);
 
 
 struct file_ctx {
-    v3_file_t file;
-    uint64_t offset;
-    char * filename;
+    v3_file_t  file;
+    uint64_t   offset;
+    char     * filename;
 };
     
 
-static void * dir_open_chkpt(char * url, chkpt_mode_t mode) {
+static void * 
+dir_open_chkpt(char        * url, 
+	       chkpt_mode_t  mode) 
+{
     if (mode == SAVE) {
 	if (v3_mkdir(url, 0755, 1) != 0) {
 	    return NULL;
@@ -210,15 +156,18 @@ static void * dir_open_chkpt(char * url, chkpt_mode_t mode) {
 
 
 
-static int dir_close_chkpt(void * store_data) {
+static int
+dir_close_chkpt(void * store_data) 
+{
     return 0;
 }
 
-static void * dir_open_ctx(void * store_data, 
-			   void * parent_ctx, 
-			   char * name) {
-
-    char * url = store_data;
+static void * 
+dir_open_ctx(void * store_data, 
+	     void * parent_ctx, 
+	     char * name) 
+{    
+    char            * url = store_data;
     struct file_ctx * ctx = NULL;
 
 
@@ -250,7 +199,11 @@ static void * dir_open_ctx(void * store_data,
     return ctx;
 }
 
-static int dir_close_ctx(void * store_data, void * ctx) {
+
+static int 
+dir_close_ctx(void * store_data, 
+	      void * ctx) 
+{
     struct file_ctx * file_ctx = ctx;
 
     v3_file_close(file_ctx->file);
@@ -261,9 +214,15 @@ static int dir_close_ctx(void * store_data, void * ctx) {
     return 0;
 }
 
-static int dir_save(void * store_data, void * ctx, 
-		    char * tag, uint64_t len, void * buf) {
+static int 
+dir_save(void     * store_data, 
+	 void     * ctx, 
+	 char     * tag, 
+	 uint64_t   len, 
+	 void     * buf) 
+{
     struct file_ctx * file_ctx = ctx;
+
     uint64_t ret = 0;
    
     ret = v3_file_write(file_ctx->file, buf, len, file_ctx->offset);
@@ -273,9 +232,15 @@ static int dir_save(void * store_data, void * ctx,
     return 0;
 }
 
-static int dir_load(void * store_data, void * ctx, 
-		    char * tag, uint64_t len, void * buf) {
+static int 
+dir_load(void     * store_data, 
+	 void     * ctx, 
+	 char     * tag,
+	 uint64_t   len,
+	 void     * buf) 
+{
     struct file_ctx * file_ctx = ctx;
+
     uint64_t ret = 0;
     
     ret = v3_file_read(file_ctx->file, buf, len, file_ctx->offset);
@@ -287,13 +252,13 @@ static int dir_load(void * store_data, void * ctx,
 
 
 static struct chkpt_interface dir_store = {
-    .name = "DIR",
-    .open_chkpt = dir_open_chkpt,
+    .name        = "DIR",
+    .open_chkpt  = dir_open_chkpt,
     .close_chkpt = dir_close_chkpt,
-    .open_ctx = dir_open_ctx, 
-    .close_ctx = dir_close_ctx,
-    .save = dir_save,
-    .load = dir_load
+    .open_ctx    = dir_open_ctx, 
+    .close_ctx   = dir_close_ctx,
+    .save        = dir_save,
+    .load        = dir_load
 };
 
 register_chkpt_store(dir_store);

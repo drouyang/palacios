@@ -132,8 +132,8 @@ debug_save(struct v3_chkpt_ctx * ctx,
 {
     struct debug_state * dbg = (struct debug_state *)private_data;
     
-    V3_CHKPT_STD_SAVE(ctx, dbg->debug_buf);
-    V3_CHKPT_STD_SAVE(ctx, dbg->debug_offset);
+    v3_chkpt_save(ctx,    "BUF",    &(dbg->debug_buf), sizeof(char) * BUF_SIZE);
+    v3_chkpt_save_32(ctx, "OFFSET", &(dbg->debug_offset));
     
     return 0;
 }
@@ -145,8 +145,8 @@ debug_load(struct v3_chkpt_ctx * ctx,
 {
     struct debug_state * dbg = (struct debug_state *)private_data;
     
-    V3_CHKPT_STD_LOAD(ctx, dbg->debug_buf);
-    V3_CHKPT_STD_LOAD(ctx, dbg->debug_offset);
+    v3_chkpt_load(ctx,    "BUF",    &(dbg->debug_buf), sizeof(char) * BUF_SIZE);
+    v3_chkpt_load_32(ctx, "OFFSET", &(dbg->debug_offset));
     
     return 0;
 }

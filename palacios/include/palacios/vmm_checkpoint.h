@@ -23,8 +23,11 @@
 
 #ifdef __V3VEE__
 
-#include <palacios/vmm.h>
 
+
+
+#include <palacios/vmm.h>
+#include <palacios/vmm_msr.h>
 
 struct v3_chkpt;
 
@@ -35,40 +38,56 @@ struct v3_chkpt_ctx {
     void * store_ctx;
 };
 
-/* Temporary */
-#define  V3_CHKPT_STD_SAVE(ctx,x) v3_chkpt_save(ctx,#x,sizeof(x),&(x))
-#define  V3_CHKPT_STD_LOAD(ctx,x) v3_chkpt_load(ctx,#x,sizeof(x),&(x))
 
 
 
-int v3_chkpt_save(struct v3_chkpt_ctx * ctx, char * tag, uint64_t len, void * buf);
-int v3_chkpt_load(struct v3_chkpt_ctx * ctx, char * tag, uint64_t len, void * buf);
+int v3_chkpt_save(struct v3_chkpt_ctx * ctx, char * tag, void * buf, uint64_t len);
+int v3_chkpt_load(struct v3_chkpt_ctx * ctx, char * tag, void * buf, uint64_t len);
 
-static inline int v3_chkpt_save_64(struct v3_chkpt_ctx * ctx, char * tag, void * buf) {
-    return v3_chkpt_save(ctx, tag, 8, buf);
+static inline int v3_chkpt_save_64(struct v3_chkpt_ctx * ctx, char * tag, uint64_t * val) {
+    return v3_chkpt_save(ctx, tag, val, sizeof(uint64_t));
 }
-static inline int v3_chkpt_save_32(struct v3_chkpt_ctx * ctx, char * tag, void * buf) {
-    return v3_chkpt_save(ctx, tag, 4, buf);
+static inline int v3_chkpt_save_32(struct v3_chkpt_ctx * ctx, char * tag, uint32_t * val) {
+    return v3_chkpt_save(ctx, tag, val, sizeof(uint32_t));
 }
-static inline int v3_chkpt_save_16(struct v3_chkpt_ctx * ctx, char * tag, void * buf) {
-    return v3_chkpt_save(ctx, tag, 2, buf);
+static inline int v3_chkpt_save_16(struct v3_chkpt_ctx * ctx, char * tag, uint16_t * val) {
+    return v3_chkpt_save(ctx, tag, val, sizeof(uint16_t));
 }
-static inline int v3_chkpt_save_8(struct v3_chkpt_ctx * ctx, char * tag, void * buf) {
-    return v3_chkpt_save(ctx, tag, 1, buf);
+static inline int v3_chkpt_save_8(struct v3_chkpt_ctx * ctx, char * tag, uint8_t * val) {
+    return v3_chkpt_save(ctx, tag, val, sizeof(uint8_t));
+}
+static inline int v3_chkpt_save_enum(struct v3_chkpt_ctx * ctx, char * tag, void * val, uint32_t size) {
+    return v3_chkpt_save(ctx, tag, val, size);
+} 
+static inline int v3_chkpt_save_ptr(struct v3_chkpt_ctx * ctx, char * tag, addr_t * val) {
+    return v3_chkpt_save(ctx, tag, val, sizeof(addr_t));
+}
+static inline int v3_chkpt_save_msr(struct v3_chkpt_ctx * ctx, char * tag, v3_msr_t * val) {
+    return v3_chkpt_save(ctx, tag, val, sizeof(v3_msr_t));
 }
 
-static inline int v3_chkpt_load_64(struct v3_chkpt_ctx * ctx, char * tag, void * buf) {
-    return v3_chkpt_load(ctx, tag, 8, buf);
+
+static inline int v3_chkpt_load_64(struct v3_chkpt_ctx * ctx, char * tag, uint64_t * val) {
+    return v3_chkpt_load(ctx, tag, val, sizeof(uint64_t));
 }
-static inline int v3_chkpt_load_32(struct v3_chkpt_ctx * ctx, char * tag, void * buf) {
-    return v3_chkpt_load(ctx, tag, 4, buf);
+static inline int v3_chkpt_load_32(struct v3_chkpt_ctx * ctx, char * tag, uint32_t * val) {
+    return v3_chkpt_load(ctx, tag, val, sizeof(uint32_t));
 }
-static inline int v3_chkpt_load_16(struct v3_chkpt_ctx * ctx, char * tag, void * buf) {
-    return v3_chkpt_load(ctx, tag, 2, buf);
+static inline int v3_chkpt_load_16(struct v3_chkpt_ctx * ctx, char * tag, uint16_t * val) {
+    return v3_chkpt_load(ctx, tag, val, sizeof(uint16_t));
 }
-static inline int v3_chkpt_load_8(struct v3_chkpt_ctx * ctx, char * tag, void * buf) {
-    return v3_chkpt_load(ctx, tag, 1, buf);
+static inline int v3_chkpt_load_8(struct v3_chkpt_ctx * ctx, char * tag, uint8_t * val) {
+    return v3_chkpt_load(ctx, tag, val, sizeof(uint8_t));
 }
+static inline int v3_chkpt_load_enum(struct v3_chkpt_ctx * ctx, char * tag, void * val, uint32_t size) {
+    return v3_chkpt_load(ctx, tag, val, size);
+} 
+static inline int v3_chkpt_load_ptr(struct v3_chkpt_ctx * ctx, char * tag, addr_t * val) {
+    return v3_chkpt_load(ctx, tag, val, sizeof(addr_t));
+} 
+static inline int v3_chkpt_load_msr(struct v3_chkpt_ctx * ctx, char * tag, v3_msr_t * val) {
+    return v3_chkpt_load(ctx, tag, val, sizeof(v3_msr_t));
+} 
 
 
 

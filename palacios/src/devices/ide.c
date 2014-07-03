@@ -1719,7 +1719,7 @@ ide_save(struct v3_chkpt_ctx * ctx,
 	snprintf(buf, 128, "channel-%d", ch_num);
 	ch_ctx = v3_chkpt_open_ctx(ctx->chkpt, ctx, buf);
 
-	v3_chkpt_save_8(ch_ctx   "ERROR",       &(ch->error_reg.val));
+	v3_chkpt_save_8(ch_ctx,   "ERROR",       &(ch->error_reg.val));
 	v3_chkpt_save_8(ch_ctx,  "FEATURES",    &(ch->features.val));
 	v3_chkpt_save_8(ch_ctx,  "DRIVE_HEAD",  &(ch->drive_head.val));
 	v3_chkpt_save_8(ch_ctx,  "STATUS",      &(ch->status.val));
@@ -1739,25 +1739,25 @@ ide_save(struct v3_chkpt_ctx * ctx,
 
 	    drive_ctx = v3_chkpt_open_ctx(ctx->chkpt, ch_ctx, buf);
 	    
-	    v3_chkpt_save_8(drive_ctx,  "DRIVE_TYPE",      &(drive->drive_type));
-	    v3_chkpt_save_8(drive_ctx,  "SECTOR_COUNT",    &(drive->sector_count));
-	    v3_chkpt_save_8(drive_ctx,  "SECTOR_NUM",      &(drive->sector_num));
-	    v3_chkpt_save_16(drive_ctx, "CYLINDER",        &(drive->cylinder));
+	    v3_chkpt_save_enum(drive_ctx, "DRIVE_TYPE",      &(drive->drive_type), sizeof(v3_block_type_t));
+	    v3_chkpt_save_8(drive_ctx,    "SECTOR_COUNT",    &(drive->sector_count));
+	    v3_chkpt_save_8(drive_ctx,    "SECTOR_NUM",      &(drive->sector_num));
+	    v3_chkpt_save_16(drive_ctx,   "CYLINDER",        &(drive->cylinder));
 
-	    v3_chkpt_save_64(drive_ctx, "CURRENT_LBA",     &(drive->current_lba));
-	    v3_chkpt_save_32(drive_ctx, "TRANSFER_LENGTH", &(drive->transfer_length));
-	    v3_chkpt_save_32(drive_ctx, "TRANSFER_INDEX",  &(drive->transfer_index));
+	    v3_chkpt_save_64(drive_ctx,   "CURRENT_LBA",     &(drive->current_lba));
+	    v3_chkpt_save_32(drive_ctx,   "TRANSFER_LENGTH", &(drive->transfer_length));
+	    v3_chkpt_save_32(drive_ctx,   "TRANSFER_INDEX",  &(drive->transfer_index));
 
-	    v3_chkpt_save(drive_ctx,    "DATA_BUF",        DATA_BUFFER_SIZE, drive->data_buf);
+	    v3_chkpt_save(drive_ctx,      "DATA_BUF",        drive->data_buf, DATA_BUFFER_SIZE);
 
 
 	    /* For now we'll just pack the type specific data at the end... */
 	    /* We should probably add a new context here in the future... */
 	    if (drive->drive_type == BLOCK_CDROM) {
 
-		v3_chkpt_save(drive_ctx,   "ATAPI_SENSE_DATA",   18,   drive->cd_state.sense.buf);
-		v3_chkpt_save_8(drive_ctx, "ATAPI_CMD",              &(drive->cd_state.atapi_cmd));
-		v3_chkpt_save(drive_ctx,   "ATAPI_ERR_RECOVERY", 12,   drive->cd_state.err_recovery.buf);
+		v3_chkpt_save(drive_ctx,   "ATAPI_SENSE_DATA",    drive->cd_state.sense.buf, 18);
+		v3_chkpt_save_8(drive_ctx, "ATAPI_CMD",         &(drive->cd_state.atapi_cmd));
+		v3_chkpt_save(drive_ctx,   "ATAPI_ERR_RECOVERY",  drive->cd_state.err_recovery.buf, 12);
 
 	    } else if (drive->drive_type == BLOCK_DISK) {
 
@@ -1809,25 +1809,25 @@ ide_load(struct v3_chkpt_ctx * ctx,
 	    snprintf(buf, 128, "drive-%d-%d", ch_num, drive_num);
 	    drive_ctx = v3_chkpt_open_ctx(ctx->chkpt, ch_ctx, buf);
 	    
-	    v3_chkpt_load_8(drive_ctx,  "DRIVE_TYPE",      &(drive->drive_type));
-	    v3_chkpt_load_8(drive_ctx,  "SECTOR_COUNT",    &(drive->sector_count));
-	    v3_chkpt_load_8(drive_ctx,  "SECTOR_NUM",      &(drive->sector_num));
-	    v3_chkpt_load_16(drive_ctx, "CYLINDER",        &(drive->cylinder));
+	    v3_chkpt_load_enum(drive_ctx, "DRIVE_TYPE",      &(drive->drive_type), sizeof(v3_block_type_t));
+	    v3_chkpt_load_8(drive_ctx,    "SECTOR_COUNT",    &(drive->sector_count));
+	    v3_chkpt_load_8(drive_ctx,    "SECTOR_NUM",      &(drive->sector_num));
+	    v3_chkpt_load_16(drive_ctx,   "CYLINDER",        &(drive->cylinder));
 
-	    v3_chkpt_load_64(drive_ctx, "CURRENT_LBA",     &(drive->current_lba));
-	    v3_chkpt_load_32(drive_ctx, "TRANSFER_LENGTH", &(drive->transfer_length));
-	    v3_chkpt_load_32(drive_ctx, "TRANSFER_INDEX",  &(drive->transfer_index));
+	    v3_chkpt_load_64(drive_ctx,   "CURRENT_LBA",     &(drive->current_lba));
+	    v3_chkpt_load_32(drive_ctx,   "TRANSFER_LENGTH", &(drive->transfer_length));
+	    v3_chkpt_load_32(drive_ctx,   "TRANSFER_INDEX",  &(drive->transfer_index));
 
-	    v3_chkpt_load(drive_ctx,    "DATA_BUF",        DATA_BUFFER_SIZE, drive->data_buf);
+	    v3_chkpt_load(drive_ctx,      "DATA_BUF",        drive->data_buf, DATA_BUFFER_SIZE);
 
 
 	    /* For now we'll just pack the type specific data at the end... */
 	    /* We should probably add a new context here in the future... */
 	    if (drive->drive_type == BLOCK_CDROM) {
 
-		v3_chkpt_load(drive_ctx,   "ATAPI_SENSE_DATA",   18,   drive->cd_state.sense.buf);
-		v3_chkpt_load_8(drive_ctx, "ATAPI_CMD",              &(drive->cd_state.atapi_cmd));
-		v3_chkpt_load(drive_ctx,   "ATAPI_ERR_RECOVERY", 12,   drive->cd_state.err_recovery.buf);
+		v3_chkpt_load(drive_ctx,   "ATAPI_SENSE_DATA",    drive->cd_state.sense.buf, 18);
+		v3_chkpt_load_8(drive_ctx, "ATAPI_CMD",         &(drive->cd_state.atapi_cmd));
+		v3_chkpt_load(drive_ctx,   "ATAPI_ERR_RECOVERY",  drive->cd_state.err_recovery.buf, 12);
 
 	    } else if (drive->drive_type == BLOCK_DISK) {
 

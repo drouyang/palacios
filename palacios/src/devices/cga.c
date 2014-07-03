@@ -1514,7 +1514,6 @@ cga_free(struct video_internal * video_state)
 static int cga_save(struct v3_chkpt_ctx * ctx, void * private_data) {
     struct video_internal * cga = (struct video_internal *)private_data;
 
-    V3_CHKPT_STD_SAVE(ctx, cga->seq_index_reg                      );		
     v3_chkpt_save(ctx,     "FRAMEBUFFER",    cga->framebuf, FRAMEBUF_SIZE);
 
     v3_chkpt_save(ctx,     "MISC_OUTP",      &(cga->misc_outp_reg), sizeof(struct misc_outp_reg));

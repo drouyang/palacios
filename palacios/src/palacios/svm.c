@@ -393,12 +393,8 @@ v3_svm_save_core(struct v3_core_info * core,
 		 void                * ctx)
 {
 
-    if (v3_chkpt_save_8(ctx, "cpl", &(core->cpl)) == -1) { 
-	PrintError("Could not save SVM cpl\n");
-	return -1;
-    }
 
-    if (v3_chkpt_save(ctx, "vmcb_data", PAGE_SIZE, core->vmm_data) == -1) { 
+    if (v3_chkpt_save(ctx, "vmcb_data", core->vmm_data, PAGE_SIZE) == -1) { 
 	PrintError("Could not save SVM vmcb\n");
 	return -1;
     }
@@ -411,12 +407,8 @@ v3_svm_load_core(struct v3_core_info * core,
 		 void                * ctx)
 {
     
-    if (v3_chkpt_load_8(ctx, "cpl", &(core->cpl)) == -1) { 
-	PrintError("Could not load SVM cpl\n");
-	return -1;
-    }
 
-    if (v3_chkpt_load(ctx, "vmcb_data", PAGE_SIZE, core->vmm_data) == -1) {
+    if (v3_chkpt_load(ctx, "vmcb_data",  core->vmm_data, PAGE_SIZE) == -1) {
 	return -1;
     }
 

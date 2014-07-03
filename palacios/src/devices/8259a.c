@@ -960,8 +960,8 @@ pic_save(struct v3_chkpt_ctx * ctx,
     v3_chkpt_save_8(ctx, "SLAVE_OCW2",       &(pic->slave_ocw2));
     v3_chkpt_save_8(ctx, "SLAVE_OCW3",       &(pic->slave_ocw3));
 
-    v3_chkpt_save_8(ctx, "MASTER_STATE",     &(pic->master_state));
-    v3_chkpt_save_8(ctx, "SLAVE_STATE",      &(pic->slave_state));
+    v3_chkpt_save_enum(ctx, "MASTER_STATE",  &(pic->master_state), sizeof(pic_state_t));
+    v3_chkpt_save_enum(ctx, "SLAVE_STATE",   &(pic->slave_state), sizeof(pic_state_t));
 
     
     return 0;
@@ -1004,8 +1004,8 @@ pic_load(struct v3_chkpt_ctx * ctx,
     v3_chkpt_load_8(ctx, "SLAVE_OCW2",       &(pic->slave_ocw2));
     v3_chkpt_load_8(ctx, "SLAVE_OCW3",       &(pic->slave_ocw3));
 
-    v3_chkpt_load_8(ctx, "MASTER_STATE",     &(pic->master_state));
-    v3_chkpt_load_8(ctx, "SLAVE_STATE",      &(pic->slave_state));
+    v3_chkpt_load_enum(ctx, "MASTER_STATE",  &(pic->master_state), sizeof(pic_state_t));
+    v3_chkpt_load_enum(ctx, "SLAVE_STATE",   &(pic->slave_state), sizeof(pic_state_t));
 
     return 0;
 }
