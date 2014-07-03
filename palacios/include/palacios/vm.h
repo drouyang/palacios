@@ -67,7 +67,7 @@ struct v3_core_info {
     char exec_name[256];
     
     uint64_t rip;
-    uint_t   cpl;
+    uint32_t cpl;
 
     struct vm_core_time     time_state;
     struct v3_core_timeouts timeouts;
