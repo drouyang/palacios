@@ -39,10 +39,12 @@ v3_get_base_region(struct v3_vm_info * vm,
     struct v3_mem_map * map         = &(vm->mem_map);
     uint32_t            block_index = gpa / MEM_BLOCK_SIZE_BYTES;
 
-    if (gpa > (map->num_base_blocks * MEM_BLOCK_SIZE_BYTES) ||
-	(block_index >= map->num_base_blocks)) {
+    if ( (gpa         > (map->num_base_blocks * MEM_BLOCK_SIZE_BYTES)) ||
+	 (block_index >= map->num_base_blocks)) {
+	
 	PrintError("Guest Address Exceeds Base Memory Size (ga=0x%p), (limit=0x%p)\n", 
 		   (void *)gpa, (void *)vm->mem_size);
+
 	v3_print_mem_map(vm);
 
 	if (v3_get_current_core()) {
@@ -93,10 +95,11 @@ unhandled_err(struct v3_core_info  * core,
 }
 
 
-/* This isn't the fastest lookup in the world, 
-   but we cache the NUMA nodes in the region descriptor after this so it should be fine.
-   All subsequent lookups will go through that.
-*/
+/*
+ * This isn't the fastest lookup in the world, 
+ * but we cache the NUMA nodes in the region descriptor after this so it should be fine.
+ *  All subsequent lookups will go through that.
+ */
 static int 
 gpa_to_node_from_cfg(struct v3_vm_info * vm, 
 		     addr_t              gpa) 
@@ -155,16 +158,20 @@ v3_init_mem_map(struct v3_vm_info * vm)
 	struct v3_mem_region * region  = &(map->base_regions[i]);
 	int                    node_id = -1;
 
-	// There is an underlying region that contains all of the guest memory
+	/* 
+	 * There is an underlying region that contains all of the guest memory
+	 * 
+	 * 2MB page alignment needed for 2MB hardware nested paging
+	 */
 	// PrintDebug("Mapping %d pages of memory (%u bytes)\n", (int)mem_pages, (uint_t)core->mem_size);
-	
-	// 2MB page alignment needed for 2MB hardware nested paging
 	region->guest_start = MEM_BLOCK_SIZE_BYTES * i;
 	region->guest_end   = region->guest_start + MEM_BLOCK_SIZE_BYTES;
 
-	// We assume that the xml config was smart enough to align the layout to the block size
-	// If they didn't we're going to ignore their settings 
-	//     and use whatever node the first byte of the block is assigned to
+	/* 
+	 * We assume that the xml config was smart enough to align the layout to the block size
+	 * If they didn't we're going to ignore their settings 
+	 *     and use whatever node the first byte of the block is assigned to
+	 */
 	node_id = gpa_to_node_from_cfg(vm, region->guest_start);
 	
 	V3_Print("Allocating block %d on node %d\n", i, node_id);
@@ -183,13 +190,13 @@ v3_init_mem_map(struct v3_vm_info * vm)
 	// Clear the memory...
 	memset(V3_VAddr((void *)region->host_addr), 0, MEM_BLOCK_SIZE_BYTES);
 	
-	region->flags.read    = 1;
-	region->flags.write   = 1;
-	region->flags.exec    = 1;
-	region->flags.base    = 1;
-	region->flags.alloced = 1;
-	
-	region->unhandled     = unhandled_err;
+	region->flags.read     = 1;
+	region->flags.write    = 1;
+	region->flags.exec     = 1;
+	region->flags.base     = 1;
+	region->flags.alloced  = 1;
+
+	region->unhandled      = unhandled_err;
     }
 
 
@@ -527,20 +534,20 @@ get_overlapping_region(struct v3_vm_info * vm,
 
 
     if (start_region->guest_end < end_gpa) {
-	// Region ends before range
+	/* Region ends before range */
 	return NULL;
     } else if (start_region->flags.base == 0) {
-	// sub region overlaps range
+	/* sub region overlaps range */
 	return start_region;
     } else {
-	// Base region, now we have to scan forward for the next sub region
+	/* Base region, now we have to scan forward for the next sub region */
 	struct v3_mem_region * next_reg = get_next_mem_region(vm, core_id, start_gpa);
 	
 	if (next_reg == NULL) {
-	    // no sub regions after start_addr, base region is ok
+	    /* no sub regions after start_addr, base region is ok */
 	    return start_region;
 	} else if (next_reg->guest_start >= end_gpa) {
-	    // Next sub region begins outside range
+	    /* Next sub region begins outside range */
 	    return start_region;
 	} else {
 	    return NULL;
@@ -548,7 +555,7 @@ get_overlapping_region(struct v3_vm_info * vm,
     }
 
 
-    // Should never get here
+    /* Should never get here */
     return NULL;
 }
 
@@ -737,12 +744,36 @@ v3_print_mem_map(struct v3_vm_info * vm)
 
 #ifdef V3_CONFIG_CHECKPOINT
 #include <palacios/vmm_checkpoint.h>
+#include <palacios/vmm_sprintf.h>
+
 int 
 v3_mem_save(struct v3_vm_info * vm, 
 	    struct v3_chkpt   * chkpt) 
 {
+    struct v3_mem_map * map = &(vm->mem_map);
+    void              * ctx = NULL;
+    int i = 0;
 
+    ctx = v3_chkpt_open_ctx(chkpt, NULL, "memory");
+    
+    if (ctx == NULL) {
+	PrintError("Could not open Checkpoint CTX: memory\n");
+	return -1;
+    }
 
+    for (i = 0; i < map->num_base_blocks; i++) {
+	struct v3_mem_region * region  = &(map->base_regions[i]);
+	char reg_str[32] = {[0 ... 31] = 0};
+
+	snprintf(reg_str, 32, "region-%d-mem", i);
+
+	v3_chkpt_save(ctx,
+		      reg_str,
+		      V3_VAddr((void *)region->host_addr), 
+		      region->guest_end - region->guest_start);
+    }
+
+    v3_chkpt_close_ctx(ctx);
 
     return 0;
 }
@@ -752,7 +783,31 @@ int
 v3_mem_load(struct v3_vm_info * vm, 
 	    struct v3_chkpt   * chkpt) 
 {
+    struct v3_mem_map * map = &(vm->mem_map);
+    void              * ctx = NULL;
+    int i = 0;
 
+    ctx = v3_chkpt_open_ctx(chkpt, NULL, "memory");
+    
+    if (ctx == NULL) {
+	PrintError("Could not open Checkpoint CTX: memory\n");
+	return -1;
+    }
+
+    for (i = 0; i < map->num_base_blocks; i++) {
+	struct v3_mem_region * region = &(map->base_regions[i]);
+	char reg_str[32] = {[0 ... 31] = 0};
+	
+	snprintf(reg_str, 32, "region-%d-mem", i);
+
+	v3_chkpt_load(ctx, 
+		      reg_str, 
+		      V3_VAddr((void *)region->host_addr),
+		      region->guest_end - region->guest_start);
+
+    }
+
+    v3_chkpt_close_ctx(ctx);
 
     return 0;
 }
