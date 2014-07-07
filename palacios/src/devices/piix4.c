@@ -638,9 +638,43 @@ static int piix_free(struct v3_southbridge * piix4) {
     return 0;
 }
 
+#ifdef V3_CONFIG_CHECKPOINT
+static int
+piix4_save(struct v3_chkpt_ctx * ctx, 
+	   void                * priv_data)
+{
+    struct v3_southbridge * southbridge = priv_data;
+    struct piix4_internal * piix4       = container_of(southbridge, struct piix4_internal, southbridge);	
+
+    v3_chkpt_save_16(ctx, "PMSTS",    &(piix4->pmsts));
+    v3_chkpt_save_16(ctx, "PMEN",     &(piix4->pmen));
+    v3_chkpt_save_16(ctx, "PMCTNTRL", &(piix4->pmcntrl.value));
+
+    return 0;
+}
+
+static int
+piix4_load(struct v3_chkpt_ctx * ctx, 
+	   void                * priv_data)
+{
+        struct v3_southbridge * southbridge = priv_data;
+	struct piix4_internal * piix4       = container_of(southbridge, struct piix4_internal, southbridge);	
+
+	v3_chkpt_load_16(ctx, "PMSTS",    &(piix4->pmsts));
+	v3_chkpt_load_16(ctx, "PMEN",     &(piix4->pmen));
+	v3_chkpt_load_16(ctx, "PMCTNTRL", &(piix4->pmcntrl.value));
+
+    return 0;
+}
+
+#endif
 
 static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))piix_free,
+#ifdef V3_CONFIG_CHECKPOINT
+    .save = piix4_save,
+    .load = piix4_load,
+#endif
 };
 
 
