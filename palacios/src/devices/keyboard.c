@@ -137,8 +137,8 @@ struct queue {
 
     uint8_t start;
     uint8_t end;
-    int     count;
-};
+    uint8_t count;
+} __attribute__((packed));
 
 typedef enum {
     NORMAL,                /* - Normal mode means we deliver keys  to the vm and accept commands from it  */
@@ -1077,20 +1077,44 @@ keyboard_reset_device(struct keyboard_internal * kbd)
 }
 
 #ifdef V3_CONFIG_CHECKPOINT
+struct kbd_chkpt_state {
+
+    struct cmd_reg    cmd;
+    struct status_reg status;
+    kbd_state_t state;
+    mouse_state_t mouse_state;
+    uint8_t output_byte;      /*  output port of onboard uC (e.g. A20)  */
+    uint8_t input_byte;       /*  input  port of onboard uC             */
+    uint8_t mouse_enabled;
+    uint8_t scancode_set;
+
+    struct queue kbd_queue;
+    struct queue mouse_queue;
+
+} __attribute__((packed));
+
 static int 
 keyboard_save(struct v3_chkpt_ctx * ctx, 
 	      void                * private_data) 
 {
     struct keyboard_internal * kbd = (struct keyboard_internal *)private_data;
+    struct kbd_chkpt_state     kbd_chkpt;
 
-    v3_chkpt_save_8(ctx,    "CMD_REG",       &(kbd->cmd.val));
-    v3_chkpt_save_8(ctx,    "STATUS_REG",    &(kbd->status.val));
-    v3_chkpt_save_enum(ctx, "STATE",         &(kbd->state),       sizeof(kbd_state_t));
-    v3_chkpt_save_enum(ctx, "MOUSE_STATE",   &(kbd->mouse_state), sizeof(mouse_state_t));
-    v3_chkpt_save_8(ctx,    "OUTPUT",        &(kbd->output_byte));
-    v3_chkpt_save_8(ctx,    "INPUT",         &(kbd->input_byte));
-    v3_chkpt_save_8(ctx,    "SCANCODE_SET",  &(kbd->scancode_set));
-    v3_chkpt_save_8(ctx,    "MOUSE_ENABLED", &(kbd->mouse_enabled));
+    memset(&kbd_chkpt, 0, sizeof(struct kbd_chkpt_state));
+
+    kbd_chkpt.cmd.val       = kbd->cmd.val;
+    kbd_chkpt.status.val    = kbd->status.val;
+    kbd_chkpt.state         = kbd->state;
+    kbd_chkpt.mouse_state   = kbd->mouse_state;
+    kbd_chkpt.output_byte   = kbd->output_byte;
+    kbd_chkpt.input_byte    = kbd->input_byte;
+    kbd_chkpt.scancode_set  = kbd->scancode_set;
+    kbd_chkpt.mouse_enabled = kbd->mouse_enabled;
+    
+    memcpy(&(kbd_chkpt.kbd_queue),   &(kbd->kbd_queue),   sizeof(struct queue));
+    memcpy(&(kbd_chkpt.mouse_queue), &(kbd->mouse_queue), sizeof(struct queue));
+
+    v3_chkpt_save(ctx, "KBD", &kbd_chkpt, sizeof(struct kbd_chkpt_state));
 
 
     return 0;
@@ -1102,18 +1126,25 @@ keyboard_load(struct v3_chkpt_ctx * ctx,
 	      void                * private_data) 
 {
     struct keyboard_internal * kbd = (struct keyboard_internal *)private_data;
+    struct kbd_chkpt_state     kbd_chkpt;
+
+    memset(&kbd_chkpt, 0, sizeof(struct kbd_chkpt_state));
 
     keyboard_reset_device(kbd);
 
-    v3_chkpt_load_8(ctx,    "CMD_REG",       &(kbd->cmd.val));
-    v3_chkpt_load_8(ctx,    "STATUS_REG",    &(kbd->status.val));
-    v3_chkpt_load_enum(ctx, "STATE",         &(kbd->state),       sizeof(kbd_state_t));
-    v3_chkpt_load_enum(ctx, "MOUSE_STATE",   &(kbd->mouse_state), sizeof(mouse_state_t));
-    v3_chkpt_load_8(ctx,    "OUTPUT",        &(kbd->output_byte));
-    v3_chkpt_load_8(ctx,    "INPUT",         &(kbd->input_byte));
-    v3_chkpt_load_8(ctx,    "SCANCODE_SET",  &(kbd->scancode_set));
-    v3_chkpt_load_8(ctx,    "MOUSE_ENABLED", &(kbd->mouse_enabled));
+    v3_chkpt_load(ctx, "KBD", &kbd_chkpt, sizeof(struct kbd_chkpt_state));
 
+    kbd->cmd.val       = kbd_chkpt.cmd.val;
+    kbd->status.val    = kbd_chkpt.status.val;
+    kbd->state         = kbd_chkpt.state;
+    kbd->mouse_state   = kbd_chkpt.mouse_state;
+    kbd->output_byte   = kbd_chkpt.output_byte;
+    kbd->input_byte    = kbd_chkpt.input_byte;
+    kbd->scancode_set  = kbd_chkpt.scancode_set;
+    kbd->mouse_enabled = kbd_chkpt.mouse_enabled;
+
+    memcpy(&(kbd->kbd_queue),   &(kbd_chkpt.kbd_queue),   sizeof(struct queue));
+    memcpy(&(kbd->mouse_queue), &(kbd_chkpt.mouse_queue), sizeof(struct queue));
 
     return 0;
 }

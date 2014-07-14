@@ -640,19 +640,40 @@ io_apic_free(struct io_apic_state * ioapic)
 }
 
 #ifdef V3_CONFIG_CHECKPOINT
+
+/* 
+ * We assume that all devices will re-raise any pending interrupts
+ */
+
+struct io_apic_chkpt_state {
+    uint64_t base_addr;
+    uint32_t index_reg;
+
+    struct ioapic_id_reg   ioapic_id;
+    struct ioapic_ver_reg  ioapic_ver;
+    struct ioapic_arb_reg  ioapic_arb_id;
+  
+    struct redir_tbl_entry redir_tbl[24];
+} __attribute__((packed));
+
 static int
 io_apic_save(struct v3_chkpt_ctx * ctx, 
 	     void                * private_data) 
 {
-    struct io_apic_state * io_apic = (struct io_apic_state *)private_data;
+    struct io_apic_state     * io_apic = (struct io_apic_state *)private_data;
+    struct io_apic_chkpt_state io_apic_chkpt;
 
+    memset(&io_apic_chkpt, 0, sizeof(struct io_apic_chkpt_state));
 
-    v3_chkpt_save_ptr(ctx, "BASE_ADDR",  &(io_apic->base_addr));
-    v3_chkpt_save_32(ctx,  "INDEX_REG",  &(io_apic->index_reg));
-    v3_chkpt_save_32(ctx,  "IOAPIC_ID",  &(io_apic->ioapic_id.val));
-    v3_chkpt_save_32(ctx,  "IOAPIC_VER", &(io_apic->ioapic_ver.val));
-    v3_chkpt_save_32(ctx,  "ARB_ID",     &(io_apic->ioapic_arb_id.val));
-    v3_chkpt_save(ctx,     "REDIR_TBL",  &(io_apic->redir_tbl), sizeof(struct redir_tbl_entry) * 24);
+    io_apic_chkpt.base_addr         = io_apic->base_addr;
+    io_apic_chkpt.index_reg         = io_apic->index_reg;
+    io_apic_chkpt.ioapic_id.val     = io_apic->ioapic_id.val;
+    io_apic_chkpt.ioapic_ver.val    = io_apic->ioapic_ver.val;
+    io_apic_chkpt.ioapic_arb_id.val = io_apic->ioapic_arb_id.val;
+
+    memcpy(&(io_apic_chkpt.redir_tbl), &(io_apic->redir_tbl), sizeof(struct redir_tbl_entry) * 24);
+
+    v3_chkpt_save(ctx, "IO_APIC", &io_apic_chkpt, sizeof(struct io_apic_chkpt_state));
 
     return 0;
 }
@@ -661,15 +682,22 @@ static int
 io_apic_load(struct v3_chkpt_ctx * ctx, 
 	     void                * private_data) 
 {
-    struct io_apic_state * io_apic = (struct io_apic_state *)private_data;
+    struct io_apic_state     * io_apic = (struct io_apic_state *)private_data;
+    struct io_apic_chkpt_state io_apic_chkpt;
 
-    v3_chkpt_load_ptr(ctx, "BASE_ADDR",  &(io_apic->base_addr));
-    v3_chkpt_load_32(ctx,  "INDEX_REG",  &(io_apic->index_reg));
-    v3_chkpt_load_32(ctx,  "IOAPIC_ID",  &(io_apic->ioapic_id.val));
-    v3_chkpt_load_32(ctx,  "IOAPIC_VER", &(io_apic->ioapic_ver.val));
-    v3_chkpt_load_32(ctx,  "ARB_ID",     &(io_apic->ioapic_arb_id.val));
-    v3_chkpt_load(ctx,     "REDIR_TBL",  &(io_apic->redir_tbl), sizeof(struct redir_tbl_entry) * 24);
+    memset(&io_apic_chkpt, 0, sizeof(struct io_apic_chkpt_state));
 
+    v3_chkpt_load(ctx, "IO_APIC", &io_apic_chkpt, sizeof(struct io_apic_chkpt_state));
+
+    io_apic->base_addr         = io_apic_chkpt.base_addr;
+    io_apic->index_reg         = io_apic_chkpt.index_reg;
+    io_apic->ioapic_id.val     = io_apic_chkpt.ioapic_id.val;
+    io_apic->ioapic_ver.val    = io_apic_chkpt.ioapic_ver.val;
+    io_apic->ioapic_arb_id.val = io_apic_chkpt.ioapic_arb_id.val;
+
+    memcpy(&(io_apic->redir_tbl), &(io_apic_chkpt.redir_tbl), sizeof(struct redir_tbl_entry) * 24);
+
+    
 
     return 0;
 }

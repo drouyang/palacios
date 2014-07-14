@@ -201,11 +201,11 @@ struct video_internal {
     uint32_t hres;
     uint32_t vchars;
     uint32_t hchars;
-    int      graphmode;
+    uint8_t  graphmode;
     
     /* status */
-    uint32_t dirty;
-    uint32_t reschanged;
+    uint8_t dirty;
+    uint8_t reschanged;
 
     /* IMPORTANT: These are column offsets _NOT_ byte offsets */
     uint16_t screen_offset; // relative to the framebuffer
@@ -1511,81 +1511,126 @@ cga_free(struct video_internal * video_state)
 
 
 #ifdef V3_CONFIG_CHECKPOINT
+
+struct cga_chkpt_state {
+    struct misc_outp_reg misc_outp_reg;
+    
+    uint8_t  seq_index_reg;
+    uint8_t  seq_data_regs[SEQ_REG_COUNT];
+    uint8_t  crtc_index_reg;
+    uint8_t  crtc_data_regs[CRTC_REG_COUNT];	// io port 3D5
+    uint8_t  graphc_index_reg;			// io port 3CE
+    uint8_t  graphc_data_regs[GRAPHC_REG_COUNT];	// io port 3CF
+    uint8_t  attrc_index_flipflop;
+    uint8_t  attrc_index_reg;			// io port 3C0
+    uint8_t  attrc_data_regs[ATTRC_REG_COUNT];	// io port 3C1 (R) / 3C0 (W)
+    uint8_t  dac_indexr_reg;			// io port 3C8
+    uint8_t  dac_indexr_color;
+    uint8_t  dac_indexw_reg;			// io port 3C7
+    uint8_t  dac_indexw_color;
+    uint8_t  dac_data_regs[DAC_REG_COUNT];	// io port 3C9
+
+    uint64_t activefb_addr;
+    uint32_t activefb_len;
+    uint16_t iorange;
+    uint32_t vres;
+    uint32_t hres;
+    uint32_t vchars;
+    uint32_t hchars;
+    uint8_t  graphmode;
+    
+    /* status */
+    uint8_t  dirty;
+    uint8_t  reschanged;
+
+    /* IMPORTANT: These are column offsets _NOT_ byte offsets */
+    uint16_t screen_offset; // relative to the framebuffer
+    uint16_t cursor_offset; // relative to the framebuffer
+    
+
+} __attribute__((packed));
+
 static int cga_save(struct v3_chkpt_ctx * ctx, void * private_data) {
     struct video_internal * cga = (struct video_internal *)private_data;
+    struct cga_chkpt_state  cga_chkpt;
 
-    v3_chkpt_save(ctx,     "FRAMEBUFFER",    cga->framebuf, FRAMEBUF_SIZE);
+    memset(&(cga_chkpt), 0, sizeof(struct cga_chkpt_state));
 
-    v3_chkpt_save(ctx,     "MISC_OUTP",      &(cga->misc_outp_reg), sizeof(struct misc_outp_reg));
-    v3_chkpt_save_8(ctx,   "SEQ_INDEX",      &(cga->seq_index_reg));
-    v3_chkpt_save(ctx,     "SEQ_DATA",       cga->seq_data_regs,    sizeof(uint8_t) * SEQ_REG_COUNT);
-    v3_chkpt_save_8(ctx,   "CRTC_INDEX",     &(cga->crtc_index_reg));
-    v3_chkpt_save(ctx,     "CRTC_DATA",      &cga->crtc_data_regs,  sizeof(uint8_t) * CRTC_REG_COUNT);
-    v3_chkpt_save_8(ctx,   "GRAPHC_INDEX",   &(cga->graphc_index_reg));
-    v3_chkpt_save(ctx,     "GRAPHC_DATA",    cga->graphc_data_regs, sizeof(uint8_t) * GRAPHC_REG_COUNT);
-    v3_chkpt_save_8(ctx,   "ATTR_IDX_FF",    &(cga->attrc_index_flipflop));
-    v3_chkpt_save_8(ctx,   "ATTR_IDX",       &(cga->attrc_index_reg));
-    v3_chkpt_save(ctx,     "ATTR_DATA",      cga->attrc_data_regs,  sizeof(uint8_t) * ATTRC_REG_COUNT);
-    v3_chkpt_save_8(ctx,   "DAC_IDXR",       &(cga->dac_indexr_reg));
-    v3_chkpt_save_8(ctx,   "DAC_IDXR_COLOR", &(cga->dac_indexr_color));
-    v3_chkpt_save_8(ctx,   "DAC_IDXW",       &(cga->dac_indexw_reg));
-    v3_chkpt_save_8(ctx,   "DAC_IDXW_COLOR", &(cga->dac_indexw_color));
-    v3_chkpt_save(ctx,     "DAC_DATA",       cga->dac_data_regs,    sizeof(uint8_t) * DAC_REG_COUNT);
+    v3_chkpt_save(ctx,     "CGA_FRAMEBUFFER",    cga->framebuf, FRAMEBUF_SIZE);
 
-    v3_chkpt_save_ptr(ctx, "ACTIVEFB_ADDR",  &(cga->activefb_addr));
-    v3_chkpt_save_32(ctx,  "ACTIVEFB_LEN",   &(cga->activefb_len));
-    v3_chkpt_save_16(ctx,  "IORANGE",        &(cga->iorange));
-    v3_chkpt_save_32(ctx,  "VRES",           &(cga->vres));
-    v3_chkpt_save_32(ctx,  "HRES",           &(cga->hres));
-    v3_chkpt_save_32(ctx,  "VCHARS",         &(cga->vchars));
-    v3_chkpt_save_32(ctx,  "HCHARS",         &(cga->hchars));
-    v3_chkpt_save_32(ctx,  "GRAPHMODE",      &(cga->graphmode));
+    memcpy(&(cga_chkpt.seq_index_reg), &(cga->misc_outp_reg), sizeof(struct misc_outp_reg));
 
-    v3_chkpt_save_32(ctx,  "DIRTY",          &(cga->dirty));
-    v3_chkpt_save_32(ctx,  "RESCHANGED",     &(cga->reschanged));
+    memcpy(cga_chkpt.seq_data_regs,    cga->seq_data_regs,    SEQ_REG_COUNT);
+    memcpy(cga_chkpt.crtc_data_regs,   cga->crtc_data_regs,   CRTC_REG_COUNT);
+    memcpy(cga_chkpt.graphc_data_regs, cga->graphc_data_regs, GRAPHC_REG_COUNT);
+    memcpy(cga_chkpt.attrc_data_regs,  cga->attrc_data_regs,  ATTRC_REG_COUNT);
+    memcpy(cga_chkpt.dac_data_regs,    cga->dac_data_regs,    DAC_REG_COUNT);
 
-    v3_chkpt_save_16(ctx, "SCREEN_OFFSET",   &(cga->screen_offset));
-    v3_chkpt_save_16(ctx, "CURSOR_OFFSET",   &(cga->cursor_offset));
+    cga_chkpt.seq_index_reg    = cga->seq_index_reg;
+    cga_chkpt.crtc_index_reg   = cga->crtc_index_reg;
+    cga_chkpt.graphc_index_reg = cga->graphc_index_reg;
+    cga_chkpt.attrc_index_reg  = cga->attrc_index_reg;
+    cga_chkpt.dac_indexr_reg   = cga->dac_indexr_reg;
+    cga_chkpt.dac_indexr_color = cga->dac_indexr_color;
+    cga_chkpt.dac_indexw_reg   = cga->dac_indexw_reg;
+    cga_chkpt.dac_indexw_color = cga->dac_indexw_color;
+    cga_chkpt.activefb_addr    = cga->activefb_addr;
+    cga_chkpt.activefb_len     = cga->activefb_len;
+    cga_chkpt.iorange          = cga->iorange;
+    cga_chkpt.vres             = cga->vres;
+    cga_chkpt.hres             = cga->hres;
+    cga_chkpt.vchars           = cga->vchars;
+    cga_chkpt.hchars           = cga->hchars;
+    cga_chkpt.graphmode        = cga->graphmode;
+    cga_chkpt.dirty            = cga->dirty;
+    cga_chkpt.reschanged       = cga->reschanged;
+    cga_chkpt.screen_offset    = cga->screen_offset;
+    cga_chkpt.cursor_offset    = cga->cursor_offset;
+
+    v3_chkpt_save(ctx, "CGA", &cga_chkpt, sizeof(struct cga_chkpt_state));
 
     return 0;
 }
 
 static int cga_load(struct v3_chkpt_ctx * ctx, void * private_data) {
     struct video_internal * cga = (struct video_internal *)private_data;
+    struct cga_chkpt_state  cga_chkpt;
+
+    memset(&(cga_chkpt), 0, sizeof(struct cga_chkpt_state));
+
+    v3_chkpt_load(ctx, "CGA_FRAMEBUFFER",    cga->framebuf, FRAMEBUF_SIZE);
+    v3_chkpt_load(ctx, "CGA",                &cga_chkpt,  sizeof(struct cga_chkpt_state));
 
 
-    v3_chkpt_load(ctx,     "FRAMEBUFFER",    cga->framebuf, FRAMEBUF_SIZE);
+    memcpy(&(cga->seq_index_reg), &(cga_chkpt.misc_outp_reg), sizeof(struct misc_outp_reg));
 
-    v3_chkpt_load(ctx,     "MISC_OUTP",      &(cga->misc_outp_reg), sizeof(struct misc_outp_reg));
-    v3_chkpt_load_8(ctx,   "SEQ_INDEX",      &(cga->seq_index_reg));
-    v3_chkpt_load(ctx,     "SEQ_DATA",       cga->seq_data_regs,    sizeof(uint8_t) * SEQ_REG_COUNT);
-    v3_chkpt_load_8(ctx,   "CRTC_INDEX",     &(cga->crtc_index_reg));
-    v3_chkpt_load(ctx,     "CRTC_DATA",      &cga->crtc_data_regs,  sizeof(uint8_t) * CRTC_REG_COUNT);
-    v3_chkpt_load_8(ctx,   "GRAPHC_INDEX",   &(cga->graphc_index_reg));
-    v3_chkpt_load(ctx,     "GRAPHC_DATA",    cga->graphc_data_regs, sizeof(uint8_t) * GRAPHC_REG_COUNT);
-    v3_chkpt_load_8(ctx,   "ATTR_IDX_FF",    &(cga->attrc_index_flipflop));
-    v3_chkpt_load_8(ctx,   "ATTR_IDX",       &(cga->attrc_index_reg));
-    v3_chkpt_load(ctx,     "ATTR_DATA",      cga->attrc_data_regs,  sizeof(uint8_t) * ATTRC_REG_COUNT);
-    v3_chkpt_load_8(ctx,   "DAC_IDXR",       &(cga->dac_indexr_reg));
-    v3_chkpt_load_8(ctx,   "DAC_IDXR_COLOR", &(cga->dac_indexr_color));
-    v3_chkpt_load_8(ctx,   "DAC_IDXW",       &(cga->dac_indexw_reg));
-    v3_chkpt_load_8(ctx,   "DAC_IDXW_COLOR", &(cga->dac_indexw_color));
-    v3_chkpt_load(ctx,     "DAC_DATA",       cga->dac_data_regs,    sizeof(uint8_t) * DAC_REG_COUNT);
+    memcpy(cga->seq_data_regs,    cga_chkpt.seq_data_regs,    SEQ_REG_COUNT);
+    memcpy(cga->crtc_data_regs,   cga_chkpt.crtc_data_regs,   CRTC_REG_COUNT);
+    memcpy(cga->graphc_data_regs, cga_chkpt.graphc_data_regs, GRAPHC_REG_COUNT);
+    memcpy(cga->attrc_data_regs,  cga_chkpt.attrc_data_regs,  ATTRC_REG_COUNT);
+    memcpy(cga->dac_data_regs,    cga_chkpt.dac_data_regs,    DAC_REG_COUNT);
 
-    v3_chkpt_load_ptr(ctx, "ACTIVEFB_ADDR",  &(cga->activefb_addr));
-    v3_chkpt_load_32(ctx,  "ACTIVEFB_LEN",   &(cga->activefb_len));
-    v3_chkpt_load_16(ctx,  "IORANGE",        &(cga->iorange));
-    v3_chkpt_load_32(ctx,  "VRES",           &(cga->vres));
-    v3_chkpt_load_32(ctx,  "HRES",           &(cga->hres));
-    v3_chkpt_load_32(ctx,  "VCHARS",         &(cga->vchars));
-    v3_chkpt_load_32(ctx,  "HCHARS",         &(cga->hchars));
-    v3_chkpt_load_32(ctx,  "GRAPHMODE",      &(cga->graphmode));
+    cga->seq_index_reg    = cga_chkpt.seq_index_reg;
+    cga->crtc_index_reg   = cga_chkpt.crtc_index_reg;
+    cga->graphc_index_reg = cga_chkpt.graphc_index_reg;
+    cga->attrc_index_reg  = cga_chkpt.attrc_index_reg;
+    cga->dac_indexr_reg   = cga_chkpt.dac_indexr_reg;
+    cga->dac_indexr_color = cga_chkpt.dac_indexr_color;
+    cga->dac_indexw_reg   = cga_chkpt.dac_indexw_reg;
+    cga->dac_indexw_color = cga_chkpt.dac_indexw_color;
+    cga->activefb_addr    = cga_chkpt.activefb_addr;
+    cga->activefb_len     = cga_chkpt.activefb_len;
+    cga->iorange          = cga_chkpt.iorange;
+    cga->vres             = cga_chkpt.vres;
+    cga->hres             = cga_chkpt.hres;
+    cga->vchars           = cga_chkpt.vchars;
+    cga->hchars           = cga_chkpt.hchars;
+    cga->graphmode        = cga_chkpt.graphmode;
+    cga->dirty            = cga_chkpt.dirty;
+    cga->reschanged       = cga_chkpt.reschanged;
+    cga->screen_offset    = cga_chkpt.screen_offset;
+    cga->cursor_offset    = cga_chkpt.cursor_offset;
 
-    v3_chkpt_load_32(ctx,  "DIRTY",          &(cga->dirty));
-    v3_chkpt_load_32(ctx,  "RESCHANGED",     &(cga->reschanged));
-
-    v3_chkpt_load_16(ctx, "SCREEN_OFFSET",   &(cga->screen_offset));
-    v3_chkpt_load_16(ctx, "CURSOR_OFFSET",   &(cga->cursor_offset));
 
     return 0;
 }

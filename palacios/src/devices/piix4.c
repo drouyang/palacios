@@ -639,16 +639,29 @@ static int piix_free(struct v3_southbridge * piix4) {
 }
 
 #ifdef V3_CONFIG_CHECKPOINT
+
+struct piix4_chkpt_state {
+    uint16_t pmsts;
+    uint16_t pmen;
+    uint16_t pmcntrl;
+} __attribute__((packed));
+
+
 static int
 piix4_save(struct v3_chkpt_ctx * ctx, 
 	   void                * priv_data)
 {
-    struct v3_southbridge * southbridge = priv_data;
-    struct piix4_internal * piix4       = container_of(southbridge, struct piix4_internal, southbridge);	
+    struct v3_southbridge    * southbridge = priv_data;
+    struct piix4_internal    * piix4       = container_of(southbridge, struct piix4_internal, southbridge);	
+    struct piix4_chkpt_state   piix4_chkpt;
 
-    v3_chkpt_save_16(ctx, "PMSTS",    &(piix4->pmsts));
-    v3_chkpt_save_16(ctx, "PMEN",     &(piix4->pmen));
-    v3_chkpt_save_16(ctx, "PMCTNTRL", &(piix4->pmcntrl.value));
+    memset(&(piix4_chkpt), 0, sizeof(struct piix4_chkpt_state));
+
+    piix4_chkpt.pmsts   = piix4->pmsts;
+    piix4_chkpt.pmen    = piix4->pmen;
+    piix4_chkpt.pmcntrl = piix4->pmcntrl.value;
+
+    v3_chkpt_save(ctx, "PIIX4", &piix4_chkpt, sizeof(struct piix4_chkpt_state));
 
     return 0;
 }
@@ -657,12 +670,17 @@ static int
 piix4_load(struct v3_chkpt_ctx * ctx, 
 	   void                * priv_data)
 {
-        struct v3_southbridge * southbridge = priv_data;
-	struct piix4_internal * piix4       = container_of(southbridge, struct piix4_internal, southbridge);	
+    struct v3_southbridge * southbridge = priv_data;
+    struct piix4_internal * piix4       = container_of(southbridge, struct piix4_internal, southbridge);	
+    struct piix4_chkpt_state   piix4_chkpt;
+    
+    memset(&(piix4_chkpt), 0, sizeof(struct piix4_chkpt_state));	
+	
+    v3_chkpt_load(ctx, "PIIX4", &piix4_chkpt, sizeof(struct piix4_chkpt_state));
 
-	v3_chkpt_load_16(ctx, "PMSTS",    &(piix4->pmsts));
-	v3_chkpt_load_16(ctx, "PMEN",     &(piix4->pmen));
-	v3_chkpt_load_16(ctx, "PMCTNTRL", &(piix4->pmcntrl.value));
+    piix4->pmsts         = piix4_chkpt.pmsts;
+    piix4->pmen          = piix4_chkpt.pmen;
+    piix4->pmcntrl.value = piix4_chkpt.pmcntrl;
 
     return 0;
 }

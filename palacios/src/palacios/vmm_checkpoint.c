@@ -7,12 +7,9 @@
  * and the University of New Mexico.  You can find out more at 
  * http://www.v3vee.org
  *
- * Copyright (c) 2011, Madhav Suresh <madhav@u.northwestern.edu> 
- * Copyright (c) 2011, The V3VEE Project <http://www.v3vee.org> 
+ * Copyright (c) 2014, Jack Lange <jacklange@cs.pitt.edu>
  * All rights reserved.
  *
- * Author: Madhav Suresh <madhav@u.northwestern.edu>
- *	   Arefin Huq <fig@arefin.net>
  *
  *
  * This is free software.  You are permitted to use,
@@ -64,14 +61,31 @@ struct chkpt_interface {
 };
 
 
-struct v3_chkpt {
-    struct v3_vm_info      * vm;
-    struct chkpt_interface * interface;
+struct chkpt_req {
+    char name[32];
 
-    void * store_data;
+    v3_chkpt_save_fn save;
+    v3_chkpt_load_fn load;
+
+    union {
+	uint32_t flags;
+	struct {
+	    uint32_t   zero_copy : 1;
+	    uint32_t   rsvd      : 31;
+	} __attribute__((packed));
+    } __attribute__((packed));
+
+    size_t size;
+
+    struct list_head node;
 };
 
 
+struct v3_chkpt {
+    struct v3_vm_info      * vm;
+    struct chkpt_interface * interface;
+    void * store_data;
+};
 
 
 static uint_t store_hash_fn(addr_t key) {
@@ -127,6 +141,9 @@ V3_deinit_checkpoint()
     v3_free_htable(store_table, 0, 0);
     return 0;
 }
+
+
+
 
 
 static char svm_chkpt_header[] = "v3-checkpoint: SVM";
@@ -353,46 +370,60 @@ load_header(struct v3_vm_info * vm,
 }
 
 
+
 static int 
 load_core(struct v3_core_info * core,
 	  struct v3_chkpt     * chkpt) 
 {
     extern v3_cpu_arch_t v3_mach_type;
-
-    void * ctx          = NULL;
     char   key_name[16] = {[0 ... 15] = 0};
+    void * ctx          = NULL;
+    int    ret          = 0;
 
-    snprintf(key_name, 16, "v3_core_info%d", core->vcpu_id);
-
+    snprintf(key_name, 16, "core-%d", core->vcpu_id);
     ctx = v3_chkpt_open_ctx(chkpt, NULL, key_name);
 
+
     if (!ctx) { 
-	PrintError("Could not open context to load core\n");
+	PrintError("Could not open context to load SVM core\n");
 	return -1;
     }
+   
+    switch (v3_mach_type) {
+	case V3_SVM_CPU:
+	case V3_SVM_REV3_CPU: {
 
-    // These really need to have error checking
-    v3_chkpt_load_64(ctx,  "RIP",    &(core->rip));
-    v3_chkpt_load_32(ctx,  "CPL",    &(core->cpl));
-    v3_chkpt_load_64(ctx,  "CR0",    &(core->ctrl_regs.cr0));
-    v3_chkpt_load_64(ctx,  "CR2",    &(core->ctrl_regs.cr2));
-    v3_chkpt_load_64(ctx,  "CR4",    &(core->ctrl_regs.cr4));
-    v3_chkpt_load_64(ctx,  "CR8",    &(core->ctrl_regs.cr8));
-    v3_chkpt_load_64(ctx,  "RFLAGS", &(core->ctrl_regs.rflags));
-    v3_chkpt_load_64(ctx,  "EFER",   &(core->ctrl_regs.efer));
+	    ret = v3_svm_load_core(core, ctx);
 
-    v3_chkpt_load(ctx,     "GPRS",     &(core->vm_regs),  sizeof(struct v3_gprs));
-    v3_chkpt_load(ctx,     "DBG_REGS", &(core->dbg_regs), sizeof(struct v3_dbg_regs));
-    v3_chkpt_load(ctx,     "SEGMENTS", &(core->segments),  sizeof(struct v3_segments));
+	    if (ret == -1) {
+		PrintError("Failed to patch core %d\n", core->vcpu_id);
+	    }
 
-    v3_chkpt_load_64(ctx,  "GUEST_CR3" , &(core->shdw_pg_state.guest_cr3));
-    v3_chkpt_load_64(ctx,  "GUEST_CR0",  &(core->shdw_pg_state.guest_cr0));
-    v3_chkpt_load_msr(ctx, "GUEST_EFER", &(core->shdw_pg_state.guest_efer));
+	    break;
+	}
+	case V3_VMX_CPU:
+	case V3_VMX_EPT_CPU:
+	case V3_VMX_EPT_UG_CPU: {
+	    
+	    ret = v3_vmx_load_core(core, ctx);
 
+	    if (ret  < 0) {
+		PrintError("VMX checkpoint failed\n");
+	    }
+
+	    break;
+	}
+	default:
+	    PrintError("Invalid CPU Type (%d)\n", v3_mach_type);
+	    ret = -1;
+    }
 
     v3_chkpt_close_ctx(ctx);
 
-    PrintDebug("Finished reading v3_core_info information\n");
+
+    if (ret == -1) {
+	return -1;
+    }
 
     core->cpu_mode = v3_get_vm_cpu_mode(core);
     core->mem_mode = v3_get_vm_mem_mode(core);
@@ -412,58 +443,6 @@ load_core(struct v3_core_info * core,
     }
 
 
-    switch (v3_mach_type) {
-	case V3_SVM_CPU:
-	case V3_SVM_REV3_CPU: {
-	    char key_name[16];
-
-	    snprintf(key_name, 16, "vmcb_data%d", core->vcpu_id);
-	    ctx = v3_chkpt_open_ctx(chkpt, NULL, key_name);
-
-	    if (!ctx) { 
-		PrintError("Could not open context to load SVM core\n");
-		return -1;
-	    }
-	    
-	    if (v3_svm_load_core(core, ctx) == -1) {
-		PrintError("Failed to patch core %d\n", core->vcpu_id);
-		v3_chkpt_close_ctx(ctx);
-		return -1;
-	    }
-
-	    v3_chkpt_close_ctx(ctx);
-
-	    break;
-	}
-	case V3_VMX_CPU:
-	case V3_VMX_EPT_CPU:
-	case V3_VMX_EPT_UG_CPU: {
-	    char key_name[16];
-
-	    snprintf(key_name, 16, "vmcs_data%d", core->vcpu_id);
-
-	    ctx = v3_chkpt_open_ctx(chkpt, NULL, key_name);
-
-	    if (!ctx) { 
-		PrintError("Could not open context to load VMX core\n");
-		return -1;
-	    }
-	    
-	    if (v3_vmx_load_core(core, ctx) < 0) {
-		PrintError("VMX checkpoint failed\n");
-		v3_chkpt_close_ctx(ctx);
-		return -1;
-	    }
-
-	    v3_chkpt_close_ctx(ctx);
-
-	    break;
-	}
-	default:
-	    PrintError("Invalid CPU Type (%d)\n", v3_mach_type);
-	    return -1;
-    }
-
     v3_print_guest_state(core);
 
     return 0;
@@ -475,102 +454,100 @@ save_core(struct v3_core_info * core,
 	  struct v3_chkpt     * chkpt) 
 {
     extern v3_cpu_arch_t v3_mach_type;
-    void * ctx          = NULL;
     char   key_name[16] = {[0 ... 15] = 0};
-
-    memset(key_name, 0, 16);
-
-    v3_print_guest_state(core);
-
-
-    snprintf(key_name, 16, "v3_core_info%d", core->vcpu_id);
-
+    void * ctx          = NULL;
+    int    ret = 0;
+	    
+    snprintf(key_name, 16, "core-%d", core->vcpu_id);
+	    
     ctx = v3_chkpt_open_ctx(chkpt, NULL, key_name);
-    
+
     if (!ctx) { 
-	PrintError("Unable to open context to save core\n");
+	PrintError("Could not open context to store SVM core\n");
 	return -1;
     }
 
-
-    // Error checking of all this needs to happen
-    v3_chkpt_save_64(ctx,  "RIP",    &(core->rip));
-    v3_chkpt_save_32(ctx,  "CPL",    &(core->cpl));
-    v3_chkpt_save_64(ctx,  "CR0",    &(core->ctrl_regs.cr0));
-    v3_chkpt_save_64(ctx,  "CR2",    &(core->ctrl_regs.cr2));
-    v3_chkpt_save_64(ctx,  "CR4",    &(core->ctrl_regs.cr4));
-    v3_chkpt_save_64(ctx,  "CR8",    &(core->ctrl_regs.cr8));
-    v3_chkpt_save_64(ctx,  "RFLAGS", &(core->ctrl_regs.rflags));
-    v3_chkpt_save_64(ctx,  "EFER",   &(core->ctrl_regs.efer));
-
-    v3_chkpt_save(ctx,     "GPRS",     &(core->vm_regs),  sizeof(struct v3_gprs));
-    v3_chkpt_save(ctx,     "DBG_REGS", &(core->dbg_regs), sizeof(struct v3_dbg_regs));
-    v3_chkpt_save(ctx,     "SEGMENTS", &(core->segments), sizeof(struct v3_segments));
-
-    v3_chkpt_save_64(ctx,  "GUEST_CR3" , &(core->shdw_pg_state.guest_cr3));
-    v3_chkpt_save_64(ctx,  "GUEST_CR0",  &(core->shdw_pg_state.guest_cr0));
-    v3_chkpt_save_msr(ctx, "GUEST_EFER", &(core->shdw_pg_state.guest_efer));
-
-    v3_chkpt_close_ctx(ctx);
+    v3_print_guest_state(core);
 
     //Architechture specific code
     switch (v3_mach_type) {
 	case V3_SVM_CPU:
 	case V3_SVM_REV3_CPU: {
-	    char   key_name[16] = {[0 ... 15] = 0};
-	    void * ctx          = NULL;
-	    
-	    snprintf(key_name, 16, "vmcb_data%d", core->vcpu_id);
-	    
-	    ctx = v3_chkpt_open_ctx(chkpt, NULL, key_name);
 
-	    if (!ctx) { 
-		PrintError("Could not open context to store SVM core\n");
-		return -1;
-	    }
-	    
-	    if (v3_svm_save_core(core, ctx) == -1) {
+	    ret = v3_svm_save_core(core, ctx);
+
+	    if (ret == -1) {
 		PrintError("VMCB Unable to be written\n");
-		v3_chkpt_close_ctx(ctx);
-		return -1;
 	    }
 	    
-	    v3_chkpt_close_ctx(ctx);
 	    break;
 	}
 	case V3_VMX_CPU:
 	case V3_VMX_EPT_CPU:
 	case V3_VMX_EPT_UG_CPU: {
-	    char   key_name[16] = {[0 ... 15] = 0};
-	    void * ctx          = NULL;
 
-	    snprintf(key_name, 16, "vmcs_data%d", core->vcpu_id);
-	    
-	    ctx = v3_chkpt_open_ctx(chkpt, NULL, key_name);
-	    
-	    if (!ctx) { 
-		PrintError("Could not open context to store VMX core\n");
-		return -1;
-	    }
-
-	    if (v3_vmx_save_core(core, ctx) == -1) {
+	    ret = v3_vmx_save_core(core, ctx);
+	    if (ret == -1) {
 		PrintError("VMX checkpoint failed\n");
-		v3_chkpt_close_ctx(ctx);
-		return -1;
 	    }
-
-	    v3_chkpt_close_ctx(ctx);
 
 	    break;
 	}
 	default:
 	    PrintError("Invalid CPU Type (%d)\n", v3_mach_type);
-	    return -1;
+	    ret = -1;
     }
     
+    v3_chkpt_close_ctx(ctx);
+
+    return ret;
+}
+
+
+int 
+v3_chkpt_init(struct v3_vm_info * vm)
+{
+    struct v3_chkpt_state * chkpt_state = &(vm->chkpt_state);
+
+    INIT_LIST_HEAD(&(chkpt_state->handler_list));
+    chkpt_state->num_handlers   = 0;
+    chkpt_state->chkpt_tot_size = 0;
+    chkpt_state->chkpt_buf_size = 0;
+    chkpt_state->chkpt_buf      = NULL;
+
     return 0;
 }
 
+int
+v3_chkpt_deinit(struct v3_vm_info * vm)
+{
+    struct v3_chkpt_state * chkpt_state = &(vm->chkpt_state);
+
+    struct chkpt_req * req = NULL;
+    struct chkpt_req * tmp = NULL;
+
+    // Free all handlers
+    list_for_each_entry_safe(req, tmp, &(chkpt_state->handler_list), node) {
+	list_del(&(req->node));
+	V3_Free(req);
+    }
+    
+
+    return 0;
+}
+
+int 
+v3_chkpt_add_handler(struct v3_vm_info * vm,
+		     char              * name, 
+		     v3_chkpt_save_fn    save, 
+		     v3_chkpt_load_fn    load,
+		     size_t              size) 
+{
+    
+    
+
+    return -1;
+}
 
 int 
 v3_chkpt_save_vm(struct v3_vm_info * vm, 

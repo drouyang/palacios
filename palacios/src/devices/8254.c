@@ -749,21 +749,38 @@ pit_free(void * private_data)
 
 
 #ifdef V3_CONFIG_CHECKPOINT
+
+struct pit_chkpt_state {
+    uint64_t pit_counter;
+    uint64_t pit_reload;
+    
+    struct channel ch0;
+    struct channel ch1;
+    struct channel ch2;
+
+    uint8_t speaker;
+} __attribute__((packed));
+
 static int 
 pit_save(struct v3_chkpt_ctx * ctx, 
 	 void                * private_data) 
 {
     struct pit * pit_state = (struct pit *)private_data; 
+    struct pit_chkpt_state pit_chkpt;
 
-    v3_chkpt_save_64(ctx, "PIT_COUNTER", &(pit_state->pit_counter));
-    v3_chkpt_save_64(ctx, "PIT_RELOAD",  &(pit_state->pit_reload));
+    memset(&(pit_chkpt), 0, sizeof(struct pit_chkpt_state));
 
-    v3_chkpt_save(ctx,    "CHANNEL0",    &(pit_state->ch_0), sizeof(struct channel));
-    v3_chkpt_save(ctx,    "CHANNEL1",    &(pit_state->ch_1), sizeof(struct channel));
-    v3_chkpt_save(ctx,    "CHANNEL2",    &(pit_state->ch_2), sizeof(struct channel));
 
-    v3_chkpt_save_8(ctx,  "SPEAKER",     &(pit_state->speaker));
-    
+    pit_chkpt.pit_counter = pit_state->pit_counter;
+    pit_chkpt.pit_reload  = pit_state->pit_reload;
+    pit_chkpt.speaker     = pit_state->speaker;
+
+    memcpy(&(pit_chkpt.ch0), &(pit_state->ch_0), sizeof(struct channel));
+    memcpy(&(pit_chkpt.ch1), &(pit_state->ch_1), sizeof(struct channel));
+    memcpy(&(pit_chkpt.ch2), &(pit_state->ch_2), sizeof(struct channel));
+
+    v3_chkpt_save(ctx, "PIT", &pit_chkpt, sizeof(struct pit_chkpt_state));
+
     return 0;
 }
 
@@ -772,16 +789,20 @@ pit_load(struct v3_chkpt_ctx * ctx,
 	 void                * private_data) 
 {
     struct pit * pit_state = (struct pit *)private_data;
+    struct pit_chkpt_state pit_chkpt;
 
-    v3_chkpt_load_64(ctx, "PIT_COUNTER", &(pit_state->pit_counter));
-    v3_chkpt_load_64(ctx, "PIT_RELOAD",  &(pit_state->pit_reload));
+    memset(&(pit_chkpt), 0, sizeof(struct pit_chkpt_state));
 
-    v3_chkpt_load(ctx,    "CHANNEL0",    &(pit_state->ch_0), sizeof(struct channel));
-    v3_chkpt_load(ctx,    "CHANNEL1",    &(pit_state->ch_1), sizeof(struct channel));
-    v3_chkpt_load(ctx,    "CHANNEL2",    &(pit_state->ch_2), sizeof(struct channel)); 
+    v3_chkpt_load(ctx, "PIT", &pit_chkpt, sizeof(struct pit_chkpt_state));
 
-    v3_chkpt_load_8(ctx,  "SPEAKER",     &(pit_state->speaker));
 
+    pit_state->pit_counter = pit_chkpt.pit_counter;
+    pit_state->pit_reload  = pit_chkpt.pit_reload;
+    pit_state->speaker     = pit_chkpt.speaker;
+
+    memcpy(&(pit_state->ch_0), &(pit_chkpt.ch0), sizeof(struct channel));
+    memcpy(&(pit_state->ch_1), &(pit_chkpt.ch1), sizeof(struct channel));
+    memcpy(&(pit_state->ch_2), &(pit_chkpt.ch2), sizeof(struct channel));
 
     return 0;
 }

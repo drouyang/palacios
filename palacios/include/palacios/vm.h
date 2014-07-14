@@ -46,6 +46,7 @@ struct v3_cfg_tree;
 #include <palacios/vmm_fw_cfg.h>
 #include <palacios/vmm_fpu.h>
 
+#include <palacios/vmm_checkpoint.h>
 
 #ifdef V3_CONFIG_TELEMETRY
 #include <palacios/vmm_telemetry.h>
@@ -175,6 +176,7 @@ struct v3_vm_info {
 
     struct v3_barrier         barrier;
 
+    struct v3_chkpt_state     chkpt_state;
 
 
 #ifdef V3_CONFIG_TELEMETRY
@@ -189,6 +191,28 @@ struct v3_vm_info {
     int num_cores;
     struct v3_core_info cores[0];  /*  This MUST be the last entry.. */
 };
+
+
+
+/* 
+ * Checkpoint structure 
+ */
+struct v3_core_chkpt {
+    uint64_t rip;
+    uint32_t cpl;
+    
+    struct v3_ctrl_regs ctrl_regs;
+    struct v3_gprs      gprs;
+    struct v3_dbg_regs  dbg_regs;
+    struct v3_segments  segments;
+
+    uint64_t shdw_cr3;
+    uint64_t shdw_cr0;
+    uint64_t shdw_efer;
+
+    struct v3_msrs msrs;
+
+} __attribute__((packed));
 
 
 

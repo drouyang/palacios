@@ -738,6 +738,23 @@ int
 v3_vmx_save_core(struct v3_core_info * core, void * ctx)
 {
     //    struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
+    struct v3_core_chkpt chkpt;
+
+    memset(&chkpt, 0, sizeof(struct v3_core_chkpt));
+    
+    chkpt.rip = core->rip;
+    chkpt.cpl = core->cpl; /* Currently not set by VMX... */
+
+    memcpy(&(chkpt.ctrl_regs), &(core->ctrl_regs), sizeof(struct v3_ctrl_regs));
+    memcpy(&(chkpt.gprs),      &(core->vm_regs),   sizeof(struct v3_gprs));
+    memcpy(&(chkpt.dbg_regs),  &(core->dbg_regs),  sizeof(struct v3_dbg_regs));
+    memcpy(&(chkpt.segments),  &(core->segments),  sizeof(struct v3_segments));
+    
+    chkpt.shdw_cr3  = core->shdw_pg_state.guest_cr3;
+    chkpt.shdw_cr0  = core->shdw_pg_state.guest_cr0;
+    chkpt.shdw_efer = core->shdw_pg_state.guest_efer.value;
+
+    v3_chkpt_save(ctx, "CORE", &chkpt, sizeof(struct v3_core_chkpt));
 
     return 0;
 }
@@ -746,6 +763,24 @@ int
 v3_vmx_load_core(struct v3_core_info * core, void * ctx)
 {
     //    struct vmx_data * vmx_info        = (struct vmx_data *)(core->vmm_data);
+    struct v3_core_chkpt chkpt;
+
+    memset(&chkpt, 0, sizeof(struct v3_core_chkpt));
+
+    v3_chkpt_load(ctx, "CORE", &chkpt, sizeof(struct v3_core_chkpt));    
+
+    core->rip = chkpt.rip;
+    core->cpl = chkpt.cpl; /* Currently not set by VMX... */
+
+    memcpy(&(core->ctrl_regs), &(chkpt.ctrl_regs), sizeof(struct v3_ctrl_regs));
+    memcpy(&(core->vm_regs),   &(chkpt.gprs),      sizeof(struct v3_gprs));
+    memcpy(&(core->dbg_regs),  &(chkpt.dbg_regs),  sizeof(struct v3_dbg_regs));
+    memcpy(&(core->segments),  &(chkpt.segments),  sizeof(struct v3_segments));
+    
+    core->shdw_pg_state.guest_cr3        = chkpt.shdw_cr3;
+    core->shdw_pg_state.guest_cr0        = chkpt.shdw_cr0;
+    core->shdw_pg_state.guest_efer.value = chkpt.shdw_efer;
+
 
     return 0;
 }

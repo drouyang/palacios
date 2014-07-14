@@ -54,7 +54,7 @@ struct v3_ctrl_regs {
     v3_reg_t cr8;
     v3_reg_t rflags;
     v3_reg_t efer;
-};
+} __attribute__((packed));
 
 
 struct v3_msrs {
@@ -62,7 +62,7 @@ struct v3_msrs {
     v3_reg_t lstar;
     v3_reg_t sfmask;
     v3_reg_t kern_gs_base;
-};
+} __attribute__((packed));
 
 
 struct v3_dbg_regs {
@@ -72,7 +72,7 @@ struct v3_dbg_regs {
     v3_reg_t dr3;
     v3_reg_t dr6;
     v3_reg_t dr7;
-};
+} __attribute__((packed));
 
 
 

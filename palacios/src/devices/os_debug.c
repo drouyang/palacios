@@ -126,15 +126,27 @@ debug_free(struct debug_state * state)
 };
 
 #ifdef V3_CONFIG_CHECKPOINT
+
+struct os_dbg_chkpt_state {
+    char     debug_buf[BUF_SIZE];
+    uint32_t debug_offset;
+
+} __attribute__((packed));
+
 static int 
 debug_save(struct v3_chkpt_ctx * ctx, 
 	   void                * private_data) 
 {
     struct debug_state * dbg = (struct debug_state *)private_data;
+    struct os_dbg_chkpt_state os_dbg_chkpt;
+
+    memset(&(os_dbg_chkpt), 0, sizeof(struct os_dbg_chkpt_state));
+
+    memcpy(os_dbg_chkpt.debug_buf, dbg->debug_buf, BUF_SIZE);
+    os_dbg_chkpt.debug_offset = dbg->debug_offset;
     
-    v3_chkpt_save(ctx,    "BUF",    &(dbg->debug_buf), sizeof(char) * BUF_SIZE);
-    v3_chkpt_save_32(ctx, "OFFSET", &(dbg->debug_offset));
-    
+    v3_chkpt_save(ctx, "OS_DEBUG", &os_dbg_chkpt, sizeof(struct os_dbg_chkpt_state));
+
     return 0;
 }
 
@@ -144,10 +156,15 @@ debug_load(struct v3_chkpt_ctx * ctx,
 	   void                * private_data) 
 {
     struct debug_state * dbg = (struct debug_state *)private_data;
-    
-    v3_chkpt_load(ctx,    "BUF",    &(dbg->debug_buf), sizeof(char) * BUF_SIZE);
-    v3_chkpt_load_32(ctx, "OFFSET", &(dbg->debug_offset));
-    
+    struct os_dbg_chkpt_state os_dbg_chkpt;
+
+    memset(&(os_dbg_chkpt), 0, sizeof(struct os_dbg_chkpt_state));
+
+    v3_chkpt_load(ctx, "OS_DEBUG", &os_dbg_chkpt, sizeof(struct os_dbg_chkpt_state));
+
+    memcpy(dbg->debug_buf, os_dbg_chkpt.debug_buf, BUF_SIZE);
+    dbg->debug_offset = os_dbg_chkpt.debug_offset;
+
     return 0;
 }
 
