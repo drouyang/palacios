@@ -352,6 +352,78 @@ Init_VMCB_BIOS(vmcb_t              * vmcb,
 }
 
 
+
+#ifdef V3_CONFIG_CHECKPOINT
+static int 
+save_core(char                 * name, 
+	  struct v3_core_chkpt * chkpt, 
+	  size_t                 size,
+	  struct v3_core_info  * core)
+{
+    
+    chkpt->rip = core->rip;
+    chkpt->cpl = core->cpl; /* Currently not set by VMX... */
+
+    memcpy(&(chkpt->ctrl_regs), &(core->ctrl_regs), sizeof(struct v3_ctrl_regs));
+    memcpy(&(chkpt->gprs),      &(core->vm_regs),   sizeof(struct v3_gprs));
+    memcpy(&(chkpt->dbg_regs),  &(core->dbg_regs),  sizeof(struct v3_dbg_regs));
+    memcpy(&(chkpt->segments),  &(core->segments),  sizeof(struct v3_segments));
+    
+    chkpt->shdw_cr3  = core->shdw_pg_state.guest_cr3;
+    chkpt->shdw_cr0  = core->shdw_pg_state.guest_cr0;
+    chkpt->shdw_efer = core->shdw_pg_state.guest_efer.value;
+
+
+    /* VMCB Fields ?? */
+    return 0;
+}
+
+static int 
+load_core(char                 * name, 
+	  struct v3_core_chkpt * chkpt, 
+	  size_t                 size,
+	  struct v3_core_info  * core)
+{
+
+    core->rip = chkpt->rip;
+    core->cpl = chkpt->cpl; /* Currently not set by VMX... */
+
+    memcpy(&(core->ctrl_regs), &(chkpt->ctrl_regs), sizeof(struct v3_ctrl_regs));
+    memcpy(&(core->vm_regs),   &(chkpt->gprs),      sizeof(struct v3_gprs));
+    memcpy(&(core->dbg_regs),  &(chkpt->dbg_regs),  sizeof(struct v3_dbg_regs));
+    memcpy(&(core->segments),  &(chkpt->segments),  sizeof(struct v3_segments));
+    
+    core->shdw_pg_state.guest_cr3        = chkpt->shdw_cr3;
+    core->shdw_pg_state.guest_cr0        = chkpt->shdw_cr0;
+    core->shdw_pg_state.guest_efer.value = chkpt->shdw_efer;
+
+    /* VMCB Fields ?? */
+
+    core->cpu_mode = v3_get_vm_cpu_mode(core);
+    core->mem_mode = v3_get_vm_mem_mode(core);
+
+    if (core->shdw_pg_mode == SHADOW_PAGING) {
+	if (v3_get_vm_mem_mode(core) == VIRTUAL_MEM) {
+	    if (v3_activate_shadow_pt(core) == -1) {
+		PrintError("Failed to activate shadow page tables\n");
+		return -1;
+	    }
+	} else {
+	    if (v3_activate_passthrough_pt(core) == -1) {
+		PrintError("Failed to activate passthrough page tables\n");
+		return -1;
+	    }
+	}
+    }
+
+
+    v3_print_guest_state(core);
+
+    return 0;
+}
+#endif
+
+
 int 
 v3_init_svm_vmcb(struct v3_core_info * core, 
 		 v3_vm_class_t         vm_class) 
@@ -373,6 +445,21 @@ v3_init_svm_vmcb(struct v3_core_info * core,
 	return -1;
     }
 
+
+#ifdef V3_CONFIG_CHECKPOINT
+    {
+	char core_name[32] = {[0 ... 31] = 0};
+
+	snprintf(core_name, 31, "core-%d", core->vcpu_id);
+	v3_checkpoint_register(core->vm_info, core_name, 
+			       (v3_chkpt_save_fn)save_core, 
+			       (v3_chkpt_load_fn)load_core, 
+			       sizeof(struct v3_core_chkpt), 
+			       core);
+    }
+#endif
+
+
     core->core_run_state = CORE_STOPPED;
 
     return 0;
@@ -386,35 +473,6 @@ v3_deinit_svm_vmcb(struct v3_core_info * core)
     return 0;
 }
 
-
-#ifdef V3_CONFIG_CHECKPOINT
-int
-v3_svm_save_core(struct v3_core_info * core,
-		 void                * ctx)
-{
-
-
-    if (v3_chkpt_save(ctx, "vmcb_data", core->vmm_data, PAGE_SIZE) == -1) { 
-	PrintError("Could not save SVM vmcb\n");
-	return -1;
-    }
-
-    return 0;
-}
-
-int 
-v3_svm_load_core(struct v3_core_info * core, 
-		 void                * ctx)
-{
-    
-
-    if (v3_chkpt_load(ctx, "vmcb_data",  core->vmm_data, PAGE_SIZE) == -1) {
-	return -1;
-    }
-
-    return 0;
-}
-#endif
 
 static int 
 update_irq_exit_state(struct v3_core_info * core) 

@@ -256,12 +256,6 @@ void v3_flush_vmx_vm_core(struct v3_core_info * core);
 
 int v3_vmx_enter(struct v3_core_info * core);
 
-int v3_vmx_load_core(struct v3_core_info * core, void * ctx);
-int v3_vmx_save_core(struct v3_core_info * core, void * ctx);
-
-
-
-
 
 #endif // ! __V3VEE__
 

@@ -657,47 +657,36 @@ struct io_apic_chkpt_state {
 } __attribute__((packed));
 
 static int
-io_apic_save(struct v3_chkpt_ctx * ctx, 
-	     void                * private_data) 
+io_apic_save(char                       * name, 
+	     struct io_apic_chkpt_state * io_apic_chkpt, 
+	     size_t                       size,
+	     struct io_apic_state       * io_apic) 
 {
-    struct io_apic_state     * io_apic = (struct io_apic_state *)private_data;
-    struct io_apic_chkpt_state io_apic_chkpt;
+    io_apic_chkpt->base_addr         = io_apic->base_addr;
+    io_apic_chkpt->index_reg         = io_apic->index_reg;
+    io_apic_chkpt->ioapic_id.val     = io_apic->ioapic_id.val;
+    io_apic_chkpt->ioapic_ver.val    = io_apic->ioapic_ver.val;
+    io_apic_chkpt->ioapic_arb_id.val = io_apic->ioapic_arb_id.val;
 
-    memset(&io_apic_chkpt, 0, sizeof(struct io_apic_chkpt_state));
-
-    io_apic_chkpt.base_addr         = io_apic->base_addr;
-    io_apic_chkpt.index_reg         = io_apic->index_reg;
-    io_apic_chkpt.ioapic_id.val     = io_apic->ioapic_id.val;
-    io_apic_chkpt.ioapic_ver.val    = io_apic->ioapic_ver.val;
-    io_apic_chkpt.ioapic_arb_id.val = io_apic->ioapic_arb_id.val;
-
-    memcpy(&(io_apic_chkpt.redir_tbl), &(io_apic->redir_tbl), sizeof(struct redir_tbl_entry) * 24);
-
-    v3_chkpt_save(ctx, "IO_APIC", &io_apic_chkpt, sizeof(struct io_apic_chkpt_state));
+    memcpy(&(io_apic_chkpt->redir_tbl), &(io_apic->redir_tbl), sizeof(struct redir_tbl_entry) * 24);
 
     return 0;
 }
 
 static int 
-io_apic_load(struct v3_chkpt_ctx * ctx, 
-	     void                * private_data) 
+io_apic_load(char                       * name, 
+	     struct io_apic_chkpt_state * io_apic_chkpt, 
+	     size_t                       size,
+	     struct io_apic_state       * io_apic) 
 {
-    struct io_apic_state     * io_apic = (struct io_apic_state *)private_data;
-    struct io_apic_chkpt_state io_apic_chkpt;
 
-    memset(&io_apic_chkpt, 0, sizeof(struct io_apic_chkpt_state));
+    io_apic->base_addr         = io_apic_chkpt->base_addr;
+    io_apic->index_reg         = io_apic_chkpt->index_reg;
+    io_apic->ioapic_id.val     = io_apic_chkpt->ioapic_id.val;
+    io_apic->ioapic_ver.val    = io_apic_chkpt->ioapic_ver.val;
+    io_apic->ioapic_arb_id.val = io_apic_chkpt->ioapic_arb_id.val;
 
-    v3_chkpt_load(ctx, "IO_APIC", &io_apic_chkpt, sizeof(struct io_apic_chkpt_state));
-
-    io_apic->base_addr         = io_apic_chkpt.base_addr;
-    io_apic->index_reg         = io_apic_chkpt.index_reg;
-    io_apic->ioapic_id.val     = io_apic_chkpt.ioapic_id.val;
-    io_apic->ioapic_ver.val    = io_apic_chkpt.ioapic_ver.val;
-    io_apic->ioapic_arb_id.val = io_apic_chkpt.ioapic_arb_id.val;
-
-    memcpy(&(io_apic->redir_tbl), &(io_apic_chkpt.redir_tbl), sizeof(struct redir_tbl_entry) * 24);
-
-    
+    memcpy(&(io_apic->redir_tbl), &(io_apic_chkpt->redir_tbl), sizeof(struct redir_tbl_entry) * 24);
 
     return 0;
 }
@@ -707,10 +696,6 @@ io_apic_load(struct v3_chkpt_ctx * ctx,
 
 static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))io_apic_free,
-#ifdef V3_CONFIG_CHECKPOINT
-    .save = io_apic_save, 
-    .load = io_apic_load
-#endif
 };
 
 
@@ -752,6 +737,14 @@ ioapic_init(struct v3_vm_info * vm,
 		     ioapic->base_addr + PAGE_SIZE_4KB, 
 		     ioapic_read, ioapic_write, ioapic);
   
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_checkpoint_register(vm, "IOAPIC", 
+			   (v3_chkpt_save_fn)io_apic_save, 
+			   (v3_chkpt_load_fn)io_apic_load, 
+			   sizeof(struct io_apic_chkpt_state), 
+			   ioapic);
+#endif
+
     return 0;
 }
 

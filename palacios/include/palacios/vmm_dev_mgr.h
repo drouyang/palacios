@@ -93,15 +93,6 @@ int v3_deinit_dev_mgr(struct v3_vm_info * vm);
 
 int v3_free_vm_devices(struct v3_vm_info * vm);
 
-#ifdef V3_CONFIG_CHECKPOINT
-struct v3_chkpt;
-struct v3_chkpt_ctx;
-
-int v3_save_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
-int v3_load_vm_devices(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
-#endif
-
-
 
 int V3_init_devices();
 int V3_deinit_devices();
@@ -109,11 +100,6 @@ int V3_deinit_devices();
 
 struct v3_device_ops {
     int (*free)(void * private_data);
-
-#ifdef V3_CONFIG_CHECKPOINT
-    int (*save)(struct v3_chkpt_ctx * ctx, void * private_data);
-    int (*load)(struct v3_chkpt_ctx * ctx, void * privata_data);
-#endif
 };
 
 

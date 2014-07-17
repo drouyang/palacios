@@ -1997,119 +1997,95 @@ struct apic_chkpt_state {
 } __attribute__((packed));
 
 static int
-apic_save(struct v3_chkpt_ctx * ctx,
-	  void                * private_data)
+apic_save(char                    * name, 
+	  struct apic_chkpt_state * chkpt_state, 
+	  size_t                    size,
+	  struct apic_state       * apic)
 {
-    struct apic_dev_state   * apic_state  = (struct apic_dev_state *)private_data;
-    struct apic_chkpt_state   chkpt_state;
-    int i = 0;
 
+    /* Flush pending IRQs */
 
-    memset(&(chkpt_state), 0, sizeof(struct apic_chkpt_state));
+    chkpt_state->base_addr                = apic->base_addr;
+    chkpt_state->base_addr_msr            = apic->base_addr_msr.val;
+    chkpt_state->lapic_id.val             = apic->lapic_id.val;
+    chkpt_state->apic_ver.val             = apic->apic_ver.val;
+    chkpt_state->ext_apic_ctrl.val        = apic->ext_apic_ctrl.val;
+    chkpt_state->local_vec_tbl.val        = apic->local_vec_tbl.val;
+    chkpt_state->tmr_vec_tbl.val          = apic->tmr_vec_tbl.val;
+    chkpt_state->tmr_div_cfg.val          = apic->tmr_div_cfg.val;
+    chkpt_state->lint0_vec_tbl.val        = apic->lint0_vec_tbl.val;
+    chkpt_state->lint1_vec_tbl.val        = apic->lint1_vec_tbl.val;
+    chkpt_state->perf_ctr_loc_vec_tbl.val = apic->perf_ctr_loc_vec_tbl.val;
+    chkpt_state->therm_loc_vec_tbl.val    = apic->therm_loc_vec_tbl.val;
+    chkpt_state->err_vec_tbl.val          = apic->err_vec_tbl.val;
+    chkpt_state->err_status.val           = apic->err_status.val;
+    chkpt_state->spurious_int.val         = apic->spurious_int.val;
+    chkpt_state->int_cmd.val              = apic->int_cmd.val;
+    chkpt_state->log_dst.val              = apic->log_dst.val;
+    chkpt_state->dst_fmt.val              = apic->dst_fmt.val;
+    chkpt_state->arb_prio.val             = apic->arb_prio.val;
+    chkpt_state->task_prio.val            = apic->task_prio.val;
+    chkpt_state->proc_prio.val            = apic->proc_prio.val;
+    chkpt_state->ext_apic_feature.val     = apic->ext_apic_feature.val;
+    chkpt_state->spec_eoi.val             = apic->spec_eoi.val;
+    chkpt_state->tmr_cur_cnt              = apic->tmr_cur_cnt;
+    chkpt_state->tmr_init_cnt             = apic->tmr_init_cnt;
+    chkpt_state->missed_ints              = apic->missed_ints;
+    chkpt_state->rem_rd_data              = apic->rem_rd_data;
+    chkpt_state->ipi_state                = apic->ipi_state;
+    chkpt_state->eoi                      = apic->eoi;
 
-    // Flush pending IRQs
+    memcpy(chkpt_state->ext_intr_vec_tbl, apic->ext_intr_vec_tbl, sizeof(struct local_vec_tbl_reg) * 4);
+    memcpy(chkpt_state->int_req_reg,      apic->int_req_reg,      sizeof(uint8_t) * 32);
+    memcpy(chkpt_state->int_svc_reg,      apic->int_svc_reg,      sizeof(uint8_t) * 32);
+    memcpy(chkpt_state->int_en_reg,       apic->int_en_reg,       sizeof(uint8_t) * 32);
+    memcpy(chkpt_state->trig_mode_reg,    apic->trig_mode_reg,    sizeof(uint8_t) * 32);
 
-    for (i = 0; i < apic_state->num_apics; i++) {
-	char name[32] = {[0 ... 31] = 0};
-
-	snprintf(name, 31, "APIC-%d", i);
-
-	chkpt_state.base_addr                = apic_state->apics[i].base_addr;
-	chkpt_state.base_addr_msr            = apic_state->apics[i].base_addr_msr.val;
-	chkpt_state.lapic_id.val             = apic_state->apics[i].lapic_id.val;
-	chkpt_state.apic_ver.val             = apic_state->apics[i].apic_ver.val;
-	chkpt_state.ext_apic_ctrl.val        = apic_state->apics[i].ext_apic_ctrl.val;
-	chkpt_state.local_vec_tbl.val        = apic_state->apics[i].local_vec_tbl.val;
-	chkpt_state.tmr_vec_tbl.val          = apic_state->apics[i].tmr_vec_tbl.val;
-	chkpt_state.tmr_div_cfg.val          = apic_state->apics[i].tmr_div_cfg.val;
-	chkpt_state.lint0_vec_tbl.val        = apic_state->apics[i].lint0_vec_tbl.val;
-	chkpt_state.lint1_vec_tbl.val        = apic_state->apics[i].lint1_vec_tbl.val;
-	chkpt_state.perf_ctr_loc_vec_tbl.val = apic_state->apics[i].perf_ctr_loc_vec_tbl.val;
-	chkpt_state.therm_loc_vec_tbl.val    = apic_state->apics[i].therm_loc_vec_tbl.val;
-	chkpt_state.err_vec_tbl.val          = apic_state->apics[i].err_vec_tbl.val;
-	chkpt_state.err_status.val           = apic_state->apics[i].err_status.val;
-	chkpt_state.spurious_int.val         = apic_state->apics[i].spurious_int.val;
-	chkpt_state.int_cmd.val              = apic_state->apics[i].int_cmd.val;
-	chkpt_state.log_dst.val              = apic_state->apics[i].log_dst.val;
-	chkpt_state.dst_fmt.val              = apic_state->apics[i].dst_fmt.val;
-	chkpt_state.arb_prio.val             = apic_state->apics[i].arb_prio.val;
-	chkpt_state.task_prio.val            = apic_state->apics[i].task_prio.val;
-	chkpt_state.proc_prio.val            = apic_state->apics[i].proc_prio.val;
-	chkpt_state.ext_apic_feature.val     = apic_state->apics[i].ext_apic_feature.val;
-	chkpt_state.spec_eoi.val             = apic_state->apics[i].spec_eoi.val;
-	chkpt_state.tmr_cur_cnt              = apic_state->apics[i].tmr_cur_cnt;
-	chkpt_state.tmr_init_cnt             = apic_state->apics[i].tmr_init_cnt;
-	chkpt_state.missed_ints              = apic_state->apics[i].missed_ints;
-	chkpt_state.rem_rd_data              = apic_state->apics[i].rem_rd_data;
-	chkpt_state.ipi_state                = apic_state->apics[i].ipi_state;
-	chkpt_state.eoi                      = apic_state->apics[i].eoi;
-
-	memcpy(chkpt_state.ext_intr_vec_tbl, apic_state->apics[i].ext_intr_vec_tbl, sizeof(struct local_vec_tbl_reg) * 4);
-	memcpy(chkpt_state.int_req_reg,      apic_state->apics[i].int_req_reg,      sizeof(uint8_t) * 32);
-	memcpy(chkpt_state.int_svc_reg,      apic_state->apics[i].int_svc_reg,      sizeof(uint8_t) * 32);
-	memcpy(chkpt_state.int_en_reg,       apic_state->apics[i].int_en_reg,       sizeof(uint8_t) * 32);
-	memcpy(chkpt_state.trig_mode_reg,    apic_state->apics[i].trig_mode_reg,    sizeof(uint8_t) * 32);
-
-	v3_chkpt_save(ctx, name, &chkpt_state, sizeof(struct apic_chkpt_state));
-    }
 
     return 0;
 }
 
 static int 
-apic_load(struct v3_chkpt_ctx * ctx, 
-	  void                * private_data) 
+apic_load(char                    * name, 
+	  struct apic_chkpt_state * chkpt_state, 
+	  size_t                    size,
+	  struct apic_state       * apic) 
 {
-    struct apic_dev_state   * apic_state = (struct apic_dev_state *)private_data;
-    struct apic_chkpt_state   chkpt_state;
+    apic->base_addr                = chkpt_state->base_addr;
+    apic->base_addr_msr.val        = chkpt_state->base_addr_msr;
+    apic->lapic_id.val             = chkpt_state->lapic_id.val;
+    apic->apic_ver.val             = chkpt_state->apic_ver.val;
+    apic->ext_apic_ctrl.val        = chkpt_state->ext_apic_ctrl.val;
+    apic->local_vec_tbl.val        = chkpt_state->local_vec_tbl.val;
+    apic->tmr_vec_tbl.val          = chkpt_state->tmr_vec_tbl.val;
+    apic->tmr_div_cfg.val          = chkpt_state->tmr_div_cfg.val;
+    apic->lint0_vec_tbl.val        = chkpt_state->lint0_vec_tbl.val;
+    apic->lint1_vec_tbl.val        = chkpt_state->lint1_vec_tbl.val;
+    apic->perf_ctr_loc_vec_tbl.val = chkpt_state->perf_ctr_loc_vec_tbl.val;
+    apic->therm_loc_vec_tbl.val    = chkpt_state->therm_loc_vec_tbl.val;
+    apic->err_vec_tbl.val          = chkpt_state->err_vec_tbl.val;
+    apic->err_status.val           = chkpt_state->err_status.val;
+    apic->spurious_int.val         = chkpt_state->spurious_int.val;
+    apic->int_cmd.val              = chkpt_state->int_cmd.val;
+    apic->log_dst.val              = chkpt_state->log_dst.val;
+    apic->dst_fmt.val              = chkpt_state->dst_fmt.val;
+    apic->arb_prio.val             = chkpt_state->arb_prio.val;
+    apic->task_prio.val            = chkpt_state->task_prio.val;
+    apic->proc_prio.val            = chkpt_state->proc_prio.val;
+    apic->ext_apic_feature.val     = chkpt_state->ext_apic_feature.val;
+    apic->spec_eoi.val             = chkpt_state->spec_eoi.val;
+    apic->tmr_cur_cnt              = chkpt_state->tmr_cur_cnt;
+    apic->tmr_init_cnt             = chkpt_state->tmr_init_cnt;
+    apic->missed_ints              = chkpt_state->missed_ints;
+    apic->rem_rd_data              = chkpt_state->rem_rd_data;
+    apic->ipi_state                = chkpt_state->ipi_state;
+    apic->eoi                      = chkpt_state->eoi;
 
-    int i = 0;
-
-
-    for (i = 0; i < apic_state->num_apics; i++) {
-	char name[32] = {[0 ... 31] = 0};
-
-	snprintf(name, 31, "APIC-%d", i);
-
-	v3_chkpt_load(ctx, name, &chkpt_state, sizeof(struct apic_chkpt_state));
-
-	apic_state->apics[i].base_addr                = chkpt_state.base_addr;
-	apic_state->apics[i].base_addr_msr.val        = chkpt_state.base_addr_msr;
-	apic_state->apics[i].lapic_id.val             = chkpt_state.lapic_id.val;
-	apic_state->apics[i].apic_ver.val             = chkpt_state.apic_ver.val;
-	apic_state->apics[i].ext_apic_ctrl.val        = chkpt_state.ext_apic_ctrl.val;
-	apic_state->apics[i].local_vec_tbl.val        = chkpt_state.local_vec_tbl.val;
-	apic_state->apics[i].tmr_vec_tbl.val          = chkpt_state.tmr_vec_tbl.val;
-	apic_state->apics[i].tmr_div_cfg.val          = chkpt_state.tmr_div_cfg.val;
-	apic_state->apics[i].lint0_vec_tbl.val        = chkpt_state.lint0_vec_tbl.val;
-	apic_state->apics[i].lint1_vec_tbl.val        = chkpt_state.lint1_vec_tbl.val;
-	apic_state->apics[i].perf_ctr_loc_vec_tbl.val = chkpt_state.perf_ctr_loc_vec_tbl.val;
-	apic_state->apics[i].therm_loc_vec_tbl.val    = chkpt_state.therm_loc_vec_tbl.val;
-	apic_state->apics[i].err_vec_tbl.val          = chkpt_state.err_vec_tbl.val;
-	apic_state->apics[i].err_status.val           = chkpt_state.err_status.val;
-	apic_state->apics[i].spurious_int.val         = chkpt_state.spurious_int.val;
-	apic_state->apics[i].int_cmd.val              = chkpt_state.int_cmd.val;
-	apic_state->apics[i].log_dst.val              = chkpt_state.log_dst.val;
-	apic_state->apics[i].dst_fmt.val              = chkpt_state.dst_fmt.val;
-	apic_state->apics[i].arb_prio.val             = chkpt_state.arb_prio.val;
-	apic_state->apics[i].task_prio.val            = chkpt_state.task_prio.val;
-	apic_state->apics[i].proc_prio.val            = chkpt_state.proc_prio.val;
-	apic_state->apics[i].ext_apic_feature.val     = chkpt_state.ext_apic_feature.val;
-	apic_state->apics[i].spec_eoi.val             = chkpt_state.spec_eoi.val;
-	apic_state->apics[i].tmr_cur_cnt              = chkpt_state.tmr_cur_cnt;
-	apic_state->apics[i].tmr_init_cnt             = chkpt_state.tmr_init_cnt;
-	apic_state->apics[i].missed_ints              = chkpt_state.missed_ints;
-	apic_state->apics[i].rem_rd_data              = chkpt_state.rem_rd_data;
-	apic_state->apics[i].ipi_state                = chkpt_state.ipi_state;
-	apic_state->apics[i].eoi                      = chkpt_state.eoi;
-
-	memcpy(apic_state->apics[i].ext_intr_vec_tbl, chkpt_state.ext_intr_vec_tbl, sizeof(struct local_vec_tbl_reg) * 4);
-	memcpy(apic_state->apics[i].int_req_reg,      chkpt_state.int_req_reg,      sizeof(uint8_t) * 32);
-	memcpy(apic_state->apics[i].int_svc_reg,      chkpt_state.int_svc_reg,      sizeof(uint8_t) * 32);
-	memcpy(apic_state->apics[i].int_en_reg,       chkpt_state.int_en_reg,       sizeof(uint8_t) * 32);
-	memcpy(apic_state->apics[i].trig_mode_reg,    chkpt_state.trig_mode_reg,    sizeof(uint8_t) * 32);
-
-    }
+    memcpy(apic->ext_intr_vec_tbl, chkpt_state->ext_intr_vec_tbl, sizeof(struct local_vec_tbl_reg) * 4);
+    memcpy(apic->int_req_reg,      chkpt_state->int_req_reg,      sizeof(uint8_t) * 32);
+    memcpy(apic->int_svc_reg,      chkpt_state->int_svc_reg,      sizeof(uint8_t) * 32);
+    memcpy(apic->int_en_reg,       chkpt_state->int_en_reg,       sizeof(uint8_t) * 32);
+    memcpy(apic->trig_mode_reg,    chkpt_state->trig_mode_reg,    sizeof(uint8_t) * 32);
 
 
     return 0;
@@ -2119,10 +2095,6 @@ apic_load(struct v3_chkpt_ctx * ctx,
 
 static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))apic_free,
-#ifdef V3_CONFIG_CHECKPOINT
-    .save = apic_save,
-    .load = apic_load
-#endif
 };
 
 
@@ -2177,6 +2149,21 @@ apic_init(struct v3_vm_info * vm,
 	}
 
 	v3_hook_full_mem(vm, core->vcpu_id, apic->base_addr, apic->base_addr + PAGE_SIZE_4KB, apic_read, apic_write, apic_dev);
+
+#ifdef V3_CONFIG_CHECKPOINT
+	{
+	    char name[32] = {[0 ... 31] = 0};
+	    snprintf(name, 31, "APIC-%d", i);
+
+	    v3_checkpoint_register(vm, name, 
+				   (v3_chkpt_save_fn)apic_save, 
+				   (v3_chkpt_load_fn)apic_load,
+				   sizeof(struct apic_chkpt_state), 
+				   apic);
+	
+	}
+#endif
+
 
 	PrintDebug("apic %u: (setup device): done, my id is %u\n", i, apic->lapic_id.val);
     }

@@ -1550,86 +1550,82 @@ struct cga_chkpt_state {
 
 } __attribute__((packed));
 
-static int cga_save(struct v3_chkpt_ctx * ctx, void * private_data) {
-    struct video_internal * cga = (struct video_internal *)private_data;
-    struct cga_chkpt_state  cga_chkpt;
 
-    memset(&(cga_chkpt), 0, sizeof(struct cga_chkpt_state));
+static int 
+cga_save(char                   * name, 
+	 struct cga_chkpt_state * cga_chkpt, 
+	 size_t                   size,
+	 struct video_internal  * cga) 
+{
 
-    v3_chkpt_save(ctx,     "CGA_FRAMEBUFFER",    cga->framebuf, FRAMEBUF_SIZE);
 
-    memcpy(&(cga_chkpt.seq_index_reg), &(cga->misc_outp_reg), sizeof(struct misc_outp_reg));
+    memcpy(&(cga_chkpt->seq_index_reg), &(cga->misc_outp_reg), sizeof(struct misc_outp_reg));
 
-    memcpy(cga_chkpt.seq_data_regs,    cga->seq_data_regs,    SEQ_REG_COUNT);
-    memcpy(cga_chkpt.crtc_data_regs,   cga->crtc_data_regs,   CRTC_REG_COUNT);
-    memcpy(cga_chkpt.graphc_data_regs, cga->graphc_data_regs, GRAPHC_REG_COUNT);
-    memcpy(cga_chkpt.attrc_data_regs,  cga->attrc_data_regs,  ATTRC_REG_COUNT);
-    memcpy(cga_chkpt.dac_data_regs,    cga->dac_data_regs,    DAC_REG_COUNT);
+    memcpy(cga_chkpt->seq_data_regs,    cga->seq_data_regs,    SEQ_REG_COUNT);
+    memcpy(cga_chkpt->crtc_data_regs,   cga->crtc_data_regs,   CRTC_REG_COUNT);
+    memcpy(cga_chkpt->graphc_data_regs, cga->graphc_data_regs, GRAPHC_REG_COUNT);
+    memcpy(cga_chkpt->attrc_data_regs,  cga->attrc_data_regs,  ATTRC_REG_COUNT);
+    memcpy(cga_chkpt->dac_data_regs,    cga->dac_data_regs,    DAC_REG_COUNT);
 
-    cga_chkpt.seq_index_reg    = cga->seq_index_reg;
-    cga_chkpt.crtc_index_reg   = cga->crtc_index_reg;
-    cga_chkpt.graphc_index_reg = cga->graphc_index_reg;
-    cga_chkpt.attrc_index_reg  = cga->attrc_index_reg;
-    cga_chkpt.dac_indexr_reg   = cga->dac_indexr_reg;
-    cga_chkpt.dac_indexr_color = cga->dac_indexr_color;
-    cga_chkpt.dac_indexw_reg   = cga->dac_indexw_reg;
-    cga_chkpt.dac_indexw_color = cga->dac_indexw_color;
-    cga_chkpt.activefb_addr    = cga->activefb_addr;
-    cga_chkpt.activefb_len     = cga->activefb_len;
-    cga_chkpt.iorange          = cga->iorange;
-    cga_chkpt.vres             = cga->vres;
-    cga_chkpt.hres             = cga->hres;
-    cga_chkpt.vchars           = cga->vchars;
-    cga_chkpt.hchars           = cga->hchars;
-    cga_chkpt.graphmode        = cga->graphmode;
-    cga_chkpt.dirty            = cga->dirty;
-    cga_chkpt.reschanged       = cga->reschanged;
-    cga_chkpt.screen_offset    = cga->screen_offset;
-    cga_chkpt.cursor_offset    = cga->cursor_offset;
+    cga_chkpt->seq_index_reg    = cga->seq_index_reg;
+    cga_chkpt->crtc_index_reg   = cga->crtc_index_reg;
+    cga_chkpt->graphc_index_reg = cga->graphc_index_reg;
+    cga_chkpt->attrc_index_reg  = cga->attrc_index_reg;
+    cga_chkpt->dac_indexr_reg   = cga->dac_indexr_reg;
+    cga_chkpt->dac_indexr_color = cga->dac_indexr_color;
+    cga_chkpt->dac_indexw_reg   = cga->dac_indexw_reg;
+    cga_chkpt->dac_indexw_color = cga->dac_indexw_color;
+    cga_chkpt->activefb_addr    = cga->activefb_addr;
+    cga_chkpt->activefb_len     = cga->activefb_len;
+    cga_chkpt->iorange          = cga->iorange;
+    cga_chkpt->vres             = cga->vres;
+    cga_chkpt->hres             = cga->hres;
+    cga_chkpt->vchars           = cga->vchars;
+    cga_chkpt->hchars           = cga->hchars;
+    cga_chkpt->graphmode        = cga->graphmode;
+    cga_chkpt->dirty            = cga->dirty;
+    cga_chkpt->reschanged       = cga->reschanged;
+    cga_chkpt->screen_offset    = cga->screen_offset;
+    cga_chkpt->cursor_offset    = cga->cursor_offset;
 
-    v3_chkpt_save(ctx, "CGA", &cga_chkpt, sizeof(struct cga_chkpt_state));
 
     return 0;
 }
 
-static int cga_load(struct v3_chkpt_ctx * ctx, void * private_data) {
-    struct video_internal * cga = (struct video_internal *)private_data;
-    struct cga_chkpt_state  cga_chkpt;
+static int 
+cga_load(char                   * name, 
+	 struct cga_chkpt_state * cga_chkpt, 
+	 size_t                   size,
+	 struct video_internal  * cga) 
+{
+    memcpy(&(cga->seq_index_reg), &(cga_chkpt->misc_outp_reg), sizeof(struct misc_outp_reg));
 
-    memset(&(cga_chkpt), 0, sizeof(struct cga_chkpt_state));
+    memcpy(cga->seq_data_regs,    cga_chkpt->seq_data_regs,    SEQ_REG_COUNT);
+    memcpy(cga->crtc_data_regs,   cga_chkpt->crtc_data_regs,   CRTC_REG_COUNT);
+    memcpy(cga->graphc_data_regs, cga_chkpt->graphc_data_regs, GRAPHC_REG_COUNT);
+    memcpy(cga->attrc_data_regs,  cga_chkpt->attrc_data_regs,  ATTRC_REG_COUNT);
+    memcpy(cga->dac_data_regs,    cga_chkpt->dac_data_regs,    DAC_REG_COUNT);
 
-    v3_chkpt_load(ctx, "CGA_FRAMEBUFFER",    cga->framebuf, FRAMEBUF_SIZE);
-    v3_chkpt_load(ctx, "CGA",                &cga_chkpt,  sizeof(struct cga_chkpt_state));
-
-
-    memcpy(&(cga->seq_index_reg), &(cga_chkpt.misc_outp_reg), sizeof(struct misc_outp_reg));
-
-    memcpy(cga->seq_data_regs,    cga_chkpt.seq_data_regs,    SEQ_REG_COUNT);
-    memcpy(cga->crtc_data_regs,   cga_chkpt.crtc_data_regs,   CRTC_REG_COUNT);
-    memcpy(cga->graphc_data_regs, cga_chkpt.graphc_data_regs, GRAPHC_REG_COUNT);
-    memcpy(cga->attrc_data_regs,  cga_chkpt.attrc_data_regs,  ATTRC_REG_COUNT);
-    memcpy(cga->dac_data_regs,    cga_chkpt.dac_data_regs,    DAC_REG_COUNT);
-
-    cga->seq_index_reg    = cga_chkpt.seq_index_reg;
-    cga->crtc_index_reg   = cga_chkpt.crtc_index_reg;
-    cga->graphc_index_reg = cga_chkpt.graphc_index_reg;
-    cga->attrc_index_reg  = cga_chkpt.attrc_index_reg;
-    cga->dac_indexr_reg   = cga_chkpt.dac_indexr_reg;
-    cga->dac_indexr_color = cga_chkpt.dac_indexr_color;
-    cga->dac_indexw_reg   = cga_chkpt.dac_indexw_reg;
-    cga->dac_indexw_color = cga_chkpt.dac_indexw_color;
-    cga->activefb_addr    = cga_chkpt.activefb_addr;
-    cga->activefb_len     = cga_chkpt.activefb_len;
-    cga->iorange          = cga_chkpt.iorange;
-    cga->vres             = cga_chkpt.vres;
-    cga->hres             = cga_chkpt.hres;
-    cga->vchars           = cga_chkpt.vchars;
-    cga->hchars           = cga_chkpt.hchars;
-    cga->graphmode        = cga_chkpt.graphmode;
-    cga->dirty            = cga_chkpt.dirty;
-    cga->reschanged       = cga_chkpt.reschanged;
-    cga->screen_offset    = cga_chkpt.screen_offset;
-    cga->cursor_offset    = cga_chkpt.cursor_offset;
+    cga->seq_index_reg    = cga_chkpt->seq_index_reg;
+    cga->crtc_index_reg   = cga_chkpt->crtc_index_reg;
+    cga->graphc_index_reg = cga_chkpt->graphc_index_reg;
+    cga->attrc_index_reg  = cga_chkpt->attrc_index_reg;
+    cga->dac_indexr_reg   = cga_chkpt->dac_indexr_reg;
+    cga->dac_indexr_color = cga_chkpt->dac_indexr_color;
+    cga->dac_indexw_reg   = cga_chkpt->dac_indexw_reg;
+    cga->dac_indexw_color = cga_chkpt->dac_indexw_color;
+    cga->activefb_addr    = cga_chkpt->activefb_addr;
+    cga->activefb_len     = cga_chkpt->activefb_len;
+    cga->iorange          = cga_chkpt->iorange;
+    cga->vres             = cga_chkpt->vres;
+    cga->hres             = cga_chkpt->hres;
+    cga->vchars           = cga_chkpt->vchars;
+    cga->hchars           = cga_chkpt->hchars;
+    cga->graphmode        = cga_chkpt->graphmode;
+    cga->dirty            = cga_chkpt->dirty;
+    cga->reschanged       = cga_chkpt->reschanged;
+    cga->screen_offset    = cga_chkpt->screen_offset;
+    cga->cursor_offset    = cga_chkpt->cursor_offset;
 
 
     return 0;
@@ -1640,10 +1636,6 @@ static int cga_load(struct v3_chkpt_ctx * ctx, void * private_data) {
 
 static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))cga_free,
-#ifdef V3_CONFIG_CHECKPOINT
-    .save = cga_save, 
-    .load = cga_load
-#endif
 
 };
 
@@ -1759,6 +1751,18 @@ cga_init(struct v3_vm_info * vm,
 
     /* initialize the state as it is at boot time */
     registers_initialize(video_state);
+
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_checkpoint_register(vm, "CGA",
+			   (v3_chkpt_save_fn)cga_save,
+			   (v3_chkpt_load_fn)cga_load,
+			   sizeof(struct cga_chkpt_state),
+			   video_state);
+
+    v3_checkpoint_register_nocopy(vm, "CGA_FRAMEBUF", 
+				  video_state->framebuf,
+				  FRAMEBUF_SIZE);
+#endif
 
     return 0;
 }

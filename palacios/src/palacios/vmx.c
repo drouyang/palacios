@@ -36,6 +36,9 @@
 #include <palacios/vmm_timeout.h>
 #include <palacios/vmm_debug.h>
 
+
+#include <palacios/vmm_sprintf.h>
+
 #ifdef V3_CONFIG_CHECKPOINT
 #include <palacios/vmm_checkpoint.h>
 #endif
@@ -85,6 +88,81 @@ allocate_vmcs()
 
     return (addr_t)V3_PAddr((void *)vmcs_page);
 }
+
+
+
+#ifdef V3_CONFIG_CHECKPOINT
+/* 
+ * JRL: This is broken
+ */
+static int 
+save_core(char                 * name, 
+	  struct v3_core_chkpt * chkpt, 
+	  size_t                 size,
+	  struct v3_core_info  * core)
+{
+    //    struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
+    
+    chkpt->rip = core->rip;
+    chkpt->cpl = core->cpl; /* Currently not set by VMX... */
+
+    memcpy(&(chkpt->ctrl_regs), &(core->ctrl_regs), sizeof(struct v3_ctrl_regs));
+    memcpy(&(chkpt->gprs),      &(core->vm_regs),   sizeof(struct v3_gprs));
+    memcpy(&(chkpt->dbg_regs),  &(core->dbg_regs),  sizeof(struct v3_dbg_regs));
+    memcpy(&(chkpt->segments),  &(core->segments),  sizeof(struct v3_segments));
+    
+    chkpt->shdw_cr3  = core->shdw_pg_state.guest_cr3;
+    chkpt->shdw_cr0  = core->shdw_pg_state.guest_cr0;
+    chkpt->shdw_efer = core->shdw_pg_state.guest_efer.value;
+
+    return 0;
+}
+
+static int 
+load_core(char                 * name, 
+	  struct v3_core_chkpt * chkpt, 
+	  size_t                 size,
+	  struct v3_core_info  * core)
+{
+    //    struct vmx_data * vmx_info        = (struct vmx_data *)(core->vmm_data);
+
+    core->rip = chkpt->rip;
+    core->cpl = chkpt->cpl; /* Currently not set by VMX... */
+
+    memcpy(&(core->ctrl_regs), &(chkpt->ctrl_regs), sizeof(struct v3_ctrl_regs));
+    memcpy(&(core->vm_regs),   &(chkpt->gprs),      sizeof(struct v3_gprs));
+    memcpy(&(core->dbg_regs),  &(chkpt->dbg_regs),  sizeof(struct v3_dbg_regs));
+    memcpy(&(core->segments),  &(chkpt->segments),  sizeof(struct v3_segments));
+    
+    core->shdw_pg_state.guest_cr3        = chkpt->shdw_cr3;
+    core->shdw_pg_state.guest_cr0        = chkpt->shdw_cr0;
+    core->shdw_pg_state.guest_efer.value = chkpt->shdw_efer;
+
+
+    core->cpu_mode = v3_get_vm_cpu_mode(core);
+    core->mem_mode = v3_get_vm_mem_mode(core);
+
+    if (core->shdw_pg_mode == SHADOW_PAGING) {
+	if (v3_get_vm_mem_mode(core) == VIRTUAL_MEM) {
+	    if (v3_activate_shadow_pt(core) == -1) {
+		PrintError("Failed to activate shadow page tables\n");
+		return -1;
+	    }
+	} else {
+	    if (v3_activate_passthrough_pt(core) == -1) {
+		PrintError("Failed to activate passthrough page tables\n");
+		return -1;
+	    }
+	}
+    }
+
+
+    v3_print_guest_state(core);
+
+    return 0;
+}
+#endif
+
 
 
 #if 0
@@ -698,7 +776,18 @@ v3_init_vmx_core(struct v3_core_info * core,
 	}
     }
 
+#ifdef V3_CONFIG_CHECKPOINT
+    {
+	char core_name[32] = {[0 ... 31] = 0};
 
+	snprintf(core_name, 31, "core-%d", core->vcpu_id);
+	v3_checkpoint_register(core->vm_info, core_name, 
+			       (v3_chkpt_save_fn)save_core, 
+			       (v3_chkpt_load_fn)load_core, 
+			       sizeof(struct v3_core_chkpt),
+			       core);
+    }
+#endif
 
     core->core_run_state = CORE_STOPPED;
 
@@ -729,62 +818,6 @@ v3_free_vmx_core(struct v3_core_info * core)
 }
 
 
-
-#ifdef V3_CONFIG_CHECKPOINT
-/* 
- * JRL: This is broken
- */
-int 
-v3_vmx_save_core(struct v3_core_info * core, void * ctx)
-{
-    //    struct vmx_data * vmx_info = (struct vmx_data *)(core->vmm_data);
-    struct v3_core_chkpt chkpt;
-
-    memset(&chkpt, 0, sizeof(struct v3_core_chkpt));
-    
-    chkpt.rip = core->rip;
-    chkpt.cpl = core->cpl; /* Currently not set by VMX... */
-
-    memcpy(&(chkpt.ctrl_regs), &(core->ctrl_regs), sizeof(struct v3_ctrl_regs));
-    memcpy(&(chkpt.gprs),      &(core->vm_regs),   sizeof(struct v3_gprs));
-    memcpy(&(chkpt.dbg_regs),  &(core->dbg_regs),  sizeof(struct v3_dbg_regs));
-    memcpy(&(chkpt.segments),  &(core->segments),  sizeof(struct v3_segments));
-    
-    chkpt.shdw_cr3  = core->shdw_pg_state.guest_cr3;
-    chkpt.shdw_cr0  = core->shdw_pg_state.guest_cr0;
-    chkpt.shdw_efer = core->shdw_pg_state.guest_efer.value;
-
-    v3_chkpt_save(ctx, "CORE", &chkpt, sizeof(struct v3_core_chkpt));
-
-    return 0;
-}
-
-int 
-v3_vmx_load_core(struct v3_core_info * core, void * ctx)
-{
-    //    struct vmx_data * vmx_info        = (struct vmx_data *)(core->vmm_data);
-    struct v3_core_chkpt chkpt;
-
-    memset(&chkpt, 0, sizeof(struct v3_core_chkpt));
-
-    v3_chkpt_load(ctx, "CORE", &chkpt, sizeof(struct v3_core_chkpt));    
-
-    core->rip = chkpt.rip;
-    core->cpl = chkpt.cpl; /* Currently not set by VMX... */
-
-    memcpy(&(core->ctrl_regs), &(chkpt.ctrl_regs), sizeof(struct v3_ctrl_regs));
-    memcpy(&(core->vm_regs),   &(chkpt.gprs),      sizeof(struct v3_gprs));
-    memcpy(&(core->dbg_regs),  &(chkpt.dbg_regs),  sizeof(struct v3_dbg_regs));
-    memcpy(&(core->segments),  &(chkpt.segments),  sizeof(struct v3_segments));
-    
-    core->shdw_pg_state.guest_cr3        = chkpt.shdw_cr3;
-    core->shdw_pg_state.guest_cr0        = chkpt.shdw_cr0;
-    core->shdw_pg_state.guest_efer.value = chkpt.shdw_efer;
-
-
-    return 0;
-}
-#endif
 
 
 void 

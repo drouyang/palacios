@@ -1,16 +1,6 @@
 /* 
- * This file is part of the Palacios Virtual Machine Monitor developed
- * by the V3VEE Project with funding from the United States National 
- * Science Foundation and the Department of Energy.  
- *
- * The V3VEE Project is a joint project between Northwestern University
- * and the University of New Mexico.  You can find out more at 
- * http://www.v3vee.org
- *
  * Copyright (c) 2014, Jack Lange <jacklange@cs.pitt.edu>
  * All rights reserved.
- *
- *
  *
  * This is free software.  You are permitted to use,
  * redistribute, and modify it as specified in the file "V3VEE_LICENSE".
@@ -40,32 +30,22 @@
 #define PrintDebug(fmt, args...)
 #endif
 
+#define CHKPT_KEY_LEN   32
+#define HEADER_BUF_SIZE 32
 
-static struct hashtable * store_table = NULL;
+static struct hashtable * store_table   = NULL;
 
 struct v3_chkpt;
 
 typedef enum {SAVE, LOAD} chkpt_mode_t;
 
-struct chkpt_interface {
-    char name[128];
-
-    void * (*open_chkpt)(char * url, chkpt_mode_t mode);
-    int    (*close_chkpt)(void * store_data);
-    
-    void * (*open_ctx)(void * store_data, void * parent_ctx, char * name);
-    int    (*close_ctx)(void * store_data, void * ctx);
-    
-    int    (*save)(void * store_data, void * ctx, char * tag, uint64_t len, void * buf);
-    int    (*load)(void * store_data, void * ctx, char * tag, uint64_t len, void * buf);
-};
-
-
-struct chkpt_req {
-    char name[32];
+struct chkpt_block {
+    char name[CHKPT_KEY_LEN];
 
     v3_chkpt_save_fn save;
     v3_chkpt_load_fn load;
+
+    void * priv;
 
     union {
 	uint32_t flags;
@@ -75,29 +55,45 @@ struct chkpt_req {
 	} __attribute__((packed));
     } __attribute__((packed));
 
-    size_t size;
+    size_t    size;
+    uint8_t * block_ptr;
 
     struct list_head node;
 };
 
 
-struct v3_chkpt {
-    struct v3_vm_info      * vm;
-    struct chkpt_interface * interface;
-    void * store_data;
+struct chkpt_interface {
+    char name[CHKPT_KEY_LEN];
+
+    void * (*open_chkpt)(struct v3_vm_info * vm, char * url, chkpt_mode_t mode);
+    int    (*close_chkpt)(void * store_data);
+    
+    int    (*save_block)(struct chkpt_block * block, void * store_data);
+    int    (*load_block)(struct chkpt_block * block, void * store_data);
 };
 
 
-static uint_t store_hash_fn(addr_t key) {
-    char * name = (char *)key;
-    return v3_hash_buffer((uint8_t *)name, strlen(name));
+
+
+struct v3_chkpt {
+    struct v3_vm_info      * vm;
+    struct chkpt_interface * interface;
+    void                   * store_data;
+};
+
+
+static uint_t key_hash_fn(addr_t key) {
+    char     * name     = (char *)key;
+    uint32_t   name_len = (strlen(name) > CHKPT_KEY_LEN) ? CHKPT_KEY_LEN : strlen(name); 
+
+    return v3_hash_buffer((uint8_t *)name, name_len);
 }
 
-static int store_eq_fn(addr_t key1, addr_t key2) {
+static int key_eq_fn(addr_t key1, addr_t key2) {
     char * name1 = (char *)key1;
     char * name2 = (char *)key2;
 
-    return (strcmp(name1, name2) == 0);
+    return (strncmp(name1, name2, CHKPT_KEY_LEN - 1) == 0);
 }
 
 
@@ -106,7 +102,7 @@ static int store_eq_fn(addr_t key1, addr_t key2) {
 
 
 int 
-V3_init_checkpoint() 
+V3_init_chkpt_stores() 
 {
     extern struct chkpt_interface  * __start__v3_chkpt_stores[];
     extern struct chkpt_interface  * __stop__v3_chkpt_stores[];
@@ -114,7 +110,7 @@ V3_init_checkpoint()
     struct chkpt_interface        ** tmp_store = __start__v3_chkpt_stores;
     int i = 0;
 
-    store_table = v3_create_htable(0, store_hash_fn, store_eq_fn);
+    store_table = v3_create_htable(0, key_hash_fn, key_eq_fn);
 
     while (tmp_store != __stop__v3_chkpt_stores) {
 	V3_Print("Registering Checkpoint Backing Store (%s)\n", (*tmp_store)->name);
@@ -135,19 +131,224 @@ V3_init_checkpoint()
     return 0;
 }
 
-int 
-V3_deinit_checkpoint() 
+
+int
+V3_deinit_chkpt_stores()
 {
+
     v3_free_htable(store_table, 0, 0);
+    return 0;
+}
+
+
+static char svm_chkpt_header[] = "v3-checkpoint: SVM";
+static char vmx_chkpt_header[] = "v3-checkpoint: VMX";
+
+
+static int 
+header_save(char   * name, 
+	    void   * buf, 
+	    size_t   size,
+	    void   * priv_data)
+{
+    extern v3_cpu_arch_t v3_mach_type;
+    
+    if ((size != HEADER_BUF_SIZE) ||
+	(strncmp(name, "HEADER", strlen("HEADER")) != 0)) {
+	PrintError("Attempting to save invalid checkpoint header\n");
+	return -1;
+    }
+
+    switch (v3_mach_type) {
+	case V3_SVM_CPU:
+	case V3_SVM_REV3_CPU:
+	    strncpy(buf, svm_chkpt_header, HEADER_BUF_SIZE - 1);
+	    break;
+	case V3_VMX_CPU:
+	case V3_VMX_EPT_CPU:
+	case V3_VMX_EPT_UG_CPU:
+	    strncpy(buf, vmx_chkpt_header, HEADER_BUF_SIZE - 1);
+	    break;
+	default:
+	    PrintError("checkpoint not supported on this architecture\n");
+	    return -1;
+    }
+    
+    return 0;
+}
+
+static int 
+header_load(char   * name, 
+	    void   * buf, 
+	    size_t   size,
+	    void   * priv_data)
+{
+    extern v3_cpu_arch_t v3_mach_type;
+ 
+
+    if ((size != HEADER_BUF_SIZE) ||
+	(strncmp(name, "HEADER", strlen("HEADER")) != 0)) {
+	PrintError("Attempting to save invalid checkpoint header\n");
+	return -1;
+    } 
+
+    switch (v3_mach_type) {
+	case V3_SVM_CPU:
+	case V3_SVM_REV3_CPU:
+	 
+	    if (strncmp(buf, svm_chkpt_header, HEADER_BUF_SIZE - 1) != 0) {
+		PrintError("Invalid header (%s) [expected (%s)]\n", (char *)buf, svm_chkpt_header);
+		return -1;
+	    }
+
+	    break;
+	case V3_VMX_CPU:
+	case V3_VMX_EPT_CPU:
+	case V3_VMX_EPT_UG_CPU:
+
+	    if (strncmp(buf, vmx_chkpt_header, HEADER_BUF_SIZE - 1) != 0) {
+		PrintError("Invalid header (%s) [expected (%s)]\n", (char *)buf, vmx_chkpt_header);
+		return -1;
+	    }	    
+
+	    break;
+	default:
+	    PrintError("checkpoint not supported on this architecture\n");
+	    return -1;
+    }
+    
     return 0;
 }
 
 
 
 
+int 
+v3_init_chkpt(struct v3_vm_info * vm)
+{
+    struct v3_chkpt_state * chkpt_state = &(vm->chkpt_state);
+    
+    INIT_LIST_HEAD(&(chkpt_state->block_list));
 
-static char svm_chkpt_header[] = "v3-checkpoint: SVM";
-static char vmx_chkpt_header[] = "v3-checkpoint: VMX";
+    chkpt_state->block_table = v3_create_htable(0, key_hash_fn, key_eq_fn);
+
+    chkpt_state->num_blocks  = 0;
+    chkpt_state->block_size  = 0;
+
+    v3_checkpoint_register(vm, "HEADER", header_save, header_load, HEADER_BUF_SIZE, NULL);
+
+    return 0;
+}
+
+int
+v3_deinit_chkpt(struct v3_vm_info * vm)
+{
+    struct v3_chkpt_state * chkpt_state = &(vm->chkpt_state);
+
+    struct chkpt_block * block = NULL;
+    struct chkpt_block * tmp   = NULL;
+
+    list_for_each_entry_safe(block, tmp, &(chkpt_state->block_list), node) {
+	list_del(&(block->node));
+	V3_Free(block);
+    }
+
+    v3_free_htable(chkpt_state->block_table, 0, 0);
+
+    return 0;
+}
+
+
+int 
+v3_checkpoint_register(struct v3_vm_info * vm, 
+		       char              * name, 
+		       v3_chkpt_save_fn    save, 
+		       v3_chkpt_load_fn    load, 
+		       size_t              size, 
+		       void              * priv_data) 
+{
+    struct v3_chkpt_state * chkpt_state = &(vm->chkpt_state);
+    struct chkpt_block    * block       = NULL;
+
+
+    if (v3_htable_search(chkpt_state->block_table, (addr_t)name)) {
+	PrintError("Chkpt block already registered with name: (%s)\n", name);
+	return -1;
+    }
+
+
+    block = V3_Malloc(sizeof(struct chkpt_block));
+    
+    if (block == NULL) {
+	PrintError("Could not allocate chkpt block of size %lu for (%s)\n", size, name);
+	return -1;
+    }
+
+    memset(block, 0, sizeof(struct chkpt_block));
+
+    strncpy(block->name, name, CHKPT_KEY_LEN - 1);
+    
+    block->save = save;
+    block->load = load;
+    block->size = size;
+    block->priv = priv_data;
+    
+    if (v3_htable_insert(chkpt_state->block_table, (addr_t)block->name, (addr_t)block) == 0) {
+	PrintError("Error inserting chkpt block into block table\n");
+	V3_Free(block);
+	return -1;
+    }
+
+    list_add_tail(&(block->node), &(chkpt_state->block_list));
+    chkpt_state->num_blocks += 1;
+    chkpt_state->block_size += block->size;
+
+    return 0;
+}
+
+int 
+v3_checkpoint_register_nocopy(struct v3_vm_info * vm, 
+			      char              * name, 
+			      uint8_t           * buf,
+			      size_t              size) 
+{
+    struct v3_chkpt_state * chkpt_state = &(vm->chkpt_state);
+    struct chkpt_block    * block       = NULL;
+
+
+    if (v3_htable_search(chkpt_state->block_table, (addr_t)name)) {
+	PrintError("Chkpt block already registered with name: (%s)\n", name);
+	return -1;
+    }
+
+
+    block = V3_Malloc(sizeof(struct chkpt_block));
+    
+    if (block == NULL) {
+	PrintError("Could not allocate chkpt block of size %lu for (%s)\n", size, name);
+	return -1;
+    }
+
+    memset(block, 0, sizeof(struct chkpt_block));
+
+    strncpy(block->name, name, CHKPT_KEY_LEN - 1);
+    
+    block->block_ptr = buf;
+    block->zero_copy = 1;
+    block->size      = size;
+    
+    if (v3_htable_insert(chkpt_state->block_table, (addr_t)block->name, (addr_t)block) == 0) {
+	PrintError("Error inserting chkpt block into block table\n");
+	V3_Free(block);
+	return -1;
+    }
+
+    list_add_tail(&(block->node), &(chkpt_state->block_list));
+    chkpt_state->num_blocks += 1;
+
+    return 0;
+}
+
 
 static int 
 chkpt_close(struct v3_chkpt * chkpt) 
@@ -177,7 +378,7 @@ chkpt_open(struct v3_vm_info * vm,
 	return NULL;
     }
 
-    store_data = iface->open_chkpt(url, mode);
+    store_data = iface->open_chkpt(vm, url, mode);
 
     if (store_data == NULL) {
 	PrintError("Could not open url (%s) for backing store (%s)\n", url, store);
@@ -199,366 +400,15 @@ chkpt_open(struct v3_vm_info * vm,
     return chkpt;
 }
 
-struct v3_chkpt_ctx * 
-v3_chkpt_open_ctx(struct v3_chkpt     * chkpt, 
-		  struct v3_chkpt_ctx * parent, 
-		  char                * name)
-{
-    struct v3_chkpt_ctx * ctx = V3_Malloc(sizeof(struct v3_chkpt_ctx));
-    void * parent_ctx         = NULL;
-
-
-    if (!ctx) { 
-	PrintError("Unable to allocate context\n");
-	return 0;
-    }
-
-    memset(ctx, 0, sizeof(struct v3_chkpt_ctx));
-
-    ctx->chkpt  = chkpt;
-    ctx->parent = parent;
-
-    if (parent) {
-	parent_ctx = parent->store_ctx;
-    }
-
-    ctx->store_ctx = chkpt->interface->open_ctx(chkpt->store_data, parent_ctx, name);
-
-    if (ctx->store_ctx == NULL) {
-	PrintError("Warning: opening underlying representation returned null\n");
-    }
-
-    return ctx;
-}
-
-int 
-v3_chkpt_close_ctx(struct v3_chkpt_ctx * ctx) 
-{
-    struct v3_chkpt * chkpt = ctx->chkpt;
-    int ret = 0;
-
-    ret = chkpt->interface->close_ctx(chkpt->store_data, ctx->store_ctx);
-
-    V3_Free(ctx);
-
-    return ret;
-}
-
-
-
-int 
-v3_chkpt_save(struct v3_chkpt_ctx * ctx,
-	      char                * tag,
-	      void                * buf,
-	      uint64_t              len)
-
-{
-    struct v3_chkpt * chkpt = ctx->chkpt;    
-    
-    return  chkpt->interface->save(chkpt->store_data, ctx->store_ctx, tag, len, buf);
-
-}
-
-
-int 
-v3_chkpt_load(struct v3_chkpt_ctx * ctx, 
-	      char                * tag, 
-	      void                * buf,
-	      uint64_t              len)
-{
-    struct v3_chkpt * chkpt = ctx->chkpt;    
-    
-    return chkpt->interface->load(chkpt->store_data, ctx->store_ctx, tag, len, buf);
-}
-
-
-
-
-int 
-save_header(struct v3_vm_info * vm, 
-	    struct v3_chkpt   * chkpt) 
-{
-    extern v3_cpu_arch_t v3_mach_type;
-    void * ctx = NULL;
-    
-    ctx = v3_chkpt_open_ctx(chkpt, NULL, "header");
-
-    if (!ctx) { 
-	PrintError("Cannot open context to save header\n");
-	return -1;
-    }
-
-    switch (v3_mach_type) {
-	case V3_SVM_CPU:
-	case V3_SVM_REV3_CPU: {
-	    if (v3_chkpt_save(ctx, "header", svm_chkpt_header, strlen(svm_chkpt_header)) == -1) { 
-		PrintError("Could not save all of SVM header\n");
-		v3_chkpt_close_ctx(ctx);
-		return -1;
-	    }
-	    break;
-	}
-	case V3_VMX_CPU:
-	case V3_VMX_EPT_CPU:
-	case V3_VMX_EPT_UG_CPU: {
-	    if (v3_chkpt_save(ctx, "header", vmx_chkpt_header, strlen(vmx_chkpt_header)) == -1) { 
-		PrintError("Could not save all of VMX header\n");
-		v3_chkpt_close_ctx(ctx);
-		return -1;
-	    }
-	    break;
-	}
-	default:
-	    PrintError("checkpoint not supported on this architecture\n");
-	    v3_chkpt_close_ctx(ctx);
-	    return -1;
-    }
-
-    v3_chkpt_close_ctx(ctx);
-	    
-    return 0;
-}
-
-static int 
-load_header(struct v3_vm_info * vm, 
-	    struct v3_chkpt   * chkpt) 
-{
-    extern v3_cpu_arch_t v3_mach_type;
-    void * ctx = NULL;
-    
-    ctx = v3_chkpt_open_ctx(chkpt, NULL, "header");
-
-    switch (v3_mach_type) {
-	case V3_SVM_CPU:
-	case V3_SVM_REV3_CPU: {
-	    char header[strlen(svm_chkpt_header) + 1];
-	 
-	    if (v3_chkpt_load(ctx, "header", header, strlen(svm_chkpt_header)) == -1) {
-		PrintError("Could not load all of SVM header\n");
-		v3_chkpt_close_ctx(ctx);
-		return -1;
-	    }
-	    
-	    header[strlen(svm_chkpt_header)] = 0;
-
-	    break;
-	}
-	case V3_VMX_CPU:
-	case V3_VMX_EPT_CPU:
-	case V3_VMX_EPT_UG_CPU: {
-	    char header[strlen(vmx_chkpt_header) + 1];
-	    
-	    if (v3_chkpt_load(ctx, "header", header, strlen(vmx_chkpt_header)) == -1) {
-		PrintError("Could not load all of VMX header\n");
-		v3_chkpt_close_ctx(ctx);
-		return -1;
-	    }
-	    
-	    header[strlen(vmx_chkpt_header)] = 0;
-	    
-	    break;
-	}
-	default:
-	    PrintError("checkpoint not supported on this architecture\n");
-	    v3_chkpt_close_ctx(ctx);
-	    return -1;
-    }
-    
-    v3_chkpt_close_ctx(ctx);
-    
-    return 0;
-}
-
-
-
-static int 
-load_core(struct v3_core_info * core,
-	  struct v3_chkpt     * chkpt) 
-{
-    extern v3_cpu_arch_t v3_mach_type;
-    char   key_name[16] = {[0 ... 15] = 0};
-    void * ctx          = NULL;
-    int    ret          = 0;
-
-    snprintf(key_name, 16, "core-%d", core->vcpu_id);
-    ctx = v3_chkpt_open_ctx(chkpt, NULL, key_name);
-
-
-    if (!ctx) { 
-	PrintError("Could not open context to load SVM core\n");
-	return -1;
-    }
-   
-    switch (v3_mach_type) {
-	case V3_SVM_CPU:
-	case V3_SVM_REV3_CPU: {
-
-	    ret = v3_svm_load_core(core, ctx);
-
-	    if (ret == -1) {
-		PrintError("Failed to patch core %d\n", core->vcpu_id);
-	    }
-
-	    break;
-	}
-	case V3_VMX_CPU:
-	case V3_VMX_EPT_CPU:
-	case V3_VMX_EPT_UG_CPU: {
-	    
-	    ret = v3_vmx_load_core(core, ctx);
-
-	    if (ret  < 0) {
-		PrintError("VMX checkpoint failed\n");
-	    }
-
-	    break;
-	}
-	default:
-	    PrintError("Invalid CPU Type (%d)\n", v3_mach_type);
-	    ret = -1;
-    }
-
-    v3_chkpt_close_ctx(ctx);
-
-
-    if (ret == -1) {
-	return -1;
-    }
-
-    core->cpu_mode = v3_get_vm_cpu_mode(core);
-    core->mem_mode = v3_get_vm_mem_mode(core);
-
-    if (core->shdw_pg_mode == SHADOW_PAGING) {
-	if (v3_get_vm_mem_mode(core) == VIRTUAL_MEM) {
-	    if (v3_activate_shadow_pt(core) == -1) {
-		PrintError("Failed to activate shadow page tables\n");
-		return -1;
-	    }
-	} else {
-	    if (v3_activate_passthrough_pt(core) == -1) {
-		PrintError("Failed to activate passthrough page tables\n");
-		return -1;
-	    }
-	}
-    }
-
-
-    v3_print_guest_state(core);
-
-    return 0;
-}
-
-
-static int 
-save_core(struct v3_core_info * core, 
-	  struct v3_chkpt     * chkpt) 
-{
-    extern v3_cpu_arch_t v3_mach_type;
-    char   key_name[16] = {[0 ... 15] = 0};
-    void * ctx          = NULL;
-    int    ret = 0;
-	    
-    snprintf(key_name, 16, "core-%d", core->vcpu_id);
-	    
-    ctx = v3_chkpt_open_ctx(chkpt, NULL, key_name);
-
-    if (!ctx) { 
-	PrintError("Could not open context to store SVM core\n");
-	return -1;
-    }
-
-    v3_print_guest_state(core);
-
-    //Architechture specific code
-    switch (v3_mach_type) {
-	case V3_SVM_CPU:
-	case V3_SVM_REV3_CPU: {
-
-	    ret = v3_svm_save_core(core, ctx);
-
-	    if (ret == -1) {
-		PrintError("VMCB Unable to be written\n");
-	    }
-	    
-	    break;
-	}
-	case V3_VMX_CPU:
-	case V3_VMX_EPT_CPU:
-	case V3_VMX_EPT_UG_CPU: {
-
-	    ret = v3_vmx_save_core(core, ctx);
-	    if (ret == -1) {
-		PrintError("VMX checkpoint failed\n");
-	    }
-
-	    break;
-	}
-	default:
-	    PrintError("Invalid CPU Type (%d)\n", v3_mach_type);
-	    ret = -1;
-    }
-    
-    v3_chkpt_close_ctx(ctx);
-
-    return ret;
-}
-
-
-int 
-v3_chkpt_init(struct v3_vm_info * vm)
-{
-    struct v3_chkpt_state * chkpt_state = &(vm->chkpt_state);
-
-    INIT_LIST_HEAD(&(chkpt_state->handler_list));
-    chkpt_state->num_handlers   = 0;
-    chkpt_state->chkpt_tot_size = 0;
-    chkpt_state->chkpt_buf_size = 0;
-    chkpt_state->chkpt_buf      = NULL;
-
-    return 0;
-}
-
-int
-v3_chkpt_deinit(struct v3_vm_info * vm)
-{
-    struct v3_chkpt_state * chkpt_state = &(vm->chkpt_state);
-
-    struct chkpt_req * req = NULL;
-    struct chkpt_req * tmp = NULL;
-
-    // Free all handlers
-    list_for_each_entry_safe(req, tmp, &(chkpt_state->handler_list), node) {
-	list_del(&(req->node));
-	V3_Free(req);
-    }
-    
-
-    return 0;
-}
-
-int 
-v3_chkpt_add_handler(struct v3_vm_info * vm,
-		     char              * name, 
-		     v3_chkpt_save_fn    save, 
-		     v3_chkpt_load_fn    load,
-		     size_t              size) 
-{
-    
-    
-
-    return -1;
-}
-
 int 
 v3_chkpt_save_vm(struct v3_vm_info * vm, 
 		 char              * store, 
 		 char              * url)
 {
-    struct v3_chkpt * chkpt = NULL;
-    int ret = 0;;
-    int i   = 0;
-
-
+    struct v3_chkpt_state * chkpt_state = &(vm->chkpt_state);
+    struct v3_chkpt       * chkpt       = NULL;
+    int ret = 0;
+ 
     chkpt = chkpt_open(vm, store, url, SAVE);
 
     if (chkpt == NULL) {
@@ -571,32 +421,20 @@ v3_chkpt_save_vm(struct v3_vm_info * vm,
 	while (v3_raise_barrier(vm, NULL) == -1);
     }
 
-    if ((ret = v3_mem_save(vm, chkpt)) == -1) {
-	PrintError("Unable to save memory\n");
-	goto out;
-    }
-    
-    
-    if ((ret = v3_save_vm_devices(vm, chkpt)) == -1) {
-	PrintError("Unable to save devices\n");
-	goto out;
-    }
-    
+    {
+	struct chkpt_block * block = NULL;
 
-    if ((ret = save_header(vm, chkpt)) == -1) {
-	PrintError("Unable to save header\n");
-	goto out;
-    }
-    
-    for (i = 0; i < vm->num_cores; i++){
-	if ((ret = save_core(&(vm->cores[i]), chkpt)) == -1) {
-	    PrintError("chkpt of core %d failed\n", i);
-	    goto out;
+	list_for_each_entry(block, &(chkpt_state->block_list), node) {
+	    ret = chkpt->interface->save_block(block, chkpt->store_data);
+
+	    if (ret == -1) {
+		PrintError("Error saving block (%s)\n", block->name);
+		goto out;
+	    }
 	}
     }
-    
+
  out:
-    
     /* Resume the guest if it was running */
     if (vm->run_state == VM_RUNNING) {
 	v3_lower_barrier(vm);
@@ -605,7 +443,6 @@ v3_chkpt_save_vm(struct v3_vm_info * vm,
     chkpt_close(chkpt);
 
     return ret;
-
 }
 
 int 
@@ -613,8 +450,8 @@ v3_chkpt_load_vm(struct v3_vm_info * vm,
 		 char              * store, 
 		 char              * url)
 {
-    struct v3_chkpt * chkpt = NULL;
-    int i   = 0;
+    struct v3_chkpt_state * chkpt_state = &(vm->chkpt_state);
+    struct v3_chkpt       * chkpt       = NULL;
     int ret = 0;
     
     chkpt = chkpt_open(vm, store, url, LOAD);
@@ -629,33 +466,20 @@ v3_chkpt_load_vm(struct v3_vm_info * vm,
 	while (v3_raise_barrier(vm, NULL) == -1);
     }
 
-    if ((ret = v3_mem_load(vm, chkpt)) == -1) {
-	PrintError("Unable to save memory\n");
-	goto out;
-    }
+    {
+	struct chkpt_block * block = NULL;
 
+	list_for_each_entry(block, &(chkpt_state->block_list), node) {
+	    ret = chkpt->interface->load_block(block, chkpt->store_data);
 
-    if ((ret = v3_load_vm_devices(vm, chkpt)) == -1) {
-	PrintError("Unable to load devies\n");
-	goto out;
-    }
-
-
-    if ((ret = load_header(vm, chkpt)) == -1) {
-	PrintError("Unable to load header\n");
-	goto out;
-    }
-
-    //per core cloning
-    for (i = 0; i < vm->num_cores; i++) {
-	if ((ret = load_core(&(vm->cores[i]), chkpt)) == -1) {
-	    PrintError("Error loading core state (core=%d)\n", i);
-	    goto out;
+	    if (ret == -1) {
+		PrintError("Error saving block (%s)\n", block->name);
+		goto out;
+	    }
 	}
     }
 
  out:
-
     /* Resume the guest if it was running and we didn't just trash the state*/
     if (vm->run_state == VM_RUNNING) {
     
@@ -672,7 +496,6 @@ v3_chkpt_load_vm(struct v3_vm_info * vm,
     chkpt_close(chkpt);
 
     return ret;
-
 }
 
 

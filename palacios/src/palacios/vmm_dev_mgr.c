@@ -22,12 +22,6 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_decoder.h>
 
-#ifdef V3_CONFIG_CHECKPOINT
-#include <palacios/vmm_checkpoint.h>
-
-#define V3_MAX_DEVICE_NAME 32
-
-#endif
 
 
 #ifndef V3_CONFIG_DEBUG_DEV_MGR
@@ -146,83 +140,6 @@ v3_free_vm_devices(struct v3_vm_info * vm)
     return 0;
 }
 
-#ifdef V3_CONFIG_CHECKPOINT
-
-int 
-v3_save_vm_devices(struct v3_vm_info * vm, 
-		   struct v3_chkpt   * chkpt) 
-{
-    struct vmm_dev_mgr  * mgr         = &(vm->dev_mgr);
-    struct vm_device    * dev         = NULL;
-
-    list_for_each_entry(dev, &(mgr->dev_list), dev_link) {
-	if (dev->ops->save) {
-	    struct v3_chkpt_ctx * dev_ctx = NULL;
-	    
-	    V3_Print("Saving state for device (%s)\n", dev->name);
-	    
-	    dev_ctx = v3_chkpt_open_ctx(chkpt, NULL, dev->name);
-	    
-	    if (!dev_ctx) { 
-		PrintError("Unable to open context for device %s\n",dev->name);
-		continue;
-	    }
-
-	    if (dev->ops->save(dev_ctx, dev->private_data)) {
-		PrintError("Unable t save device %s\n",dev->name);
-	    }
-
-	    v3_chkpt_close_ctx(dev_ctx);
-
-	    // Error checking?? 
-	} else {
-	    PrintError("Error: %s save() not implemented\n",  dev->name);
-	}
-    }
-
-
-    return 0;
-}
-
-
-int 
-v3_load_vm_devices(struct v3_vm_info * vm, 
-		   struct v3_chkpt   * chkpt) 
-{
-    struct vmm_dev_mgr  * mgr         = &(vm->dev_mgr);
-    struct vm_device    * dev         = NULL;
-
-    list_for_each_entry(dev, &(mgr->dev_list), dev_link) {
-	if (dev->ops->load) {
-	    struct v3_chkpt_ctx * dev_ctx = NULL;
-	    
-	    V3_Print("Saving state for device (%s)\n", dev->name);
-	    
-	    dev_ctx = v3_chkpt_open_ctx(chkpt, NULL, dev->name);
-	    
-	    if (!dev_ctx) { 
-		PrintError("Unable to open context for device %s\n",dev->name);
-		continue;
-	    }
-
-	    if (dev->ops->load(dev_ctx, dev->private_data)) {
-		PrintError("Unable t save device %s\n",dev->name);
-	    }
-
-	    v3_chkpt_close_ctx(dev_ctx);
-
-	    // Error checking?? 
-	} else {
-	    PrintError("Error: %s save() not implemented\n",  dev->name);
-	}
-    }
-
-
-    return 0;
-}
-
-
-#endif
 
 static int free_frontends(struct v3_vm_info  * vm,
 			  struct vmm_dev_mgr * mgr);

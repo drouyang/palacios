@@ -640,7 +640,7 @@ static int piix_free(struct v3_southbridge * piix4) {
 
 #ifdef V3_CONFIG_CHECKPOINT
 
-struct piix4_chkpt_state {
+struct piix4_chkpt {
     uint16_t pmsts;
     uint16_t pmen;
     uint16_t pmcntrl;
@@ -648,39 +648,27 @@ struct piix4_chkpt_state {
 
 
 static int
-piix4_save(struct v3_chkpt_ctx * ctx, 
-	   void                * priv_data)
+piix4_save(char                  * name, 
+	   struct piix4_chkpt    * chkpt, 
+	   size_t                  size,
+	   struct piix4_internal * piix4) 
 {
-    struct v3_southbridge    * southbridge = priv_data;
-    struct piix4_internal    * piix4       = container_of(southbridge, struct piix4_internal, southbridge);	
-    struct piix4_chkpt_state   piix4_chkpt;
-
-    memset(&(piix4_chkpt), 0, sizeof(struct piix4_chkpt_state));
-
-    piix4_chkpt.pmsts   = piix4->pmsts;
-    piix4_chkpt.pmen    = piix4->pmen;
-    piix4_chkpt.pmcntrl = piix4->pmcntrl.value;
-
-    v3_chkpt_save(ctx, "PIIX4", &piix4_chkpt, sizeof(struct piix4_chkpt_state));
+    chkpt->pmsts   = piix4->pmsts;
+    chkpt->pmen    = piix4->pmen;
+    chkpt->pmcntrl = piix4->pmcntrl.value;
 
     return 0;
 }
 
 static int
-piix4_load(struct v3_chkpt_ctx * ctx, 
-	   void                * priv_data)
+piix4_load(char                  * name, 
+	   struct piix4_chkpt    * chkpt, 
+	   size_t                  size,
+	   struct piix4_internal * piix4) 
 {
-    struct v3_southbridge * southbridge = priv_data;
-    struct piix4_internal * piix4       = container_of(southbridge, struct piix4_internal, southbridge);	
-    struct piix4_chkpt_state   piix4_chkpt;
-    
-    memset(&(piix4_chkpt), 0, sizeof(struct piix4_chkpt_state));	
-	
-    v3_chkpt_load(ctx, "PIIX4", &piix4_chkpt, sizeof(struct piix4_chkpt_state));
-
-    piix4->pmsts         = piix4_chkpt.pmsts;
-    piix4->pmen          = piix4_chkpt.pmen;
-    piix4->pmcntrl.value = piix4_chkpt.pmcntrl;
+    piix4->pmsts         = chkpt->pmsts;
+    piix4->pmen          = chkpt->pmen;
+    piix4->pmcntrl.value = chkpt->pmcntrl;
 
     return 0;
 }
@@ -689,10 +677,6 @@ piix4_load(struct v3_chkpt_ctx * ctx,
 
 static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))piix_free,
-#ifdef V3_CONFIG_CHECKPOINT
-    .save = piix4_save,
-    .load = piix4_load,
-#endif
 };
 
 
@@ -994,6 +978,14 @@ piix4_init(struct v3_vm_info * vm,
 	return -1;
     }
 
+
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_checkpoint_register(vm, "PIIX4", 
+			   (v3_chkpt_save_fn)piix4_save,
+			   (v3_chkpt_load_fn)piix4_load,
+			   sizeof(struct piix4_chkpt), 
+			   piix4);
+#endif
 
     return 0;
 }

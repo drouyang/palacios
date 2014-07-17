@@ -956,87 +956,80 @@ struct pic_chkpt_state {
 } __attribute__((packed));
 
 static int 
-pic_save(struct v3_chkpt_ctx * ctx, 
-	 void                * private_data)
+pic_save(char                   * name, 
+	 struct pic_chkpt_state * pic_chkpt, 
+	 size_t                   size,
+	 struct pic_internal    * pic)
 {
-    struct pic_internal * pic = (struct pic_internal *)private_data;
-    struct pic_chkpt_state pic_chkpt;
-
-    memset(&(pic_chkpt), 0, sizeof(struct pic_chkpt_state));
 
 
 
-    pic_chkpt.master_irr       = pic->master_irr;
-    pic_chkpt.master_isr       = pic->master_isr;
-    pic_chkpt.master_elcr      = pic->master_elcr;
-    pic_chkpt.master_elcr_mask = pic->master_elcr_mask;
-    pic_chkpt.master_icw1      = pic->master_icw1;
-    pic_chkpt.master_icw2      = pic->master_icw2;
-    pic_chkpt.master_icw3      = pic->master_icw3;
-    pic_chkpt.master_icw4      = pic->master_icw4;
-    pic_chkpt.master_imr       = pic->master_imr;
-    pic_chkpt.master_ocw2      = pic->master_ocw2;
-    pic_chkpt.master_ocw3      = pic->master_ocw3;
-    pic_chkpt.master_state     = pic->master_state;
+    pic_chkpt->master_irr       = pic->master_irr;
+    pic_chkpt->master_isr       = pic->master_isr;
+    pic_chkpt->master_elcr      = pic->master_elcr;
+    pic_chkpt->master_elcr_mask = pic->master_elcr_mask;
+    pic_chkpt->master_icw1      = pic->master_icw1;
+    pic_chkpt->master_icw2      = pic->master_icw2;
+    pic_chkpt->master_icw3      = pic->master_icw3;
+    pic_chkpt->master_icw4      = pic->master_icw4;
+    pic_chkpt->master_imr       = pic->master_imr;
+    pic_chkpt->master_ocw2      = pic->master_ocw2;
+    pic_chkpt->master_ocw3      = pic->master_ocw3;
+    pic_chkpt->master_state     = pic->master_state;
 
 
-    pic_chkpt.slave_irr        = pic->slave_irr;
-    pic_chkpt.slave_isr        = pic->slave_isr;
-    pic_chkpt.slave_elcr       = pic->slave_elcr;
-    pic_chkpt.slave_elcr_mask  = pic->slave_elcr_mask;
-    pic_chkpt.slave_icw1       = pic->slave_icw1;
-    pic_chkpt.slave_icw2       = pic->slave_icw2;
-    pic_chkpt.slave_icw3       = pic->slave_icw3;
-    pic_chkpt.slave_icw4       = pic->slave_icw4;
-    pic_chkpt.slave_imr        = pic->slave_imr;
-    pic_chkpt.slave_ocw2       = pic->slave_ocw2;
-    pic_chkpt.slave_ocw3       = pic->slave_ocw3;
-    pic_chkpt.slave_state      = pic->slave_state;
+    pic_chkpt->slave_irr        = pic->slave_irr;
+    pic_chkpt->slave_isr        = pic->slave_isr;
+    pic_chkpt->slave_elcr       = pic->slave_elcr;
+    pic_chkpt->slave_elcr_mask  = pic->slave_elcr_mask;
+    pic_chkpt->slave_icw1       = pic->slave_icw1;
+    pic_chkpt->slave_icw2       = pic->slave_icw2;
+    pic_chkpt->slave_icw3       = pic->slave_icw3;
+    pic_chkpt->slave_icw4       = pic->slave_icw4;
+    pic_chkpt->slave_imr        = pic->slave_imr;
+    pic_chkpt->slave_ocw2       = pic->slave_ocw2;
+    pic_chkpt->slave_ocw3       = pic->slave_ocw3;
+    pic_chkpt->slave_state      = pic->slave_state;
 
-    v3_chkpt_save(ctx, "PIC", &pic_chkpt, sizeof(struct pic_chkpt_state));
 
     return 0;
 
 }
 
 static int 
-pic_load(struct v3_chkpt_ctx * ctx, 
-	 void                * private_data) 
+pic_load(char                   * name, 
+	 struct pic_chkpt_state * pic_chkpt, 
+	 size_t                   size,
+	 struct pic_internal    * pic) 
 {
-    struct pic_internal * pic = (struct pic_internal *)private_data;
-    struct pic_chkpt_state pic_chkpt;
-
-    memset(&(pic_chkpt), 0, sizeof(struct pic_chkpt_state));
-   
-    v3_chkpt_load(ctx, "PIC", &pic_chkpt, sizeof(struct pic_chkpt_state));
 
 
-    pic->master_irr       = pic_chkpt.master_irr;
-    pic->master_isr       = pic_chkpt.master_isr;
-    pic->master_elcr      = pic_chkpt.master_elcr;
-    pic->master_elcr_mask = pic_chkpt.master_elcr_mask;
-    pic->master_icw1      = pic_chkpt.master_icw1;
-    pic->master_icw2      = pic_chkpt.master_icw2;
-    pic->master_icw3      = pic_chkpt.master_icw3;
-    pic->master_icw4      = pic_chkpt.master_icw4;
-    pic->master_imr       = pic_chkpt.master_imr;
-    pic->master_ocw2      = pic_chkpt.master_ocw2;
-    pic->master_ocw3      = pic_chkpt.master_ocw3;
-    pic->master_state     = pic_chkpt.master_state;
+    pic->master_irr       = pic_chkpt->master_irr;
+    pic->master_isr       = pic_chkpt->master_isr;
+    pic->master_elcr      = pic_chkpt->master_elcr;
+    pic->master_elcr_mask = pic_chkpt->master_elcr_mask;
+    pic->master_icw1      = pic_chkpt->master_icw1;
+    pic->master_icw2      = pic_chkpt->master_icw2;
+    pic->master_icw3      = pic_chkpt->master_icw3;
+    pic->master_icw4      = pic_chkpt->master_icw4;
+    pic->master_imr       = pic_chkpt->master_imr;
+    pic->master_ocw2      = pic_chkpt->master_ocw2;
+    pic->master_ocw3      = pic_chkpt->master_ocw3;
+    pic->master_state     = pic_chkpt->master_state;
 
 
-    pic->slave_irr        = pic_chkpt.slave_irr;
-    pic->slave_isr        = pic_chkpt.slave_isr;
-    pic->slave_elcr       = pic_chkpt.slave_elcr;
-    pic->slave_elcr_mask  = pic_chkpt.slave_elcr_mask;
-    pic->slave_icw1       = pic_chkpt.slave_icw1;
-    pic->slave_icw2       = pic_chkpt.slave_icw2;
-    pic->slave_icw3       = pic_chkpt.slave_icw3;
-    pic->slave_icw4       = pic_chkpt.slave_icw4;
-    pic->slave_imr        = pic_chkpt.slave_imr;
-    pic->slave_ocw2       = pic_chkpt.slave_ocw2;
-    pic->slave_ocw3       = pic_chkpt.slave_ocw3;
-    pic->slave_state      = pic_chkpt.slave_state;
+    pic->slave_irr        = pic_chkpt->slave_irr;
+    pic->slave_isr        = pic_chkpt->slave_isr;
+    pic->slave_elcr       = pic_chkpt->slave_elcr;
+    pic->slave_elcr_mask  = pic_chkpt->slave_elcr_mask;
+    pic->slave_icw1       = pic_chkpt->slave_icw1;
+    pic->slave_icw2       = pic_chkpt->slave_icw2;
+    pic->slave_icw3       = pic_chkpt->slave_icw3;
+    pic->slave_icw4       = pic_chkpt->slave_icw4;
+    pic->slave_imr        = pic_chkpt->slave_imr;
+    pic->slave_ocw2       = pic_chkpt->slave_ocw2;
+    pic->slave_ocw3       = pic_chkpt->slave_ocw3;
+    pic->slave_state      = pic_chkpt->slave_state;
 
     return 0;
 }
@@ -1046,10 +1039,6 @@ pic_load(struct v3_chkpt_ctx * ctx,
 
 static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))pic_free,
-#ifdef V3_CONFIG_CHECKPOINT
-    .save = pic_save,
-    .load = pic_load
-#endif
 };
 
 
@@ -1129,6 +1118,15 @@ pic_init(struct v3_vm_info * vm,
 	v3_remove_device(dev);
 	return -1;
     }
+
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_checkpoint_register(vm, "PIC",
+			   (v3_chkpt_save_fn)pic_save, 
+			   (v3_chkpt_load_fn)pic_load, 
+			   sizeof(struct pic_chkpt_state), 
+			   state);    
+
+#endif
 
     return 0;
 }

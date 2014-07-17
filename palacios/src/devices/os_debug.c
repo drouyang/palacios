@@ -127,43 +127,33 @@ debug_free(struct debug_state * state)
 
 #ifdef V3_CONFIG_CHECKPOINT
 
-struct os_dbg_chkpt_state {
+struct dbg_chkpt {
     char     debug_buf[BUF_SIZE];
     uint32_t debug_offset;
 
 } __attribute__((packed));
 
 static int 
-debug_save(struct v3_chkpt_ctx * ctx, 
-	   void                * private_data) 
+debug_save(char               * name, 
+	   struct dbg_chkpt   * chkpt, 
+	   size_t               size,
+	   struct debug_state * dbg) 
 {
-    struct debug_state * dbg = (struct debug_state *)private_data;
-    struct os_dbg_chkpt_state os_dbg_chkpt;
-
-    memset(&(os_dbg_chkpt), 0, sizeof(struct os_dbg_chkpt_state));
-
-    memcpy(os_dbg_chkpt.debug_buf, dbg->debug_buf, BUF_SIZE);
-    os_dbg_chkpt.debug_offset = dbg->debug_offset;
-    
-    v3_chkpt_save(ctx, "OS_DEBUG", &os_dbg_chkpt, sizeof(struct os_dbg_chkpt_state));
+    memcpy(chkpt->debug_buf, dbg->debug_buf, BUF_SIZE);
+    chkpt->debug_offset = dbg->debug_offset;
 
     return 0;
 }
 
 
 static int 
-debug_load(struct v3_chkpt_ctx * ctx, 
-	   void                * private_data) 
+debug_load(char               * name, 
+	   struct dbg_chkpt   * chkpt, 
+	   size_t               size,
+	   struct debug_state * dbg) 
 {
-    struct debug_state * dbg = (struct debug_state *)private_data;
-    struct os_dbg_chkpt_state os_dbg_chkpt;
-
-    memset(&(os_dbg_chkpt), 0, sizeof(struct os_dbg_chkpt_state));
-
-    v3_chkpt_load(ctx, "OS_DEBUG", &os_dbg_chkpt, sizeof(struct os_dbg_chkpt_state));
-
-    memcpy(dbg->debug_buf, os_dbg_chkpt.debug_buf, BUF_SIZE);
-    dbg->debug_offset = os_dbg_chkpt.debug_offset;
+    memcpy(dbg->debug_buf, chkpt->debug_buf, BUF_SIZE);
+    dbg->debug_offset = chkpt->debug_offset;
 
     return 0;
 }
@@ -174,10 +164,6 @@ debug_load(struct v3_chkpt_ctx * ctx,
 
 static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))debug_free,
-#ifdef V3_CONFIG_CHECKPOINT
-    .save = debug_save,
-    .load = debug_load
-#endif 
 };
 
 
@@ -225,6 +211,15 @@ debug_init(struct v3_vm_info * vm,
     state->debug_offset = 0;
     memset(state->debug_buf, 0, BUF_SIZE);
   
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_checkpoint_register(vm, "OS_DEBUG", 
+			   (v3_chkpt_save_fn)debug_save, 
+			   (v3_chkpt_load_fn)debug_load,
+			   sizeof(struct dbg_chkpt), 
+			   state);
+#endif
+
+
     return 0;
 }
 

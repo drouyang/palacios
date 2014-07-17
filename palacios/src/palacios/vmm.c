@@ -303,7 +303,7 @@ Init_V3(struct v3_os_hooks * hooks,
 
 
 #ifdef V3_CONFIG_CHECKPOINT
-    V3_init_checkpoint();
+    V3_init_chkpt_stores();
 #endif
 
     if ((hooks) && (hooks->call_on_cpu)) {
@@ -370,7 +370,7 @@ Shutdown_V3()
 
 
 #ifdef V3_CONFIG_CHECKPOINT
-    V3_deinit_checkpoint();
+    V3_deinit_chkpt_stores();
 #endif
 
 

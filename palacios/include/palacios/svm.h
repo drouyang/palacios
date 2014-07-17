@@ -94,11 +94,6 @@ int v3_svm_enter(struct v3_core_info * core);
 int v3_start_svm_guest(struct v3_core_info * core);
 int v3_reset_svm_vm_core(struct v3_core_info * core, addr_t rip);
 
-
-int v3_svm_load_core(struct v3_core_info * core, void * ctx);
-int v3_svm_save_core(struct v3_core_info * core, void * ctx);
-
-
 #endif
 
 

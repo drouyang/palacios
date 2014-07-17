@@ -1273,13 +1273,13 @@ pci_free(struct pci_internal * pci_state)
 
 #ifdef V3_CONFIG_CHECKPOINT
 
-struct pci_chkpt_state {
+struct pci_chkpt {
     uint32_t addr_reg;
     uint16_t io_base;
 } __attribute__((packed));
 
 
-struct pci_dev_chkpt_state {
+struct pci_dev_chkpt {
     uint8_t cfg_space[256];
     uint32_t bars[6];
 } __attribute__((packed));
@@ -1288,99 +1288,67 @@ struct pci_dev_chkpt_state {
 #include <palacios/vmm_sprintf.h>
 
 static int 
-pci_save(struct v3_chkpt_ctx * ctx, 
-	 void                * private_data) 
+pci_save(char                   * name, 
+	 struct pci_chkpt * pci_chkpt, 
+	 size_t                   size,
+	 struct pci_internal    * pci) 
 {
-    struct pci_internal * pci = (struct pci_internal *)private_data;
-    struct pci_chkpt_state pci_chkpt;
-    int  i = 0;    
-
-    memset(&(pci_chkpt), 0, sizeof(struct pci_chkpt_state));
-
-    pci_chkpt.addr_reg = pci->addr_reg.val;
-    pci_chkpt.io_base  = pci->dev_io_base;
-
-    v3_chkpt_save(ctx, "PCI", &pci_chkpt, sizeof(struct pci_chkpt_state));
-
-    for (i = 0; i < PCI_BUS_COUNT; i++) {
-        struct pci_bus      * bus     = &(pci->bus_list[i]);
-        struct rb_node      * node    = v3_rb_first(&(bus->devices));
-        struct pci_device   * dev     = NULL;
-
-        while (node) {
-	    char buf[32] = {[0 ... 31] = 0};
-            int  bar_idx = 0;
-	    struct pci_dev_chkpt_state dev_chkpt;
-
-	    memset(&dev_chkpt, 0, sizeof(struct pci_dev_chkpt_state));
-
-            dev = rb_entry(node, struct pci_device, dev_tree_node);
-
-            memcpy(dev_chkpt.cfg_space, dev->config_space, 256);
-
-            for (bar_idx = 0; bar_idx < 6; bar_idx++) {
-               dev_chkpt.bars[bar_idx] = dev->bar[bar_idx].val;
-            }
-
-	    snprintf(buf, 31, "PCI-dev-%d:%d.%d", i, dev->dev_num, dev->fn_num);
-	    v3_chkpt_save(ctx, buf, &dev_chkpt, sizeof(struct pci_dev_chkpt_state));
-
-            node = v3_rb_next(node);
-        }
-    }
-
+    pci_chkpt->addr_reg = pci->addr_reg.val;
+    pci_chkpt->io_base  = pci->dev_io_base;
 
     return 0;
 }
 
 
 static int 
-pci_load(struct v3_chkpt_ctx * ctx, 
-	 void                * private_data) 
+pci_load(char                   * name, 
+	 struct pci_chkpt * pci_chkpt, 
+	 size_t                   size,
+	 struct pci_internal    * pci) 
 {
-    struct pci_internal * pci = (struct pci_internal *)private_data;
-    struct pci_chkpt_state pci_chkpt;
-    int  i = 0;    
+    pci->addr_reg.val = pci_chkpt->addr_reg;
+    pci->dev_io_base  = pci_chkpt->io_base;
 
-    memset(&(pci_chkpt), 0, sizeof(struct pci_chkpt_state));
-
-    v3_chkpt_load(ctx, "PCI", &pci_chkpt, sizeof(struct pci_chkpt_state));
-
-    pci->addr_reg.val = pci_chkpt.addr_reg;
-    pci->dev_io_base  = pci_chkpt.io_base;
+    return 0;
+}
 
 
-    for (i = 0; i < PCI_BUS_COUNT; i++) {
-        struct pci_bus      * bus     = &(pci->bus_list[i]);
-        struct rb_node      * node    = v3_rb_first(&(bus->devices));
-        struct pci_device   * dev     = NULL;
 
-        while (node) {
-	    char buf[32] = {[0 ... 31] = 0};
-            int  bar_idx = 0;
-	    struct pci_dev_chkpt_state dev_chkpt;
+static int 
+dev_save(char                 * name, 
+	 struct pci_dev_chkpt * dev_chkpt, 
+	 size_t                 size,
+	 struct pci_device    * dev) 
+{
+    int  bar_idx = 0;
 
-            dev = rb_entry(node, struct pci_device, dev_tree_node);
+    memcpy(dev_chkpt->cfg_space, dev->config_space, 256);
 
-	    snprintf(buf, 31, "PCI-dev-%d:%d.%d", i, dev->dev_num, dev->fn_num);
-	    v3_chkpt_load(ctx, buf, &dev_chkpt, sizeof(struct pci_dev_chkpt_state));
-
-
-            memcpy(dev->config_space, dev_chkpt.cfg_space, 256);
-
-            for (bar_idx = 0; bar_idx < 6; bar_idx++) {
-
-		/* Rehook BARS */
-
-		bar_update(dev, 0x10 + (bar_idx * 4), &(dev_chkpt.bars[bar_idx]), 4, &(dev->bar[bar_idx]));
-		//                dev->bar[bar_idx].val = dev_chkpt.bars[bar_idx];
-            }
-
-            node = v3_rb_next(node);
-        }
+    for (bar_idx = 0; bar_idx < 6; bar_idx++) {
+	dev_chkpt->bars[bar_idx] = dev->bar[bar_idx].val;
     }
+    
+    return 0;
+}
 
 
+static int 
+dev_load(char                 * name, 
+	 struct pci_dev_chkpt * dev_chkpt, 
+	 size_t                 size,
+	 struct pci_device    * dev) 
+{
+    int  bar_idx = 0;
+
+    memcpy(dev->config_space, dev_chkpt->cfg_space, 256);
+    
+    for (bar_idx = 0; bar_idx < 6; bar_idx++) {
+
+	/* Rehook BARS */
+	bar_update(dev, 0x10 + (bar_idx * 4), &(dev_chkpt->bars[bar_idx]), 4, &(dev->bar[bar_idx]));
+	//                dev->bar[bar_idx].val = dev_chkpt.bars[bar_idx];
+    }
+    
     return 0;
 }
 
@@ -1392,10 +1360,6 @@ pci_load(struct v3_chkpt_ctx * ctx,
 
 static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))pci_free,
-#ifdef V3_CONFIG_CHECKPOINT
-    .save = pci_save,
-    .load = pci_load
-#endif
 };
 
 
@@ -1445,6 +1409,17 @@ pci_init(struct v3_vm_info * vm,
         v3_remove_device(dev);
         return -1;
     }
+
+    
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_checkpoint_register(vm, "PCI", 
+			   (v3_chkpt_save_fn)pci_save, 
+			   (v3_chkpt_load_fn)pci_load, 
+			   sizeof(struct pci_chkpt), 
+			   pci_state);
+#endif
+
+
 
     return 0;
 }
@@ -1923,6 +1898,22 @@ v3_pci_register_device(struct vm_device    * pci,
 
     // add the device
     add_device_to_bus(bus, pci_dev);
+
+
+#ifdef V3_CONFIG_CHECKPOINT
+    {
+	char buf[32] = {[0 ... 31] = 0};
+	snprintf(buf, 31, "PCI-dev-%d:%d.%d", bus_num, dev_num, fn_num);
+	v3_checkpoint_register(pci->vm, buf, 
+			       (v3_chkpt_save_fn)dev_save, 
+			       (v3_chkpt_load_fn)dev_load,
+			       sizeof(struct pci_dev_chkpt),
+			       pci_dev);
+    }
+#endif
+
+
+    
 
 #ifdef V3_CONFIG_DEBUG_PCI
     pci_dump_state(pci_state);

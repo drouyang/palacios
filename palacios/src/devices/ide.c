@@ -1739,20 +1739,18 @@ struct ide_chkpt_state {
 #include <palacios/vmm_sprintf.h>
 
 static int 
-ide_save(struct v3_chkpt_ctx * ctx, 
-	 void                * private_data) 
+ide_save(char                   * name, 
+	 struct ide_chkpt_state * ide_chkpt, 
+	 size_t                   size,
+	 struct ide_internal    * ide) 
 {
-    struct ide_internal  * ide = (struct ide_internal *)private_data;
-    struct ide_chkpt_state chkpt_state;
-
     int  ch_num    = 0;
     int  drive_num = 0;
     
-    memset(&(chkpt_state), 0, sizeof(struct ide_chkpt_state));
 
     for (ch_num = 0; ch_num < 2; ch_num++) {
 	struct ide_channel         * ch       = &(ide->channels[ch_num]);
-	struct channel_chkpt_state * ch_chkpt = &(chkpt_state.channels[ch_num]);
+	struct channel_chkpt_state * ch_chkpt = &(ide_chkpt->channels[ch_num]);
 
 	ch_chkpt->error_reg.val  = ch->error_reg.val;
 	ch_chkpt->features.val   = ch->features.val;
@@ -1799,28 +1797,24 @@ ide_save(struct v3_chkpt_ctx * ctx,
 	}
     }
 
-    v3_chkpt_save(ctx, "IDE", &chkpt_state, sizeof(struct ide_chkpt_state));
-
     return 0;
 }
 
 
 
 static int 
-ide_load(struct v3_chkpt_ctx * ctx,
-	 void                * private_data) 
+ide_load(
+	 char                   * name, 
+	 struct ide_chkpt_state * ide_chkpt, 
+	 size_t                   size,
+	 struct ide_internal    * ide) 
 {
-    struct ide_internal  * ide = (struct ide_internal *)private_data;
-    struct ide_chkpt_state chkpt_state;
-
     int  drive_num = 0;
     int  ch_num    = 0;
-    
-    v3_chkpt_load(ctx, "IDE", &chkpt_state, sizeof(struct ide_chkpt_state));
-
+ 
     for (ch_num = 0; ch_num < 2; ch_num++) {
 	struct ide_channel         * ch       = &(ide->channels[ch_num]);
-	struct channel_chkpt_state * ch_chkpt = &(chkpt_state.channels[ch_num]);
+	struct channel_chkpt_state * ch_chkpt = &(ide_chkpt->channels[ch_num]);
 
 	ch->error_reg.val  = ch_chkpt->error_reg.val;
 	ch->features.val   = ch_chkpt->features.val;
@@ -1878,10 +1872,6 @@ ide_load(struct v3_chkpt_ctx * ctx,
 
 static struct v3_device_ops dev_ops = {
     .free = (int (*)(void *))ide_free,
-#ifdef V3_CONFIG_CHECKPOINT
-    .save = ide_save,
-    .load = ide_load
-#endif
 
 };
 
@@ -2116,6 +2106,14 @@ ide_init(struct v3_vm_info * vm,
 	return -1;
     }
     
+    
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_checkpoint_register(vm, "IDE",
+			   (v3_chkpt_save_fn)ide_save, 
+			   (v3_chkpt_load_fn)ide_load,
+			   sizeof(struct ide_chkpt_state), 
+			   ide);
+#endif
 
     PrintDebug("IDE Initialized\n");
 

@@ -165,12 +165,6 @@ void v3_print_mem_map(struct v3_vm_info * vm);
 
 
 
-#ifdef V3_CONFIG_CHECKPOINT
-#include <palacios/vmm_checkpoint.h>
-int v3_mem_save(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
-int v3_mem_load(struct v3_vm_info * vm, struct v3_chkpt * chkpt);
-#endif
-
 
 #endif /* ! __V3VEE__ */
 

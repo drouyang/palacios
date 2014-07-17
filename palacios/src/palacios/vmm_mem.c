@@ -136,6 +136,13 @@ gpa_to_node_from_cfg(struct v3_vm_info * vm,
 }
 
 
+#ifdef V3_CONFIG_CHECKPOINT
+#include <palacios/vmm_checkpoint.h>
+#include <palacios/vmm_sprintf.h>
+#endif
+
+
+
 
 int 
 v3_init_mem_map(struct v3_vm_info * vm) 
@@ -197,6 +204,17 @@ v3_init_mem_map(struct v3_vm_info * vm)
 	region->flags.alloced  = 1;
 
 	region->unhandled      = unhandled_err;
+
+	
+#ifdef V3_CONFIG_CHECKPOINT
+	{
+	    char reg_str[32] = {[0 ... 31] = 0};
+	    snprintf(reg_str, 32, "mem-region-%d", i);
+	    v3_checkpoint_register_nocopy(vm, reg_str, 
+					  V3_VAddr((void *)region->host_addr),
+					  MEM_BLOCK_SIZE_BYTES);
+	}
+#endif
     }
 
 
@@ -742,74 +760,3 @@ v3_print_mem_map(struct v3_vm_info * vm)
 
 
 
-#ifdef V3_CONFIG_CHECKPOINT
-#include <palacios/vmm_checkpoint.h>
-#include <palacios/vmm_sprintf.h>
-
-int 
-v3_mem_save(struct v3_vm_info * vm, 
-	    struct v3_chkpt   * chkpt) 
-{
-    struct v3_mem_map * map = &(vm->mem_map);
-    void              * ctx = NULL;
-    int i = 0;
-
-    ctx = v3_chkpt_open_ctx(chkpt, NULL, "memory");
-    
-    if (ctx == NULL) {
-	PrintError("Could not open Checkpoint CTX: memory\n");
-	return -1;
-    }
-
-    for (i = 0; i < map->num_base_blocks; i++) {
-	struct v3_mem_region * region  = &(map->base_regions[i]);
-	char reg_str[32] = {[0 ... 31] = 0};
-
-	snprintf(reg_str, 32, "region-%d-mem", i);
-
-	v3_chkpt_save(ctx,
-		      reg_str,
-		      V3_VAddr((void *)region->host_addr), 
-		      region->guest_end - region->guest_start);
-    }
-
-    v3_chkpt_close_ctx(ctx);
-
-    return 0;
-}
-
-
-int 
-v3_mem_load(struct v3_vm_info * vm, 
-	    struct v3_chkpt   * chkpt) 
-{
-    struct v3_mem_map * map = &(vm->mem_map);
-    void              * ctx = NULL;
-    int i = 0;
-
-    ctx = v3_chkpt_open_ctx(chkpt, NULL, "memory");
-    
-    if (ctx == NULL) {
-	PrintError("Could not open Checkpoint CTX: memory\n");
-	return -1;
-    }
-
-    for (i = 0; i < map->num_base_blocks; i++) {
-	struct v3_mem_region * region = &(map->base_regions[i]);
-	char reg_str[32] = {[0 ... 31] = 0};
-	
-	snprintf(reg_str, 32, "region-%d-mem", i);
-
-	v3_chkpt_load(ctx, 
-		      reg_str, 
-		      V3_VAddr((void *)region->host_addr),
-		      region->guest_end - region->guest_start);
-
-    }
-
-    v3_chkpt_close_ctx(ctx);
-
-    return 0;
-}
-
-#endif

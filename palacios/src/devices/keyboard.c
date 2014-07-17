@@ -1094,57 +1094,48 @@ struct kbd_chkpt_state {
 } __attribute__((packed));
 
 static int 
-keyboard_save(struct v3_chkpt_ctx * ctx, 
-	      void                * private_data) 
+kbd_save(char                     * name, 
+	      struct kbd_chkpt_state   * kbd_chkpt, 
+	      size_t                     size,
+	      struct keyboard_internal * kbd) 
 {
-    struct keyboard_internal * kbd = (struct keyboard_internal *)private_data;
-    struct kbd_chkpt_state     kbd_chkpt;
 
-    memset(&kbd_chkpt, 0, sizeof(struct kbd_chkpt_state));
-
-    kbd_chkpt.cmd.val       = kbd->cmd.val;
-    kbd_chkpt.status.val    = kbd->status.val;
-    kbd_chkpt.state         = kbd->state;
-    kbd_chkpt.mouse_state   = kbd->mouse_state;
-    kbd_chkpt.output_byte   = kbd->output_byte;
-    kbd_chkpt.input_byte    = kbd->input_byte;
-    kbd_chkpt.scancode_set  = kbd->scancode_set;
-    kbd_chkpt.mouse_enabled = kbd->mouse_enabled;
+    kbd_chkpt->cmd.val       = kbd->cmd.val;
+    kbd_chkpt->status.val    = kbd->status.val;
+    kbd_chkpt->state         = kbd->state;
+    kbd_chkpt->mouse_state   = kbd->mouse_state;
+    kbd_chkpt->output_byte   = kbd->output_byte;
+    kbd_chkpt->input_byte    = kbd->input_byte;
+    kbd_chkpt->scancode_set  = kbd->scancode_set;
+    kbd_chkpt->mouse_enabled = kbd->mouse_enabled;
     
-    memcpy(&(kbd_chkpt.kbd_queue),   &(kbd->kbd_queue),   sizeof(struct queue));
-    memcpy(&(kbd_chkpt.mouse_queue), &(kbd->mouse_queue), sizeof(struct queue));
-
-    v3_chkpt_save(ctx, "KBD", &kbd_chkpt, sizeof(struct kbd_chkpt_state));
-
+    memcpy(&(kbd_chkpt->kbd_queue),   &(kbd->kbd_queue),   sizeof(struct queue));
+    memcpy(&(kbd_chkpt->mouse_queue), &(kbd->mouse_queue), sizeof(struct queue));
 
     return 0;
 }
 
 
 static int 
-keyboard_load(struct v3_chkpt_ctx * ctx, 
-	      void                * private_data) 
+kbd_load(char                     * name, 
+	      struct kbd_chkpt_state   * kbd_chkpt, 
+	      size_t                     size,
+	      struct keyboard_internal * kbd) 
 {
-    struct keyboard_internal * kbd = (struct keyboard_internal *)private_data;
-    struct kbd_chkpt_state     kbd_chkpt;
-
-    memset(&kbd_chkpt, 0, sizeof(struct kbd_chkpt_state));
 
     keyboard_reset_device(kbd);
 
-    v3_chkpt_load(ctx, "KBD", &kbd_chkpt, sizeof(struct kbd_chkpt_state));
+    kbd->cmd.val       = kbd_chkpt->cmd.val;
+    kbd->status.val    = kbd_chkpt->status.val;
+    kbd->state         = kbd_chkpt->state;
+    kbd->mouse_state   = kbd_chkpt->mouse_state;
+    kbd->output_byte   = kbd_chkpt->output_byte;
+    kbd->input_byte    = kbd_chkpt->input_byte;
+    kbd->scancode_set  = kbd_chkpt->scancode_set;
+    kbd->mouse_enabled = kbd_chkpt->mouse_enabled;
 
-    kbd->cmd.val       = kbd_chkpt.cmd.val;
-    kbd->status.val    = kbd_chkpt.status.val;
-    kbd->state         = kbd_chkpt.state;
-    kbd->mouse_state   = kbd_chkpt.mouse_state;
-    kbd->output_byte   = kbd_chkpt.output_byte;
-    kbd->input_byte    = kbd_chkpt.input_byte;
-    kbd->scancode_set  = kbd_chkpt.scancode_set;
-    kbd->mouse_enabled = kbd_chkpt.mouse_enabled;
-
-    memcpy(&(kbd->kbd_queue),   &(kbd_chkpt.kbd_queue),   sizeof(struct queue));
-    memcpy(&(kbd->mouse_queue), &(kbd_chkpt.mouse_queue), sizeof(struct queue));
+    memcpy(&(kbd->kbd_queue),   &(kbd_chkpt->kbd_queue),   sizeof(struct queue));
+    memcpy(&(kbd->mouse_queue), &(kbd_chkpt->mouse_queue), sizeof(struct queue));
 
     return 0;
 }
@@ -1154,10 +1145,6 @@ keyboard_load(struct v3_chkpt_ctx * ctx,
 
 static struct v3_device_ops dev_ops = { 
     .free = (int (*)(void *))keyboard_free,
-#ifdef V3_CONFIG_CHECKPOINT
-    .save = keyboard_save,
-    .load = keyboard_load
-#endif
 };
 
 
@@ -1216,7 +1203,14 @@ keyboard_init(struct v3_vm_info * vm,
     v3_dev_hook_io(dev, KEYBOARD_DELAY_80H, &keyboard_read_delay, &keyboard_write_delay);
 #endif
 
-  
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_checkpoint_register(vm, "KEYBOARD", 
+			   (v3_chkpt_save_fn)kbd_save, 
+			   (v3_chkpt_load_fn)kbd_load, 
+			   sizeof(struct kbd_chkpt_state), 
+			   kbd);
+#endif  
+
     //
     // We do not hook the IRQ here.  Instead, the underlying device driver
     // is responsible to call us back

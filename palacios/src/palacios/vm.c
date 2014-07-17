@@ -33,6 +33,10 @@
 #include <palacios/vmm_debug.h>
 #include <palacios/vmm_dev_mgr.h>
 
+#ifdef V3_CONFIG_CHECKPOINT
+#include <palacios/vmm_checkpoint.h>
+#endif
+
 
 v3_cpu_mode_t 
 v3_get_vm_cpu_mode(struct v3_core_info * core) 
@@ -267,7 +271,9 @@ v3_init_vm(struct v3_vm_info * vm)
 {
     extern v3_cpu_arch_t v3_mach_type;
 
-
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_init_chkpt(vm);
+#endif
 
     v3_init_hypercall_map(vm);
 
@@ -392,7 +398,9 @@ v3_free_vm_internal(struct v3_vm_info * vm)
     v3_deinit_telemetry(vm);
 #endif
 
-
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_deinit_chkpt(vm);
+#endif
 
     return 0;
 }
