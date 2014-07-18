@@ -92,9 +92,6 @@ allocate_vmcs()
 
 
 #ifdef V3_CONFIG_CHECKPOINT
-/* 
- * JRL: This is broken
- */
 static int 
 save_core(char                 * name, 
 	  struct v3_core_chkpt * chkpt, 
@@ -110,7 +107,9 @@ save_core(char                 * name,
     memcpy(&(chkpt->gprs),      &(core->vm_regs),   sizeof(struct v3_gprs));
     memcpy(&(chkpt->dbg_regs),  &(core->dbg_regs),  sizeof(struct v3_dbg_regs));
     memcpy(&(chkpt->segments),  &(core->segments),  sizeof(struct v3_segments));
+    memcpy(&(chkpt->msrs),      &(core->msrs),      sizeof(struct v3_msrs));
     
+
     chkpt->shdw_cr3  = core->shdw_pg_state.guest_cr3;
     chkpt->shdw_cr0  = core->shdw_pg_state.guest_cr0;
     chkpt->shdw_efer = core->shdw_pg_state.guest_efer.value;
@@ -674,10 +673,14 @@ v3_init_vmx_core(struct v3_core_info * core,
 	    
 	}
 	
-	/* Not sure what to do about this... 
-	 * -- Does not appear to be an explicit hardware cache version...
+	/*  
+	 *  Hardly anyone uses compatibility mode. And I think its even broken on Linux, 
+	 *    so Screw It.
 	 */
-	msr_ret |= v3_hook_msr(core->vm_info, IA32_CSTAR_MSR,        NULL, NULL, NULL);
+	msr_ret |= v3_hook_msr(core->vm_info, IA32_CSTAR_MSR, 
+			       v3_msr_unhandled_read, 
+			       v3_msr_unhandled_write, 
+			       NULL);
 	
 	if (msr_ret != 0) {
 	    PrintError("Error configuring MSR save/restore area\n");

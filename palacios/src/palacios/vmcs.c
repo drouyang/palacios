@@ -232,21 +232,28 @@ v3_vmx_save_vmcs(struct v3_core_info * core,
 
     /* Save MSRs from MSR SAVE Area (whereever that is...)*/
 
-    core->msrs.star         = vmx_info->msr_area->guest_star.hi;
+    core->msrs.star           = vmx_info->msr_area->guest_star.hi;
     core->msrs.star         <<= 32;
-    core->msrs.star         |= vmx_info->msr_area->guest_star.lo;
+    core->msrs.star          |= vmx_info->msr_area->guest_star.lo;
 
-    core->msrs.lstar        = vmx_info->msr_area->guest_lstar.hi;
+    core->msrs.lstar          = vmx_info->msr_area->guest_lstar.hi;
     core->msrs.lstar        <<= 32;
-    core->msrs.lstar        |= vmx_info->msr_area->guest_lstar.lo;
+    core->msrs.lstar         |= vmx_info->msr_area->guest_lstar.lo;
 
-    core->msrs.sfmask       = vmx_info->msr_area->guest_fmask.hi;
+    core->msrs.sfmask         = vmx_info->msr_area->guest_fmask.hi;
     core->msrs.sfmask       <<= 32;
-    core->msrs.sfmask       |= vmx_info->msr_area->guest_fmask.lo;
+    core->msrs.sfmask        |= vmx_info->msr_area->guest_fmask.lo;
 
-    core->msrs.kern_gs_base = vmx_info->msr_area->guest_kern_gs.hi;
+    core->msrs.kern_gs_base   = vmx_info->msr_area->guest_kern_gs.hi;
     core->msrs.kern_gs_base <<= 32;
-    core->msrs.kern_gs_base |= vmx_info->msr_area->guest_kern_gs.lo;
+    core->msrs.kern_gs_base  |= vmx_info->msr_area->guest_kern_gs.lo;
+
+
+    /* Restore MSRs that have dedicated VMCS entries */
+    check_vmcs_read(VMCS_GUEST_SYSENTER_CS,       &(core->msrs.sysenter_cs));
+    check_vmcs_read(VMCS_GUEST_SYSENTER_ESP,      &(core->msrs.sysenter_esp));
+    check_vmcs_read(VMCS_GUEST_SYSENTER_EIP,      &(core->msrs.sysenter_eip));
+    check_vmcs_read(VMCS_GUEST_PAT,               &(core->msrs.pat));
 
 
     return error;
@@ -295,6 +302,12 @@ v3_vmx_restore_vmcs(struct v3_core_info * core,
 
     vmx_info->msr_area->guest_kern_gs.hi = (core->msrs.kern_gs_base >> 32);
     vmx_info->msr_area->guest_kern_gs.lo = (core->msrs.kern_gs_base & 0xffffffff);
+
+    /* Restore MSRs that have dedicated VMCS entries */
+    check_vmcs_write(VMCS_GUEST_SYSENTER_CS,       core->msrs.sysenter_cs);
+    check_vmcs_write(VMCS_GUEST_SYSENTER_ESP,      core->msrs.sysenter_esp);
+    check_vmcs_write(VMCS_GUEST_SYSENTER_EIP,      core->msrs.sysenter_eip);
+    check_vmcs_write(VMCS_GUEST_PAT,               core->msrs.pat);
 
     return error;
 

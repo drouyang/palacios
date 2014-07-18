@@ -62,6 +62,12 @@ struct v3_msrs {
     v3_reg_t lstar;
     v3_reg_t sfmask;
     v3_reg_t kern_gs_base;
+    v3_reg_t sysenter_cs;
+    v3_reg_t sysenter_esp;
+    v3_reg_t sysenter_eip;
+    v3_reg_t pat;
+    /* v3_reg_t fs_base; */
+    /* v3_reg_t gs_base; */
 } __attribute__((packed));
 
 

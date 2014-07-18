@@ -368,7 +368,9 @@ save_core(char                 * name,
     memcpy(&(chkpt->gprs),      &(core->vm_regs),   sizeof(struct v3_gprs));
     memcpy(&(chkpt->dbg_regs),  &(core->dbg_regs),  sizeof(struct v3_dbg_regs));
     memcpy(&(chkpt->segments),  &(core->segments),  sizeof(struct v3_segments));
+    memcpy(&(chkpt->msrs),      &(core->msrs),      sizeof(struct v3_msrs));
     
+
     chkpt->shdw_cr3  = core->shdw_pg_state.guest_cr3;
     chkpt->shdw_cr0  = core->shdw_pg_state.guest_cr0;
     chkpt->shdw_efer = core->shdw_pg_state.guest_efer.value;
@@ -386,12 +388,13 @@ load_core(char                 * name,
 {
 
     core->rip = chkpt->rip;
-    core->cpl = chkpt->cpl; /* Currently not set by VMX... */
+    core->cpl = chkpt->cpl; 
 
     memcpy(&(core->ctrl_regs), &(chkpt->ctrl_regs), sizeof(struct v3_ctrl_regs));
     memcpy(&(core->vm_regs),   &(chkpt->gprs),      sizeof(struct v3_gprs));
     memcpy(&(core->dbg_regs),  &(chkpt->dbg_regs),  sizeof(struct v3_dbg_regs));
     memcpy(&(core->segments),  &(chkpt->segments),  sizeof(struct v3_segments));
+    memcpy(&(core->msrs),      &(chkpt->msrs),      sizeof(struct v3_msrs));
     
     core->shdw_pg_state.guest_cr3        = chkpt->shdw_cr3;
     core->shdw_pg_state.guest_cr0        = chkpt->shdw_cr0;
@@ -697,6 +700,11 @@ v3_svm_enter(struct v3_core_info * core)
     guest_state->lstar           = core->msrs.lstar;
     guest_state->sfmask          = core->msrs.sfmask;
     guest_state->KernelGsBase    = core->msrs.kern_gs_base;
+    guest_state->sysenter_cs     = core->msrs.sysenter_cs;
+    guest_state->sysenter_esp    = core->msrs.sysenter_esp;
+    guest_state->sysenter_eip    = core->msrs.sysenter_eip;
+    guest_state->g_pat           = core->msrs.pat;
+    
 
     guest_state->cpl             = core->cpl;
 
@@ -774,6 +782,11 @@ v3_svm_enter(struct v3_core_info * core)
     core->msrs.lstar         = guest_state->lstar;
     core->msrs.sfmask        = guest_state->sfmask;
     core->msrs.kern_gs_base  = guest_state->KernelGsBase;
+    core->msrs.sysenter_cs   = guest_state->sysenter_cs;
+    core->msrs.sysenter_esp  = guest_state->sysenter_esp;
+    core->msrs.sysenter_eip  = guest_state->sysenter_eip;
+    core->msrs.pat           = guest_state->g_pat;
+    
 
     v3_get_vmcb_segments((vmcb_t*)(core->vmm_data), &(core->segments));
 
