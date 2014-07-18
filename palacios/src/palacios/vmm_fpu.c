@@ -23,6 +23,7 @@
 #include <palacios/vmm_telemetry.h>
 
 #include <palacios/vmm_fpu.h>
+#include <palacios/vmm_sprintf.h>
 
 
 #define XSETBV ".byte 0x0f,0x01,0xd1;"  
@@ -196,6 +197,49 @@ svm_enable_fpu_exits(struct v3_core_info * core)
 #endif
 
 
+#ifdef V3_CONFIG_CHECKPOINT
+struct fpu_chkpt {
+    struct v3_fpu_arch fpu_arch_state;
+    uint64_t flags;
+    uint64_t guest_xcr0;
+
+} __attribute__((packed));
+
+
+static int 
+save_fpu(char                * name, 
+	 struct fpu_chkpt    * chkpt, 
+	 size_t                size,
+	 struct v3_core_info * core)
+{
+    struct v3_fpu_state * fpu  = &(core->fpu_state);
+
+    memcpy(&(chkpt->fpu_arch_state), &(fpu->arch_state), sizeof(struct v3_fpu_arch));
+    chkpt->flags      = fpu->flags;
+    chkpt->guest_xcr0 = fpu->guest_xcr0;
+    
+    return 0;
+}
+
+
+static int 
+load_fpu(char                * name, 
+	 struct fpu_chkpt    * chkpt, 
+	 size_t                size,
+	 struct v3_core_info * core)
+{
+    struct v3_fpu_state * fpu  = &(core->fpu_state);
+
+    memcpy(&(fpu->arch_state), &(chkpt->fpu_arch_state), sizeof(struct v3_fpu_arch));
+    fpu->flags      = chkpt->flags;
+    fpu->guest_xcr0 = chkpt->guest_xcr0;
+
+    return 0;
+}
+
+#endif
+
+
 /* We assume we are running on a Machine with SSE* extensions 
  * along with the fxsave/fxrstor functionality 
  */
@@ -258,6 +302,19 @@ v3_fpu_init(struct v3_core_info * core)
     }
 
     fpu->enable_fpu_exits = 1;
+
+#ifdef V3_CONFIG_CHECKPOINT
+    {
+	char fpu_name[32] = {[0 ... 31] = 0};
+
+	snprintf(fpu_name, 31, "core-%d-FPU", core->vcpu_id);
+	v3_checkpoint_register(core->vm_info, fpu_name, 
+			       (v3_chkpt_save_fn)save_fpu, 
+			       (v3_chkpt_load_fn)load_fpu, 
+			       sizeof(struct fpu_chkpt),
+			       core);
+    }
+#endif
 
     V3_Print("FPU Initialized\n");
 

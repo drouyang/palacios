@@ -33,7 +33,7 @@ struct v3_fpu_arch {
 	    uint8_t fxstate[512];
 	    uint8_t xsave_hdr[64];
 	    /* potential future use */
-	} __attribute__((packed)) __attribute__((aligned(64)));
+	} __attribute__((packed));
 	
 	struct {
 	    uint16_t cwd;
@@ -52,9 +52,9 @@ struct v3_fpu_arch {
 
 	    uint32_t rsvd1[12];
 	    uint32_t rsvd2[12];
-	} __attribute__((packed)) __attribute__((aligned(64)));
-    } __attribute__((packed)) __attribute__((aligned(64)));
-} __attribute__((packed))  __attribute__((aligned(64)));
+	} __attribute__((packed));
+    } __attribute__((packed));
+} __attribute__((packed));
 
 
 
