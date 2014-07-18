@@ -253,9 +253,14 @@ v3_vmx_save_vmcs(struct v3_core_info * core,
     check_vmcs_read(VMCS_GUEST_SYSENTER_CS,       &(core->msrs.sysenter_cs));
     check_vmcs_read(VMCS_GUEST_SYSENTER_ESP,      &(core->msrs.sysenter_esp));
     check_vmcs_read(VMCS_GUEST_SYSENTER_EIP,      &(core->msrs.sysenter_eip));
-    check_vmcs_read(VMCS_GUEST_PAT,               &(core->msrs.pat));
 
-
+    if (hw_info->caps.virt_pat) {
+	check_vmcs_read(VMCS_GUEST_PAT,               &(core->msrs.pat));
+    } else {
+	/* TODO: Read and restore to hardware */
+	PrintError("UNHANDLED: PAT save not implemented for this CPU\n");
+    }
+    
     return error;
 }
 
@@ -307,7 +312,14 @@ v3_vmx_restore_vmcs(struct v3_core_info * core,
     check_vmcs_write(VMCS_GUEST_SYSENTER_CS,       core->msrs.sysenter_cs);
     check_vmcs_write(VMCS_GUEST_SYSENTER_ESP,      core->msrs.sysenter_esp);
     check_vmcs_write(VMCS_GUEST_SYSENTER_EIP,      core->msrs.sysenter_eip);
-    check_vmcs_write(VMCS_GUEST_PAT,               core->msrs.pat);
+
+    if (hw_info->caps.virt_pat) {
+	check_vmcs_write(VMCS_GUEST_PAT,               core->msrs.pat);
+    } else {
+	/* TODO: Read and restore to hardware */
+	PrintError("UNHANDLED: PAT restore not implemented for this CPU\n");
+    }
+
 
     return error;
 

@@ -646,7 +646,7 @@ v3_init_vmx_core(struct v3_core_info * core,
 	if (hw_info.caps.virt_pat) {
 	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
 	} else {
-	    // Handle these ops, and serialize on entry/exit
+	    /* TODO:  Handle these ops, and serialize on entry/exit */
 	    msr_ret |= v3_hook_msr(core->vm_info, IA32_PAT_MSR,      NULL, NULL, NULL);
 	}
 	
