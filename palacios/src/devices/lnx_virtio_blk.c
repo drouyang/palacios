@@ -88,6 +88,7 @@ struct blk_op_hdr {
 struct virtio_dev_state {
     struct vm_device * pci_bus;
     struct list_head   dev_list;
+    uint32_t           dev_cnt;
 };
 
 
@@ -105,6 +106,7 @@ struct virtio_blk_state {
     int    io_range_size;
 
     struct virtio_dev_state * virtio_dev;
+    uint32_t dev_index;
 
     struct list_head dev_link;
 
@@ -462,7 +464,7 @@ virtio_io_write(struct v3_core_info * core,
 	    break;
 	case VRING_PG_NUM_PORT:
 	    if (length == 4) {
-		addr_t pfn = *(uint32_t *)src;
+		addr_t pfn       = *(uint32_t *)src;
 		addr_t page_addr = (pfn << VIRTIO_PAGE_SHIFT);
 
 
@@ -688,6 +690,102 @@ static struct v3_device_ops dev_ops = {
 };
 
 
+#ifdef V3_CONFIG_CHECKPOINT
+
+struct virtio_blk_chkpt {
+    struct virtio_config virtio_cfg;
+
+    /* Virtio Queue  */
+    uint16_t queue_size;
+    uint16_t cur_avail_idx;
+    addr_t   ring_desc_addr;
+    addr_t   ring_avail_addr;
+    addr_t   ring_used_addr;
+    uint32_t pfn
+} __attribute__((packed));
+
+
+static int 
+virtio_save(char                    * name, 
+	    struct virtio_blk_chkpt * chkpt, 
+	    size_t                    size,
+	    struct virtio_blk_state * blk_state) 
+{
+    struct virtio_queue * queue = &(blk_state->queue);
+
+    /* wait for async thread to clear all outstanding requests... */
+    if (blk_state->async_enabled == 1) {
+	PrintError("Checkpointing asynchronous virtio block device is not supported\n");
+	return -1;
+    }
+
+
+    memcpy(&(chkpt->virtio_cfg), &(blk_state->virtio_cfg), sizeof(struct virtio_config));
+
+    chkpt->queue_size      = queue->queue_size;  /* This should be hard-coded... */
+    chkpt->cur_avail_idx   = queue->cur_avail_idx;
+    chkpt->ring_desc_addr  = queue->ring_desc_addr;
+    chkpt->ring_avail_addr = queue->ring_avail_addr;
+    chkpt->ring_used_addr  = queue->ring_used_addr;
+    chkpt->pfn             = queue->pfn;
+
+
+
+    return -1;
+}
+
+
+
+static int 
+virtio_load(char                    * name, 
+	    struct virtio_blk_chkpt * chkpt, 
+	    size_t                    size,
+	    struct virtio_blk_state * blk_state) 
+{
+    struct virtio_queue * queue = &(blk_state->queue);
+
+    /* wait for async thread to clear all outstanding requests... */
+    if (blk_state->async_enabled == 1) {
+	PrintError("Checkpointing asynchronous virtio block device is not supported\n");
+	return -1;
+    }
+
+
+    memcpy(&(blk_state->virtio_cfg), &(chkpt->virtio_cfg), sizeof(struct virtio_config));
+
+    queue->queue_size      = chkpt->queue_size;  /* This should be hard-coded... */
+    queue->cur_avail_idx   = chkpt->cur_avail_idx;
+    queue->ring_desc_addr  = chkpt->ring_desc_addr;
+    queue->ring_avail_addr = chkpt->ring_avail_addr;
+    queue->ring_used_addr  = chkpt->ring_used_addr;
+    queue->pfn             = chkpt->pfn;
+
+    if (v3_gpa_to_hva(core, blk_state->queue.ring_desc_addr,  (addr_t *)&(blk_state->queue.desc))  == -1) {
+	PrintError("Could not translate ring descriptor address\n");
+	return -1;
+    }
+
+    
+    if (v3_gpa_to_hva(core, blk_state->queue.ring_avail_addr, (addr_t *)&(blk_state->queue.avail)) == -1) {
+	PrintError("Could not translate ring available address\n");
+	return -1;
+    }
+
+
+    if (v3_gpa_to_hva(core, blk_state->queue.ring_used_addr,  (addr_t *)&(blk_state->queue.used))  == -1) {
+	PrintError("Could not translate ring used address\n");
+	return -1;
+    }
+
+    if (blk_state->virtio_cfg.pci_isr == 1) {
+	v3_pci_raise_irq(blk_state->virtio_dev->pci_bus, blk_state->pci_dev, 0);
+    }
+
+    return -1;
+}
+
+#endif
+
 
 
 
@@ -758,6 +856,7 @@ register_dev(struct virtio_dev_state * virtio,
 
     /* Add backend to list of devices */
     list_add(&(blk_state->dev_link), &(virtio->dev_list));
+    blk_state->dev_index = virtio->dev_cnt++;
     
     /* Block configuration */
     blk_state->virtio_cfg.host_features = VIRTIO_SEG_MAX;
@@ -818,9 +917,28 @@ connect_fn(struct v3_vm_info     * vm,
 
 
     if (blk_state->async_enabled) {
-        V3_Print("virtio-blk: creating IO thread\n");
-        blk_state->async_thread = V3_CREATE_THREAD_ON_CPU(0, io_dispatcher, blk_state, "virtio-blkd");
+	char thread_name[64] = {[0 ... 63] = 0};
+	
+	V3_Print("virtio-blk: creating IO thread\n");
+
+	snprintf(thread_name, 63, "%s-virtio-blkd-%lu", vm->name, blk_state->dev_index);
+	
+        blk_state->async_thread = V3_CREATE_THREAD_ON_CPU(0, io_dispatcher, blk_state, thread_name);
     }
+
+
+#ifdef V3_CONFIG_CHECKPOINT
+    {
+	char chkpt_key[32] = {[0 ... 31] = 0};
+
+	snprintf(chkpt_key, 31, "virtio-blk-%lu\n", blk_state->dev_index);
+
+	v3_checkpoint_register(vm, chkpt_key, 
+			       (v3_chkpt_save_fn)virtio_save,
+			       (v3_chkpt_load_fn)virtio_load,
+			       blk_state);
+    }
+#endif
 
     return 0;
 }

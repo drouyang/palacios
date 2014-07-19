@@ -25,60 +25,60 @@
 
 
 /* PCI Vendor IDs (from Qemu) */
-#define VIRTIO_VENDOR_ID    0x1af4 // Redhat/Qumranet
-#define VIRTIO_SUBVENDOR_ID 0x1af4 // Redhat/Qumranet
-#define VIRTIO_SUBDEVICE_ID 0x1100 // Qemu
+#define VIRTIO_VENDOR_ID              0x1af4 // Redhat/Qumranet
+#define VIRTIO_SUBVENDOR_ID           0x1af4 // Redhat/Qumranet
+#define VIRTIO_SUBDEVICE_ID           0x1100 // Qemu
 
 // PCI Device IDs
-#define VIRTIO_NET_DEV_ID         0x1000
-#define VIRTIO_BLOCK_DEV_ID       0x1001
-#define VIRTIO_BALLOON_DEV_ID     0x1002
-#define VIRTIO_CONSOLE_DEV_ID     0x1003
-#define VIRTIO_SYMBIOTIC_DEV_ID   0x100a
-#define VIRTIO_SYMMOD_DEV_ID      0x100b
-#define VIRTIO_VNET_DEV_ID        0x100c
+#define VIRTIO_NET_DEV_ID             0x1000
+#define VIRTIO_BLOCK_DEV_ID           0x1001
+#define VIRTIO_BALLOON_DEV_ID         0x1002
+#define VIRTIO_CONSOLE_DEV_ID         0x1003
+#define VIRTIO_SYMBIOTIC_DEV_ID       0x100a
+#define VIRTIO_SYMMOD_DEV_ID          0x100b
+#define VIRTIO_VNET_DEV_ID            0x100c
 
-#define VIRTIO_NET_SUBDEVICE_ID 1
-#define VIRTIO_BLOCK_SUBDEVICE_ID 2
-#define VIRTIO_CONSOLE_SUBDEVICE_ID 3
-#define VIRTIO_BALLOON_SUBDEVICE_ID 5
+#define VIRTIO_NET_SUBDEVICE_ID       1
+#define VIRTIO_BLOCK_SUBDEVICE_ID     2
+#define VIRTIO_CONSOLE_SUBDEVICE_ID   3
+#define VIRTIO_BALLOON_SUBDEVICE_ID   5
 #define VIRTIO_SYMBIOTIC_SUBDEVICE_ID 10
-#define VIRTIO_SYMMOD_SUBDEVICE_ID 11
-#define VIRTIO_VNET_SUBDEVICE_ID 12
+#define VIRTIO_SYMMOD_SUBDEVICE_ID    11
+#define VIRTIO_VNET_SUBDEVICE_ID      12
 
 
-#define HOST_FEATURES_PORT 0
-#define GUEST_FEATURES_PORT 4
-#define VRING_PG_NUM_PORT 8
-#define VRING_SIZE_PORT 12
-#define VRING_Q_SEL_PORT 14
-#define VRING_Q_NOTIFY_PORT 16
-#define VIRTIO_STATUS_PORT 18
-#define VIRTIO_ISR_PORT 19
+#define HOST_FEATURES_PORT            0
+#define GUEST_FEATURES_PORT           4
+#define VRING_PG_NUM_PORT             8
+#define VRING_SIZE_PORT               12
+#define VRING_Q_SEL_PORT              14
+#define VRING_Q_NOTIFY_PORT           16
+#define VIRTIO_STATUS_PORT            18
+#define VIRTIO_ISR_PORT               19
 
-#define VIRTIO_PAGE_SHIFT 12
+#define VIRTIO_PAGE_SHIFT             12
 
 
 /* Descriptor flags */
 /* This marks a buffer as continuing via the next field. */
-#define VIRTIO_NEXT_FLAG       0x1
+#define VIRTIO_NEXT_FLAG         0x1
 /* This marks a buffer as write-only (otherwise read-only). */
 #define VIRTIO_WR_ONLY_FLAG      0x2
 
 
 /* Used Flags */
 /* This means don't notify other side when buffer added. */
-#define VRING_NO_NOTIFY_FLAG  0x1
+#define VRING_NO_NOTIFY_FLAG     0x1
 
 
 /* Avail Flags */
 /* This means don't interrupt guest when buffer consumed. */
-#define VIRTIO_NO_IRQ_FLAG      0x1
+#define VIRTIO_NO_IRQ_FLAG       0x1
 
 
 /* ISR Flags */
-#define VIRTIO_ISR_ACTIVE 0x1
-#define VIRTIO_ISR_CFG_CHANGED 0x2
+#define VIRTIO_ISR_ACTIVE        0x1
+#define VIRTIO_ISR_CFG_CHANGED   0x2
 
 
 
@@ -100,8 +100,8 @@ struct virtio_config {
 	    uint16_t vring_ring_size;
 	    uint16_t vring_queue_selector;
 	    uint16_t vring_queue_notifier;
-	    uint8_t status;
-	    uint8_t pci_isr;
+	    uint16_t status;
+	    uint16_t pci_isr;
 	} __attribute__((packed));
     } __attribute__((packed));
 } __attribute__((packed));
@@ -150,9 +150,9 @@ struct virtio_queue {
     addr_t ring_avail_addr;
     addr_t ring_used_addr;
   
-    struct vring_desc * desc; // We can treat this as an array...
+    struct vring_desc  * desc; // We can treat this as an array...
     struct vring_avail * avail;
-    struct vring_used * used;
+    struct vring_used  * used;
 
     uint32_t pfn;
 };
