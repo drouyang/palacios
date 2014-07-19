@@ -692,6 +692,9 @@ static struct v3_device_ops dev_ops = {
 
 #ifdef V3_CONFIG_CHECKPOINT
 
+#include <palacios/vmm_checkpoint.h>
+#include <palacios/vmm_sprintf.h>
+
 struct virtio_blk_chkpt {
     struct virtio_config virtio_cfg;
 
@@ -701,7 +704,7 @@ struct virtio_blk_chkpt {
     addr_t   ring_desc_addr;
     addr_t   ring_avail_addr;
     addr_t   ring_used_addr;
-    uint32_t pfn
+    uint32_t pfn;
 } __attribute__((packed));
 
 
@@ -742,6 +745,8 @@ virtio_load(char                    * name,
 	    size_t                    size,
 	    struct virtio_blk_state * blk_state) 
 {
+    struct v3_vm_info * vm = blk_state->pci_dev->vm;
+	
     struct virtio_queue * queue = &(blk_state->queue);
 
     /* wait for async thread to clear all outstanding requests... */
@@ -760,19 +765,19 @@ virtio_load(char                    * name,
     queue->ring_used_addr  = chkpt->ring_used_addr;
     queue->pfn             = chkpt->pfn;
 
-    if (v3_gpa_to_hva(core, blk_state->queue.ring_desc_addr,  (addr_t *)&(blk_state->queue.desc))  == -1) {
+    if (v3_gpa_to_hva(&(vm->cores[0]), blk_state->queue.ring_desc_addr,  (addr_t *)&(blk_state->queue.desc))  == -1) {
 	PrintError("Could not translate ring descriptor address\n");
 	return -1;
     }
 
     
-    if (v3_gpa_to_hva(core, blk_state->queue.ring_avail_addr, (addr_t *)&(blk_state->queue.avail)) == -1) {
+    if (v3_gpa_to_hva(&(vm->cores[0]), blk_state->queue.ring_avail_addr, (addr_t *)&(blk_state->queue.avail)) == -1) {
 	PrintError("Could not translate ring available address\n");
 	return -1;
     }
 
 
-    if (v3_gpa_to_hva(core, blk_state->queue.ring_used_addr,  (addr_t *)&(blk_state->queue.used))  == -1) {
+    if (v3_gpa_to_hva(&(vm->cores[0]), blk_state->queue.ring_used_addr,  (addr_t *)&(blk_state->queue.used))  == -1) {
 	PrintError("Could not translate ring used address\n");
 	return -1;
     }
@@ -921,7 +926,7 @@ connect_fn(struct v3_vm_info     * vm,
 	
 	V3_Print("virtio-blk: creating IO thread\n");
 
-	snprintf(thread_name, 63, "%s-virtio-blkd-%lu", vm->name, blk_state->dev_index);
+	snprintf(thread_name, 63, "%s-virtio-blkd-%u", vm->name, blk_state->dev_index);
 	
         blk_state->async_thread = V3_CREATE_THREAD_ON_CPU(0, io_dispatcher, blk_state, thread_name);
     }
@@ -931,11 +936,12 @@ connect_fn(struct v3_vm_info     * vm,
     {
 	char chkpt_key[32] = {[0 ... 31] = 0};
 
-	snprintf(chkpt_key, 31, "virtio-blk-%lu\n", blk_state->dev_index);
+	snprintf(chkpt_key, 31, "virtio-blk-%u\n", blk_state->dev_index);
 
 	v3_checkpoint_register(vm, chkpt_key, 
 			       (v3_chkpt_save_fn)virtio_save,
 			       (v3_chkpt_load_fn)virtio_load,
+			       sizeof(struct virtio_blk_chkpt),
 			       blk_state);
     }
 #endif
