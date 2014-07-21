@@ -100,8 +100,8 @@ struct virtio_config {
 	    uint16_t vring_ring_size;
 	    uint16_t vring_queue_selector;
 	    uint16_t vring_queue_notifier;
-	    uint16_t status;
-	    uint16_t pci_isr;
+	    uint8_t  status;
+	    uint8_t  pci_isr;
 	} __attribute__((packed));
     } __attribute__((packed));
 } __attribute__((packed));
