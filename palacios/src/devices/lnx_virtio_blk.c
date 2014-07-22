@@ -92,6 +92,7 @@ struct virtio_dev_state {
 };
 
 
+
 struct virtio_blk_state {
     struct pci_device     * pci_dev;
     struct blk_config       block_cfg;
@@ -701,10 +702,14 @@ struct virtio_blk_chkpt {
     /* Virtio Queue  */
     uint16_t queue_size;
     uint16_t cur_avail_idx;
-    addr_t   ring_desc_addr;
-    addr_t   ring_avail_addr;
-    addr_t   ring_used_addr;
+    uint64_t ring_desc_addr;
+    uint64_t ring_avail_addr;
+    uint64_t ring_used_addr;
     uint32_t pfn;
+
+    uint16_t shadow_avail_idx;
+    uint16_t shadow_used_idx;
+
 } __attribute__((packed));
 
 
@@ -725,16 +730,18 @@ virtio_save(char                    * name,
 
     memcpy(&(chkpt->virtio_cfg), &(blk_state->virtio_cfg), sizeof(struct virtio_config));
 
-    chkpt->queue_size      = queue->queue_size;  /* This should be hard-coded... */
-    chkpt->cur_avail_idx   = queue->cur_avail_idx;
-    chkpt->ring_desc_addr  = queue->ring_desc_addr;
-    chkpt->ring_avail_addr = queue->ring_avail_addr;
-    chkpt->ring_used_addr  = queue->ring_used_addr;
-    chkpt->pfn             = queue->pfn;
+    chkpt->queue_size       = queue->queue_size;  /* This should be hard-coded... */
+    chkpt->cur_avail_idx    = queue->cur_avail_idx;
+    chkpt->ring_desc_addr   = queue->ring_desc_addr;
+    chkpt->ring_avail_addr  = queue->ring_avail_addr;
+    chkpt->ring_used_addr   = queue->ring_used_addr;
+    chkpt->pfn              = queue->pfn;
+    chkpt->shadow_avail_idx = blk_state->shadow_avail_idx;
+    chkpt->shadow_used_idx  = blk_state->shadow_used_idx;
 
 
 
-    return -1;
+    return 0;
 }
 
 
@@ -758,26 +765,29 @@ virtio_load(char                    * name,
 
     memcpy(&(blk_state->virtio_cfg), &(chkpt->virtio_cfg), sizeof(struct virtio_config));
 
-    queue->queue_size      = chkpt->queue_size;  /* This should be hard-coded... */
-    queue->cur_avail_idx   = chkpt->cur_avail_idx;
-    queue->ring_desc_addr  = chkpt->ring_desc_addr;
-    queue->ring_avail_addr = chkpt->ring_avail_addr;
-    queue->ring_used_addr  = chkpt->ring_used_addr;
-    queue->pfn             = chkpt->pfn;
+    queue->queue_size       = chkpt->queue_size;  /* This should be hard-coded... */
+    queue->cur_avail_idx    = chkpt->cur_avail_idx;
+    queue->ring_desc_addr   = chkpt->ring_desc_addr;
+    queue->ring_avail_addr  = chkpt->ring_avail_addr;
+    queue->ring_used_addr   = chkpt->ring_used_addr;
+    queue->pfn              = chkpt->pfn;
 
-    if (v3_gpa_to_hva(&(vm->cores[0]), blk_state->queue.ring_desc_addr,  (addr_t *)&(blk_state->queue.desc))  == -1) {
+    blk_state->shadow_avail_idx = chkpt->shadow_avail_idx;
+    blk_state->shadow_used_idx  = chkpt->shadow_used_idx;
+
+    if (v3_gpa_to_hva(&(vm->cores[0]), queue->ring_desc_addr,  (addr_t *)&(queue->desc))  == -1) {
 	PrintError("Could not translate ring descriptor address\n");
 	return -1;
     }
 
     
-    if (v3_gpa_to_hva(&(vm->cores[0]), blk_state->queue.ring_avail_addr, (addr_t *)&(blk_state->queue.avail)) == -1) {
+    if (v3_gpa_to_hva(&(vm->cores[0]), queue->ring_avail_addr, (addr_t *)&(queue->avail)) == -1) {
 	PrintError("Could not translate ring available address\n");
 	return -1;
     }
 
 
-    if (v3_gpa_to_hva(&(vm->cores[0]), blk_state->queue.ring_used_addr,  (addr_t *)&(blk_state->queue.used))  == -1) {
+    if (v3_gpa_to_hva(&(vm->cores[0]), queue->ring_used_addr,  (addr_t *)&(queue->used))  == -1) {
 	PrintError("Could not translate ring used address\n");
 	return -1;
     }
@@ -786,7 +796,7 @@ virtio_load(char                    * name,
 	v3_pci_raise_irq(blk_state->virtio_dev->pci_bus, blk_state->pci_dev, 0);
     }
 
-    return -1;
+    return 0;
 }
 
 #endif
@@ -936,7 +946,7 @@ connect_fn(struct v3_vm_info     * vm,
     {
 	char chkpt_key[32] = {[0 ... 31] = 0};
 
-	snprintf(chkpt_key, 31, "virtio-blk-%u\n", blk_state->dev_index);
+	snprintf(chkpt_key, 31, "virtio-blk-%u", blk_state->dev_index);
 
 	v3_checkpoint_register(vm, chkpt_key, 
 			       (v3_chkpt_save_fn)virtio_save,
