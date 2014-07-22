@@ -1332,14 +1332,17 @@ v3_start_vmx_guest(struct v3_core_info * core)
 	    v3_start_time(core);
 	}
 
-	if (core->vm_info->run_state == VM_STOPPED) {
+	if ( (core->vm_info->run_state == VM_STOPPED) || 
+	     (core->vm_info->run_state == VM_ERROR) ) {
+
+	    V3_Print("Stopping Core %d\n", core->vcpu_id);
 	    core->core_run_state = CORE_STOPPED;
+
 	    break;
 	}
 
 	if (v3_vmx_enter(core) == -1) {
 
-            core->vm_info->run_state = VM_ERROR;
             
             V3_Print("VMX core %u: VMX ERROR!!\n", core->vcpu_id); 
             
@@ -1347,6 +1350,9 @@ v3_start_vmx_guest(struct v3_core_info * core)
             
 	    v3_print_vmcs();
 	    print_exit_log(core);
+
+            core->vm_info->run_state = VM_ERROR;
+	    core->core_run_state     = CORE_STOPPED;
 
 	    break;
 	}

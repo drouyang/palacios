@@ -112,7 +112,7 @@ static void
 op_lock_acquire()
 {
     uint64_t flags = 0;
-    int acquired = 0;
+    int acquired   = 0;
 
     while (!acquired) {
 	flags = v3_spin_lock_irqsave(&(gbl_op_lock.lock));
@@ -435,10 +435,17 @@ v3_free_vm(struct v3_vm_info * vm)
 {
     int i = 0;
     // deinitialize guest (free memory, etc...)
-    
+
 
     op_lock_acquire();
     {
+
+	if (vm->run_state != VM_STOPPED) {
+	    PrintError("Cannot free VM that is not stopped\n");
+	    op_lock_release();
+	    return -1;
+	}
+
 	list_del(&(vm->vm_list_node));
     }
     op_lock_release();
@@ -804,8 +811,9 @@ int
 v3_stop_vm(struct v3_vm_info * vm) 
 {
 
-    if ((vm->run_state != VM_RUNNING) && 
-	(vm->run_state != VM_SIMULATING)) {
+    if ( (vm->run_state != VM_RUNNING)    && 
+	 (vm->run_state != VM_SIMULATING) &&
+	 (vm->run_state != VM_ERROR) ) {
 	PrintError("Tried to stop VM in invalid runstate (%d)\n", vm->run_state);
 	return -1;
     }

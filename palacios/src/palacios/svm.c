@@ -886,15 +886,18 @@ v3_start_svm_guest(struct v3_core_info * core)
 	    v3_start_time(core);
 	}
 
-	if (core->vm_info->run_state == VM_STOPPED) {
+	if ( (core->vm_info->run_state == VM_STOPPED) ||
+	     (core->vm_info->run_state == VM_ERROR) ) {
+	
+	    V3_Print("Stopping Core %d\n", core->vcpu_id);
 	    core->core_run_state = CORE_STOPPED;
+	    
 	    break;
 	}
 	
 	if (v3_svm_enter(core) == -1) {
 	    vmcb_ctrl_t * guest_ctrl = GET_VMCB_CTRL_AREA((vmcb_t *)(core->vmm_data));
 	    
-	    core->vm_info->run_state = VM_ERROR;
 	    
 	    V3_Print("SVM core %u: SVM ERROR!!\n",           core->vcpu_id); 
 	    V3_Print("SVM core %u: SVM Exit Code: %llu\n",   core->vcpu_id, guest_ctrl->exit_code); 
@@ -903,6 +906,8 @@ v3_start_svm_guest(struct v3_core_info * core)
 	    
 	    v3_print_guest_state(core);
 
+	    core->vm_info->run_state = VM_ERROR;
+	    core->core_run_state     = CORE_STOPPED;
 
 	    break;
 	}
