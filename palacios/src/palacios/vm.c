@@ -413,6 +413,7 @@ v3_init_core(struct v3_core_info * core)
     struct v3_vm_info  * vm = core->vm_info;
 
 
+    core->core_run_state = CORE_STOPPED;
 
     /*
      * Initialize the subsystem data strutures

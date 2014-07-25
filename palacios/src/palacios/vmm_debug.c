@@ -262,6 +262,19 @@ v3_print_disassembly(struct v3_core_info * core)
 
 #endif
 
+static char *
+run_state_to_str(v3_core_operating_mode_t run_state) 
+{
+    switch (run_state) {
+	case CORE_INVALID : return "CORE_INVALID";
+	case CORE_RUNNING : return "CORE_RUNNING";
+	case CORE_STOPPED : return "CORE_STOPPED";
+	default: break;
+    }
+
+    return "ERROR: invalid value";
+}
+
 void 
 v3_print_guest_state(struct v3_core_info * core) 
 {
@@ -275,6 +288,7 @@ v3_print_guest_state(struct v3_core_info * core)
     V3_Print("Guest state for Core %d\n", core->vcpu_id);
     V3_Print("=========================================\n");
 
+    V3_Print("Run State=%s\n", run_state_to_str(core->core_run_state));
 
     V3_Print("RIP: %p\n", (void *)(addr_t)(core->rip));
 

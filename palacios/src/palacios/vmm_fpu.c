@@ -214,6 +214,10 @@ save_fpu(char                * name,
 {
     struct v3_fpu_state * fpu  = &(core->fpu_state);
 
+
+    /* Serialize out the FPU state */
+    v3_fpu_deactivate(core);
+
     memcpy(&(chkpt->fpu_arch_state), &(fpu->arch_state), sizeof(struct v3_fpu_arch));
     chkpt->flags      = fpu->flags;
     chkpt->guest_xcr0 = fpu->guest_xcr0;

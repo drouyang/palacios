@@ -21,6 +21,54 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_types.h>
 #include <palacios/vm.h>
+#include <palacios/vmm_sprintf.h>
+
+
+
+
+#ifdef V3_CONFIG_CHECKPOINT
+
+struct excp_chkpt {
+    uint32_t excp_bitmap;
+    uint32_t error_bitmap;
+    uint32_t error_codes[32];
+} __attribute__((packed));
+
+
+static int 
+excp_save(char                * name, 
+	  struct excp_chkpt   * chkpt, 
+	  size_t                size,
+	  struct v3_core_info * core)
+{
+    struct v3_excp_state * excp_state = &(core->excp_state);
+
+    chkpt->excp_bitmap  = excp_state->excp_bitmap;
+    chkpt->error_bitmap = excp_state->error_bitmap;
+    memcpy(chkpt->error_codes, excp_state->error_codes, sizeof(chkpt->error_codes));
+
+    V3_Print("Checkpointing EXCP state: error_codes size = %lu. (should be 128)\n", sizeof(chkpt->error_codes));
+
+    return 0;
+}
+
+
+static int 
+excp_load(char                * name, 
+	  struct excp_chkpt   * chkpt, 
+	  size_t                size,
+	  struct v3_core_info * core)
+{
+    struct v3_excp_state * excp_state = &(core->excp_state);
+
+    excp_state->excp_bitmap  = chkpt->excp_bitmap;
+    excp_state->error_bitmap = chkpt->error_bitmap;
+    memcpy(excp_state->error_codes, chkpt->error_codes, sizeof(chkpt->error_codes));
+
+    return 0;
+}
+
+#endif
 
 void 
 v3_init_exception_state(struct v3_core_info * core) 
@@ -35,6 +83,21 @@ v3_init_exception_state(struct v3_core_info * core)
     }
 
     v3_spinlock_init(&(core->excp_state.excp_lock));
+
+#ifdef V3_CONFIG_CHECKPOINT
+    {
+	char tag[32] = {[0 ... 31] = 0};
+
+	snprintf(tag, 31, "core-%u-EXCP", core->vcpu_id);
+	
+	v3_checkpoint_register(core->vm_info, tag,
+			       (v3_chkpt_save_fn)excp_save, 
+			       (v3_chkpt_load_fn)excp_load, 
+			       sizeof(struct excp_chkpt), 
+			       core);
+    }
+#endif
+
 
 }
 

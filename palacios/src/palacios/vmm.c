@@ -479,7 +479,7 @@ static int
 core_sched_in(struct v3_core_info * core, int cpu) 
 {
     v3_cores_current[cpu] = core;
-    v3_telemetry_inc_core_counter(core, "CORE_SCHED_IN");
+    //    v3_telemetry_inc_core_counter(core, "CORE_SCHED_IN");
 
     /* In case we were migrated... */
     if (core->pcpu_id != cpu) {
@@ -495,7 +495,7 @@ core_sched_in(struct v3_core_info * core, int cpu)
 static int 
 core_sched_out(struct v3_core_info * core, int cpu) 
 {
-    v3_telemetry_inc_core_counter(core, "CORE_SCHED_OUT");
+    //    v3_telemetry_inc_core_counter(core, "CORE_SCHED_OUT");
 
     v3_fpu_deactivate(core);
 
@@ -652,7 +652,6 @@ v3_start_vm(struct v3_vm_info * vm,
 	PrintDebug("run: core=%u, func=0x%p, arg=0x%p, name=%s\n",
 		   core_idx, start_core, core, core->exec_name);
 
-	core->core_run_state = CORE_STOPPED;  // core zero will turn itself on
 	core->pcpu_id        = core_idx;
 	core->core_thread    = V3_CREATE_THREAD_ON_CPU(core_idx, start_core, core, core->exec_name);
 

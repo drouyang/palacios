@@ -419,6 +419,7 @@ load_core(char                 * name,
 	}
     }
 
+    core->core_run_state = CORE_RUNNING;
 
     v3_print_guest_state(core);
 

@@ -25,6 +25,7 @@
 #include <palacios/vmm_ctrl_regs.h>
 
 #include <palacios/vmm_lock.h>
+#include <palacios/vmm_sprintf.h>
 
 #ifndef V3_CONFIG_DEBUG_INTERRUPTS
 #undef PrintDebug
@@ -48,6 +49,66 @@ struct intr_router {
 
 };
 
+
+#ifdef V3_CONFIG_CHECKPOINT
+struct intr_chkpt {
+    uint_t irq_pending;
+    uint_t irq_started;
+    uint_t irq_vector;
+    
+    uint_t swintr_posted;
+    uint_t swintr_vector;
+    
+    uint8_t virq_map[MAX_IRQ / 8];
+} __attribute__((packed));
+
+
+
+static int 
+intr_save(char                * name, 
+	  struct intr_chkpt   * chkpt, 
+	  size_t                size,
+	  struct v3_core_info * core)
+{
+    struct v3_intr_core_state * intr_state = &(core->intr_core_state);
+
+    chkpt->irq_pending   = intr_state->irq_pending;
+    chkpt->irq_started   = intr_state->irq_started;
+    chkpt->irq_vector    = intr_state->irq_vector;
+
+    chkpt->swintr_posted = intr_state->swintr_posted;
+    chkpt->swintr_vector = intr_state->swintr_vector;
+    
+    memcpy(chkpt->virq_map, intr_state->virq_map, MAX_IRQ / 8);
+    
+    return 0;
+}
+
+
+static int 
+intr_load(char                * name, 
+	  struct intr_chkpt   * chkpt, 
+	  size_t                size,
+	  struct v3_core_info * core)
+{
+    struct v3_intr_core_state * intr_state = &(core->intr_core_state);
+
+    intr_state->irq_pending   = chkpt->irq_pending;
+    intr_state->irq_started   = chkpt->irq_started;
+    intr_state->irq_vector    = chkpt->irq_vector;
+
+    intr_state->swintr_posted = chkpt->swintr_posted;
+    intr_state->swintr_vector = chkpt->swintr_vector;
+    
+    memcpy(intr_state->virq_map, chkpt->virq_map, MAX_IRQ / 8);
+
+    return 0;
+}
+
+
+
+#endif
+
 void 
 v3_init_intr_controllers(struct v3_core_info * core) 
 {
@@ -60,6 +121,21 @@ v3_init_intr_controllers(struct v3_core_info * core)
     v3_spinlock_init(&(intr_state->irq_lock));
 
     INIT_LIST_HEAD(&(intr_state->controller_list));
+
+#ifdef V3_CONFIG_CHECKPOINT
+    {
+	char tag[32] = {[0 ... 31] = 0};
+
+	snprintf(tag, 31, "core-%u-INTR", core->vcpu_id);
+	
+	v3_checkpoint_register(core->vm_info, tag,
+			       (v3_chkpt_save_fn)intr_save, 
+			       (v3_chkpt_load_fn)intr_load, 
+			       sizeof(struct intr_chkpt), 
+			       core);
+    }
+#endif
+
 }
 
 

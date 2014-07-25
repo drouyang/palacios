@@ -680,6 +680,8 @@ io_apic_load(char                       * name,
 	     struct io_apic_state       * io_apic) 
 {
 
+    /* Remap IO-APIC if necessary */
+
     io_apic->base_addr         = io_apic_chkpt->base_addr;
     io_apic->index_reg         = io_apic_chkpt->index_reg;
     io_apic->ioapic_id.val     = io_apic_chkpt->ioapic_id.val;

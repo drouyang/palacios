@@ -218,7 +218,7 @@ struct vmcs_msr_save_area {
 
 
 struct vmx_data {
-    vmx_state_t state;
+    vmx_state_t       state;
     vmxassist_state_t assist_state;
     //   struct vmcs_host_state host_state;
 
@@ -230,11 +230,11 @@ struct vmx_data {
 
 
     /* VMX Control Fields */
-    struct vmx_pin_ctrls pin_ctrls;
-    struct vmx_pri_proc_ctrls pri_proc_ctrls;
-    struct vmx_sec_proc_ctrls sec_proc_ctrls;
-    struct vmx_exit_ctrls exit_ctrls;
-    struct vmx_entry_ctrls entry_ctrls;
+    struct vmx_pin_ctrls        pin_ctrls;
+    struct vmx_pri_proc_ctrls   pri_proc_ctrls;
+    struct vmx_sec_proc_ctrls   sec_proc_ctrls;
+    struct vmx_exit_ctrls       exit_ctrls;
+    struct vmx_entry_ctrls      entry_ctrls;
 
     struct vmx_exception_bitmap excp_bmap;
 

@@ -92,6 +92,12 @@ allocate_vmcs()
 
 
 #ifdef V3_CONFIG_CHECKPOINT
+static void print_vmcs(void * arg) {
+    struct v3_core_info * core = arg;
+
+    v3_print_vmcs(core);    
+}
+
 static int 
 save_core(char                 * name, 
 	  struct v3_core_chkpt * chkpt, 
@@ -114,6 +120,10 @@ save_core(char                 * name,
     chkpt->shdw_cr0  = core->shdw_pg_state.guest_cr0;
     chkpt->shdw_efer = core->shdw_pg_state.guest_efer.value;
 
+    //    v3_print_guest_state(core);
+    V3_Print("CORE %d VMCS (SAVE)\n", core->vcpu_id);
+    V3_Call_On_CPU(core->pcpu_id, print_vmcs, core);
+
     return 0;
 }
 
@@ -123,7 +133,7 @@ load_core(char                 * name,
 	  size_t                 size,
 	  struct v3_core_info  * core)
 {
-    //    struct vmx_data * vmx_info        = (struct vmx_data *)(core->vmm_data);
+    struct vmx_data * vmx_info        = (struct vmx_data *)(core->vmm_data);
 
     core->rip = chkpt->rip;
     core->cpl = chkpt->cpl; /* Currently not set by VMX... */
@@ -132,6 +142,7 @@ load_core(char                 * name,
     memcpy(&(core->vm_regs),   &(chkpt->gprs),      sizeof(struct v3_gprs));
     memcpy(&(core->dbg_regs),  &(chkpt->dbg_regs),  sizeof(struct v3_dbg_regs));
     memcpy(&(core->segments),  &(chkpt->segments),  sizeof(struct v3_segments));
+    memcpy(&(core->msrs),      &(chkpt->msrs),      sizeof(struct v3_msrs));
     
     core->shdw_pg_state.guest_cr3        = chkpt->shdw_cr3;
     core->shdw_pg_state.guest_cr0        = chkpt->shdw_cr0;
@@ -155,8 +166,17 @@ load_core(char                 * name,
 	}
     }
 
+    /* Enable/Disable VMXAssist if necessary */
 
-    v3_print_guest_state(core);
+
+    if (v3_get_vm_cpu_mode(core) == LONG) {
+	vmx_info->entry_ctrls.guest_ia32e = 1;
+    }
+
+    core->core_run_state = CORE_RUNNING;
+    
+
+    //    v3_print_guest_state(core);
 
     return 0;
 }
@@ -488,7 +508,7 @@ v3_init_vmx_core(struct v3_core_info * core,
     /* Exception Traps for debugging */
     //  vmx_state->excp_bmap.gp = 1;
     //  vmx_state->excp_bmap.ud = 1;
-
+    vmx_state->excp_bmap.df = 1;
 
     /* 
      * Determine whether we save/restore the EFER in the VMCS 
@@ -1148,6 +1168,16 @@ v3_vmx_enter(struct v3_core_info * core)
 	check_vmcs_write(VMCS_PREEMPT_TIMER, preempt_window);
     }
    
+    /*
+    if (core->cpl == 49) {
+	v3_enable_ints();
+
+	V3_Print("CORE %d VMCS (RESUME)\n", core->vcpu_id);
+	v3_print_vmcs(core);
+	
+	return -1;
+    }
+    */
 
     {	
 	uint64_t entry_tsc = 0;

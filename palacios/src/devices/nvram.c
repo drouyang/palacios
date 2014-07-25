@@ -901,6 +901,59 @@ static struct v3_device_ops dev_ops = {
 
 
 
+#ifdef V3_CONFIG_CHECKPOINT
+
+struct nvram_chkpt {
+    nvram_state_t dev_state;
+    uint8_t       thereg;
+    uint8_t       mem_state[NVRAM_REG_MAX];
+    uint8_t       reg_map[NVRAM_REG_MAX / 8];
+
+    uint64_t us;
+    uint64_t pus;
+} __attribute__((packed));
+
+
+
+static int 
+nvram_save(char                  * name, 
+	   struct nvram_chkpt    * chkpt, 
+	   size_t                  size,
+	   struct nvram_internal * nvram)
+{
+    chkpt->dev_state = nvram->dev_state;
+    chkpt->thereg    = nvram->thereg;
+    chkpt->us        = nvram->us;
+    chkpt->pus       = nvram->pus;
+
+    memcpy(chkpt->mem_state, nvram->mem_state, NVRAM_REG_MAX);
+    memcpy(chkpt->reg_map,   nvram->reg_map,   NVRAM_REG_MAX / 8);
+
+    return 0;
+} 
+
+static int 
+nvram_load(char                  * name, 
+	   struct nvram_chkpt    * chkpt, 
+	   size_t                  size,
+	   struct nvram_internal * nvram)
+{
+    nvram->dev_state = chkpt->dev_state;
+    nvram->thereg    = chkpt->thereg;
+    nvram->us        = chkpt->us;
+    nvram->pus       = chkpt->pus;
+
+    memcpy(nvram->mem_state, chkpt->mem_state, NVRAM_REG_MAX);
+    memcpy(nvram->reg_map,   chkpt->reg_map,   NVRAM_REG_MAX / 8);
+
+
+    return 0;
+} 
+
+
+
+#endif
+
 
 
 static int 
@@ -956,6 +1009,16 @@ nvram_init(struct v3_vm_info * vm,
 	v3_remove_device(dev);
 	return -1;
     }
+
+#ifdef V3_CONFIG_CHECKPOINT
+    v3_checkpoint_register(vm, "NVRAM",
+			   (v3_chkpt_save_fn)nvram_save, 
+			   (v3_chkpt_load_fn)nvram_load, 
+			   sizeof(struct nvram_chkpt), 
+			   nvram_state);    
+
+#endif
+
 
     return 0;
 }
