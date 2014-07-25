@@ -22,6 +22,7 @@
 #include <palacios/vmm_lock.h>
 #include <devices/lnx_virtio_pci.h>
 #include <palacios/vm_guest_mem.h>
+#include <palacios/vmm_sprintf.h>
 
 #include <devices/pci.h>
 
@@ -694,7 +695,6 @@ static struct v3_device_ops dev_ops = {
 #ifdef V3_CONFIG_CHECKPOINT
 
 #include <palacios/vmm_checkpoint.h>
-#include <palacios/vmm_sprintf.h>
 
 struct virtio_blk_chkpt {
     struct virtio_config virtio_cfg;
