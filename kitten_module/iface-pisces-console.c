@@ -280,11 +280,11 @@ static void * palacios_tty_open(void * private_data, unsigned int width, unsigne
 	return NULL;
     }
 
-    if (cons->open == 1) {
+    /*if (cons->open == 1) {
 	printk(KERN_ERR "Console already open\n");
 	kmem_free(cons);
 	return NULL;
-    }
+    }*/
 
 
 
