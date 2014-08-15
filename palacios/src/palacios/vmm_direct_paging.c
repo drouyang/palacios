@@ -93,7 +93,7 @@ v3_free_passthrough_pts(struct v3_core_info * core)
 int 
 v3_free_nested_pts(struct v3_core_info * core) 
 {
-    v3_cpu_mode_t mode = v3_get_host_cpu_mode(core);
+    v3_cpu_mode_t mode = v3_get_host_cpu_mode();
 
     // Delete the old direct map page tables
     switch(mode) {
