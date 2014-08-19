@@ -1073,8 +1073,8 @@ xpmem_init(struct v3_vm_info * vm,
     }
 
     /* SVM or VMX? */
-    state->bar_state->svm_capable = (v3_is_svm_capable() > 1);
-    state->bar_state->vmx_capable = (v3_is_vmx_capable() > 1);
+    state->bar_state->svm_capable = (v3_is_svm_capable() > 0);
+    state->bar_state->vmx_capable = (v3_is_vmx_capable() > 0);
 
     /* Save hypercall ids in the bar */
     state->bar_state->xpmem_hcall_id           = XPMEM_HCALL;
