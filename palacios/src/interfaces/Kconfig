@@ -57,18 +57,17 @@ config HOST_SCHED_EVENTS
 	   This provides notifications for host scheduler events
 
 config HOST_XPMEM
-	bool "Host XPMEM support"
-	depends on EXPERIMENTAL
-	default n
+	bool "Host XPMEM Support"
+	default EXPERIMENTAL
+	default y
 	help 
-	  This enables host support for XPMEM communication
+	  This enables host support for XPMEM PCI devices
 
-config XPMEM_KERN
-        depends on HOST_XPMEM
-        string "XPMEM module source directory" 
-        default "/path/to/xpmem"
-        help 
-          This is the directory containing the XPMEM kernel source code
-
+config HOST_XPMEM_KERN_PATH
+	depends on HOST_XPMEM && LINUX
+	string "XPMEM Linux module source directory"
+	default "/path/to/xpmem"
+	help
+	    This is the directory containing the XPMEM kernel module source
 
 endmenu

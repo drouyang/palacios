@@ -18,6 +18,8 @@
  */
 
 #include <palacios/vmm.h>
+#include <palacios/svm.h>
+#include <palacios/vmx.h>
 #include <palacios/vmm_list.h>
 #include <palacios/vmm_lock.h>
 #include <palacios/vm_guest_mem.h>
@@ -48,6 +50,12 @@ struct xpmem_bar_state {
     uint32_t xpmem_detach_hcall_id;
     uint32_t xpmem_irq_clear_hcall_id;
     uint32_t xpmem_read_cmd_hcall_id;
+
+    /* VMX-enabled */
+    uint8_t vmx_capable;
+
+    /* SVM-enabled */
+    uint8_t svm_capable;
  
     /* interrupt status */
     uint8_t irq_handled;
@@ -1063,6 +1071,10 @@ xpmem_init(struct v3_vm_info * vm,
                 bar_pa)) {
         PrintError("Failed to add XPMEM shadow BAR region\n");
     }
+
+    /* SVM or VMX? */
+    state->bar_state->svm_capable = (v3_is_svm_capable() > 1);
+    state->bar_state->vmx_capable = (v3_is_vmx_capable() > 1);
 
     /* Save hypercall ids in the bar */
     state->bar_state->xpmem_hcall_id           = XPMEM_HCALL;
