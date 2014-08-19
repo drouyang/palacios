@@ -58,7 +58,7 @@ config HOST_SCHED_EVENTS
 
 config HOST_XPMEM
 	bool "Host XPMEM Support"
-	default EXPERIMENTAL
+	depends on EXPERIMENTAL
 	default y
 	help 
 	  This enables host support for XPMEM PCI devices
