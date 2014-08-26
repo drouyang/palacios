@@ -234,25 +234,6 @@ palacios_xcall(
 	xcall_function(cpu_mask, fn, arg, 1);
 }
 
-/**
- * Starts a kernel thread on the specified CPU.
- */
-static void *
-palacios_start_thread_on_cpu(
-	int			cpu_id, 
-	int			(*fn)(void * arg), 
-	void *			arg, 
-	char *			thread_name
-)
-{
-    struct task_struct * task = kthread_create_on_cpu(cpu_id, fn, arg, thread_name);
-
-    if (task) {
-        sched_add_task(task);
-    }
-
-    return (void *)task;
-}
 
 /**
  * Returns the CPU ID that the caller is running on.
@@ -390,20 +371,42 @@ palacios_sleep_cpu(
  * Creates a kernel thread.
  */
 static void *
-palacios_start_kernel_thread(
+palacios_create_thread(
 	int (*fn)		(void *arg),
 	void *			arg,
-	char *			thread_name)
+	char *			thread_name
+)
 {
-
-    struct task_struct * task = kthread_create(fn, arg, thread_name);
-
-    if (task) {
-        sched_add_task(task);
-    }
-
-    return (void *)task;
+    return kthread_create(fn, arg, thread_name);
 }
+
+/**
+ * Starts a kernel thread on the specified CPU.
+ */
+static void *
+palacios_create_thread_on_cpu(
+	int			cpu_id, 
+	int			(*fn)(void * arg), 
+	void *			arg, 
+	char *			thread_name
+)
+{
+    return kthread_create_on_cpu(cpu_id, fn, arg, thread_name);
+}
+
+/**
+ * Starts a kernel thread
+ */
+static void
+palacios_start_thread(
+	void * thread
+)
+{
+    struct task_struct * task = (struct task_struct *)thread;
+
+    sched_add_task(task);
+}
+
 
 
 /**
@@ -481,7 +484,6 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.hook_interrupt		= palacios_hook_interrupt,
 	.ack_irq		= palacios_ack_interrupt,
 	.get_cpu_khz		= palacios_get_cpu_khz,
-	.start_kernel_thread    = palacios_start_kernel_thread,
 	.yield_cpu		= palacios_yield_cpu,
 	.sleep_cpu		= palacios_sleep_cpu,
 	.save_fpu               = palacios_save_fpu,
@@ -493,7 +495,9 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.get_cpu		= palacios_get_cpu,
 	.interrupt_cpu		= palacios_interrupt_cpu,
 	.call_on_cpu		= palacios_xcall,
-	.start_thread_on_cpu	= palacios_start_thread_on_cpu,
+	.create_thread		= palacios_create_thread,
+	.create_thread_on_cpu	= palacios_create_thread_on_cpu,
+	.start_thread		= palacios_start_thread,
 };
 
 

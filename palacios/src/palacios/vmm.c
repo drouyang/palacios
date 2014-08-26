@@ -395,84 +395,6 @@ v3_get_cpu_type(int cpu_id)
 }
 
 
-
-struct v3_vm_info * 
-v3_create_vm(void * cfg, 
-	     void * priv_data, 
-	     char * name) 
-{
-    struct v3_vm_info * vm = v3_config_guest(cfg, priv_data);
-
-    if (vm == NULL) {
-	PrintError("Could not configure guest\n");
-	return NULL;
-    }
-
-    V3_Print("CORE 0 RIP=%p\n", (void *)(addr_t)(vm->cores[0].rip));
-
-    if (name == NULL) {
-	name = "[V3_VM]";
-    } else if (strlen(name) >= 128) {
-	PrintError("VM name is too long. Will be truncated to 128 chars.\n");
-    }
-
-    memset (vm->name, 0,    128);
-    strncpy(vm->name, name, 127);
-
-    op_lock_acquire();
-    {
-	list_add(&(vm->vm_list_node), &(v3_vm_list));
-    }
-    op_lock_release();
-
-    return vm;
-}
-
-
-
-int 
-v3_free_vm(struct v3_vm_info * vm) 
-{
-    int i = 0;
-    // deinitialize guest (free memory, etc...)
-
-
-    op_lock_acquire();
-    {
-
-	if (vm->run_state != VM_STOPPED) {
-	    PrintError("Cannot free VM that is not stopped\n");
-	    op_lock_release();
-	    return -1;
-	}
-
-	list_del(&(vm->vm_list_node));
-    }
-    op_lock_release();
-
-
-    // Mark as dead
-
-    v3_free_vm_devices(vm);
-
-    // free cores
-    for (i = 0; i < vm->num_cores; i++) {
-	v3_free_core(&(vm->cores[i]));
-    }
-
-    // free vm
-    v3_free_vm_internal(vm);
-
-    v3_free_config(vm);
-
-    V3_Free(vm);
-
-
-
-    return 0;
-}
-
-
 #ifdef V3_CONFIG_HOST_SCHED_EVENTS
 #include <interfaces/sched_events.h>
 static int 
@@ -504,8 +426,6 @@ core_sched_out(struct v3_core_info * core, int cpu)
     return 0;
 }
 #endif
-
-
 
 /* 
  * This function must be called with the gbl_op_lock acquired
@@ -560,18 +480,158 @@ start_core(void * p)
 }
 
 
-// For the moment very ugly. Eventually we will shift the cpu_mask to an arbitrary sized type...
-#define MAX_CORES 32
+struct v3_vm_info * 
+v3_create_vm(void * cfg, 
+	     void * priv_data, 
+	     char * name) 
+{
+    struct v3_vm_info * vm = v3_config_guest(cfg, priv_data);
+
+    if (vm == NULL) {
+	PrintError("Could not configure guest\n");
+	return NULL;
+    }
+
+    V3_Print("CORE 0 RIP=%p\n", (void *)(addr_t)(vm->cores[0].rip));
+
+    if (name == NULL) {
+	name = "[V3_VM]";
+    } else if (strlen(name) >= 128) {
+	PrintError("VM name is too long. Will be truncated to 128 chars.\n");
+    }
+
+    memset (vm->name, 0,    128);
+    strncpy(vm->name, name, 127);
+
+    /* Initial run state */
+    vm->run_state = VM_STOPPED;
+
+    op_lock_acquire();
+    {
+	uint32_t  avail_cores = 0;
+	int i = 0;
+	int vcore_id = 0;
+
+	list_add(&(vm->vm_list_node), &(v3_vm_list));
+
+	// Check that enough cores are present in the mask to handle vcores
+	for (i = 0; i < V3_CONFIG_MAX_CPUS; i++) {
+	    if (v3_cpu_types[i] != V3_INVALID_CPU) {
+		avail_cores++;
+	    }
+	}
+
+	if (vm->num_cores > avail_cores) {
+	    PrintError("Attempted to create a VM with too many cores (vm->num_cores = %d, avail_cores = %d, MAX=%d)\n",                    vm->num_cores, avail_cores, V3_CONFIG_MAX_CPUS);
+	    goto err;
+	}
+
+
+	// Spawn off threads for each core.
+	// We work backwards, so that core 0 is always started last.
+	for (i = 0, vcore_id = vm->num_cores - 1; (i < V3_CONFIG_MAX_CPUS) && (vcore_id >= 0); i++) {
+	    struct v3_core_info * core            = &(vm->cores[vcore_id]);
+	    char                * specified_cpu   = v3_cfg_val(core->core_cfg_data, "target_cpu");
+	    uint32_t              core_idx        = 0;
+
+	    if (specified_cpu != NULL) {
+		core_idx = atoi(specified_cpu);
+
+		if ((core_idx < 0) || (core_idx >= V3_CONFIG_MAX_CPUS)) {
+		    PrintError("Target CPU out of bounds (%d) (V3_CONFIG_MAX_CPUS=%d)\n", core_idx, V3_CONFIG_MAX_CPUS);
+		}
+
+		i--; // We reset the logical core idx. Not strictly necessary I guess...
+	    } else {
+		core_idx = i;
+	    }
+
+	    PrintDebug("Starting virtual core %u on logical core %u\n",
+		       vcore_id, core_idx);
+
+	    sprintf(core->exec_name, "%s-%u", vm->name, vcore_id);
+
+	    PrintDebug("run: core=%u, func=0x%p, arg=0x%p, name=%s\n",
+		       core_idx, start_core, core, core->exec_name);
+
+	    core->pcpu_id        = core_idx;
+	    core->core_thread    = V3_CREATE_THREAD_ON_CPU(core_idx, start_core, core, core->exec_name);
+
+	    if (core->core_thread == NULL) {
+		PrintError("Thread launch failed\n");
+		goto err;
+	    }
+
+	    vcore_id--;
+	}
+
+	if (vcore_id >= 0) {
+	    PrintError("Error starting VM: Not enough available CPU cores\n");
+	    goto err;
+	}
+    }
+    op_lock_release();
+
+    return vm;
+
+err:
+    op_lock_release();
+    v3_free_vm(vm);
+
+    return NULL;
+}
+
+
+
+int 
+v3_free_vm(struct v3_vm_info * vm) 
+{
+    int i = 0;
+    // deinitialize guest (free memory, etc...)
+
+
+    op_lock_acquire();
+    {
+
+	if (vm->run_state != VM_STOPPED) {
+	    PrintError("Cannot free VM that is not stopped\n");
+	    op_lock_release();
+	    return -1;
+	}
+
+	list_del(&(vm->vm_list_node));
+    }
+    op_lock_release();
+
+
+    // Mark as dead
+
+    v3_free_vm_devices(vm);
+
+    // free cores
+    for (i = 0; i < vm->num_cores; i++) {
+	v3_free_core(&(vm->cores[i]));
+    }
+
+    // free vm
+    v3_free_vm_internal(vm);
+
+    v3_free_config(vm);
+
+    V3_Free(vm);
+
+
+
+    return 0;
+}
+
 
 
 int 
 v3_start_vm(struct v3_vm_info * vm,
 	    unsigned int        cpu_mask)
 {
-    uint8_t * core_mask   = (uint8_t *)&cpu_mask; // This is to make future expansion easier
-    uint32_t  avail_cores = 0;
     int       vcore_id    = 0;
-    uint32_t i;
 
     if (vm->run_state != VM_STOPPED) {
         PrintError("VM has already been launched (state=%d)\n", (int)vm->run_state);
@@ -583,98 +643,22 @@ v3_start_vm(struct v3_vm_info * vm,
 
 
     op_lock_acquire();
+    {
+	vm->run_state = VM_RUNNING;
 
-    // Check that enough cores are present in the mask to handle vcores
-    for (i = 0; i < MAX_CORES; i++) {
-	int major = i / 8;
-	int minor = i % 8;
-	
-	if (core_mask[major] & (0x1 << minor)) {
-	    if (v3_cpu_types[i] == V3_INVALID_CPU) {
-		core_mask[major] &= ~(0x1 << minor);
-	    } else {
-		avail_cores++;
-	    }
+  	for (vcore_id = 0; vcore_id < vm->num_cores; vcore_id++) {
+
+	    struct v3_core_info * core = &(vm->cores[vcore_id]);
+
+	    PrintDebug("Starting virtual core %u on logical core %u\n",
+		    vcore_id, core->pcpu_id);
+
+	    V3_START_THREAD(core->core_thread);
 	}
     }
-    
-
-    if (vm->num_cores > avail_cores) {
-	PrintError("Attempted to start a VM with too many cores (vm->num_cores = %d, avail_cores = %d, MAX=%d)\n", 
-		   vm->num_cores, avail_cores, MAX_CORES);
-	op_lock_release();
-	return -1;
-    }
-
-    vm->run_state = VM_RUNNING;
-
-    // Spawn off threads for each core. 
-    // We work backwards, so that core 0 is always started last.
-    for (i = 0, vcore_id = vm->num_cores - 1; (i < MAX_CORES) && (vcore_id >= 0); i++) {
-	struct v3_core_info * core            = &(vm->cores[vcore_id]);
-	char                * specified_cpu   = v3_cfg_val(core->core_cfg_data, "target_cpu");
-	uint32_t              core_idx        = 0;
-	int major = 0;
- 	int minor = 0;
-
-	if (specified_cpu != NULL) {
-	    core_idx = atoi(specified_cpu);
-	    
-	    if ((core_idx < 0) || (core_idx >= MAX_CORES)) {
-		PrintError("Target CPU out of bounds (%d) (MAX_CORES=%d)\n", core_idx, MAX_CORES);
-	    }
-
-	    i--; // We reset the logical core idx. Not strictly necessary I guess... 
-	} else {
-	    core_idx = i;
-	}
-
-	major = core_idx / 8;
-	minor = core_idx % 8;
-
-	if ((core_mask[major] & (0x1 << minor)) == 0) {
-	    PrintError("Logical CPU %d not available for virtual core %d; not started\n",
-		       core_idx, vcore_id);
-
-	    if (specified_cpu != NULL) {
-		PrintError("CPU was specified explicitly (%d). HARD ERROR\n", core_idx);
-		goto err;
-	    }
-
-	    continue;
-	}
-
-	PrintDebug("Starting virtual core %u on logical core %u\n", 
-		   vcore_id, core_idx);
-	
-	sprintf(core->exec_name, "%s-%u", vm->name, vcore_id);
-
-	PrintDebug("run: core=%u, func=0x%p, arg=0x%p, name=%s\n",
-		   core_idx, start_core, core, core->exec_name);
-
-	core->pcpu_id        = core_idx;
-	core->core_thread    = V3_CREATE_THREAD_ON_CPU(core_idx, start_core, core, core->exec_name);
-
-	if (core->core_thread == NULL) {
-	    PrintError("Thread launch failed\n");
-	    goto err;
-	}
-
-	vcore_id--;
-    }
-
-    if (vcore_id >= 0) {
-	PrintError("Error starting VM: Not enough available CPU cores\n");
-	goto err;
-    }
-
     op_lock_release();
+
     return 0;
-
- err:
-    op_lock_release();
-    v3_stop_vm(vm);
-    return -1; 
 }
 
 
@@ -809,6 +793,7 @@ v3_move_vm_core(struct v3_vm_info * vm,
 int 
 v3_stop_vm(struct v3_vm_info * vm) 
 {
+    int i = 0;
 
     if ( (vm->run_state != VM_RUNNING)    && 
 	 (vm->run_state != VM_SIMULATING) &&

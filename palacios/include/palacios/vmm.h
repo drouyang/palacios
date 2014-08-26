@@ -213,10 +213,26 @@ struct v3_core_info;
 #define V3_CREATE_THREAD(fn, arg, name)	({				\
 	    void * thread = NULL;					\
 	    extern struct v3_os_hooks * os_hooks;			\
-	    if ((os_hooks) && (os_hooks)->start_kernel_thread) {	\
-		thread = (os_hooks)->start_kernel_thread(fn, arg, name); \
+	    if ((os_hooks) && (os_hooks)->create_kernel_thread) {	\
+		thread = (os_hooks)->create_kernel_thread(fn, arg, name); \
 	    }								\
 	    thread;							\
+	})
+
+#define V3_CREATE_THREAD_ON_CPU(cpu, fn, arg, name) ({			\
+	    void * thread = NULL;					\
+	    extern struct v3_os_hooks * os_hooks;			\
+	    if ((os_hooks) && (os_hooks)->create_thread_on_cpu) {	\
+		thread = (os_hooks)->create_thread_on_cpu(cpu, fn, arg, name); \
+	    }								\
+	    thread;							\
+	})
+
+#define V3_START_THREAD(thread)	({				\
+	    extern struct v3_os_hooks * os_hooks;			\
+	    if ((os_hooks) && (os_hooks)->start_thread) {	\
+		(os_hooks)->start_thread(thread); \
+	    }								\
 	})
 
 
@@ -232,14 +248,6 @@ struct v3_core_info;
 
 
 
-#define V3_CREATE_THREAD_ON_CPU(cpu, fn, arg, name) ({			\
-	    void * thread = NULL;					\
-	    extern struct v3_os_hooks * os_hooks;			\
-	    if ((os_hooks) && (os_hooks)->start_thread_on_cpu) {	\
-		thread = (os_hooks)->start_thread_on_cpu(cpu, fn, arg, name); \
-	    }								\
-	    thread;							\
-	})
 
 #define V3_MOVE_THREAD_TO_CPU(pcpu, thread) ({				\
 	int ret = -1;							\
@@ -388,10 +396,11 @@ struct v3_os_hooks {
 
 
 
-    void * (*start_kernel_thread)(int (*fn)(void * arg), void * arg, char * thread_name); 
+    void * (*create_thread)(int (*fn)(void * arg), void * arg, char * thread_name); 
+    void * (*create_thread_on_cpu)(int cpu_id, int (*fn)(void * arg), void * arg, char * thread_name);
+    void (*start_thread)(void * thread);
     void (*interrupt_cpu)(struct v3_vm_info * vm, int logical_cpu, int vector);
     void (*call_on_cpu)(int logical_cpu, void (*fn)(void * arg), void * arg);
-    void * (*start_thread_on_cpu)(int cpu_id, int (*fn)(void * arg), void * arg, char * thread_name);
     int (*move_thread_to_cpu)(int cpu_id,  void * thread);
 
 };
@@ -440,6 +449,5 @@ int v3_deliver_irq(struct v3_vm_info * vm, struct v3_interrupt * intr);
 
 int v3_add_cpu(int cpu_id);
 int v3_remove_cpu(int cpu_id);
-
 
 #endif

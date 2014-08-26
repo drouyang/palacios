@@ -191,9 +191,9 @@ lnx_thread_target(void * arg)
  * Creates a kernel thread.
  */
 void *
-palacios_start_kernel_thread(int (*fn)(void * arg),
-			     void * arg,
-			     char * thread_name) 
+palacios_create_thread(int (*fn)(void * arg),
+	   	       void * arg,
+		       char * thread_name) 
 {
     struct lnx_thread_arg * thread_info = palacios_kmalloc(sizeof(struct lnx_thread_arg), GFP_KERNEL);
 
@@ -206,7 +206,7 @@ palacios_start_kernel_thread(int (*fn)(void * arg),
     thread_info->arg  = arg;
     thread_info->name = thread_name;
 
-    return kthread_run( lnx_thread_target, thread_info, thread_name );
+    return kthread_create( lnx_thread_target, thread_info, thread_name );
 }
 
 
@@ -214,10 +214,10 @@ palacios_start_kernel_thread(int (*fn)(void * arg),
  * Starts a kernel thread on the specified CPU.
  */
 void * 
-palacios_start_thread_on_cpu(int    cpu_id, 
-			     int (*fn)(void * arg), 
-			     void * arg, 
-			     char * thread_name )
+palacios_create_thread_on_cpu(int    cpu_id, 
+			      int (*fn)(void * arg), 
+			      void * arg, 
+			      char * thread_name )
 {
     struct task_struct    * thread      = NULL;
     struct lnx_thread_arg * thread_info = palacios_kmalloc(sizeof(struct lnx_thread_arg), GFP_KERNEL);
@@ -247,9 +247,15 @@ palacios_start_thread_on_cpu(int    cpu_id,
 	return NULL;
     }
 
-    wake_up_process(thread);
-
     return thread;
+}
+
+void
+palacios_start_thread(void * thread)
+{
+    struct task_struct * task = (struct task_struct *)thread;
+
+    wake_up_process(task);
 }
 
 
@@ -549,7 +555,6 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.hook_interrupt		= palacios_hook_interrupt,
 	.ack_irq		= palacios_ack_interrupt,
 	.get_cpu_khz		= palacios_get_cpu_khz,
-	.start_kernel_thread    = palacios_start_kernel_thread,
 	.yield_cpu		= palacios_yield_cpu,
 	.sleep_cpu		= palacios_sleep_cpu,
 	.wakeup_cpu		= palacios_wakeup_cpu,
@@ -562,7 +567,9 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.get_cpu		= palacios_get_cpu,
 	.interrupt_cpu		= palacios_interrupt_cpu,
 	.call_on_cpu		= palacios_xcall,
-	.start_thread_on_cpu	= palacios_start_thread_on_cpu,
+	.create_thread		= palacios_create_thread,
+	.create_thread_on_cpu	= palacios_create_thread_on_cpu,
+	.start_thread		= palacios_start_thread,
 	.move_thread_to_cpu     = palacios_move_thread_to_cpu,
 };
 
