@@ -245,7 +245,13 @@ palacios_start_thread_on_cpu(
 	char *			thread_name
 )
 {
-	return kthread_create_on_cpu(cpu_id, fn, arg, thread_name);
+    struct task_struct * task = kthread_create_on_cpu(cpu_id, fn, arg, thread_name);
+
+    if (task) {
+        sched_add_task(task);
+    }
+
+    return (void *)task;
 }
 
 /**
@@ -389,7 +395,14 @@ palacios_start_kernel_thread(
 	void *			arg,
 	char *			thread_name)
 {
-    return kthread_create(fn, arg, thread_name);
+
+    struct task_struct * task = kthread_create(fn, arg, thread_name);
+
+    if (task) {
+        sched_add_task(task);
+    }
+
+    return (void *)task;
 }
 
 
