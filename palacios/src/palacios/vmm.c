@@ -811,7 +811,10 @@ v3_stop_vm(struct v3_vm_info * vm)
 	v3_lower_barrier(vm);
     }
     
-    // XXX force exit all cores via a cross call/IPI XXX
+    // force exit all cores via a cross call/IPI
+    for (i = 0; i < vm->num_cores; i++) {
+	v3_interrupt_cpu(vm, vm->cores[i].pcpu_id, 0);
+    }
 
     while (1) {
 	int still_running = 0;
