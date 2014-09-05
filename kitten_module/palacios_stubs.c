@@ -404,7 +404,7 @@ palacios_start_thread(
 {
     struct task_struct * task = (struct task_struct *)thread;
 
-    sched_add_task(task);
+    sched_wakeup_task(task, TASK_ALL);
 }
 
 
