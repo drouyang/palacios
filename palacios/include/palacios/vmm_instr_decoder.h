@@ -135,7 +135,10 @@ typedef enum {
 } op_form_t;
 
 
-static int get_addr_width(struct v3_core_info * core, struct x86_instr * instr) {
+static int 
+get_addr_width(struct v3_core_info * core,
+	       struct x86_instr    * instr) 
+{
 
     switch (v3_get_vm_cpu_mode(core)) {
 	case REAL:
@@ -156,8 +159,11 @@ static int get_addr_width(struct v3_core_info * core, struct x86_instr * instr) 
     }
 }
 
-static int get_operand_width(struct v3_core_info * core, struct x86_instr * instr, 
-			     op_form_t form) {
+static int 
+get_operand_width(struct v3_core_info * core, 
+		  struct x86_instr    * instr, 
+		  op_form_t             form) 
+{
     switch (form) {
 
 	case CLTS:
@@ -365,11 +371,13 @@ struct sib_byte {
 
 struct v3_gprs;
 
-static inline int decode_gpr(struct v3_core_info * core,
-			     struct x86_instr * instr, 
-			     uint8_t reg_code,
-			     struct x86_operand * reg) {
-
+static inline int 
+decode_gpr(struct v3_core_info  * core,
+	   struct x86_instr     * instr, 
+	   uint8_t                reg_code,
+	   struct x86_operand   * reg) 
+{
+    
     struct v3_gprs * gprs = &(core->vm_regs);
 
     switch (reg_code) {
@@ -449,9 +457,11 @@ static inline int decode_gpr(struct v3_core_info * core,
 
 
 
-static inline int decode_cr(struct v3_core_info * core, 			
-			     uint8_t reg_code,
-			     struct x86_operand * reg) {
+static inline int 
+decode_cr(struct v3_core_info * core, 			
+	  uint8_t               reg_code,
+	  struct x86_operand  * reg) 
+{
 
     struct v3_ctrl_regs * crs = &(core->ctrl_regs);
 
@@ -479,7 +489,10 @@ static inline int decode_cr(struct v3_core_info * core,
     return 0;
 }
 
-static v3_seg_type_t get_instr_segment(struct v3_core_info * core, struct x86_instr * instr) {
+static v3_seg_type_t 
+get_instr_segment(struct v3_core_info * core, 
+		  struct x86_instr    * instr) 
+{
     v3_seg_type_t seg = V3_SEG_DS;
 
     if (instr->prefixes.cs_override) {
@@ -517,17 +530,20 @@ static v3_seg_type_t get_instr_segment(struct v3_core_info * core, struct x86_in
 
 
 
-static  int decode_rm_operand16(struct v3_core_info * core,
-				uint8_t * modrm_instr, 
-				struct x86_instr * instr,
-				struct x86_operand * operand, 
-				uint8_t * reg_code) { 
+static int 
+decode_rm_operand16(struct v3_core_info  * core,
+		    uint8_t              * modrm_instr, 
+		    struct x86_instr     * instr,
+		    struct x86_operand   * operand, 
+		    uint8_t              * reg_code) 
+{ 
 
-    struct v3_gprs * gprs = &(core->vm_regs);
-    struct modrm_byte * modrm = (struct modrm_byte *)modrm_instr;
-    addr_t base_addr = 0;
-    modrm_mode_t mod_mode = 0;
-    uint8_t * instr_cursor = modrm_instr;
+    struct v3_gprs    * gprs         = &(core->vm_regs);
+    struct modrm_byte * modrm        = (struct modrm_byte *)modrm_instr;
+    uint8_t           * instr_cursor = modrm_instr;
+
+    addr_t        base_addr = 0;
+    modrm_mode_t  mod_mode  = 0;
 
     //  PrintDebug("ModRM mod=%d\n", modrm->mod);
     
@@ -580,7 +596,7 @@ static  int decode_rm_operand16(struct v3_core_info * core,
 	    case 6:
 		if (modrm->mod == 0) {
 		    base_addr = 0;
-		    mod_mode = DISP16;
+		    mod_mode  = DISP16;
 		} else {
 		    base_addr = ADDR_MASK(gprs->rbp, get_addr_width(core, instr));
 		}
@@ -593,10 +609,10 @@ static  int decode_rm_operand16(struct v3_core_info * core,
 
 
 	if (mod_mode == DISP8) {
- 	    base_addr += *(sint8_t *)instr_cursor;
+ 	    base_addr    += *(sint8_t *)instr_cursor;
 	    instr_cursor += 1;
 	} else if (mod_mode == DISP16) {
-	    base_addr += *(sint16_t *)instr_cursor;
+	    base_addr    += *(sint16_t *)instr_cursor;
 	    instr_cursor += 2;
 	}
     
@@ -614,18 +630,21 @@ static  int decode_rm_operand16(struct v3_core_info * core,
 
 
 // returns num_bytes parsed
-static int decode_rm_operand32(struct v3_core_info * core, 
-			       uint8_t * modrm_instr,  
-			       struct x86_instr * instr,
-			       struct x86_operand * operand, 
-			       uint8_t * reg_code) {
+static int 
+decode_rm_operand32(struct v3_core_info * core, 
+		    uint8_t             * modrm_instr,  
+		    struct x86_instr    * instr,
+		    struct x86_operand  * operand, 
+		    uint8_t             * reg_code) 
+{
 
-    struct v3_gprs * gprs = &(core->vm_regs);
-    uint8_t * instr_cursor = modrm_instr;
-    struct modrm_byte * modrm = (struct modrm_byte *)modrm_instr;
-    addr_t base_addr = 0;
-    modrm_mode_t mod_mode = 0;
-    uint_t has_sib_byte = 0;
+    struct v3_gprs    * gprs         = &(core->vm_regs);
+    uint8_t           * instr_cursor = modrm_instr;
+    struct modrm_byte * modrm        = (struct modrm_byte *)modrm_instr;
+
+    addr_t       base_addr    = 0;
+    modrm_mode_t mod_mode     = 0;
+    uint_t       has_sib_byte = 0;
 
 
     *reg_code = modrm->reg;
@@ -674,7 +693,7 @@ static int decode_rm_operand32(struct v3_core_info * core,
 	    case 5:
 		if (modrm->mod == 0) {
 		    base_addr = 0;
-		    mod_mode = DISP32;
+		    mod_mode  = DISP32;
 		} else {
 		    base_addr = gprs->rbp;
 		}
@@ -689,7 +708,7 @@ static int decode_rm_operand32(struct v3_core_info * core,
 
 	if (has_sib_byte) {
 	    struct sib_byte * sib = (struct sib_byte *)(instr_cursor);
-	    int scale = 0x1 << sib->scale;
+	    int scale             = 0x1 << sib->scale;
 
 	    instr_cursor += 1;
 
@@ -743,8 +762,8 @@ static int decode_rm_operand32(struct v3_core_info * core,
 		    if (modrm->mod != 0) {
 			base_addr += ADDR_MASK(gprs->rbp, get_addr_width(core, instr));
 		    } else {
-			mod_mode = DISP32;
-			base_addr = 0;
+			mod_mode   = DISP32;
+			base_addr  = 0;
 		    }
 		    break;
 		case 6:
@@ -759,10 +778,10 @@ static int decode_rm_operand32(struct v3_core_info * core,
 
 
 	if (mod_mode == DISP8) {
-	    base_addr += *(sint8_t *)instr_cursor;
+	    base_addr    += *(sint8_t *)instr_cursor;
 	    instr_cursor += 1;
 	} else if (mod_mode == DISP32) {
-	    base_addr += *(sint32_t *)instr_cursor;
+	    base_addr    += *(sint32_t *)instr_cursor;
 	    instr_cursor += 4;
 	}
     
@@ -781,21 +800,26 @@ static int decode_rm_operand32(struct v3_core_info * core,
 
 
 
-int decode_rm_operand64(struct v3_core_info * core, uint8_t * modrm_instr, 
-			struct x86_instr * instr, struct x86_operand * operand, 
-			uint8_t * reg_code) {
+static int 
+decode_rm_operand64(struct v3_core_info  * core, 
+		    uint8_t              * modrm_instr, 
+		    struct x86_instr     * instr,
+		    struct x86_operand   * operand, 
+		    uint8_t              * reg_code)
+{
     
-    struct v3_gprs * gprs = &(core->vm_regs);
-    uint8_t * instr_cursor = modrm_instr;
-    struct modrm_byte * modrm = (struct modrm_byte *)modrm_instr;
-    addr_t base_addr = 0;
-    modrm_mode_t mod_mode = 0;
-    uint_t has_sib_byte = 0;
+    struct v3_gprs    * gprs         = &(core->vm_regs);
+    uint8_t           * instr_cursor = modrm_instr;
+    struct modrm_byte * modrm        = (struct modrm_byte *)modrm_instr;
+
+    addr_t       base_addr    = 0;
+    modrm_mode_t mod_mode     = 0;
+    uint_t       has_sib_byte = 0;
 
 
     instr_cursor += 1;
 
-    *reg_code = modrm->reg;
+    *reg_code  = modrm->reg;
     *reg_code |= (instr->prefixes.rex_reg << 3);
 
     if (modrm->mod == 3) {
@@ -809,7 +833,7 @@ int decode_rm_operand64(struct v3_core_info * core, uint8_t * modrm_instr,
 	decode_gpr(core, instr, rm_val, operand);
     } else {
 	v3_seg_type_t seg = V3_SEG_DS;
-	uint8_t rm_val = modrm->rm;
+	uint8_t rm_val    = modrm->rm;
 
 	operand->type = MEM_OPERAND;
 
@@ -847,7 +871,7 @@ int decode_rm_operand64(struct v3_core_info * core, uint8_t * modrm_instr,
 		case 5:
 		    if (modrm->mod == 0) {
 			base_addr = 0;
-			mod_mode = DISP32;
+			mod_mode  = DISP32;
 		    } else {
 			base_addr = gprs->rbp;
 		    }
@@ -889,12 +913,12 @@ int decode_rm_operand64(struct v3_core_info * core, uint8_t * modrm_instr,
 
 	if (has_sib_byte) {
 	    struct sib_byte * sib = (struct sib_byte *)(instr_cursor);
-	    int scale = 0x1 << sib->scale;
-	    uint8_t index_val = sib->index;
-	    uint8_t base_val = sib->base;
+	    int     scale         = 0x1 << sib->scale;
+	    uint8_t index_val     = sib->index;
+	    uint8_t base_val      = sib->base;
 
 	    index_val |= (instr->prefixes.rex_sib_idx << 3);
-	    base_val |= (instr->prefixes.rex_rm << 3);
+	    base_val  |= (instr->prefixes.rex_rm      << 3);
 
 	    instr_cursor += 1;
 
@@ -972,8 +996,8 @@ int decode_rm_operand64(struct v3_core_info * core, uint8_t * modrm_instr,
 		    if (modrm->mod != 0) {
 			base_addr += gprs->rbp;
 		    } else {
-			mod_mode = DISP32;
-			base_addr = 0;
+			mod_mode   = DISP32;
+			base_addr  = 0;
 		    }
 		    break;
 		case 6:
@@ -1012,10 +1036,10 @@ int decode_rm_operand64(struct v3_core_info * core, uint8_t * modrm_instr,
 
 
 	if (mod_mode == DISP8) {
-	    base_addr += *(sint8_t *)instr_cursor;
+	    base_addr    += *(sint8_t *)instr_cursor;
 	    instr_cursor += 1;
 	} else if (mod_mode == DISP32) {
-	    base_addr += *(sint32_t *)instr_cursor;
+	    base_addr    += *(sint32_t *)instr_cursor;
 	    instr_cursor += 4;
 	}
     
@@ -1036,12 +1060,14 @@ int decode_rm_operand64(struct v3_core_info * core, uint8_t * modrm_instr,
 }
 
 
-static int decode_rm_operand(struct v3_core_info * core, 
-			     uint8_t * instr_ptr,        // input
-			     op_form_t form, 
-			     struct x86_instr * instr,
-			     struct x86_operand * operand, 
-			     uint8_t * reg_code) {
+static int 
+decode_rm_operand(struct v3_core_info  * core, 
+		  uint8_t              * instr_ptr,        // input
+		  op_form_t              form, 
+		  struct x86_instr     * instr,
+		  struct x86_operand   * operand, 
+		  uint8_t              * reg_code) 
+{
     
     v3_cpu_mode_t mode = v3_get_vm_cpu_mode(core);
 
@@ -1066,7 +1092,10 @@ static int decode_rm_operand(struct v3_core_info * core,
 			     
 
 
-static inline op_form_t op_code_to_form_0f(uint8_t * instr, int * length) {
+static inline op_form_t 
+op_code_to_form_0f(uint8_t * instr, 
+		   int     * length) 
+{
     *length += 1;
 
     switch (instr[1]) {
@@ -1147,7 +1176,10 @@ static inline op_form_t op_code_to_form_0f(uint8_t * instr, int * length) {
 }
 
 
-static op_form_t op_code_to_form(uint8_t * instr, int * length) {
+static op_form_t 
+op_code_to_form(uint8_t * instr, 
+		int     * length) 
+{
     *length += 1;
 
     switch (instr[0]) {
@@ -1384,112 +1416,113 @@ static op_form_t op_code_to_form(uint8_t * instr, int * length) {
 
 
 
-static char * op_form_to_str(op_form_t form) {
+static char * 
+op_form_to_str(op_form_t form) 
+{
 
     switch (form) {
-	case LMSW: return "LMSW";
-	case SMSW: return "SMSW";
-	case CLTS: return "CLTS";
-	case INVLPG: return "INVLPG";
-	case MOV_CR2: return "MOV_CR2";
-	case MOV_2CR: return "MOV_2CR";
-	case MOV_DR2: return "MOV_DR2";
-	case MOV_2DR: return "MOV_2DR";
-	case MOV_SR2: return "MOV_SR2";
-	case MOV_2SR: return "MOV_2SR";
-	case MOV_MEM2_8: return "MOV_MEM2_8";
-	case MOV_MEM2: return "MOV_MEM2";
-	case MOV_2MEM_8: return "MOV_2MEM_8";
-	case MOV_2MEM: return "MOV_2MEM";
-	case MOV_MEM2AL_8: return "MOV_MEM2AL_8";
-	case MOV_MEM2AX: return "MOV_MEM2AX";
-	case MOV_AL2MEM_8: return "MOV_AL2MEM_8";
-	case MOV_AX2MEM: return "MOV_AX2MEM";
-	case MOV_IMM2_8: return "MOV_IMM2_8";
-	case MOV_IMM2: return "MOV_IMM2";
-	case MOVS_8: return "MOVS_8";
-	case MOVS: return "MOVS";
-	case MOVSX_8: return "MOVSX_8";
-	case MOVSX: return "MOVSX";
-	case MOVZX_8: return "MOVZX_8";
-	case MOVZX: return "MOVZX";
-	case HLT: return "HLT";
-	case PUSHF: return "PUSHF";
-	case POPF: return "POPF";
-	case ADC_2MEM_8: return "ADC_2MEM_8";
-	case ADC_2MEM: return "ADC_2MEM";
-	case ADC_MEM2_8: return "ADC_MEM2_8";
-	case ADC_MEM2: return "ADC_MEM2";
-	case ADC_IMM2_8: return "ADC_IMM2_8";
-	case ADC_IMM2: return "ADC_IMM2";
-	case ADC_IMM2SX_8: return "ADC_IMM2SX_8";
-	case ADD_IMM2_8: return "ADD_IMM2_8";
-	case ADD_IMM2: return "ADD_IMM2";
-	case ADD_IMM2SX_8: return "ADD_IMM2SX_8";
-	case ADD_2MEM_8: return "ADD_2MEM_8";
-	case ADD_2MEM: return "ADD_2MEM";
-	case ADD_MEM2_8: return "ADD_MEM2_8";
-	case ADD_MEM2: return "ADD_MEM2";
-	case AND_MEM2_8: return "AND_MEM2_8";
-	case AND_MEM2: return "AND_MEM2";
-	case AND_2MEM_8: return "AND_2MEM_8";
-	case AND_2MEM: return "AND_2MEM";
-	case AND_IMM2_8: return "AND_IMM2_8";
-	case AND_IMM2: return "AND_IMM2";
-	case AND_IMM2SX_8: return "AND_IMM2SX_8";
-	case OR_2MEM_8: return "OR_2MEM_8";
-	case OR_2MEM: return "OR_2MEM";
-	case OR_MEM2_8: return "OR_MEM2_8";
-	case OR_MEM2: return "OR_MEM2";
-	case OR_IMM2_8: return "OR_IMM2_8";
-	case OR_IMM2: return "OR_IMM2";
-	case OR_IMM2SX_8: return "OR_IMM2SX_8";
-	case SUB_2MEM_8: return "SUB_2MEM_8";
-	case SUB_2MEM: return "SUB_2MEM";
-	case SUB_MEM2_8: return "SUB_MEM2_8";
-	case SUB_MEM2: return "SUB_MEM2";
-	case SUB_IMM2_8: return "SUB_IMM2_8";
-	case SUB_IMM2: return "SUB_IMM2";
-	case SUB_IMM2SX_8: return "SUB_IMM2SX_8";
-	case XOR_2MEM_8: return "XOR_2MEM_8";
-	case XOR_2MEM: return "XOR_2MEM";
-	case XOR_MEM2_8: return "XOR_MEM2_8";
-	case XOR_MEM2: return "XOR_MEM2";
-	case XOR_IMM2_8: return "XOR_IMM2_8";
-	case XOR_IMM2: return "XOR_IMM2";
-	case XOR_IMM2SX_8: return "XOR_IMM2SX_8";
-	case INC_8: return "INC_8";
-	case INC: return "INC";
-	case DEC_8: return "DEC_8";
-	case DEC: return "DEC";
-	case NEG_8: return "NEG_8";
-	case NEG: return "NEG"; 
-	case NOT_8: return "NOT_8";
-	case NOT: return "NOT";
-	case XCHG_8: return "XCHG_8";
-	case XCHG: return "XCHG";
-	case SETB: return "SETB";
-	case SETBE: return "SETBE";
-	case SETL: return "SETL";
-	case SETLE: return "SETLE";
-	case SETNB: return "SETNB";
-	case SETNBE: return "SETNBE";
-	case SETNL: return "SETNL";
-	case SETNLE: return "SETNLE";
-	case SETNO: return "SETNO";
-	case SETNP: return "SETNP";
-	case SETNS: return "SETNS";
-	case SETNZ: return "SETNZ";
-	case SETP: return "SETP";
-	case SETS: return "SETS";
-	case SETZ: return "SETZ";
-	case SETO: return "SETO";
-	case STOS_8: return "STOS_8";
-	case STOS: return "STOS";
-	case INT: return "INT";
+	case LMSW:          return "LMSW";
+	case SMSW:          return "SMSW";
+	case CLTS:          return "CLTS";
+	case INVLPG:        return "INVLPG";
+	case MOV_CR2:       return "MOV_CR2";
+	case MOV_2CR:       return "MOV_2CR";
+	case MOV_DR2:       return "MOV_DR2";
+	case MOV_2DR:       return "MOV_2DR";
+	case MOV_SR2:       return "MOV_SR2";
+	case MOV_2SR:       return "MOV_2SR";
+	case MOV_MEM2_8:    return "MOV_MEM2_8";
+	case MOV_MEM2:      return "MOV_MEM2";
+	case MOV_2MEM_8:    return "MOV_2MEM_8";
+	case MOV_2MEM:      return "MOV_2MEM";
+	case MOV_MEM2AL_8:  return "MOV_MEM2AL_8";
+	case MOV_MEM2AX:    return "MOV_MEM2AX";
+	case MOV_AL2MEM_8:  return "MOV_AL2MEM_8";
+	case MOV_AX2MEM:    return "MOV_AX2MEM";
+	case MOV_IMM2_8:    return "MOV_IMM2_8";
+	case MOV_IMM2:      return "MOV_IMM2";
+	case MOVS_8:        return "MOVS_8";
+	case MOVS:          return "MOVS";
+	case MOVSX_8:       return "MOVSX_8";
+	case MOVSX:         return "MOVSX";
+	case MOVZX_8:       return "MOVZX_8";
+	case MOVZX:         return "MOVZX";
+	case HLT:           return "HLT";
+	case PUSHF:         return "PUSHF";
+	case POPF:          return "POPF";
+	case ADC_2MEM_8:    return "ADC_2MEM_8";
+	case ADC_2MEM:      return "ADC_2MEM";
+	case ADC_MEM2_8:    return "ADC_MEM2_8";
+	case ADC_MEM2:      return "ADC_MEM2";
+	case ADC_IMM2_8:    return "ADC_IMM2_8";
+	case ADC_IMM2:      return "ADC_IMM2";
+	case ADC_IMM2SX_8:  return "ADC_IMM2SX_8";
+	case ADD_IMM2_8:    return "ADD_IMM2_8";
+	case ADD_IMM2:      return "ADD_IMM2";
+	case ADD_IMM2SX_8:  return "ADD_IMM2SX_8";
+	case ADD_2MEM_8:    return "ADD_2MEM_8";
+	case ADD_2MEM:      return "ADD_2MEM";
+	case ADD_MEM2_8:    return "ADD_MEM2_8";
+	case ADD_MEM2:      return "ADD_MEM2";
+	case AND_MEM2_8:    return "AND_MEM2_8";
+	case AND_MEM2:      return "AND_MEM2";
+	case AND_2MEM_8:    return "AND_2MEM_8";
+	case AND_2MEM:      return "AND_2MEM";
+	case AND_IMM2_8:    return "AND_IMM2_8";
+	case AND_IMM2:      return "AND_IMM2";
+	case AND_IMM2SX_8:  return "AND_IMM2SX_8";
+	case OR_2MEM_8:     return "OR_2MEM_8";
+	case OR_2MEM:       return "OR_2MEM";
+	case OR_MEM2_8:     return "OR_MEM2_8";
+	case OR_MEM2:       return "OR_MEM2";
+	case OR_IMM2_8:     return "OR_IMM2_8";
+	case OR_IMM2:       return "OR_IMM2";
+	case OR_IMM2SX_8:   return "OR_IMM2SX_8";
+	case SUB_2MEM_8:    return "SUB_2MEM_8";
+	case SUB_2MEM:      return "SUB_2MEM";
+	case SUB_MEM2_8:    return "SUB_MEM2_8";
+	case SUB_MEM2:      return "SUB_MEM2";
+	case SUB_IMM2_8:    return "SUB_IMM2_8";
+	case SUB_IMM2:      return "SUB_IMM2";
+	case SUB_IMM2SX_8:  return "SUB_IMM2SX_8";
+	case XOR_2MEM_8:    return "XOR_2MEM_8";
+	case XOR_2MEM:      return "XOR_2MEM";
+	case XOR_MEM2_8:    return "XOR_MEM2_8";
+	case XOR_MEM2:      return "XOR_MEM2";
+	case XOR_IMM2_8:    return "XOR_IMM2_8";
+	case XOR_IMM2:      return "XOR_IMM2";
+	case XOR_IMM2SX_8:  return "XOR_IMM2SX_8";
+	case INC_8:         return "INC_8";
+	case INC:           return "INC";
+	case DEC_8:         return "DEC_8";
+	case DEC:           return "DEC";
+	case NEG_8:         return "NEG_8";
+	case NEG:           return "NEG"; 
+	case NOT_8:         return "NOT_8";
+	case NOT:           return "NOT";
+	case XCHG_8:        return "XCHG_8";
+	case XCHG:          return "XCHG";
+	case SETB:          return "SETB";
+	case SETBE:         return "SETBE";
+	case SETL:          return "SETL";
+	case SETLE:         return "SETLE";
+	case SETNB:         return "SETNB";
+	case SETNBE:        return "SETNBE";
+	case SETNL:         return "SETNL";
+	case SETNLE:        return "SETNLE";
+	case SETNO:         return "SETNO";
+	case SETNP:         return "SETNP";
+	case SETNS:         return "SETNS";
+	case SETNZ:         return "SETNZ";
+	case SETP:          return "SETP";
+	case SETS:          return "SETS";
+	case SETZ:          return "SETZ";
+	case SETO:          return "SETO";
+	case STOS_8:        return "STOS_8";
+	case STOS:          return "STOS";
+	case INT:           return "INT";
 
 	case INVALID_INSTR:
-	default:
-	    return "INVALID_INSTR";
+	default:	    return "INVALID_INSTR";
     }
 }

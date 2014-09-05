@@ -76,7 +76,7 @@
 #define SVM_HANDLER_ERROR     0x1
 #define SVM_HANDLER_HALT      0x2
 
-int v3_is_svm_capable();
+int v3_is_svm_capable( void );
 
 void v3_init_svm_cpu(int cpu_id);
 void v3_deinit_svm_cpu(int cpu_id);
