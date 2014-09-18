@@ -990,11 +990,12 @@ bar_update(struct pci_device * pci_dev,
              break;
          }
         case PCI_BAR_MEM32: {
-            v3_unhook_mem(pci_dev->vm, V3_MEM_CORE_ANY, (addr_t)(bar->val));
-
-            bar->val = *new_val;    
 
             if (bar->mem_read) {
+		v3_unhook_mem(pci_dev->vm, V3_MEM_CORE_ANY, (addr_t)(bar->val));
+
+		bar->val = *new_val;    
+
                 v3_hook_full_mem(pci_dev->vm, V3_MEM_CORE_ANY, 
 				 PCI_MEM32_BASE(bar->val), 
 				 PCI_MEM32_BASE(bar->val) + (bar->num_pages * PAGE_SIZE_4KB),
@@ -1002,10 +1003,66 @@ bar_update(struct pci_device * pci_dev,
 				 bar->mem_write, 
 				 pci_dev->priv_data);
             } else {
-                PrintError("Write hooks not supported for PCI\n");
-                return -1;
-            }
 
+		if (bar->mem_write) {
+		    PrintError("Write hooks not supported for PCI\n");
+		    return -1;
+		}
+
+		/* Perform remap of guest BAR */
+		{
+		    struct v3_mem_region * old_region = NULL;
+
+		    /* Remove old shadow region */
+		    if (bar->is_mapped == 1) {
+			old_region = v3_get_mem_region(pci_dev->vm, V3_MEM_CORE_ANY, (addr_t)(PCI_MEM32_BASE(bar->val)));
+
+			if (!old_region) {
+			    PrintError("Cannot find shadow region for mapped PCI BAR (dev: %s, address: %p)\n",
+				    pci_dev->name, (void *)(addr_t)(bar->val));
+			    return -1;
+			}
+
+			v3_delete_mem_region(pci_dev->vm, old_region);
+			bar->is_mapped = 0;
+		    }
+
+		    /* Update bar val */
+		    bar->val = *new_val;
+
+		    /* Now, the BIOS will happily map the BAR into already mapped guest
+		     * address space. If this happens, we can't update the shadow map
+		     */
+		    old_region = v3_get_mem_region(pci_dev->vm, V3_MEM_CORE_ANY, (addr_t)PCI_MEM32_BASE(bar->val));
+
+		    if (old_region) {
+			PrintError("Trying to map PCI BAR to already mapped guest region (dev: %s, address: %p, region: [%p, %p ----> %p)\n",
+				pci_dev->name, 
+				(void *)(addr_t)PCI_MEM32_BASE(bar->val),
+				(void *)old_region->guest_start,
+				(void *)old_region->guest_end,
+				(void *)old_region->host_addr
+			);
+		    } else {
+			if (v3_add_shadow_mem(pci_dev->vm,
+					V3_MEM_CORE_ANY,
+					V3_MEM_RD | V3_MEM_WR,
+					PCI_MEM32_BASE(bar->val),
+					PCI_MEM32_BASE(bar->val) + (bar->num_pages * PAGE_SIZE_4KB),
+					bar->host_base_addr) != 0)
+			{
+			    PrintError("Failed to map guest BAR [%p, %p) ---> %p\n", 
+				    (void *)(addr_t)PCI_MEM32_BASE(bar->val),
+				    (void *)(addr_t)PCI_MEM32_BASE(bar->val) + (bar->num_pages * PAGE_SIZE_4KB),
+				    (void *)bar->host_base_addr
+			    );
+			} else {
+			    /* Successfully remapped the BAR */
+			    bar->is_mapped = 1;
+			}
+		    }
+		}
+            }
 
             break;
         }
@@ -1203,7 +1260,7 @@ cmd_write(struct pci_device * pci_dev,
 	     (old_cmd.mem_enable == 0) ) {
             
 	    pci_dev->cmd_update(pci_dev, PCI_CMD_MEM_ENABLE, 0, pci_dev->priv_data);
-        }
+        } 
     }
 
     return 0;
@@ -1490,20 +1547,44 @@ init_bars(struct v3_vm_info * vm,
 				 bar->mem_write, 
 				 pci_dev->priv_data);
 
-            } else if (bar->mem_write) {
-                // write hook
-                PrintError("Write hooks not supported for PCI devices\n");
-                return -1;
-                /*
-                   v3_hook_write_mem(pci_dev->vm_dev->vm, bar->default_base_addr, 
-                   bar->default_base_addr + (bar->num_pages * PAGE_SIZE_4KB),
-                   bar->mem_write, pci_dev->vm_dev);
-                   */
             } else {
-                // set the prefetchable flag...
-                bar->val |= 0x00000008;
-            }
+		
+		if (bar->mem_write) {
+		    // write hook
+		    PrintError("Write hooks not supported for PCI devices\n");
+		    return -1;
 
+		    /*
+		    v3_hook_write_mem(pci_dev->vm_dev->vm, bar->default_base_addr, 
+			bar->default_base_addr + (bar->num_pages * PAGE_SIZE_4KB),
+	                bar->mem_write, pci_dev->vm_dev);
+	            */
+		}
+
+		if (bar->host_base_addr == (addr_t)NULL) {
+		    PrintError("PCI BAR memory neither trapped nor mapped to host memory...what are you trying to do?\n");
+		    return -1;
+		}
+
+		// Add shadow map
+		if (bar->default_base_addr != 0xffffffff) {
+		    if (v3_add_shadow_mem(vm,
+			    V3_MEM_CORE_ANY,
+    			    V3_MEM_RD | V3_MEM_WR,
+			    bar->default_base_addr,
+			    bar->default_base_addr + (bar->num_pages * PAGE_SIZE_4KB),
+			    bar->host_base_addr) != 0) 
+		    {
+		        PrintError("Failed to add shadow memory region\n");
+		        return -1;
+		    }
+
+		    bar->is_mapped = 1;
+		}
+
+		// set the prefetchable flag...
+		bar->val |= 0x00000008;
+	    }		
 
             *(uint32_t *)(pci_dev->config_space + bar_offset) = bar->val;
 
@@ -1874,7 +1955,9 @@ v3_pci_register_device(struct vm_device    * pci,
         } else if (pci_dev->bar[i].type == PCI_BAR_MEM32) {
 
             pci_dev->bar[i].num_pages         = bars[i].num_pages;
+            pci_dev->bar[i].is_mapped         = 0;
             pci_dev->bar[i].default_base_addr = bars[i].default_base_addr;
+            pci_dev->bar[i].host_base_addr    = bars[i].host_base_addr;
             pci_dev->bar[i].mem_read          = bars[i].mem_read;
             pci_dev->bar[i].mem_write         = bars[i].mem_write;
 

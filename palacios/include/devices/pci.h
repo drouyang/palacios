@@ -71,7 +71,9 @@ struct v3_pci_bar {
     union {
 	struct {
 	    int num_pages;
+	    int is_mapped;
 	    addr_t default_base_addr;
+	    addr_t host_base_addr;
 	    int (*mem_read)(struct v3_core_info * core, addr_t guest_addr, void * dst, uint_t length, void * private_data);
 	    int (*mem_write)(struct v3_core_info * core, addr_t guest_addr, void * src, uint_t length, void * private_data);
 	};
