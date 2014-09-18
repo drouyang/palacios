@@ -9,8 +9,8 @@ endif
 EXTRA_CFLAGS  += -I$(PWD)/../palacios/include/ -include autoconf.h -DMODULE=1 -D__KERNEL__=1
 
 ifdef V3_CONFIG_HOST_XPMEM
-EXTRA_CFLAGS  += -I/$(V3_CONFIG_XPMEM_KERN)/include
-KBUILD_EXTRA_SYMBOLS += $(V3_CONFIG_XPMEM_KERN)/Module.symvers
+EXTRA_CFLAGS  += -I/$(V3_CONFIG_HOST_XPMEM_KERN_PATH)/include
+KBUILD_EXTRA_SYMBOLS += $(V3_CONFIG_HOST_XPMEM_KERN_PATH)/mod/Module.symvers
 endif
 
 

@@ -39,8 +39,6 @@
 #define XPMEM_DEV_ID        0x100d
 #define XPMEM_SUBDEVICE_ID  13
 
-#define GUEST_DEFAULT_BAR   0xe0000000
-
 
 
 
@@ -1001,11 +999,12 @@ register_xpmem_dev(struct v3_xpmem_state * state)
 	}
     }
 
-    bars[0].type = PCI_BAR_MEM32;
-    bars[0].num_pages = 1;
-    bars[0].mem_read = NULL;
-    bars[0].mem_write = NULL;
-    bars[0].default_base_addr = GUEST_DEFAULT_BAR;
+    bars[0].type              = PCI_BAR_MEM32;
+    bars[0].num_pages         = 1;
+    bars[0].mem_read          = NULL;
+    bars[0].mem_write         = NULL;
+    bars[0].default_base_addr = 0xffffffff;
+    bars[0].host_base_addr    = (addr_t)V3_PAddr(state->bar_state);
 
     pci_dev = v3_pci_register_device(state->pci_bus,
             PCI_STD_DEVICE,
@@ -1064,13 +1063,6 @@ xpmem_init(struct v3_vm_info * vm,
 
     bar_pa           = (addr_t)V3_AllocPages(1);
     state->bar_state = V3_VAddr((void *)bar_pa);
-
-    if (v3_add_shadow_mem(state->vm, V3_MEM_CORE_ANY, V3_MEM_RD,
-                GUEST_DEFAULT_BAR,
-                GUEST_DEFAULT_BAR + PAGE_SIZE,
-                bar_pa)) {
-        PrintError("Failed to add XPMEM shadow BAR region\n");
-    }
 
     /* SVM or VMX? */
     state->bar_state->svm_capable = (v3_is_svm_capable() > 0);
