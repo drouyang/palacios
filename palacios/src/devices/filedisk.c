@@ -46,10 +46,10 @@ write_all(v3_file_t   fd,
     PrintDebug("Writing %llu bytes\n", length - bytes_written);
 
     while (bytes_written < length) {
-	int tmp_bytes = v3_file_write(fd, 
-				      buf    + bytes_written, 
-				      length - bytes_written, 
-				      offset + bytes_written);
+	ssize_t tmp_bytes = v3_file_write(fd, 
+					  buf    + bytes_written, 
+					  length - bytes_written, 
+					  offset + bytes_written);
 
 	PrintDebug("Wrote %d bytes\n", tmp_bytes);
 	
@@ -76,10 +76,10 @@ read_all(v3_file_t   fd,
     PrintDebug("Reading %llu bytes\n", length - bytes_read);
 
     while (bytes_read < length) {
-	int tmp_bytes = v3_file_read(fd, 
-				     buf    + bytes_read, 
-				     length - bytes_read, 
-				     offset + bytes_read);
+	ssize_t tmp_bytes = v3_file_read(fd, 
+					 buf    + bytes_read, 
+					 length - bytes_read, 
+					 offset + bytes_read);
 
 	PrintDebug("Read %d bytes\n", tmp_bytes);
 	
@@ -149,7 +149,7 @@ readv(v3_iov_t * iov_arr,
 {
     struct disk_state * disk = (struct disk_state *)private_data;
     uint64_t total_len       = 0;
-    uint64_t bytes_read      = 0;
+    ssize_t  bytes_read      = 0;
     int      i = 0;
 
     for (i = 0; i < iov_len; i++) {
@@ -182,7 +182,7 @@ writev(v3_iov_t * iov_arr,
 {
     struct disk_state * disk = (struct disk_state *)private_data;
     uint64_t total_len       = 0;
-    uint64_t bytes_written   = 0;
+    ssize_t  bytes_written   = 0;
     int      i = 0;
 
     for (i = 0; i < iov_len; i++) {
