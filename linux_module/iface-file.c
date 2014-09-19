@@ -191,9 +191,9 @@ palacios_file_mkdir(const char     * pathname,
 
 
 static void * 
-palacios_file_open(const char         * path,
-		   unsigned long long   mode, 
-		   void               * private_data) 
+palacios_file_open(const char * path,
+		   int          mode, 
+		   void       * private_data) 
 {
     struct v3_guest      * guest    = (struct v3_guest *)private_data;
     struct palacios_file * pfile    = NULL;	
@@ -283,7 +283,7 @@ palacios_file_close(void * file_ptr)
     return 0;
 }
 
-static unsigned long long 
+static loff_t
 palacios_file_size(void * file_ptr) 
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
@@ -305,11 +305,11 @@ palacios_file_size(void * file_ptr)
     return s.size;
 }
 
-static unsigned long long 
-palacios_file_read(void               * file_ptr, 
-		   void               * buffer, 
-		   unsigned long long   length, 
-		   unsigned long long   offset)
+static ssize_t
+palacios_file_read(void   * file_ptr, 
+		   void   * buffer, 
+		   size_t   length, 
+		   loff_t   offset)
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
     struct file          * filp  = pfile->filp;
@@ -324,18 +324,18 @@ palacios_file_read(void               * file_ptr,
     set_fs(old_fs);
 	
     if (ret <= 0) {
-	ERROR("sys_read of %p for %lld bytes at offset %llu failed (ret=%ld)\n", filp, length, offset, ret);
+	ERROR("sys_read of %p for %ld bytes at offset %lld failed (ret=%ld)\n", filp, length, offset, ret);
     }
 	
     return ret;
 }
 
 
-static unsigned long long 
-palacios_file_write(void               * file_ptr, 
-		    void               * buffer, 
-		    unsigned long long   length,
-		    unsigned long long   offset) 
+static ssize_t 
+palacios_file_write(void   * file_ptr, 
+		    void   * buffer, 
+		    size_t   length,
+		    loff_t   offset) 
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
     struct file          * filp  = pfile->filp;
@@ -351,7 +351,7 @@ palacios_file_write(void               * file_ptr,
 
  
     if (ret <= 0) {
-	ERROR("sys_write for %llu bytes at offset %llu failed (ret=%ld)\n", length, offset, ret);
+	ERROR("sys_write for %lu bytes at offset %lld failed (ret=%ld)\n", length, offset, ret);
     }
 	
     return ret;
@@ -361,11 +361,11 @@ palacios_file_write(void               * file_ptr,
 
 
 
-static unsigned long long 
-palacios_file_readv(void               * file_ptr, 
-		    v3_iov_t           * iov_arr, 
-		    unsigned int         iov_len,
-		    unsigned long long   offset)
+static ssize_t
+palacios_file_readv(void     * file_ptr, 
+		    v3_iov_t * iov_arr, 
+		    int        iov_len,
+		    loff_t     offset)
 {
     struct palacios_file * pfile   = (struct palacios_file *)file_ptr;
     struct file          * filp    = pfile->filp;
@@ -405,11 +405,11 @@ palacios_file_readv(void               * file_ptr,
 }
 
 
-static unsigned long long 
-palacios_file_writev(void               * file_ptr, 
-		     v3_iov_t           * iov_arr, 
-		     unsigned int         iov_len,
-		     unsigned long long   offset) 
+static ssize_t 
+palacios_file_writev(void     * file_ptr, 
+		     v3_iov_t * iov_arr, 
+		     int        iov_len,
+		     loff_t     offset) 
 {
     struct palacios_file * pfile   = (struct palacios_file *)file_ptr;
     struct file          * filp    = pfile->filp;

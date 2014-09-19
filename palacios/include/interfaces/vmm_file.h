@@ -29,22 +29,22 @@ typedef void * v3_file_t;
 
 int v3_mkdir(char * path, uint16_t permissions, uint8_t recursive);
 
-v3_file_t v3_file_open(struct v3_vm_info * vm, char * path, uint64_t mode);
+v3_file_t v3_file_open(struct v3_vm_info * vm, char * path, int mode);
 int v3_file_close(v3_file_t file);
-uint64_t v3_file_size(v3_file_t file);
+loff_t v3_file_size(v3_file_t file);
 
-uint64_t v3_file_read(v3_file_t file, uint8_t * buf, uint64_t len, uint64_t off);
-uint64_t v3_file_write(v3_file_t file, uint8_t * buf, uint64_t len, uint64_t off);
+ssize_t v3_file_read(v3_file_t file, uint8_t * buf, size_t len, loff_t off);
+ssize_t v3_file_write(v3_file_t file, uint8_t * buf, size_t len, loff_t off);
 
-uint64_t v3_file_writev(v3_file_t file, v3_iov_t * iov_arr, uint32_t iov_len, uint64_t off);
-uint64_t v3_file_readv(v3_file_t file, v3_iov_t * iov_arr, uint32_t iov_len, uint64_t off);
+ssize_t v3_file_writev(v3_file_t file, v3_iov_t * iov_arr, int iov_len, loff_t off);
+ssize_t v3_file_readv(v3_file_t file, v3_iov_t * iov_arr, int iov_len, loff_t off);
 
 #endif
 
-#define FILE_OPEN_MODE_READ	  (0x1ULL << 0)
-#define FILE_OPEN_MODE_WRITE      (0x1ULL << 1)
-#define FILE_OPEN_MODE_CREATE     (0x1ULL << 2)
-#define FILE_OPEN_MODE_RAW_BLOCK  (0x1ULL << 63)
+#define FILE_OPEN_MODE_READ	  (0x1 << 0)
+#define FILE_OPEN_MODE_WRITE      (0x1 << 1)
+#define FILE_OPEN_MODE_CREATE     (0x1 << 2)
+#define FILE_OPEN_MODE_RAW_BLOCK  (0x1 << 31)
 
 
 
@@ -52,26 +52,26 @@ uint64_t v3_file_readv(v3_file_t file, v3_iov_t * iov_arr, uint32_t iov_len, uin
 struct v3_file_hooks {
     int (*mkdir)(const char * path, unsigned short perms, int recursive);
 
-    void * (*open)(const char * path, unsigned long long mode, void * host_data);
+    void * (*open)(const char * path, int mode, void * host_data);
     int    (*close)(void * fd);
 
-    unsigned long long (*size)(void * fd);
+    loff_t (*size)(void * fd);
 
     // blocking reads and writes
-    unsigned long long (*read)(void * fd, void * buffer, unsigned long long length, unsigned long long offset);
-    unsigned long long (*write)(void * fd, void * buffer, unsigned long long length, unsigned long long offset);
+    ssize_t (*read)(void * fd, void * buffer, size_t length, loff_t offset);
+    ssize_t (*write)(void * fd, void * buffer, size_t length, loff_t offset);
     
 
-    unsigned long long (*readv)(void             * fd, 
-				v3_iov_t         * iov_arr, 
-				unsigned int       iov_len, 
-				unsigned long long offset);
+    ssize_t (*readv)(void     * fd, 
+		     v3_iov_t * iov_arr, 
+		     int        iov_len, 
+		     loff_t     offset);
 
 
-    unsigned long long (*writev)(void             * fd, 
-				 v3_iov_t         * iov_arr, 
-				 unsigned int       iov_len, 
-				 unsigned long long offset);
+    ssize_t (*writev)(void     * fd, 
+		      v3_iov_t * iov_arr, 
+		      int        iov_len, 
+		      loff_t     offset);
 
 };
 

@@ -50,7 +50,7 @@ v3_mkdir(char     * path,
 v3_file_t 
 v3_file_open(struct v3_vm_info * vm, 
 	     char              * path, 
-	     uint64_t            mode)
+	     int                 mode)
 {
     void * priv_data = NULL;
 
@@ -73,7 +73,7 @@ v3_file_close(v3_file_t file)
     return file_hooks->close(file);
 }
 
-uint64_t 
+loff_t
 v3_file_size(v3_file_t file) 
 {
     V3_ASSERT(file_hooks);
@@ -82,11 +82,11 @@ v3_file_size(v3_file_t file)
     return file_hooks->size(file);
 }
 
-uint64_t 
+ssize_t
 v3_file_read(v3_file_t   file, 
 	     uint8_t   * buf, 
-	     uint64_t    len, 
-	     uint64_t    off) 
+	     size_t      len, 
+	     loff_t      off) 
 {
     V3_ASSERT(file_hooks);
     V3_ASSERT(file_hooks->read);
@@ -95,11 +95,11 @@ v3_file_read(v3_file_t   file,
 }
 
 
-uint64_t 
+ssize_t
 v3_file_write(v3_file_t   file, 
 	      uint8_t   * buf,
-	      uint64_t    len, 
-	      uint64_t    off) 
+	      size_t      len, 
+	      loff_t      off) 
 {
     V3_ASSERT(file_hooks);
     V3_ASSERT(file_hooks->write);
@@ -108,11 +108,11 @@ v3_file_write(v3_file_t   file,
 }
 
 
-uint64_t 
+ssize_t
 v3_file_readv(v3_file_t   file, 
 	      v3_iov_t  * iov_arr,
-	      uint32_t    iov_len,
-	      uint64_t    off) 
+	      int         iov_len,
+	      loff_t      off) 
 {
     V3_ASSERT(file_hooks);
     V3_ASSERT(file_hooks->readv);
@@ -121,11 +121,11 @@ v3_file_readv(v3_file_t   file,
 }
 
 
-uint64_t 
+ssize_t
 v3_file_writev(v3_file_t   file, 
 	       v3_iov_t  * iov_arr,
-	       uint32_t    iov_len,
-	       uint64_t    off) 
+	       int         iov_len,
+	       loff_t      off) 
 {
     V3_ASSERT(file_hooks);
     V3_ASSERT(file_hooks->writev);
