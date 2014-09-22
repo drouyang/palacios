@@ -260,29 +260,32 @@ v3_fpu_init(struct v3_core_info * core)
     //    struct cr4_32 * guest_cr4 = (struct cr4_32 *)&(core->ctrl_regs.cr4);
 
     V3_Print("Initializing FPU for core %d\n", core->vcpu_id);
-    V3_Print("Host CR4 VAL=%x\n", (uint32_t)host_cr4_val);
+    V3_Print("FPU: Host CR4 VAL=%x\n", (uint32_t)host_cr4_val);
 
 
     memset(arch_state, 0, sizeof(struct v3_fpu_arch));
 
     // is OSXSAVE supported 
     if (host_cr4->osxsave == 1) {
+	V3_Print("FPU: OSXSAVE enabled in Host CR4\n");
 
 	fpu->osxsave_enabled = 1;
-	V3_Print("ENabling OSXSAVE for Guest\n");
 
 	//	guest_cr4->osx = 1;
 	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, (1 << 26), (1 << 26), 0, 0);
 
     } else {
+	V3_Print("FPU: OSXSAVE not enabled, disabling guest XSAVE in CPUID\n");
+
 	// Disable XSAVE (cpuid 0x01, ECX bit 26)
 	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, (1 << 26), 0, 0, 0);
     }
 
     if (host_cr4->osf_xsr) {
+	V3_Print("FPU: OSF_XSR enabled in Host CR4\n");
+
 	fpu->osfxsr_enabled = 1;
 
-	//
     } else {
 	// Disable FXSAVE (cpuid 0x01, EDX bit 24)
 	//	v3_cpuid_add_fields(core->vm_info, 0x01, 0, 0, 0, 0, 0, 0, (1 << 24), 0);
@@ -300,9 +303,10 @@ v3_fpu_init(struct v3_core_info * core)
 	fpu->guest_xcr0 = XCR0_INIT_STATE;
 	fpu->host_xcr0  = xgetbv();
 	
-	
-	V3_Print("Guest XCR0=%p\n", (void *)fpu->guest_xcr0);
-	V3_Print("Host XCR0=%p\n",  (void *)fpu->host_xcr0);
+		
+	V3_Print("FPU: Initializing XCR0 Register (Intel Only?) [Guest XCR0=%p] [Host XCR0=%p]\n", 
+		 (void *)fpu->guest_xcr0,
+		 (void *)fpu->host_xcr0);
     }
 
     fpu->enable_fpu_exits = 1;
