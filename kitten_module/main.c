@@ -117,7 +117,8 @@ palacios_ioctl(struct file  * filp,
 
 	    memset(&guest_path, 0, sizeof(struct vm_path));
 	    
-	    if (copy_from_user(&guest_path, argp, sizeof(struct vm_path))) {		
+	    if (copy_from_user(&guest_path, argp, sizeof(struct vm_path))) {
+		printk(KERN_ERR "Palacios: Error Could not copy guest path from userspace\n");
 		return -EFAULT;
 	    }
 
@@ -187,7 +188,10 @@ palacios_ioctl(struct file  * filp,
 	    guest->img_size = img_size;
 	    strncpy(guest->name, guest_path.vm_name, 128);
 
-	    palacios_create_vm(guest);
+	    if (palacios_create_vm(guest) == -1) {
+		printk("Error: Could not create VM (%s)\n", guest_path.file_name);
+		return -1;
+	    }
 
 	    return guest_id;
 
