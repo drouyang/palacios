@@ -433,7 +433,6 @@ v3_init_vmx_core(struct v3_core_info * core,
 		  v3_vm_class_t        vm_class) 
 {
     struct vmx_data * vmx_state = NULL;
-    int               vmx_ret   = 0;
     
     vmx_state = (struct vmx_data *)V3_Malloc(sizeof(struct vmx_data));
 
@@ -531,7 +530,7 @@ v3_init_vmx_core(struct v3_core_info * core,
 	vmx_state->entry_ctrls.ld_pat   = 1;
 
 	// Setup Guests initial PAT field
-	vmx_ret |= check_vmcs_write(VMCS_GUEST_PAT, 0x0007040600070406LL);
+	core->msrs.pat = 0x0007040600070406ULL;
     }
 
 

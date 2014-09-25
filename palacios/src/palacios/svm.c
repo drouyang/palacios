@@ -123,7 +123,7 @@ Init_VMCB_BIOS(vmcb_t              * vmcb,
 	       struct v3_core_info * core) 
 {
     vmcb_ctrl_t        * ctrl_area   = GET_VMCB_CTRL_AREA(vmcb);
-    vmcb_saved_state_t * guest_state = GET_VMCB_SAVE_STATE_AREA(vmcb);
+    //   vmcb_saved_state_t * guest_state = GET_VMCB_SAVE_STATE_AREA(vmcb);
     uint_t i;
 
 
@@ -295,7 +295,7 @@ Init_VMCB_BIOS(vmcb_t              * vmcb,
 	ctrl_area->instrs.INVLPG  = 1;
 	ctrl_area->exceptions.pf  = 1;
 
-	guest_state->g_pat = 0x7040600070406ULL;
+	core->msrs.pat = 0x7040600070406ULL;
 
 
 
@@ -317,7 +317,7 @@ Init_VMCB_BIOS(vmcb_t              * vmcb,
 
 	ctrl_area->N_CR3   = core->direct_map_pt;
 
-	guest_state->g_pat = 0x7040600070406ULL;
+	core->msrs.pat = 0x7040600070406ULL;
     }
     
     /* tell the guest that we don't support SVM */
