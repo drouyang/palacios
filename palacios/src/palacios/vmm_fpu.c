@@ -414,23 +414,23 @@ v3_fpu_deactivate(struct v3_core_info * core)
 	     ((core->ctrl_regs.cr4 & 0x40000) != 0) ) {
 
 	    __asm__ __volatile__ ("xsave %0\r\n"
+				  : "=m"(fpu->arch_state)
 				  : 
-				  : "m"(fpu->arch_state)
 				  : "memory"
 				  );
 
 	} else if ((fpu->osfxsr_enabled) && (core->ctrl_regs.cr4 & (0x1 << 9))) {
 
 
-	    __asm__ __volatile__ ("fxsave %0\r\n"
+	    __asm__ __volatile__ ("rex64/fxsave %0\r\n"
+				  : "=m"(fpu->arch_state)
 				  : 
-				  : "m"(fpu->arch_state)
 				  : "memory"
 				  );
 	} else {
 	    __asm__ __volatile__ ("fsave %0\r\n"
+				  : "=m"(fpu->arch_state)
 				  : 
-				  : "m"(fpu->arch_state)
 				  : "memory"
 				  );
 	}

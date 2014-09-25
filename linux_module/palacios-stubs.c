@@ -15,6 +15,7 @@
 #include <asm/uaccess.h>
 #include <linux/smp.h>
 #include <asm/i387.h>
+#include <asm/fpu-internal.h>
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_host_events.h>
@@ -171,6 +172,8 @@ lnx_thread_target(void * arg)
       daemonize(thread_info->name);
       allow_signal(SIGKILL);
     */
+
+    fpu_alloc(&(current->thread.fpu));
 
 
     ret = thread_info->fn(thread_info->arg);
