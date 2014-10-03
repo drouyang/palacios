@@ -487,7 +487,7 @@ v3_fpu_activate(struct v3_core_info * core)
     } else if ( (fpu->osfxsr_enabled) && 
 		((core->ctrl_regs.cr4 & (0x1 << 9)) != 0) ) {
 	// restore state
-	__asm__ __volatile__ ("fxrstor %0 \r\n"
+	__asm__ __volatile__ ("rex64/fxrstor %0 \r\n"
 			      : 
 			      : "m"(fpu->arch_state)
 			      : "memory"
