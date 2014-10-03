@@ -26,8 +26,7 @@
 #include <palacios/vmm_sprintf.h>
 
 
-#define XSETBV ".byte 0x0f,0x01,0xd1;"  
-#define XGETBV ".byte 0x0f,0x01,0xd0;"
+
 
 extern v3_cpu_arch_t v3_cpu_types[];
 
@@ -57,34 +56,6 @@ static inline addr_t get_cr4() {
     return cr4;
 }
 
-
-
-static inline uint64_t xgetbv() {
-    uint32_t eax   = 0;
-    uint32_t edx   = 0;
-    uint32_t index = 0;
-
-    __asm__ __volatile__ (XGETBV
-			  : "=a"(eax), "=d"(edx)
-			  : "c"(index)
-			  );
-
-
-    return  eax + ((uint64_t)edx << 32);
-
-}
-
-
-static inline void xsetbv(uint64_t value) {
-    uint32_t eax   = value;
-    uint32_t edx   = value >> 32;
-    uint32_t index = 0;
-
-    __asm__ __volatile__ (XSETBV
-			  :
-			  : "a"(eax), "d"(edx), "c"(index)
-			  );
-}
 
 
 
@@ -242,6 +213,40 @@ load_fpu(char                * name,
 }
 
 #endif
+
+
+
+
+#define XSETBV ".byte 0x0f,0x01,0xd1;"  
+#define XGETBV ".byte 0x0f,0x01,0xd0;"
+
+static inline uint64_t xgetbv() {
+    uint32_t eax   = 0;
+    uint32_t edx   = 0;
+    uint32_t index = 0;
+
+    __asm__ __volatile__ (XGETBV
+			  : "=a"(eax), "=d"(edx)
+			  : "c"(index)
+			  );
+
+
+    return  eax + ((uint64_t)edx << 32);
+
+}
+
+
+static inline void xsetbv(uint64_t value) {
+    uint32_t eax   = value;
+    uint32_t edx   = value >> 32;
+    uint32_t index = 0;
+
+    __asm__ __volatile__ (XSETBV
+			  :
+			  : "a"(eax), "d"(edx), "c"(index)
+			  );
+}
+
 
 
 /* We assume we are running on a Machine with SSE* extensions 
