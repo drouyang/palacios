@@ -7,6 +7,7 @@
 #include <arch/atomic.h>
 
 #include <xpmem_iface.h>
+#include <xpmem_extended.h>
 
 #include "palacios.h"
 #include "vm.h"

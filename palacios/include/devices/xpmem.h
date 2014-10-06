@@ -43,13 +43,16 @@ struct xpmem_cmd_get_ex {
     uint32_t permit_type;
     uint64_t permit_value;
     xpmem_apid_t apid;
+    uint64_t size;
 };
 
 struct xpmem_cmd_release_ex {
+    xpmem_segid_t segid; /* needed for routing */
     xpmem_apid_t apid;
 };
 
 struct xpmem_cmd_attach_ex {
+    xpmem_segid_t segid; /* needed for routing */
     xpmem_apid_t apid;
     uint64_t off;
     uint64_t size;
@@ -58,6 +61,7 @@ struct xpmem_cmd_attach_ex {
 };
 
 struct xpmem_cmd_detach_ex {
+    xpmem_segid_t segid; /* needed for routing */
     uint64_t vaddr;
 };
 
@@ -84,16 +88,18 @@ typedef enum {
     XPMEM_PING_NS,
     XPMEM_PONG_NS,
 
-    /* Request a domid */
+    /* Request/Release a domid */
     XPMEM_DOMID_REQUEST,
     XPMEM_DOMID_RESPONSE,
+    XPMEM_DOMID_RELEASE,
 
 } xpmem_op_t;
 
 
 struct xpmem_cmd_ex {
-    xpmem_domid_t src_dom;
-    xpmem_domid_t dst_dom;
+    xpmem_domid_t req_dom; /* The domain invoking the original XPMEM operation */
+    xpmem_domid_t src_dom; /* The domain that created the most recent request / response */
+    xpmem_domid_t dst_dom; /* The domain targeted with the command / response */
     xpmem_op_t type;
 
     union {
