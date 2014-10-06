@@ -329,7 +329,6 @@ v3_fpu_init(struct v3_core_info * core)
     }
 #endif
 
-    V3_Print("FPU Initialized\n");
 
     return 0;
 }
@@ -424,7 +423,7 @@ v3_fpu_deactivate(struct v3_core_info * core)
 				  : "memory"
 				  );
 
-	} else if ((fpu->osfxsr_enabled) && (core->ctrl_regs.cr4 & (0x1 << 9))) {
+	} else if (fpu->osfxsr_enabled) {
 
 
 	    __asm__ __volatile__ ("rex64/fxsave %0\r\n"
@@ -433,11 +432,8 @@ v3_fpu_deactivate(struct v3_core_info * core)
 				  : "memory"
 				  );
 	} else {
-	    __asm__ __volatile__ ("fsave %0\r\n"
-				  : "=m"(fpu->arch_state)
-				  : 
-				  : "memory"
-				  );
+	    PrintError("Error: Host does not support FXSAVE\n");
+	    return -1;
 	}
 			      
 
@@ -489,8 +485,7 @@ v3_fpu_activate(struct v3_core_info * core)
 				  : "memory"
 				  );
 
-    } else if ( (fpu->osfxsr_enabled) && 
-		((core->ctrl_regs.cr4 & (0x1 << 9)) != 0) ) {
+    } else if (fpu->osfxsr_enabled) {
 	// restore state
 	__asm__ __volatile__ ("rex64/fxrstor %0 \r\n"
 			      : 
@@ -498,11 +493,8 @@ v3_fpu_activate(struct v3_core_info * core)
 			      : "memory"
 			      );
     } else {
-	__asm__ __volatile__ ("frstor %0 \r\n"
-			      : 
-			      : "m"(fpu->arch_state)
-			      : "memory"
-			      );
+	PrintError("Error: Host does not support FXRSTOR\n");
+	return -1;
     }
 
 

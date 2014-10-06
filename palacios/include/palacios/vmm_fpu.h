@@ -93,6 +93,8 @@ struct v3_fpu_state {
 		uint64_t osfxsr_enabled   : 1; 	  
 		/* ** */
 
+		uint64_t rsvd : 58;
+
 	    } __attribute__((packed));
 	} __attribute__((packed));
     } __attribute__((packed));
