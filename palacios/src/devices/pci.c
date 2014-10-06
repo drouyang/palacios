@@ -1030,20 +1030,25 @@ bar_update(struct pci_device * pci_dev,
 		    /* Update bar val */
 		    bar->val = *new_val;
 
-		    /* Now, the BIOS will happily map the BAR into already mapped guest
-		     * address space. If this happens, we can't update the shadow map
-		     */
-		    old_region = v3_get_mem_region(pci_dev->vm, V3_MEM_CORE_ANY, (addr_t)PCI_MEM32_BASE(bar->val));
+#if 0
+			old_region = v3_get_mem_region(pci_dev->vm, V3_MEM_CORE_ANY, (addr_t)PCI_MEM32_BASE(bar->val));
 
-		    if (old_region) {
-			PrintError("Trying to map PCI BAR to already mapped guest region (dev: %s, address: %p, region: [%p, %p ----> %p)\n",
-				pci_dev->name, 
-				(void *)(addr_t)PCI_MEM32_BASE(bar->val),
-				(void *)old_region->guest_start,
-				(void *)old_region->guest_end,
-				(void *)old_region->host_addr
-			);
-		    } else {
+			if (old_region) {
+			    PrintError("Trying to map PCI BAR to already mapped guest region (dev: %s, address: %p, region: [%p, %p ----> %p)\n",
+				    pci_dev->name, 
+				    (void *)(addr_t)PCI_MEM32_BASE(bar->val),
+				    (void *)old_region->guest_start,
+				    (void *)old_region->guest_end,
+				    (void *)old_region->host_addr
+			    );
+
+			    v3_delete_mem_region(pci_dev->vm, old_region);
+#endif
+		    
+		    if ((PCI_MEM32_BASE(bar->val) >= 0x10000000) &&
+		        (PCI_MEM32_BASE(bar->val) != PCI_MEM32_BASE(0xffffffff))
+		       ) 
+		    { 
 			if (v3_add_shadow_mem(pci_dev->vm,
 					V3_MEM_CORE_ANY,
 					V3_MEM_RD | V3_MEM_WR,
