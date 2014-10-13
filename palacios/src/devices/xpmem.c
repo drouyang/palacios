@@ -345,11 +345,11 @@ xpmem_insert_allocated_memory_region(struct v3_xpmem_state * state,
     return ret;
 }
 
-// 1 TB: Start of XPMEM range
-#define XPMEM_MEM_START (1ULL << 40)
+// 32 GB: Start of XPMEM range
+#define XPMEM_MEM_START (1ULL << 35)
 
-// 1 TB of addressable XPMEM
-#define XPMEM_MEM_END   (1ULL << 41)
+// 64 GB of addressable XPMEM
+#define XPMEM_MEM_END   (1ULL << 36)
 
 
 /* Find region of len bytes */
@@ -501,6 +501,8 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
     /* Map region into guest. The host range may be discontiguous, so we have to
      * do this a page at a time
      */
+
+//    v3_raise_barrier(state->vm, NULL);
     {
 	uint64_t i = 0;
 
@@ -534,6 +536,7 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
 		    region_len
 		);
 
+//		v3_lower_barrier(state->vm);
 		return -1;
 	    }
 	}
@@ -548,9 +551,11 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
 	if (status != 0) {
 	    PrintError("XPMEM: cannot add region [%p, %p) to guest alloc list\n",
 		    (void *)start_addr, (void *)(start_addr + region_len));
+//	    v3_lower_barrier(state->vm);
 	    return -1;
 	}
     }
+//    v3_lower_barrier(state->vm);
     
     *guest_addr_p = start_addr;
     return 0;
