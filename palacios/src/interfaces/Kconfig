@@ -65,9 +65,9 @@ config HOST_XPMEM
 
 config HOST_XPMEM_KERN_PATH
 	depends on HOST_XPMEM && LINUX
-	string "XPMEM Linux module source directory"
+	string "XPMEM Linux source tree"
 	default "/path/to/xpmem"
 	help
-	    This is the directory containing the XPMEM kernel module source
+	    This is the directory containing the XPMEM source code
 
 endmenu
