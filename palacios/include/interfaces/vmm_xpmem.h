@@ -35,7 +35,6 @@ struct v3_xpmem_hooks {
     xpmem_host_handle_t (*xpmem_host_connect)(void * private_data, struct v3_xpmem_state * v3_xpmem);
     int (*xpmem_host_disconnect)(xpmem_host_handle_t handle);
     int (*xpmem_command)(xpmem_host_handle_t handle, struct xpmem_cmd_ex * cmd);
-    int (*xpmem_command_complete)(xpmem_host_handle_t handle, struct xpmem_cmd_ex * cmd);
 };
 
 

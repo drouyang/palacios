@@ -348,7 +348,7 @@ xpmem_insert_allocated_memory_region(struct v3_xpmem_state * state,
 // 32 GB: Start of XPMEM range
 #define XPMEM_MEM_START (1ULL << 35)
 
-// 64 GB of addressable XPMEM
+// 32 GB of addressable XPMEM
 #define XPMEM_MEM_END   (1ULL << 36)
 
 
@@ -593,13 +593,11 @@ xpmem_remove_shadow_region(struct v3_xpmem_state * state,
 
 
 
-
-
 static int xpmem_free(void * private_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)private_data;
 
     /* First, disconnect from host */
-    v3_xpmem_host_disconnect(state);
+    v3_xpmem_host_disconnect(state->host_handle);
 
     /* Free cmd list */
     {
