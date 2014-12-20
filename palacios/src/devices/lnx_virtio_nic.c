@@ -26,7 +26,6 @@
 #include <devices/lnx_virtio_pci.h>
 #include <palacios/vm_guest_mem.h>
 #include <palacios/vmm_sprintf.h>
-#include <vnet/vnet.h>
 #include <palacios/vmm_lock.h>
 #include <palacios/vmm_util.h>
 #include <devices/pci.h>
@@ -41,6 +40,8 @@
 
 #ifndef V3_CONFIG_VNET
 static int net_debug = 0;
+#else 
+#include <vnet/vnet.h>
 #endif
 
 #define TX_QUEUE_SIZE 4096
@@ -84,8 +85,8 @@ static int net_debug = 0;
 /* First element of the scatter-gather list, used with GSO or CSUM features */
 struct virtio_net_hdr
 {
-    uint8_t flags;
-    uint8_t gso_type;
+    uint8_t  flags;
+    uint8_t  gso_type;
     uint16_t hdr_len;		/* Ethernet + IP + tcp/udp hdrs */
     uint16_t gso_size;		/* Bytes to append to hdr_len per frame */
     uint16_t csum_start;	/* Position to start checksumming from */
@@ -102,24 +103,24 @@ struct virtio_net_hdr_mrg_rxbuf {
 
 struct virtio_net_config
 {
-    uint8_t mac[ETH_ALEN]; 	/* VIRTIO_NET_F_MAC */
+    uint8_t  mac[ETH_ALEN]; 	/* VIRTIO_NET_F_MAC */
     uint16_t status;
 } __attribute__((packed));
 
 struct virtio_dev_state {
-    struct vm_device * pci_bus;
-    struct list_head dev_list;
-    struct v3_vm_info *vm;
+    struct vm_device  * pci_bus;
+    struct list_head    dev_list;
+    struct v3_vm_info * vm;
 
     uint8_t mac[ETH_ALEN];
 };
 
 struct virtio_net_state {
     struct virtio_net_config net_cfg;
-    struct virtio_config virtio_cfg;
+    struct virtio_config     virtio_cfg;
 
     struct v3_vm_info * vm;
-    struct vm_device * dev;
+    struct vm_device  * dev;
     struct pci_device * pci_dev; 
     int io_range_size;
 
@@ -131,14 +132,20 @@ struct virtio_net_state {
 
     uint8_t mergeable_rx_bufs;
 
-    struct v3_timer * timer;
-    struct nic_statistics stats;
+    struct v3_timer       * timer;
+    struct nic_statistics   stats;
 
     struct v3_dev_net_ops * net_ops;
-    v3_lock_t rx_lock, tx_lock;
 
-    uint8_t tx_notify, rx_notify;
-    uint32_t tx_pkts, rx_pkts;
+    v3_spinlock_t rx_lock;
+    v3_spinlock_t tx_lock;
+
+    uint8_t  tx_notify;
+    uint8_t  rx_notify;
+
+    uint32_t tx_pkts;
+    uint32_t rx_pkts;
+
     uint64_t past_us;
 
     void * backend_data;
@@ -147,70 +154,73 @@ struct virtio_net_state {
 };
 
 
-static int virtio_init_state(struct virtio_net_state * virtio) 
+static int 
+virtio_init_state(struct virtio_net_state * virtio) 
 {
-    virtio->rx_vq.queue_size = RX_QUEUE_SIZE;
-    virtio->tx_vq.queue_size = TX_QUEUE_SIZE;
-    virtio->ctrl_vq.queue_size = CTRL_QUEUE_SIZE;
+    virtio->rx_vq.queue_size        = RX_QUEUE_SIZE;
+    virtio->tx_vq.queue_size        = TX_QUEUE_SIZE;
+    virtio->ctrl_vq.queue_size      = CTRL_QUEUE_SIZE;
 
-    virtio->rx_vq.ring_desc_addr = 0;
-    virtio->rx_vq.ring_avail_addr = 0;
-    virtio->rx_vq.ring_used_addr = 0;
-    virtio->rx_vq.pfn = 0;
-    virtio->rx_vq.cur_avail_idx = 0;
+    virtio->rx_vq.ring_desc_addr    = 0;
+    virtio->rx_vq.ring_avail_addr   = 0;
+    virtio->rx_vq.ring_used_addr    = 0;
+    virtio->rx_vq.pfn               = 0;
+    virtio->rx_vq.cur_avail_idx     = 0;
 
-    virtio->tx_vq.ring_desc_addr = 0;
-    virtio->tx_vq.ring_avail_addr = 0;
-    virtio->tx_vq.ring_used_addr = 0;
-    virtio->tx_vq.pfn = 0;
-    virtio->tx_vq.cur_avail_idx = 0;
+    virtio->tx_vq.ring_desc_addr    = 0;
+    virtio->tx_vq.ring_avail_addr   = 0;
+    virtio->tx_vq.ring_used_addr    = 0;
+    virtio->tx_vq.pfn               = 0;
+    virtio->tx_vq.cur_avail_idx     = 0;
 
-    virtio->ctrl_vq.ring_desc_addr = 0;
+    virtio->ctrl_vq.ring_desc_addr  = 0;
     virtio->ctrl_vq.ring_avail_addr = 0;
-    virtio->ctrl_vq.ring_used_addr = 0;
-    virtio->ctrl_vq.pfn = 0;
-    virtio->ctrl_vq.cur_avail_idx = 0;
+    virtio->ctrl_vq.ring_used_addr  = 0;
+    virtio->ctrl_vq.pfn             = 0;
+    virtio->ctrl_vq.cur_avail_idx   = 0;
 
-    virtio->virtio_cfg.pci_isr = 0;
+    virtio->virtio_cfg.pci_isr      = 0;
 
-    virtio->mergeable_rx_bufs = 1;
-	
-    virtio->virtio_cfg.host_features = 0 | (1 << VIRTIO_NET_F_MAC);
-    if(virtio->mergeable_rx_bufs) {
+    virtio->mergeable_rx_bufs       = 1;
+
+
+    virtio->virtio_cfg.host_features      = 0;	
+    virtio->virtio_cfg.host_features     |= (1 << VIRTIO_NET_F_MAC);
+
+    if (virtio->mergeable_rx_bufs) {
 	virtio->virtio_cfg.host_features |= (1 << VIRTIO_NET_F_MRG_RXBUF);
     }
 
-    if ((v3_lock_init(&(virtio->rx_lock)) == -1) ||
-	(v3_lock_init(&(virtio->tx_lock)) == -1)){
-        PrintError("Virtio NIC: Failure to init locks for net_state\n");
-    }
+    v3_spinlock_init(&(virtio->rx_lock));
+    v3_spinlock_init(&(virtio->tx_lock));
 
     return 0;
 }
 
-static int tx_one_pkt(struct v3_core_info * core, 
-		      struct virtio_net_state * virtio, 
-		      struct vring_desc * buf_desc) 
+static int 
+tx_one_pkt(struct v3_core_info     * core, 
+	   struct virtio_net_state * virtio, 
+	   struct vring_desc       * buf_desc) 
 {
-    uint8_t * buf = NULL;
-    uint32_t len = buf_desc->length;
+    uint8_t  * buf = NULL;
+    uint32_t   len = buf_desc->length;
 
     if (v3_gpa_to_hva(core, buf_desc->addr_gpa, (addr_t *)&(buf)) == -1) {
 	PrintDebug("Could not translate buffer address\n");
 	return -1;
     }
     
-    V3_Net_Print(2, "Virtio-NIC: virtio_tx: size: %d\n", len);
-    if(net_debug >= 4){
-	v3_hexdump(buf, len, NULL, 0);
-    }
+#ifdef V3_CONFIG_DEBUG_VIRTIO_NET
+    V3_Print("Virtio-NIC: virtio_tx: size: %d\n", len);
+    v3_hexdump(buf, len, NULL, 0);
+#endif
 
-    if(virtio->net_ops->send(buf, len, virtio->backend_data) < 0){
-	virtio->stats.tx_dropped ++;
+    if (virtio->net_ops->send(buf, len, virtio->backend_data) < 0) {
+	virtio->stats.tx_dropped++;
 	return -1;
     }
     
-    virtio->stats.tx_pkts ++;
+    virtio->stats.tx_pkts  += 1;
     virtio->stats.tx_bytes += len;
     
     return 0;
@@ -218,139 +228,171 @@ static int tx_one_pkt(struct v3_core_info * core,
 
 
 /*copy data into ring buffer */
-static inline int copy_data_to_desc(struct v3_core_info * core, 
-				    struct virtio_net_state * virtio_state, 
-				    struct vring_desc * desc, 
-				    uchar_t * buf, 
-				    uint_t buf_len,
-				    uint_t dst_offset){
-    uint32_t len;
-    uint8_t * desc_buf = NULL;
+static inline int 
+copy_data_to_desc(struct v3_core_info     * core, 
+		  struct virtio_net_state * virtio_state, 
+		  struct vring_desc       * desc, 
+		  uint8_t                 * buf, 
+		  uint_t                    buf_len,
+		  uint_t                    dst_offset)
+{
+    uint8_t  * desc_buf = NULL;
+    uint32_t   len      = buf_len;
     
     if (v3_gpa_to_hva(core, desc->addr_gpa, (addr_t *)&(desc_buf)) == -1) {
 	PrintDebug("Could not translate buffer address\n");
 	return -1;
     }
-    len = (desc->length < (buf_len+dst_offset))?(desc->length - dst_offset):buf_len;
+
+    if (desc->length < (buf_len + dst_offset)) {
+	len = (desc->length - dst_offset);
+    }
+
     memcpy(desc_buf + dst_offset, buf, len);
 
     return len;
 }
 
 
-static inline int get_desc_count(struct virtio_queue * q, int index) {
-    struct vring_desc * tmp_desc = &(q->desc[index]);
+static inline int 
+get_desc_count(struct virtio_queue * queue, 
+	       int                   index)
+{
+    struct vring_desc * tmp_desc = &(queue->desc[index]);
     int cnt = 1;
     
     while (tmp_desc->flags & VIRTIO_NEXT_FLAG) {
-	tmp_desc = &(q->desc[tmp_desc->next]);
+	tmp_desc = &(queue->desc[tmp_desc->next]);
 	cnt++;
     }
 
     return cnt;
 }
 
-static inline void enable_cb(struct virtio_queue *queue){
-    if(queue->used){
+static inline void 
+enable_cb(struct virtio_queue * queue)
+{
+    if (queue->used) {
 	queue->used->flags &= ~ VRING_NO_NOTIFY_FLAG;
     }
 }
 
-static inline void disable_cb(struct virtio_queue *queue) {
-    if(queue->used){
+static inline void 
+disable_cb(struct virtio_queue * queue) 
+{
+    if (queue->used) {
 	queue->used->flags |= VRING_NO_NOTIFY_FLAG;
     }
 }
 
-static int handle_pkt_tx(struct v3_core_info * core, 
-			 struct virtio_net_state * virtio_state,
-			 int quote)
+static int
+handle_pkt_tx(struct v3_core_info     * core, 
+	      struct virtio_net_state * virtio_state,
+	      int                       quota)
 {
-    struct virtio_queue * q;
-    int txed = 0, left = 0;
-    unsigned long flags;
+    struct virtio_queue * queue = NULL;
+    unsigned long         flags = 0;
 
-    q = &(virtio_state->tx_vq);
-    if (!q->ring_avail_addr) {
+    int pkts_sent = 0;
+    int pkts_left = 0;
+
+    queue = &(virtio_state->tx_vq);
+
+    if (!queue->ring_avail_addr) {
 	return -1;
     }
 
     while (1) {
-	struct vring_desc * hdr_desc = NULL;
-	addr_t hdr_addr = 0;
-	uint16_t desc_idx, tmp_idx;
-	int desc_cnt;
-	
-	flags = v3_lock_irqsave(virtio_state->tx_lock);
 
-	if(q->cur_avail_idx == q->avail->index ||
-	    (quote > 0 && txed >= quote)) {
-	    left = (q->cur_avail_idx != q->avail->index);
-	    v3_unlock_irqrestore(virtio_state->tx_lock, flags);
-	    break;
+	struct vring_desc * hdr_desc = NULL;
+
+	addr_t   hdr_addr = 0;
+	uint16_t desc_idx = 0;
+	uint16_t tmp_idx  = 0;
+	int      desc_cnt = 0;
+	
+	flags = v3_spin_lock_irqsave(&(virtio_state->tx_lock));
+	{
+	    if ((queue->cur_avail_idx == queue->avail->index) ||
+		((quota >  0) && (pkts_sent  >= quota))) {
+		
+		pkts_left = (queue->cur_avail_idx != queue->avail->index);
+		v3_spin_unlock_irqrestore(&(virtio_state->tx_lock), flags);
+		break;
+	    }
+	    
+	    desc_idx = queue->avail->ring[queue->cur_avail_idx % queue->queue_size];
+	    tmp_idx  = queue->cur_avail_idx;
+	    
+	    queue->cur_avail_idx += 1;
 	}
-	
-	desc_idx = q->avail->ring[q->cur_avail_idx % q->queue_size];
-	tmp_idx = q->cur_avail_idx ++;
-	
-	v3_unlock_irqrestore(virtio_state->tx_lock, flags);
+	v3_spin_unlock_irqrestore(&(virtio_state->tx_lock), flags);
 
 	desc_cnt = get_desc_count(q, desc_idx);
-	if(desc_cnt != 2){
+
+	if (desc_cnt != 2) {
 	    PrintError("VNIC: merged rx buffer not supported, desc_cnt %d\n", desc_cnt);
 	}
 
-	hdr_desc = &(q->desc[desc_idx]);
+	hdr_desc = &(queue->desc[desc_idx]);
+
 	if (v3_gpa_to_hva(core, hdr_desc->addr_gpa, &(hdr_addr)) != -1) {
 	    struct virtio_net_hdr_mrg_rxbuf * hdr;
-	    struct vring_desc * buf_desc;
+	    struct vring_desc               * buf_desc;
 
-	    hdr = (struct virtio_net_hdr_mrg_rxbuf *)hdr_addr;
+	    hdr      = (struct virtio_net_hdr_mrg_rxbuf *)hdr_addr;
 	    desc_idx = hdr_desc->next;
 
 	    /* here we assumed that one ethernet pkt is not splitted into multiple buffer */	
-	    buf_desc = &(q->desc[desc_idx]);
+	    buf_desc = &(queue->desc[desc_idx]);
+
 	    if (tx_one_pkt(core, virtio_state, buf_desc) == -1) {
 	    	PrintError("Virtio NIC: Fails to send packet\n");
 	    }
+
 	} else {
 	    PrintError("Could not translate block header address\n");
 	}
 
-	flags = v3_lock_irqsave(virtio_state->tx_lock);
-	
-	q->used->ring[q->used->index % q->queue_size].id = 
-	    q->avail->ring[tmp_idx % q->queue_size];
-	
-	q->used->index ++;
-	
-	v3_unlock_irqrestore(virtio_state->tx_lock, flags);
+	flags = v3_spin_lock_irqsave(&(virtio_state->tx_lock));
+	{
+	    queue->used->ring[queue->used->index % queue->queue_size].id = 
+		queue->avail->ring[tmp_idx % queue->queue_size];
+	    
+	    queue->used->index += 1;
+	    pkts_sent          += 1;
+	}
+	v3_spin_unlock_irqrestore(&(virtio_state->tx_lock), flags);
 
-	txed ++;
     }
         
-    if (txed && !(q->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
+    if (pkts_sent && !(queue->avail->flags & VIRTIO_NO_IRQ_FLAG)) {
+
 	if (virtio_state->virtio_cfg.pci_isr == 0) {
+
 	    v3_pci_raise_irq(virtio_state->virtio_dev->pci_bus, 
 			     virtio_state->pci_dev, 0);
-	    virtio_state->virtio_cfg.pci_isr = 0x1;
-	    virtio_state->stats.rx_interrupts ++;
+	    virtio_state->virtio_cfg.pci_isr   = 0x1;
+	    virtio_state->stats.rx_interrupts += 1;
 	}
     }
 
-    return left;
+    return pkts_left;
 }
 
 
-static int virtio_setup_queue(struct v3_core_info *core, 
-			      struct virtio_net_state * virtio_state, 
-			      struct virtio_queue * queue, 
-			      addr_t pfn, addr_t page_addr) {
+static int 
+virtio_setup_queue(struct v3_core_info     * core, 
+		   struct virtio_net_state * virtio_state, 
+		   struct virtio_queue     * queue, 
+		   addr_t                    pfn,
+		   addr_t                    page_addr) 
+{
     queue->pfn = pfn;
 		
-    queue->ring_desc_addr = page_addr;
+    queue->ring_desc_addr  = page_addr;
     queue->ring_avail_addr = page_addr + (queue->queue_size * sizeof(struct vring_desc));
-    queue->ring_used_addr = ((queue->ring_avail_addr) + 
+    queue->ring_used_addr  = ((queue->ring_avail_addr) + 
 			     (sizeof(struct vring_avail)) + 
 			     (queue->queue_size * sizeof(uint16_t)));
 
@@ -594,7 +636,7 @@ static int virtio_rx(uint8_t * buf, uint32_t size, void * private_data) {
 
     memset(&hdr, 0, sizeof(struct virtio_net_hdr_mrg_rxbuf));
 
-    flags = v3_lock_irqsave(virtio->rx_lock);
+    flags = v3_spin_lock_irqsave(&(virtio->rx_lock));
 
     if (q->cur_avail_idx != q->avail->index){
 	uint16_t buf_idx;
@@ -648,7 +690,7 @@ static int virtio_rx(uint8_t * buf, uint32_t size, void * private_data) {
 	    }
 
 	    copy_data_to_desc(&(virtio->virtio_dev->vm->cores[0]), 
-			      virtio, hdr_desc, (uchar_t *)&hdr, hdr_len, 0);
+			      virtio, hdr_desc, (uint8_t *)&hdr, hdr_len, 0);
 	    q->used->index += hdr.num_buffers;
 	}else{
 	    buf_idx = q->avail->ring[q->cur_avail_idx % q->queue_size];
@@ -656,7 +698,7 @@ static int virtio_rx(uint8_t * buf, uint32_t size, void * private_data) {
 
 	    /* copy header */
 	    len = copy_data_to_desc(&(virtio->virtio_dev->vm->cores[0]), 
-				    virtio, buf_desc, (uchar_t *)&(hdr.hdr), hdr_len, 0);
+				    virtio, buf_desc, (uint8_t *)&(hdr.hdr), hdr_len, 0);
 	    if(len < hdr_len){
 		V3_Net_Print(2, "Virtio NIC: rx copy header error %d, hdr_len %d\n", 
 			     len, hdr_len);
@@ -706,7 +748,7 @@ static int virtio_rx(uint8_t * buf, uint32_t size, void * private_data) {
 	kick_guest = 1;
     }
 
-    v3_unlock_irqrestore(virtio->rx_lock, flags);
+    v3_spin_unlock_irqrestore(&(virtio->rx_lock), flags);
 
     if (!(q->avail->flags & VIRTIO_NO_IRQ_FLAG) || kick_guest) {
 	if (virtio->virtio_cfg.pci_isr == 0) {
@@ -731,7 +773,7 @@ static int virtio_rx(uint8_t * buf, uint32_t size, void * private_data) {
 
 err_exit:
     virtio->stats.rx_dropped ++;
-    v3_unlock_irqrestore(virtio->rx_lock, flags);
+    v3_spin_unlock_irqrestore(&(virtio->rx_lock), flags);
  
     return -1;
 }
@@ -759,12 +801,12 @@ static struct v3_device_ops dev_ops = {
 };
 
 
-static int virtio_poll(int quote, void * data){
+static int virtio_poll(int quota, void * data){
     struct virtio_net_state * virtio  = (struct virtio_net_state *)data;
 
     if (virtio->status) {
 
-	return handle_pkt_tx(&(virtio->vm->cores[0]), virtio, quote);
+	return handle_pkt_tx(&(virtio->vm->cores[0]), virtio, quota);
     } 
 
     return 0;
@@ -945,7 +987,7 @@ static int connect_fn(struct v3_vm_info * info,
     ops->poll = virtio_poll;
     ops->config.frontend_data = net_state;
     ops->config.poll = 1;
-    ops->config.quote = 64;
+    ops->config.quota = 64;
     ops->config.fnt_mac = V3_Malloc(ETH_ALEN);  
     memcpy(ops->config.fnt_mac, virtio->mac, ETH_ALEN);
 

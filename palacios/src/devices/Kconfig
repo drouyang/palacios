@@ -148,7 +148,7 @@ config LINUX_VIRTIO_CONSOLE
 config LINUX_VIRTIO_NET
         bool "Enable Virtio Network Device"
         default y
-	depends on PCI && VNET
+	depends on PCI
         help
           Enable the Virtio Net
 
