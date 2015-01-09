@@ -32,12 +32,7 @@ typedef sint64_t xpmem_segid_t;
 typedef sint64_t xpmem_apid_t;
 
 struct xpmem_cmd_make_ex {
-    char          name[XPMEM_MAXNAME_SIZE];
-    xpmem_segid_t segid;
-};
-
-struct xpmem_cmd_search_ex {
-    char          name[XPMEM_MAXNAME_SIZE];
+    xpmem_segid_t request;
     xpmem_segid_t segid;
 };
 
@@ -49,7 +44,7 @@ struct xpmem_cmd_get_ex {
     xpmem_segid_t segid;
     uint32_t      flags;
     uint32_t      permit_type;
-    uint64_t      permit_value;
+    sint64_t      permit_value;
     xpmem_apid_t  apid;
     uint64_t      size;
 };
@@ -65,7 +60,7 @@ struct xpmem_cmd_attach_ex {
     uint64_t        off;
     uint64_t        size;
     uint64_t        num_pfns;
-    uint64_t      * pfns;
+    uint64_t        pfn_pa;
 };
 
 struct xpmem_cmd_detach_ex {
@@ -82,8 +77,6 @@ struct xpmem_cmd_domid_req_ex {
 typedef enum {
     XPMEM_MAKE,
     XPMEM_MAKE_COMPLETE,
-    XPMEM_SEARCH,
-    XPMEM_SEARCH_COMPLETE,
     XPMEM_REMOVE,
     XPMEM_REMOVE_COMPLETE,
     XPMEM_GET,
@@ -116,7 +109,6 @@ struct xpmem_cmd_ex {
 
     union {
         struct xpmem_cmd_make_ex      make;
-	struct xpmem_cmd_search_ex    search;
         struct xpmem_cmd_remove_ex    remove;
         struct xpmem_cmd_get_ex       get;
         struct xpmem_cmd_release_ex   release;
