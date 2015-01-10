@@ -31,7 +31,6 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/* Modifications made by Lei Xia */
 
 #include <linux/string.h>
 #include <linux/errno.h>
@@ -69,35 +68,21 @@ static inline u32 do_hash(struct hashtable * htable, uintptr_t key) {
      * - logic taken from java 1.4 hashtable source */
     u32 i = htable->hash_fn(key);
 
-    i += ~(i << 9);
+    i +=  ~(i << 9);
     i ^=  ((i >> 14) | (i << 18)); /* >>> */
-    i +=  (i << 4);
+    i +=   (i << 4);
     i ^=  ((i >> 10) | (i << 22)); /* >>> */
 
     return i;
 }
 
 
-/* HASH AN UNSIGNED LONG */
-/* LINUX UNSIGHED LONG HASH FUNCTION */
-#ifdef __32BIT__
-/* 2^31 + 2^29 - 2^25 + 2^22 - 2^19 - 2^16 + 1 */
-#define GOLDEN_RATIO_PRIME 0x9e370001UL
-//#define BITS_PER_LONG 32
-#elif  defined(__64BIT__)
-/*  2^63 + 2^61 - 2^57 + 2^54 - 2^51 - 2^18 + 1 */
-#define GOLDEN_RATIO_PRIME 0x9e37fffffffc0001UL
-//#define BITS_PER_LONG 64
-#else
-#error Define GOLDEN_RATIO_PRIME for your wordsize.
-#endif
+u32 
+palacios_hash_ptr(uintptr_t val) {
+    uintptr_t hash = val;
+    uintptr_t n    = hash;
 
-unsigned long palacios_hash_long(unsigned long val, u32 bits) {
-    unsigned long hash = val;
-
-#ifdef __PALACIOS_64BIT__
     /*  Sigh, gcc can't optimise this alone like it does for 32 bits. */
-    unsigned long n = hash;
     n    <<= 18;
     hash  -= n;
     n    <<= 33;
@@ -110,23 +95,19 @@ unsigned long palacios_hash_long(unsigned long val, u32 bits) {
     hash  += n;
     n    <<= 2;
     hash  += n;
-#else
-    /* On some cpus multiply is faster, on others gcc will do shifts */
-    hash  *= GOLDEN_RATIO_PRIME;
-#endif
 
     /* High bits are more random, so use them. */
-    return hash >> (BITS_PER_LONG - bits);
+    return (u32)(hash >> 32);
 }
 
 /* HASH GENERIC MEMORY BUFFER */
 /* ELF HEADER HASH FUNCTION */
-unsigned long
+u32
 palacios_hash_buffer(u8 * msg,
 		     u32  length)
 {
-    unsigned long hash = 0;
-    unsigned long temp = 0;
+    u32 hash = 0;
+    u32 temp = 0;
     u32 i;
 
     for (i = 0; i < length; i++) {
