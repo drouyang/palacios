@@ -15,10 +15,31 @@
 #include "palacios.h"
 #include "mm.h"
 #include "linux-exts.h"
+#include "util-hashtable.h"
 
 #include <interfaces/vmm_file.h>
 
-static struct list_head global_files;
+static struct list_head   global_files;
+static struct hashtable * file_table = NULL;
+struct mutex file_lock;
+
+u32 
+file_hash_fn(uintptr_t key) {
+    return palacios_hash_buffer((char *)key, strlen((char *)key));
+}
+
+int
+file_eq_fn(uintptr_t key1, uintptr_t key2) {
+    char * str1 = (char *)key1;
+    char * str2 = (char *)key2;
+  
+    if (strlen(str1) != strlen(str2)) {
+	return strlen(str1) > strlen(str2);
+    }
+
+    return strncmp(str1, str2, strlen(str1));
+}
+
 
 #define isprint(a) ((a >= ' ') && (a <= '~'))
 
@@ -28,19 +49,17 @@ struct palacios_file {
     char * path;
     int    mode;
     
-    spinlock_t lock;
+    struct kref  refcount;
 
-    struct v3_guest * guest;
-    
+    int persistent;     /*  0: discard file handle on last close after open
+			 *  1: keep file handle until explicitly removed
+			 */
+
+    int opened;         /* Set when the file has been opened the first time */ 
 
     struct list_head  file_node;
 };
 
-
-// Currently this just holds the list of open files
-struct vm_file_state {
-    struct list_head open_files;
-};
 
 
 
@@ -192,27 +211,34 @@ palacios_file_mkdir(const char     * pathname,
 
 static void * 
 palacios_file_open(const char * path,
-		   int          mode, 
-		   void       * private_data) 
+		   int          mode) 
 {
-    struct v3_guest      * guest    = (struct v3_guest *)private_data;
-    struct palacios_file * pfile    = NULL;	
-    struct vm_file_state * vm_state = NULL;
-
+    struct palacios_file * pfile    = NULL;	    
 
     if (mode & FILE_OPEN_MODE_RAW_BLOCK) {
 	ERROR("Raw Block Access is not supported under Linux\n");
 	return NULL;
     }
 
-    if (guest != NULL) {
-	vm_state = get_vm_ext_data(guest, "FILE_INTERFACE");
-	
-	if (vm_state == NULL) {
-	    ERROR("ERROR: Could not locate vm file state for extension FILE_INTERFACE\n");
-	    return NULL;
-	}
+
+    /* Try to find an open file */
+
+    mutex_lock(&file_lock);
+    {
+	pfile = (struct palacios_file *)palacios_htable_search(file_table, (uintptr_t)path);
     }
+    mutex_unlock(&file_lock);
+
+    if (pfile != NULL) {
+
+	kref_get(&(pfile->refcount));
+
+	return pfile;
+    }
+
+
+    /* If not available attempt to fall back to root fs */
+
     
     pfile = palacios_kmalloc(sizeof(struct palacios_file), GFP_KERNEL);
     if (!pfile) { 
@@ -220,6 +246,8 @@ palacios_file_open(const char * path,
 	return NULL;
     }
     memset(pfile, 0, sizeof(struct palacios_file));
+
+    kref_init(&(pfile->refcount));    
 
     if ((mode & FILE_OPEN_MODE_READ) && (mode & FILE_OPEN_MODE_WRITE)) { 
 	pfile->mode = O_RDWR;
@@ -249,39 +277,76 @@ palacios_file_open(const char * path,
     
     if (!pfile->path) { 
 	ERROR("Cannot allocate in file open\n");
-	filp_close(pfile->filp,NULL);
+	filp_close(pfile->filp, NULL);
 	palacios_kfree(pfile);
 	return NULL;
     }
     strncpy(pfile->path, path, strlen(path));
-    pfile->guest = guest;
     
-    spin_lock_init(&(pfile->lock));
+    mutex_lock(&(file_lock));
+    {
+	struct palacios_file * tmp_file = NULL;
 
-    if (guest == NULL) {
-	list_add(&(pfile->file_node), &(global_files));
-    } else {
-	list_add(&(pfile->file_node), &(vm_state->open_files));
-    } 
+	tmp_file = (struct palacios_file *)palacios_htable_search(file_table, (uintptr_t)path);
+
+	if (tmp_file != NULL) {
+	    kref_get(&(pfile->refcount));
+
+	    filp_close(pfile->filp, NULL);
+	    palacios_kfree(pfile->path);
+	    palacios_kfree(pfile);
+
+	    pfile = tmp_file;
+
+	} else {
+
+	    list_add(&(pfile->file_node), &(global_files));
+	    palacios_htable_insert(file_table, (uintptr_t)(pfile->path), (uintptr_t)pfile);
+	}
+    }
+    mutex_unlock(&file_lock);
+
 
 
     return pfile;
 }
+
+
+
+static void 
+file_last_close(struct kref * kref)
+{
+    struct palacios_file * pfile = container_of(kref, struct palacios_file, refcount);
+
+   
+    mutex_lock(&file_lock);
+    {
+	list_del(&(pfile->file_node));
+	palacios_htable_remove(file_table, (uintptr_t)(pfile->path), 0);
+    }
+    mutex_unlock(&file_lock);
+
+    filp_close(pfile->filp, NULL);
+    palacios_kfree(pfile->path);    
+    palacios_kfree(pfile);
+
+    return;
+}
+ 
 
 static int 
 palacios_file_close(void * file_ptr) 
 {
     struct palacios_file * pfile = (struct palacios_file *)file_ptr;
 
-    filp_close(pfile->filp, NULL);
-    
-    list_del(&(pfile->file_node));
-
-    palacios_kfree(pfile->path);    
-    palacios_kfree(pfile);
+    kref_put(&(pfile->refcount), file_last_close);
 
     return 0;
 }
+
+
+
+
 
 static loff_t
 palacios_file_size(void * file_ptr) 
@@ -468,10 +533,16 @@ static struct v3_file_hooks palacios_file_hooks = {
 static int
 file_init( void ) 
 {
+    mutex_init(&file_lock);
     INIT_LIST_HEAD(&(global_files));
+    file_table = palacios_create_htable(0, file_hash_fn, file_eq_fn);
 
     V3_Init_File(&palacios_file_hooks);
 
+    /*
+    add_global_ctrl(V3_REGISTER_FILE,  register_file);
+    add_global_ctrl(V3_REMOVE_FILE,    remove_file);
+    */
     return 0;
 }
 
@@ -484,61 +555,26 @@ file_deinit( void )
     
     list_for_each_entry_safe(pfile, tmp, &(global_files), file_node) { 
         filp_close(pfile->filp, NULL);
+
+	palacios_htable_remove(file_table, (uintptr_t)(pfile->path), 0);
         list_del(&(pfile->file_node));
-        palacios_kfree(pfile->path);    
+
+        palacios_kfree(pfile->path);
         palacios_kfree(pfile);
     }
 
-    return 0;
-}
-
-static int 
-guest_file_init(struct v3_guest  * guest, 
-		void            ** vm_data) 
-{
-    struct vm_file_state * state = palacios_kmalloc(sizeof(struct vm_file_state), GFP_KERNEL);
-
-    if (!state) {
-	ERROR("Cannot allocate when intializing file services for guest\n");
-	return -1;
-    }
-	
-    
-    INIT_LIST_HEAD(&(state->open_files));
-
-    *vm_data = state;
-
+    palacios_free_htable(file_table, 0, 0);
 
     return 0;
 }
 
 
-static int 
-guest_file_deinit(struct v3_guest * guest, 
-		  void            * vm_data) 
-{
-    struct vm_file_state * state = (struct vm_file_state *)vm_data;
-    struct palacios_file * pfile = NULL;
-    struct palacios_file * tmp   = NULL;
-    
-    list_for_each_entry_safe(pfile, tmp, &(state->open_files), file_node) { 
-        filp_close(pfile->filp, NULL);
-        list_del(&(pfile->file_node));
-        palacios_kfree(pfile->path);    
-        palacios_kfree(pfile);
-    }
-
-    palacios_kfree(state);
-    return 0;
-}
 
 
 static struct linux_ext file_ext = {
     .name         = "FILE_INTERFACE",
     .init         = file_init, 
     .deinit       = file_deinit,
-    .guest_init   = guest_file_init,
-    .guest_deinit = guest_file_deinit
 };
 
 

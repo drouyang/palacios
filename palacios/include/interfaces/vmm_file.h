@@ -29,7 +29,7 @@ typedef void * v3_file_t;
 
 int v3_mkdir(char * path, uint16_t permissions, uint8_t recursive);
 
-v3_file_t v3_file_open(struct v3_vm_info * vm, char * path, int mode);
+v3_file_t v3_file_open(char * path, int mode);
 int v3_file_close(v3_file_t file);
 loff_t v3_file_size(v3_file_t file);
 
@@ -52,7 +52,7 @@ ssize_t v3_file_readv(v3_file_t file, v3_iov_t * iov_arr, int iov_len, loff_t of
 struct v3_file_hooks {
     int (*mkdir)(const char * path, unsigned short perms, int recursive);
 
-    void * (*open)(const char * path, int mode, void * host_data);
+    void * (*open)(const char * path, int mode);
     int    (*close)(void * fd);
 
     loff_t (*size)(void * fd);

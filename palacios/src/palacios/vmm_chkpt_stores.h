@@ -237,7 +237,7 @@ dir_save_block(struct chkpt_block * block,
     memset(filename,  0, str_len);
     snprintf(filename, str_len, "%s/%s", url, block->name);
 
-    file = v3_file_open(NULL, filename, FILE_OPEN_MODE_READ | FILE_OPEN_MODE_WRITE | FILE_OPEN_MODE_CREATE);
+    file = v3_file_open(filename, FILE_OPEN_MODE_READ | FILE_OPEN_MODE_WRITE | FILE_OPEN_MODE_CREATE);
    
     if (file == NULL) {
 	PrintError("Could not open checkpoint file (%s)\n", filename);
@@ -309,7 +309,7 @@ dir_load_block(struct chkpt_block * block,
     memset(filename,  0, str_len);
     snprintf(filename, str_len, "%s/%s", url, block->name);
 
-    file = v3_file_open(NULL, filename, FILE_OPEN_MODE_READ | FILE_OPEN_MODE_WRITE | FILE_OPEN_MODE_CREATE);
+    file = v3_file_open(filename, FILE_OPEN_MODE_READ | FILE_OPEN_MODE_WRITE | FILE_OPEN_MODE_CREATE);
    
 
     if (file == NULL) {

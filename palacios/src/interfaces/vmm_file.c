@@ -48,20 +48,13 @@ v3_mkdir(char     * path,
 
 
 v3_file_t 
-v3_file_open(struct v3_vm_info * vm, 
-	     char              * path, 
+v3_file_open(char              * path, 
 	     int                 mode)
 {
-    void * priv_data = NULL;
-
     V3_ASSERT(file_hooks);
     V3_ASSERT(file_hooks->open);
     
-    if (vm) {
-	priv_data = vm->host_priv_data;
-    }
-
-    return file_hooks->open(path, mode, priv_data);
+    return file_hooks->open(path, mode);
 }
 
 int 

@@ -290,7 +290,7 @@ disk_init(struct v3_vm_info * vm,
     }
 
 
-    disk->fd = v3_file_open(vm, path, flags);
+    disk->fd = v3_file_open(path, flags);
 
     if (disk->fd == NULL) {
 	PrintError("Could not open file disk:%s\n", path);
