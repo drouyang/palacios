@@ -807,8 +807,6 @@ copy_guest_regs(struct v3_xpmem_state * state,
 	addr_t     pfn_list_hpa = 0;
 	uint32_t * pfns         = NULL;
 
-	uint64_t t_start, t_end, total_time;
-
 	bytes = host_cmd->attach.num_pfns * sizeof(uint32_t);
 
         /* Convert the guest page list pointer to a host address */
