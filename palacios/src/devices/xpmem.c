@@ -41,7 +41,6 @@
 
 
 
-
 struct xpmem_bar_state {
     /* Hypercall numbers */
     uint32_t xpmem_hcall_id;
@@ -106,6 +105,18 @@ struct xpmem_cmd_ex_iter {
     struct list_head      node;
 };
 
+
+static uint32_t 
+xpmem_paddr_to_pfn(addr_t paddr)
+{
+    return paddr >> PAGE_POWER;
+}
+
+static addr_t
+xpmem_pfn_to_paddr(uint32_t pfn)
+{
+    return (addr_t)pfn << PAGE_POWER;
+}
 
 
 /*
@@ -512,7 +523,7 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
 	for (i = 0; i < num_pfns; i++) {
 	    addr_t guest_pfn  = 0;
 	    addr_t guest_paddr = start_addr + (i * PAGE_SIZE);
-	    addr_t host_paddr  = (addr_t)(pfn_list[i] << PAGE_POWER);
+	    addr_t host_paddr  = xpmem_pfn_to_paddr(pfn_list[i]);
 
 	    status = v3_add_shadow_mem(state->vm,
 		V3_MEM_CORE_ANY, V3_MEM_RD | V3_MEM_WR,
@@ -544,7 +555,7 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
 		return -1;
 	    }
 
-	    guest_pfn = guest_paddr >> PAGE_POWER;
+	    guest_pfn = xpmem_paddr_to_pfn(guest_paddr);
 
 	    PrintDebug("Guest PFN %llu ---> Host PFN %llu (%p -> %p)\n",
 		(unsigned long long)guest_pfn,
@@ -796,6 +807,8 @@ copy_guest_regs(struct v3_xpmem_state * state,
 	addr_t     pfn_list_hpa = 0;
 	uint32_t * pfns         = NULL;
 
+	uint64_t t_start, t_end, total_time;
+
 	bytes = host_cmd->attach.num_pfns * sizeof(uint32_t);
 
         /* Convert the guest page list pointer to a host address */
@@ -827,19 +840,19 @@ copy_guest_regs(struct v3_xpmem_state * state,
 
         /* Convert each guest pfn to a host pfn */
 	for (i = 0; i < host_cmd->attach.num_pfns; i++) {
-	    addr_t guest_pfn   = (addr_t)pfns[i];
-	    addr_t guest_paddr = 0;
-	    addr_t host_paddr  = 0;
+	    uint32_t guest_pfn   = pfns[i];
+	    addr_t   guest_paddr = 0;
+	    addr_t   host_paddr  = 0;
 
-	    guest_paddr = (guest_pfn << PAGE_POWER);
+	    guest_paddr = xpmem_pfn_to_paddr(guest_pfn);
 
 	    if (v3_gpa_to_hpa(core, guest_paddr, &host_paddr) != 0) {
-		PrintError("v3_gpa_to_hpa failed (gpa=%p)\n", (void *)guest_pfn);
+		PrintError("v3_gpa_to_hpa failed (gpa=%p)\n", (void *)guest_paddr);
 		return -1;
 	    }
 
             /* Update the list */
-	    pfns[i] = (host_paddr >> PAGE_POWER);
+	    pfns[i] = xpmem_paddr_to_pfn(host_paddr);
 
 	    PrintDebug("Guest PFN %llu ---> Host PFN %llu (%p -> %p)\n",
 		(unsigned long long)guest_pfn,
@@ -956,6 +969,7 @@ xpmem_irq_clear_hcall(struct v3_core_info * core,
 
 }
 
+
 static int 
 xpmem_map_host_pages(struct v3_xpmem_state * v3_xpmem,
                      struct v3_core_info   * core,
@@ -968,16 +982,15 @@ xpmem_map_host_pages(struct v3_xpmem_state * v3_xpmem,
 
     size_t bytes = num_pfns * sizeof(uint32_t);
     size_t wrote = 0;
+    int    ret   = 0; 
 
-    /* Update shadow map for the new host PFNs. This will modify the pfn_list to hold the
+    /* Update mem map for the new host PFNs. This will modify the pfn_list to hold the
      * guest PFNs */
     if (xpmem_add_shadow_region(v3_xpmem, num_pfns, pfn_list) != 0) {
+	V3_Free(pfn_list);
 	return -1;
     }
 
-    /* The pfn_list is now updated to hold the guest PFNs. Write them into the list
-     * pointed by pfn_list_gpa
-     */
     wrote = v3_write_gpa(
 	core,
 	pfn_list_gpa,
@@ -985,17 +998,17 @@ xpmem_map_host_pages(struct v3_xpmem_state * v3_xpmem,
 	(uint8_t *)pfn_list
     );
 
-    /* Free the pfn list */
-    V3_Free(pfn_list);
-
     if (wrote < bytes) {
 	PrintError("v3_write_gpa failed (wrote %llu bytes out of %llu)\n",
 	    (unsigned long long)wrote, (unsigned long long)bytes);
 	xpmem_remove_shadow_region(v3_xpmem, (addr_t)pfn_list[0], num_pfns); 
-	return -1;
+	ret = -1;
     }
 
-    return 0;
+    /* Free the pfn list */
+    V3_Free(pfn_list);
+
+    return ret;
 }
 
 
