@@ -52,8 +52,8 @@
 
 
 
-#define V3_CMD_PATH         "/palacios-cmd"
-#define V3_VM_PATH          "/palacios-vm"
+#define V3_CMD_PATH         "/dev/v3vee"
+#define V3_VM_PATH          "/dev/v3-vm"
 
 #define MAX_VMS 32
 
