@@ -67,7 +67,7 @@ v3_cfg_val(v3_cfg_tree_t * tree,
 {
     char          * attrib      = (char *)v3_xml_attr(tree, tag);
     v3_cfg_tree_t * child_entry = v3_xml_child(tree, tag);
-    char          * val = NULL;
+    char          * val         = NULL;
 
     if ((child_entry != NULL) && (attrib != NULL)) {
 	PrintError("Duplicate Configuration parameters present for %s\n", tag);

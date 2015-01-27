@@ -129,12 +129,15 @@ ezxml_t open_xml_file(char * filename) {
 }
 
 
-int find_xml_options(ezxml_t xml,  struct xml_option ** opts) {
-    int num_opts = 0;
-    ezxml_t child = xml->child;
+int 
+find_xml_options(ezxml_t              xml,  
+		 struct xml_option ** opts) 
+{
     struct xml_option * next_opt = NULL;
+    ezxml_t             child    = xml->child;
 
-    char * opt = (char *)ezxml_attr(xml, "opt_tag");
+    char * opt      = (char *)ezxml_attr(xml, "opt_tag");
+    int    num_opts = 0;
 
     if (opt) {
 	next_opt = malloc(sizeof(struct xml_option));
@@ -180,9 +183,12 @@ int find_xml_options(ezxml_t xml,  struct xml_option ** opts) {
 }
 
 
-char * get_val(ezxml_t cfg, char * tag) {
-    char * attrib = (char *)ezxml_attr(cfg, tag);
-    ezxml_t txt = ezxml_child(cfg, tag);
+char * 
+get_val(ezxml_t   cfg, 
+	char    * tag) 
+{
+    char    * attrib = (char *)ezxml_attr(cfg, tag);
+    ezxml_t   txt    = ezxml_child(cfg, tag);
 
     if ((txt != NULL) && (attrib != NULL)) {
 	printf("Invalid Cfg file: Duplicate value for %s (attr=%s, txt=%s)\n", 
@@ -194,21 +200,23 @@ char * get_val(ezxml_t cfg, char * tag) {
 }
 
 
-int parse_aux_files(ezxml_t cfg_input) {
-    ezxml_t file_tags = NULL;
+int 
+parse_aux_files(ezxml_t cfg_input) 
+{
+    ezxml_t file_tags    = NULL;
     ezxml_t tmp_file_tag = NULL;
 
     // files are transformed into blobs that are slapped to the end of the file
         
-    file_tags = ezxml_child(cfg_input, "files");
-
+    file_tags    = ezxml_child(cfg_input, "files");
     tmp_file_tag = ezxml_child(file_tags, "file");
 
     while (tmp_file_tag) {
-	char * filename = get_val(tmp_file_tag, "filename");
 	struct stat file_stats;
-	char * id = get_val(tmp_file_tag, "id");
-	char index_buf[256];
+	char   index_buf[256];
+
+	char * filename = get_val(tmp_file_tag, "filename");
+	char * id       = get_val(tmp_file_tag, "id");
 
 
 	if (stat(filename, &file_stats) != 0) {
@@ -217,7 +225,7 @@ int parse_aux_files(ezxml_t cfg_input) {
 	}
 
 	files[num_files].size = (unsigned int)file_stats.st_size;
-	strncpy(files[num_files].id, id, 256);
+	strncpy(files[num_files].id,       id,       256);
 	strncpy(files[num_files].filename, filename, 2048);
 
 	snprintf(index_buf, 256, "%llu", num_files);
@@ -231,13 +239,20 @@ int parse_aux_files(ezxml_t cfg_input) {
     return 0;
 }
 
-int build_image(char * vm_name, char * filename, struct cfg_value * cfg_vals, int num_options) {
-    int i = 0;
-    ezxml_t xml = NULL;
+int 
+build_image(char             * vm_name, 
+	    char             * filename, 
+	    struct cfg_value * cfg_vals, 
+	    int                num_options)
+{
     struct xml_option * xml_opts = NULL;
-    int num_xml_opts = 0;
-    void * guest_img_data = NULL;
+
+    void    * guest_img_data = NULL;
+    ezxml_t   xml            = NULL;
+
+    int num_xml_opts   = 0;
     int guest_img_size = 0;
+    int i              = 0;
 
 
     xml = open_xml_file(filename);
@@ -249,7 +264,7 @@ int build_image(char * vm_name, char * filename, struct cfg_value * cfg_vals, in
 
     // apply options
     for (i = 0; i < num_options; i++) {
-	struct cfg_value * cfg_val = &cfg_vals[i];
+	struct cfg_value  * cfg_val = &cfg_vals[i];
 	struct xml_option * xml_opt = xml_opts;
 
 	while (xml_opt) {
@@ -276,11 +291,12 @@ int build_image(char * vm_name, char * filename, struct cfg_value * cfg_vals, in
     
     // create image data blob
     {
-	char * new_xml_str = ezxml_toxml(xml);
+	unsigned long long   file_offset = 0;
+	char               * new_xml_str = ezxml_toxml(xml);
+
 	int file_data_size = 0;
-	int i = 0;
-	int offset = 0;
-	unsigned long long file_offset = 0;
+	int offset         = 0;
+	int i              = 0;
 
 	/* Image size is: 
 	   8 byte header + 
