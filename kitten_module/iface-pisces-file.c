@@ -4,7 +4,6 @@
 
 #include <arch/pisces/pisces_file.h>
 #include <lwk/list.h>
-#include <lwk/spinlock.h>
 #include <lwk/blkdev.h>
 
 #include "palacios.h"
@@ -23,18 +22,12 @@ struct palacios_file {
     
     u8     is_raw_block;
     
-    spinlock_t lock;
 
-    struct v3_guest * guest;
 
     struct list_head file_node;
 };
 
 
-// Currently this just holds the list of open files
-struct vm_file_state {
-    struct list_head open_files;
-};
 
 
 
@@ -54,21 +47,10 @@ palacios_file_mkdir(const char    * pathname,
 
 static void * 
 palacios_file_open(const char * path, 
-		   int          mode, 
-		   void       * private_data) 
+		   int          mode) 
 {
-    struct v3_guest      * guest    = (struct v3_guest *)private_data;
     struct palacios_file * pfile    = NULL;	
-    struct vm_file_state * vm_state = NULL;
 
-    if (guest != NULL) {
-	vm_state = get_vm_ext_data(guest, "FILE_INTERFACE");
-	
-	if (vm_state == NULL) {
-	    printk(KERN_ERR "ERROR: Could not locate vm file state for extension FILE_INTERFACE\n");
-	    return NULL;
-	}
-    }
     
     pfile = kmem_alloc(sizeof(struct palacios_file));
 
@@ -87,10 +69,9 @@ palacios_file_open(const char * path,
 	kmem_free(pfile);
 	return NULL;
     }
+
     strncpy(pfile->path, path, strlen(path));
-    pfile->guest = guest;
     
-    spin_lock_init(&(pfile->lock));
 
 
     if (mode & FILE_OPEN_MODE_RAW_BLOCK) { 
@@ -130,11 +111,7 @@ palacios_file_open(const char * path,
 	}
     }
 
-    if (guest == NULL) {
-	list_add(&(pfile->file_node), &(global_files));
-    } else {
-	list_add(&(pfile->file_node), &(vm_state->open_files));
-    } 
+    list_add(&(pfile->file_node), &(global_files));
 
 
     return pfile;
@@ -370,19 +347,21 @@ palacios_file_writev(void     * file_ptr,
 
 
 static struct v3_file_hooks palacios_file_hooks = {
-	.open		= palacios_file_open,
-	.close		= palacios_file_close,
-	.read		= palacios_file_read,
-	.write		= palacios_file_write,
-	.readv          = palacios_file_readv,
-	.writev         = palacios_file_writev,
-	.size		= palacios_file_size,
-	.mkdir          = palacios_file_mkdir,
+	.open	= palacios_file_open,
+	.close	= palacios_file_close,
+	.read	= palacios_file_read,
+	.write	= palacios_file_write,
+	.readv  = palacios_file_readv,
+	.writev = palacios_file_writev,
+	.size	= palacios_file_size,
+	.mkdir  = palacios_file_mkdir,
 };
 
 
 
-static int file_init( void ) {
+static int 
+file_init( void ) 
+{
     INIT_LIST_HEAD(&(global_files));
 
     V3_Init_File(&palacios_file_hooks);
@@ -391,9 +370,11 @@ static int file_init( void ) {
 }
 
 
-static int file_deinit( void ) {
+static int 
+file_deinit( void ) 
+{
     struct palacios_file * pfile = NULL;
-    struct palacios_file * tmp = NULL;
+    struct palacios_file * tmp   = NULL;
     
     list_for_each_entry_safe(pfile, tmp, &(global_files), file_node) { 
 
@@ -405,46 +386,16 @@ static int file_deinit( void ) {
     return 0;
 }
 
-static int guest_file_init(struct v3_guest * guest, void ** vm_data) {
-    struct vm_file_state * state = kmem_alloc(sizeof(struct vm_file_state));
-
-    if (!state) {
-	printk(KERN_ERR "Cannot allocate when intializing file services for guest\n");
-	return -1;
-    }
-	
-    
-    INIT_LIST_HEAD(&(state->open_files));
-
-    *vm_data = state;
 
 
-    return 0;
-}
-
-
-static int guest_file_deinit(struct v3_guest * guest, void * vm_data) {
-    struct vm_file_state * state = (struct vm_file_state *)vm_data;
-    struct palacios_file * pfile = NULL;
-    struct palacios_file * tmp = NULL;
-    
-    list_for_each_entry_safe(pfile, tmp, &(state->open_files), file_node) { 
-        list_del(&(pfile->file_node));
-        kmem_free(pfile->path);    
-        kmem_free(pfile);
-    }
-
-    kmem_free(state);
-    return 0;
-}
 
 
 static struct kitten_ext file_ext = {
-    .name = "FILE_INTERFACE",
-    .init = file_init, 
-    .deinit = file_deinit,
-    .guest_init = guest_file_init,
-    .guest_deinit = guest_file_deinit
+    .name         = "FILE_INTERFACE",
+    .init         = file_init, 
+    .deinit       = file_deinit,
+    .guest_init   = NULL,
+    .guest_deinit = NULL
 };
 
 register_extension(&file_ext);
