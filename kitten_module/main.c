@@ -18,16 +18,11 @@
 #include <arch/unistd.h>
 #include <arch/vsyscall.h>
 
-#include <arch/pisces/pisces_file.h>
 
 #include "palacios.h"
 #include "kitten-exts.h"
 #include "vm.h"
 
-struct vm_path {
-    char file_name[256];
-    char vm_name[128];
-} __attribute__((packed));
 
 static struct v3_guest * guest_map[MAX_VMS] = {[0 ... MAX_VMS - 1] = 0};
 static char            * options = NULL;
@@ -105,19 +100,16 @@ palacios_ioctl(struct file  * filp,
 
     switch (ioctl) {
 	case V3_CREATE_GUEST: {
-	    struct vm_path    guest_path;
+	    struct v3_guest_img   guest_image;
 	    struct v3_guest * guest = NULL;
-
-	    u64   img_size    = 0;
-	    u64   file_handle = 0;
-	    u8  * img_ptr     = NULL;
 	    int   guest_id    = 0;
 
 	    printk("Creating Guest IOCTL\n");
 
-	    memset(&guest_path, 0, sizeof(struct vm_path));
 	    
-	    if (copy_from_user(&guest_path, argp, sizeof(struct vm_path))) {
+	    memset(&guest_image, 0, sizeof(struct v3_guest_img));
+	    
+	    if (copy_from_user(&guest_image, argp, sizeof(struct v3_guest_img))) {
 		printk(KERN_ERR "Palacios: Error Could not copy guest path from userspace\n");
 		return -EFAULT;
 	    }
@@ -136,64 +128,66 @@ palacios_ioctl(struct file  * filp,
 
 	    if (guest_id == -1) {
 		printk("Error registering VM in Kitten\n");
-		kmem_free(guest);
-		return -1;
+		goto out_err;
 	    }
 
 
 	    guest->guest_id = guest_id;
 
-	    file_handle = pisces_file_open(guest_path.file_name, O_RDONLY);
-    
-	    if (file_handle == 0) {
-		printk("Error: Could not open VM image file (%s)\n", guest_path.file_name);
-		return -1;
-	    }
-    
-	    img_size = pisces_file_size(file_handle);
-    
-	    printk("Image size=%llu\n", img_size);
+
+	    guest->img_size = guest_image.size;
+
+
+	    printk("Image size=%u\n", guest->img_size);
     
     
 	    {
 		struct pmem_region result;
 		int status = 0;
 	
-		status = pmem_alloc_umem(img_size, 0, &result);
+		status = pmem_alloc_umem(guest->img_size, 0, &result);
 	
 		if (status) {
 		    printk("Error allocating User memory\n");
-		    return -1;
+		    goto out_err1;
 		}
 	
 		status = pmem_zero(&result);
 	
 		if (status) {
 		    printk("Error zeroing User memory\n");
-		    return -1;
+		    goto out_err2;
 		}
 	
-		img_ptr = __va(result.start);
+		guest->img = __va(result.start);
 	    }
     
     
-	    //	    img_ptr = kmem_alloc(img_size);
+	    if (copy_from_user(guest->img, guest_image.guest_data, guest->img_size)) {
+		printk(KERN_ERR "Palacios: Error copying in guest image\n");
+		goto out_err2;
+	    }
     
-	    printk("Reading Image File to %p\n", img_ptr);
+	    printk("Reading Image File to %p\n", guest->img);
     
-	    pisces_file_read(file_handle, img_ptr, img_size, 0);
-	    pisces_file_close(file_handle);
-
-	    guest->img      = img_ptr;
-	    guest->img_size = img_size;
-	    strncpy(guest->name, guest_path.vm_name, 128);
+	    strncpy(guest->name, guest_image.name, 128);
 
 	    if (palacios_create_vm(guest) == -1) {
-		printk("Error: Could not create VM (%s)\n", guest_path.file_name);
-		return -1;
+		printk("Error: Could not create VM (%s)\n", guest->name);
+		goto out_err2;
 	    }
 
 	    return guest_id;
+
+	    
+out_err2:
+	    printk(KERN_ERR "PALACIOS: pmem_free_umem is NOT IMPLEMENTED!!! Memory is leaked.\n");
+out_err1:
+	    guest_map[guest_id] = NULL;
+out_err:
+	    kmem_free(guest);
+
+	    return -1;
 
 	}
 	case V3_FREE_GUEST: {

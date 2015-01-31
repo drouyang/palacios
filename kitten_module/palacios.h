@@ -63,7 +63,7 @@ struct v3_guest {
     void * v3_ctx;
 
     void * img; 
-    u32 img_size;
+    u32    img_size;
 
     char name[128];
     
@@ -75,6 +75,13 @@ struct v3_guest {
     struct list_head exts;
 
 };
+
+struct v3_guest_img {
+    unsigned long long   size;
+    void               * guest_data;
+    char                 name[128];
+} __attribute__((packed));
+
 
 struct v3_hw_pci_dev {
     char name[128];
