@@ -10,8 +10,6 @@
 #include "kitten-exts.h"
 #include <interfaces/vmm_file.h>
 
-static struct list_head global_files;
-
 #define isprint(a) ((a >= ' ') && (a <= '~'))
 
 struct palacios_file {
@@ -110,8 +108,6 @@ palacios_file_open(const char * path,
 	    return NULL;
 	}
     }
-
-    list_add(&(pfile->file_node), &(global_files));
 
 
     return pfile;
@@ -362,8 +358,6 @@ static struct v3_file_hooks palacios_file_hooks = {
 static int 
 file_init( void ) 
 {
-    INIT_LIST_HEAD(&(global_files));
-
     V3_Init_File(&palacios_file_hooks);
 
     return 0;
@@ -373,16 +367,6 @@ file_init( void )
 static int 
 file_deinit( void ) 
 {
-    struct palacios_file * pfile = NULL;
-    struct palacios_file * tmp   = NULL;
-    
-    list_for_each_entry_safe(pfile, tmp, &(global_files), file_node) { 
-
-        list_del(&(pfile->file_node));
-	kmem_free(pfile->path);    
-        kmem_free(pfile);
-    }
-
     return 0;
 }
 
