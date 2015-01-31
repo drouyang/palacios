@@ -15,7 +15,7 @@
 
 
 #include "v3_ctrl.h"
-#include "ezxml.h"
+#include <ezxml.h>
 
 struct cfg_value {
     char * tag;

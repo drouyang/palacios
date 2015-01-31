@@ -55,11 +55,13 @@ execs-$(V3_CONFIG_CHECKPOINT) += 	v3_save \
 					v3_load
 
 
-libs-y := 	ezxml.a 
+libs-y := 	libv3vee_user.a
+
+libv3vee_user_objs := create.o 
 
 
 
-CFILES = $(execs-y:%=%.c) $(libs-y:%.a=%.c) 
+CFILES = $(execs-y:%=%.c) 
 
 build = \
 	@if [ -z "$V" ]; then \
@@ -79,9 +81,21 @@ quiet-build = \
 	fi
 
 
+% : %.c v3_ctrl.h
+	$(call build,CC,$(CC) $(CFLAGS) $< $(PETLIB)/petlib.a -o $@)
+
+
+%.o : %.c
+	$(call build,CC,$(CC) $(CFLAGS) -c $< -o $@)
+
+%.a : %.o
+	$(call build,AR,$(AR) rcs $@ $^)
 
 
 all: depend petlib $(libs-y) $(execs-y) 
+
+libv3vee_user.a: $(libv3vee_user_objs)
+	$(call build,AR,$(AR) rcs $@ $^)
 
 petlib: $(PETLIB)/petlib.a
 
@@ -95,15 +109,6 @@ $(PETLIB)/petlib.a:
 include .dependencies
 
 
-% : %.c v3_ctrl.h
-	$(call build,CC,$(CC) $(CFLAGS) $< $(PETLIB)/petlib.a -o $@)
-
-
-%.o : %.c
-	$(call build,CC,$(CC) $(CFLAGS) -c $< -o $@)
-
-%.a : %.o
-	$(call build,AR,$(AR) rcs $@ $^)
 
 #
 # Tools requiring specialized build processes
@@ -116,8 +121,8 @@ v3_cons: v3_cons.c v3_ctrl.h
 v3_cons_sc: v3_cons_sc.c v3_ctrl.h
 	$(call build,CC,$(CC) $(CFLAGS)  $< -lcurses -ltinfo -o $@)
 
-v3_create: v3_create.c ezxml.a v3_ctrl.h
-	$(call build,CC,$(CC) $(CFLAGS) $^ -o $@)
+v3_create: v3_create.c v3_ctrl.h
+	$(call build,CC,$(CC) $(CFLAGS) $^ $(PETLIB)/petlib.a -o $@)
 
 
 
