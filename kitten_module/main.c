@@ -102,6 +102,8 @@ palacios_ioctl(struct file  * filp,
 	case V3_CREATE_GUEST: {
 	    struct v3_guest_img   guest_image;
 	    struct v3_guest * guest = NULL;
+	    struct pmem_region result;
+		
 	    int   guest_id    = 0;
 
 	    printk("Creating Guest IOCTL\n");
@@ -142,7 +144,6 @@ palacios_ioctl(struct file  * filp,
     
     
 	    {
-		struct pmem_region result;
 		int status = 0;
 	
 		status = pmem_alloc_umem(guest->img_size, 0, &result);
@@ -181,7 +182,7 @@ palacios_ioctl(struct file  * filp,
 
 	    
 out_err2:
-	    printk(KERN_ERR "PALACIOS: pmem_free_umem is NOT IMPLEMENTED!!! Memory is leaked.\n");
+	    pmem_free_umem(&result);
 out_err1:
 	    guest_map[guest_id] = NULL;
 out_err:
