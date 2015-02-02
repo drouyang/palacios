@@ -18,7 +18,7 @@
 #include <curses.h>
 
 
-#include "v3_ctrl.h"
+#include "v3_ioctl.h"
 
 
 #define MAX_STORE_LEN 128

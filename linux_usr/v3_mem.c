@@ -9,7 +9,7 @@
 #include <string.h>
 #include <getopt.h>
 
-#include "v3_ctrl.h"
+#include "v3_ioctl.h"
 #include <pet_mem.h>
 #include <pet_ioctl.h>
 
@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
 	    mem_range.base_addr = idx * pet_block_size();
 	    mem_range.num_pages = pet_block_size() / 4096;
 
-	    if (pet_ioctl_path((char *)v3_dev, V3_ADD_MEM, &mem_range) != 0) {
+	    if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, &mem_range) != 0) {
 		printf("Error: Could not add memory block %d to enclave\n", idx);
 		continue;
 	    }
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
 	    printf("Adding memory range (%p) to Palacios\n",
 		   (void *)mem_range.base_addr);
 
-	    if (pet_ioctl_path((char *)v3_dev, V3_ADD_MEM, &mem_range) != 0) {
+	    if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, &mem_range) != 0) {
 		printf("Error: Could not add memory block %d to enclave\n", block_arr[i].base_addr / pet_block_size());
 		continue;
 	    }

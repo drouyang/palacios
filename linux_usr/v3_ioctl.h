@@ -3,8 +3,8 @@
  * (c) Jack lange, 2010
  */
 
-#ifndef _v3_ctrl_h
-#define _v3_ctrl_h
+#ifndef __V3_IOCTL_H__
+#define __V3_IOCTL_H__
 
 #define V3_ADD_CPU               100
 #define V3_ADD_MEM               101
@@ -41,33 +41,35 @@
 #define V3_VM_STREAM_CONNECT     145
 
 
+#include "v3_types.h"
 
 
+#define V3_DEV_FILENAME "/dev/v3vee"
+#define V3_VM_FILENAME  "/dev/v3-vm"
 
-static const char * v3_dev = "/dev/v3vee";
 
 struct v3_guest_img {
-    unsigned long long size;
-    void * guest_data;
-    char name[128];
+    u64       size;
+    uintptr_t guest_data;
+    char      name[128];
 } __attribute__((packed));
 
 
 struct v3_mem_region {
-    unsigned long long base_addr;
-    unsigned long long num_pages;
+    u64 base_addr;
+    u64 num_pages;
 } __attribute__((packed));
 
 
 struct v3_core_move_cmd{
-    unsigned short vcore_id;
-    unsigned short pcore_id;
+    u16 vcore_id;
+    u16 pcore_id;
 } __attribute__((packed));
 
 
 struct v3_debug_cmd {
-    unsigned int core; 
-    unsigned int cmd;
+    u32 core; 
+    u32 cmd;
 } __attribute__((packed));
 
 struct v3_chkpt_info {
@@ -79,9 +81,9 @@ struct v3_chkpt_info {
 
 struct v3_hw_pci_dev {
     char url[128];
-    unsigned int bus;
-    unsigned int dev;
-    unsigned int func;
+    u32  bus;
+    u32  dev;
+    u32  func;
 } __attribute__((packed));
 
 

@@ -13,7 +13,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "v3_ctrl.h"
+#include "v3_ioctl.h"
 
 
 int main(int argc, char* argv[]) {

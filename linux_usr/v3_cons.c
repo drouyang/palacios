@@ -18,7 +18,7 @@
 #include <linux/kd.h>
 #include <linux/keyboard.h>
 
-#include "v3_ctrl.h"
+#include "v3_ioctl.h"
 
 static int use_curses = 0;
 static int debug_enable = 0;

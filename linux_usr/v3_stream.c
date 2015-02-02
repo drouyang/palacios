@@ -19,7 +19,7 @@
 #include <curses.h>
 
 
-#include "v3_ctrl.h"
+#include "v3_ioctl.h"
 
 #define BUF_LEN 1025
 #define STREAM_NAME_LEN 128

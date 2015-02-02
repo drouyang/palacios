@@ -14,20 +14,22 @@
 #include <getopt.h> 
 
 
-#include "v3_ctrl.h"
+
+#include "v3_types.h"
+#include "v3_ioctl.h"
 #include <ezxml.h>
 
 struct file_info {
-    int  size;
-    char filename[2048];
-    char id[256];
+    u32 size;
+    char     filename[2048];
+    char     id[256];
 };
 
 
 static int 
-read_file(int             fd, 
-	  int             size, 
-	  unsigned char * buf) 
+read_file(int   fd, 
+	  int   size, 
+	  u8  * buf) 
 {
     int left_to_read = size;
     int have_read    = 0;
@@ -52,6 +54,34 @@ read_file(int             fd,
 }
 
 
+static int 
+write_file(int   fd, 
+	   int   size,
+	   u8  * buf)
+{
+    int left_to_write = size;
+    int have_written  = 0;
+
+    while (left_to_write != 0) {
+	int bytes_written = write(fd, buf + have_written, left_to_write);
+
+	if (bytes_written <= 0) {
+	    break;
+	}
+
+	have_written  += bytes_written;
+	left_to_write -= bytes_written;
+    }
+
+    if (left_to_write != 0) {
+	printf("Error Could not finish writing file\n");
+	return -1;
+    }
+
+    return 0;
+}
+
+
 
 static char * 
 get_val(ezxml_t   cfg,
@@ -62,7 +92,7 @@ get_val(ezxml_t   cfg,
     char   * val    = NULL;
 
     if ((txt != NULL) && (attrib != NULL)) {
-	ERROR("Invalid Cfg file: Duplicate value for %s (attr=%s, txt=%s)\n", 
+	printf("Error: Invalid Cfg file: Duplicate value for %s (attr=%s, txt=%s)\n", 
 	       tag, attrib, ezxml_txt(txt));
 	return NULL;
     }
@@ -77,14 +107,15 @@ get_val(ezxml_t   cfg,
 
 
 static struct file_info * 
-parse_aux_files(ezxml_t  cfg_input, 
-		int    * num_files) 
+parse_aux_files(ezxml_t   cfg_input, 
+	 	u32     * num_files) 
 {
     struct file_info * files = NULL;
-    ezxml_t file_tags        = NULL;
-    ezxml_t tmp_file_tag     = NULL;
+    ezxml_t  file_tags       = NULL;
+    ezxml_t  tmp_file_tag    = NULL;
+
+    u32 file_cnt = 0;
     int i        = 0;
-    int file_cnt = 0;
 
     // files are transformed into blobs that are slapped to the end of the file
     
@@ -145,93 +176,160 @@ parse_aux_files(ezxml_t  cfg_input,
 
 
 
-
-static int 
-create_vm(char         * vm_name, 
-	  void         * img_data,
-	  unsigned int   img_size) 
+int 
+v3_create_vm(char * vm_name, 
+	     u8   * img_data,
+	     u32    img_size) 
 {
     struct v3_guest_img guest_img;
-
-    int v3_fd   = 0;
-    int dev_idx = 0;
+    int vm_id = 0;
 
     memset(&guest_img, 0, sizeof(struct v3_guest_img));
 
     guest_img.size       = img_size;
-    guest_img.guest_data = img_data;
+    guest_img.guest_data = (uintptr_t)img_data;
     strncpy(guest_img.name, vm_name, 127);
 
+    vm_id = pet_ioctl_path(V3_DEV_FILENAME, V3_CREATE_GUEST, &guest_img);
 
-    v3_fd = open(v3_dev, O_RDONLY);
-
-    if (v3_fd == -1) {
-	printf("Error opening V3Vee control device\n");
+    if (vm_id < 0) {
+	printf("Error (%d) creating VM\n", vm_id);
 	return -1;
     }
 
-    dev_idx = ioctl(v3_fd, V3_CREATE_GUEST, &guest_img); 
+    printf("VM (%s) created at " V3_VM_FILENAME "%s\n", vm_name, vm_id);
+
+    return vm_id;
+}
 
 
-    if (dev_idx < 0) {
-	printf("Error (%d) creating VM\n", dev_idx);
+int
+v3_load_vm_image(char  * file_name,
+		 u8   ** img_data,
+		 u32   * img_size)
+{
+    struct stat guest_stats;
+
+    int   guest_fd = 0;
+    u8  * data = NULL;
+    u32   size = 0;
+    int   ret  = 0;
+
+    guest_fd = open(file_name, O_RDONLY); 
+
+    if (guest_fd == -1) {
+	printf("Error Opening guest image: %s\n", file_name);
 	return -1;
     }
 
-    printf("VM (%s) created at /dev/v3-vm%d\n", vm_name, dev_idx);
+    if (fstat(guest_fd, &guest_stats) == -1) {
+	printf("ERROR: Could not stat guest image file -- %s\n", file_name);
+	return -1;
+    }
+    
 
-    /* Close the file descriptor.  */ 
-    close(v3_fd); 
+    // load guest image into user memory
+    data = malloc(size);
+
+    ret = read_file(guest_fd, size, data);
+    
+    close(guest_fd);
+
+    if (ret != 0) {
+	printf("Error Could not load VM image (%s)\n", file_name);
+	return -1;
+    }
+
+    *img_size = size;
+    *img_data = data;
+
 
     return 0;
 }
 
 
+
 int 
-v3_load_vm_image(char * vm_name, 
-		 char * image_file)
-{
-    struct stat guest_stats;
+v3_save_vm_image(char * file_name, 
+		 u8   * img_data,
+		 u32    img_size) 
+{    
+    int guest_fd = 0;
+    int ret      = 0;
 
-    int    guest_fd = 0;
-    int    img_size = 0;
-    void * img_data = NULL;
-
-    guest_fd = open(image_file, O_RDONLY); 
+    guest_fd = open(file_name, O_RDWR | O_CREAT | O_TRUNC);
 
     if (guest_fd == -1) {
-	printf("Error Opening guest image: %s\n", image_file);
+	printf("Error opening guest image for writing: %s\n", file_name);
 	return -1;
     }
 
-    if (fstat(guest_fd, &guest_stats) == -1) {
-	printf("ERROR: Could not stat guest image file -- %s\n", image_file);
-	return -1;
-    }
-    
-    img_size = guest_stats.st_size;
+    ret = write_file(guest_fd, img_size, img_data);
 
-    // load guest image into user memory
-    img_data = malloc(img_size);
-
-    read_file(guest_fd, img_size, img_data);
-    
     close(guest_fd);
 
-    printf("Guest image Loaded (size=%u)\n", img_size);
-    return create_vm(vm_name, img_data, img_size);
+    if (ret != 0) {
+	printf("Error: Could not save VM image (%s)\n", file_name);
+	return -1;
+    }
+
+    return 0;
 }
 
 
-int 
-v3_create_vm(char  * vm_name, 
-	     ezxml_t vm_xml_cfg)
+ezxml_t 
+v3_load_vm_cfg(char * file_name) 
 {
-    struct file_info * files     = NULL;
 
-    int    num_files      = 0;
-    void * guest_img_data = NULL;
-    int    guest_img_size = 0;
+    ezxml_t xml_input = ezxml_parse_file(file_name);
+    
+    if (xml_input == NULL) {
+	printf("Error: Could not open XML input file (%s)\n", file_name);
+	return NULL;
+    } else if (strcmp("", ezxml_error(xml_input)) != 0) {
+	printf("%s\n", ezxml_error(xml_input));
+	return NULL;
+    }
+
+    return xml_input;
+}
+
+int
+v3_save_vm_cfg(char    * file_name,
+	       ezxml_t   vm_xml_cfg)
+{
+    char * xml_str = ezxml_toxml(vm_xml_cfg);
+    int    xml_fd  = 0;
+    int    ret     = 0;
+
+    xml_fd = open(file_name, O_RDWR | O_CREAT | O_TRUNC);
+
+    if (xml_fd == -1) {
+	printf("Error: Could not open cfg file (%s)\n", file_name);
+	return -1;
+    }
+
+    ret = write_file(xml_fd, strlen(xml_str), xml_str);
+
+    close(xml_fd);
+    
+    if (ret != 0) {
+	printf("Error: Could not save VM XML cfg (%s)\n", file_name);
+	return -1;
+    }
+    
+    return 0;
+}
+
+u8 * 
+v3_build_vm_image(ezxml_t   vm_xml_cfg, 
+		  u32     * img_size)
+{
+    struct file_info * files = NULL;
+
+    int    num_files         = 0;
+    void * guest_img_data    = NULL;
+    int    guest_img_size    = 0;
 
     int i = 0;
 
@@ -241,12 +339,11 @@ v3_create_vm(char  * vm_name,
     
     // create image data blob
     {
-	unsigned long long   file_offset = 0;
-	char               * new_xml_str = ezxml_toxml(vm_xml_cfg);
-
-	int file_data_size = 0;
-	int offset         = 0;
-	int i              = 0;
+	u64    file_offset    = 0;
+	char * new_xml_str    = ezxml_toxml(vm_xml_cfg);
+	int    file_data_size = 0;
+	int    offset         = 0;
+	int    i              = 0;
 
 	/* Image size is: 
 	   8 byte header + 
@@ -272,7 +369,7 @@ v3_create_vm(char  * vm_name,
 	memcpy(guest_img_data, "v3vee\0\0\0", 8);
 	offset += 8;
 
-	*(unsigned int *)(guest_img_data + offset) = strlen(new_xml_str);
+	*(u32 *)(guest_img_data + offset) = strlen(new_xml_str);
 	offset += 4;
 
 	memcpy(guest_img_data + offset, new_xml_str, strlen(new_xml_str));
@@ -281,7 +378,7 @@ v3_create_vm(char  * vm_name,
 	memset(guest_img_data + offset, 0, 8);
 	offset += 8;
 	
-	*(unsigned long long *)(guest_img_data + offset) = num_files;
+	*(u64 *)(guest_img_data + offset) = num_files;
 	offset += 8;
 
 	
@@ -289,11 +386,11 @@ v3_create_vm(char  * vm_name,
 	file_offset = offset + (16 * num_files) + 8;
 
 	for (i = 0; i < num_files; i++) {
-	    *(unsigned int *)(guest_img_data + offset) = i;
+	    *(u32 *)(guest_img_data + offset) = i;
 	    offset += 4;
-	    *(unsigned int *)(guest_img_data + offset) = files[i].size;
+	    *(u32 *)(guest_img_data + offset) = files[i].size;
 	    offset += 4;
-	    *(unsigned long long *)(guest_img_data + offset) = file_offset;
+	    *(u64 *)(guest_img_data + offset) = file_offset;
 	    offset += 8;
 
 	    file_offset += files[i].size;
@@ -309,12 +406,13 @@ v3_create_vm(char  * vm_name,
 
 	    if (fd == -1) {
 		printf("Error: Could not open aux file (%s)\n", files[i].filename);
+		free(guest_img_data);
 		free(new_xml_str);
 		free(files);
-		return -1;
+		return NULL;
 	    }
 
-	    read_file(fd, files[i].size, (unsigned char *)(guest_img_data + offset));
+	    read_file(fd, files[i].size, (u8 *)(guest_img_data + offset));
 
 	    close(fd);
 
@@ -326,63 +424,11 @@ v3_create_vm(char  * vm_name,
 	free(new_xml_str);
     }
 
-    printf("Guest Image Created (size=%u)\n", guest_img_size);
-    create_vm(vm_name, guest_img_data, guest_img_size);
 
+    *img_size = guest_img_size;
 
-    free(guest_img_data);
-
-    return 0;
+    return guest_img_data;
 }
 
 
 
-
-
-#if 0
-int main(int argc, char ** argv) {
-    char * filename = NULL;
-    char * name     = NULL;
-
-    int build_flag  = 0;
-    int c           = 0;
-
-    opterr = 0;
-
-    while (( c = getopt(argc, argv, "b")) != -1) {
-	switch (c) {
-	case 'b':
-	    build_flag = 1;
-	    break;
-	}
-    }
-
-    if (argc - optind + 1 < 3) {
-	printf("usage: v3_create [-b] <guest_img> <vm name>\n");
-	return -1;
-    }
-
-    filename = argv[optind];
-    name     = argv[optind + 1];
-
-
-    if (build_flag == 1) {
-	int i = 0;
-
-	printf("Building VM Image (cfg=%s) (name=%s)\n", filename, name);
-
-	return build_image(name, filename);
-
-
-    } else {
-	printf("Loading VM Image (img=%s) (name=%s)\n", filename, name);
-	return load_image(name, filename);
-    }
-
-    return 0; 
-} 
-
-
-
-
-#endif

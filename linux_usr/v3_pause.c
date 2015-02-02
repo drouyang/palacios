@@ -13,7 +13,7 @@
 #include <unistd.h> 
 #include <string.h>
  
-#include "v3_ctrl.h"
+#include "v3_ioctl.h"
 
 int read_file(int fd, int size, unsigned char * buf);
 

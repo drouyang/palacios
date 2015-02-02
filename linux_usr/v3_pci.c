@@ -12,7 +12,7 @@
 #include <string.h>
 #include <getopt.h>
 
-#include "v3_ctrl.h"
+#include "v3_ioctl.h"
 #include <pet_pci.h>
 #include <pet_ioctl.h>
 
@@ -132,7 +132,7 @@ int main(int argc, char ** argv) {
 	dev_spec.func = fn;
 	strncpy(dev_spec.url, name, 128);
 	
-	if (pet_ioctl_path((char *)v3_dev, V3_ADD_PCI,  &dev_spec) != 0) {
+	if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_PCI,  &dev_spec) != 0) {
 	    printf("Error: Could not add device to Palacios\n");
 	    pet_online_pci(bus, dev, fn);
 	    return -1;
@@ -164,7 +164,7 @@ int main(int argc, char ** argv) {
 	dev_spec.func = fn;
 	strncpy(dev_spec.url, name, 128);
 	
-	if (pet_ioctl_path((char *)v3_dev, V3_REMOVE_PCI,  &dev_spec) != 0) {
+	if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_PCI,  &dev_spec) != 0) {
 	    printf("Error: Could not remove device from Palacios\n");
 	    pet_online_pci(bus, dev, fn);
 	    return -1;

@@ -81,8 +81,8 @@ quiet-build = \
 	fi
 
 
-% : %.c v3_ctrl.h
-	$(call build,CC,$(CC) $(CFLAGS) $< $(PETLIB)/petlib.a -o $@)
+% : %.c v3_ioctl.h $(libv3vee_user_objs)
+	$(call build,CC,$(CC) $(CFLAGS) $< libv3vee_user.a $(PETLIB)/petlib.a  -o $@)
 
 
 %.o : %.c
@@ -115,15 +115,11 @@ include .dependencies
 #
 #
 
-v3_cons: v3_cons.c v3_ctrl.h
+v3_cons: v3_cons.c v3_ioctl.h
 	$(call build,CC,$(CC) $(CFLAGS) $< -lcurses -ltinfo -o $@)
 
-v3_cons_sc: v3_cons_sc.c v3_ctrl.h
+v3_cons_sc: v3_cons_sc.c v3_ioctl.h
 	$(call build,CC,$(CC) $(CFLAGS)  $< -lcurses -ltinfo -o $@)
-
-v3_create: v3_create.c v3_ctrl.h
-	$(call build,CC,$(CC) $(CFLAGS) $^ $(PETLIB)/petlib.a -o $@)
-
 
 
 
