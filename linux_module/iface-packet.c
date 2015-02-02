@@ -30,7 +30,7 @@ struct raw_interface {
     char eth_dev[126];  /* host nic name "eth0" ... */
 	
     struct socket * raw_sock;
-    uint8_t inited;
+    uint8_t inited;   
 
     struct list_head   brdcast_recvers;
     struct hashtable * mac_to_recver;
@@ -48,14 +48,14 @@ struct palacios_packet_state{
 
 struct palacios_packet_state packet_state;
 
-static inline uint_t hash_fn(addr_t hdr_ptr) {    
-    uint8_t * hdr_buf = (uint8_t *)hdr_ptr;
+static inline u32 hash_fn(uintptr_t hdr_ptr) {    
+    u8 * hdr_buf = (u8 *)hdr_ptr;
 
     return palacios_hash_buffer(hdr_buf, ETH_ALEN);
 }
 
-static inline int hash_eq(addr_t key1, addr_t key2) {	
-    return (memcmp((uint8_t *)key1, (uint8_t *)key2, ETH_ALEN) == 0);
+static inline int hash_eq(uintptr_t key1, uintptr_t key2) {	
+    return (memcmp((u8 *)key1, (u8 *)key2, ETH_ALEN) == 0);
 }
 
 
@@ -197,7 +197,7 @@ packet_recv_thread( void * arg )
 
 	} else {
 	    recver_state = (struct v3_packet *)palacios_htable_search(iface->mac_to_recver,
-								      (addr_t)pkt);
+								      (uintptr_t)pkt);
 	    if (recver_state != NULL) {
 		recver_state->input(recver_state, pkt, size);
 	    }
@@ -300,8 +300,8 @@ palacios_packet_connect(struct v3_packet * packet,
     
     list_add(&(packet->node), &(iface->brdcast_recvers));
     palacios_htable_insert(iface->mac_to_recver, 
-			   (addr_t)packet->dev_mac,
-			   (addr_t)packet);
+			   (uintptr_t)packet->dev_mac,
+			   (uintptr_t)packet);
 
     v3_lnx_printk("Packet: Add Receiver MAC to ethernet device %s: %2x:%2x:%2x:%2x:%2x:%2x\n", 
 		  iface->eth_dev, 
@@ -358,7 +358,7 @@ palacios_packet_close(struct v3_packet * packet)
     struct raw_interface * iface = (struct raw_interface *)packet->host_packet_data;
     
     list_del(&(packet->node));
-    palacios_htable_remove(iface->mac_to_recver, (addr_t)(packet->dev_mac), 0);
+    palacios_htable_remove(iface->mac_to_recver, (uintptr_t)(packet->dev_mac), 0);
     
     packet->host_packet_data = NULL;
 }
