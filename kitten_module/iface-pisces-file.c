@@ -20,9 +20,6 @@ struct palacios_file {
     
     u8     is_raw_block;
     
-
-
-    struct list_head file_node;
 };
 
 
@@ -126,7 +123,6 @@ palacios_file_close(void * file_ptr)
 	pisces_file_close(pfile->file_handle);
     }
 
-    list_del(&(pfile->file_node));
 
     kmem_free(pfile->path);    
     kmem_free(pfile);
