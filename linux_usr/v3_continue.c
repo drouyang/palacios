@@ -13,37 +13,27 @@
 #include <unistd.h> 
 #include <string.h>
  
+#include "v3vee.h"
 #include "v3_ioctl.h"
 
-int read_file(int fd, int size, unsigned char * buf);
 
 int main(int argc, char* argv[]) {
     char * filename = argv[1];
-    int vm_fd = 0;
- 
+    int ret = 0;
 
     if (argc <= 1) {
 	printf("usage: v3_continue <vm_device>\n");
 	return -1;
     }
 
-    printf("Stopping VM\n");
-    
-    vm_fd = open(filename, O_RDONLY);
+    printf("Continuing VM (%s)\n", filename);
 
-    if (vm_fd == -1) {
-	printf("Error opening V3Vee VM device\n");
+    ret = v3_continue_vm(get_vm_id_from_path(filename));
+
+    if (ret < 0) {
+	printf("Error: Could not continue VM\n");
 	return -1;
     }
-
-    ioctl(vm_fd, 24, NULL); 
-
-
-
-    /* Close the file descriptor.  */ 
-    close(vm_fd); 
- 
-
 
     return 0; 
 } 

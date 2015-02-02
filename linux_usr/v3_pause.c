@@ -1,51 +1,38 @@
 /* 
- * V3 Control utility
+ * V3 pause utility
  * (c) Jack lange, 2010
  */
 
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h> 
-#include <sys/ioctl.h> 
-#include <sys/stat.h> 
-#include <sys/types.h> 
-#include <unistd.h> 
 #include <string.h>
  
 #include "v3_ioctl.h"
+#include "v3vee.h"
 
-int read_file(int fd, int size, unsigned char * buf);
 
 int main(int argc, char* argv[]) {
     char * filename = argv[1];
-    int vm_fd = 0;
- 
+    int ret = 0;
 
     if (argc <= 1) {
 	printf("usage: v3_pause <vm_device>\n");
 	return -1;
     }
 
-    printf("Stopping VM\n");
+    printf("Pausing VM (%s)\n", filename);
     
-    vm_fd = open(filename, O_RDONLY);
 
-    if (vm_fd == -1) {
-	printf("Error opening V3Vee VM device\n");
-	return -1;
+    ret = v3_pause_vm(get_vm_id_from_path(filename));
+
+    if (ret < 0) {
+        printf("Error: Could not pause VM\n");
+        return -1;
     }
 
-    ioctl(vm_fd, 23, NULL); 
-
-
-
-    /* Close the file descriptor.  */ 
-    close(vm_fd); 
- 
-
-
     return 0; 
+
 } 
 
 

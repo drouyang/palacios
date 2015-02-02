@@ -48,6 +48,28 @@
 #define V3_VM_FILENAME  "/dev/v3-vm"
 
 
+static inline char * 
+get_vm_dev_path(int vm_id) 
+{
+    char * dev_path = NULL;
+    
+    asprintf(&dev_path, "/dev/v3-vm%d", vm_id);
+
+    return dev_path;
+}
+
+static inline int
+get_vm_id_from_path(char * dev_path)
+{
+    int vm_id = -1;
+
+    if (sscanf(dev_path, "/dev/v3-vm%d", &vm_id) != 1) {
+        return -1;
+    }
+
+    return vm_id;
+}
+
 struct v3_guest_img {
     u64       size;
     uintptr_t guest_data;
@@ -72,9 +94,13 @@ struct v3_debug_cmd {
     u32 cmd;
 } __attribute__((packed));
 
+
+#define MAX_CHKPT_STORE_LEN 128
+#define MAX_CHKPT_URL_LEN   256
+
 struct v3_chkpt_info {
-    char store[128];
-    char url[256]; /* This might need to be bigger... */
+    char store[MAX_CHKPT_STORE_LEN];
+    char url[MAX_CHKPT_URL_LEN];     /* This might need to be bigger... */
 } __attribute__((packed));
 
 

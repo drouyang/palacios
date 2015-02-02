@@ -14,12 +14,13 @@
 #include <string.h>
  
 #include "v3_ioctl.h"
+#include "v3vee.h"
 
 
 int main(int argc, char* argv[]) {
     char * filename = argv[1];
-    unsigned int msecs = atoi(argv[2]);
-    int vm_fd = 0;
+    u32    msecs    = atoi(argv[2]);
+    int    ret      = 0;
     
 
     if (argc <= 2) {
@@ -29,19 +30,12 @@ int main(int argc, char* argv[]) {
 
     printf("Simulating VM for %lu msecs\n", msecs);
     
-    vm_fd = open(filename, O_RDONLY);
+    ret = v3_simulate_vm(get_vm_id_from_path(filename), msecs);
 
-    if (vm_fd == -1) {
-	printf("Error opening V3Vee VM device\n");
-	return -1;
+    if (ret < 0) {
+        printf("Error: Could not simulate VM\n");
+        return -1;
     }
-
-    ioctl(vm_fd, 29, msecs); 
-
-    /* Close the file descriptor.  */ 
-    close(vm_fd); 
- 
-
 
     return 0; 
 } 

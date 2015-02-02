@@ -13,7 +13,7 @@
 #include <getopt.h>
 
 
-#include "v3_ioctl.h"
+#include "v3vee.h"
 
 
 static void usage() {
@@ -58,10 +58,10 @@ int main(int argc, char ** argv) {
 
     if (remove) {
 	printf("Removing CPU %d from Palacios\n", cpu_id);
-	pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_CPU, cpu_id);
+	v3_remove_cpu(cpu_id);
     } else {
 	printf("Addign CPU %d to Palacios\n", cpu_id);
-	pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_CPU, cpu_id);
+	v3_add_cpu(cpu_id);
     }
     
 }

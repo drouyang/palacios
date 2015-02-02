@@ -15,17 +15,7 @@
 
 
 #include "v3_ioctl.h"
-
-
-
-#define PRINT_TELEMETRY  0x00000001
-#define PRINT_CORE_STATE 0x00000002
-#define PRINT_ARCH_STATE 0x00000004
-#define PRINT_STACK      0x00000008
-#define PRINT_BACKTRACE  0x00000010
-
-#define CLEAR_COUNTERS   0x40000000
-#define SINGLE_EXIT_MODE 0x80000000 // begin single exit when this flag is set, until flag is cleared.
+#include "v3vee.h"
 
 
 void usage() {
@@ -45,14 +35,14 @@ void usage() {
 
 
 int main(int argc, char ** argv  ) {
-    int vm_fd;
     char * vm_dev = NULL;
-    struct v3_debug_cmd cmd;
-    int exit_mode_disable = 0;
-    int c;
-    int num_opts = 0;
 
-    memset(&cmd, 0, sizeof(struct v3_debug_cmd));
+    int exit_mode_disable = 0;
+    int num_opts = 0;
+    u32 flags    = 0;
+    u32 core     = 0;
+    int c        = 0;
+
     
     opterr = 0;
 
@@ -61,25 +51,25 @@ int main(int argc, char ** argv  ) {
 
 	switch (c) {
 	    case 't': 
-		cmd.cmd |= PRINT_TELEMETRY;
+		flags |= PRINT_TELEMETRY;
 		break;
 	    case 'c': 
-		cmd.cmd |= PRINT_CORE_STATE;
+		flags |= PRINT_CORE_STATE;
 		break;
 	    case 'a': 
-		cmd.cmd |= PRINT_ARCH_STATE;
+		flags |= PRINT_ARCH_STATE;
 		break;
 	    case 's':
-		cmd.cmd |= PRINT_STACK;
+		flags |= PRINT_STACK;
 		break;
 	    case 'b':
-		cmd.cmd |= PRINT_BACKTRACE;
+		flags |= PRINT_BACKTRACE;
 		break;
 	    case 'C':
-		cmd.cmd |= CLEAR_COUNTERS;
+		flags |= CLEAR_COUNTERS;
 		break;
 	    case 'S':
-		cmd.cmd |= SINGLE_EXIT_MODE;
+		flags |= SINGLE_EXIT_MODE;
 		break;
 	}
     }
@@ -91,27 +81,15 @@ int main(int argc, char ** argv  ) {
 	return -1;
     }
 
+    vm_dev = argv[optind];
+    core   = atoi(argv[optind - 1]); // No, the reversed argument ordering doesn't make sense...
 
-    vm_dev   = argv[optind];
-    cmd.core = atoi(argv[optind - 1]); // No, the reversed argument ordering doesn't make sense...
+    printf("Debug Virtual Core %d with Command %x\n", core, flags);
 
-    printf("Debug Virtual Core %d with Command %x\n", cmd.core, cmd.cmd);
-
-    vm_fd = open(vm_dev, O_RDONLY);
-
-    if (vm_fd == -1) {
-	printf("Error opening VM device: %s\n", vm_dev);
+    if (v3_debug(get_vm_id_from_path(vm_dev), core, flags) != 0) {
+	printf("Error: Could not issue debug command to VM\n");
 	return -1;
     }
-
-    int err = ioctl(vm_fd, V3_VM_DEBUG, &cmd); 
-
-    if (err < 0) {
-	printf("Error write core migrating command to vm\n");
-	return -1;
-    }
-
-    close(vm_fd); 
 
     return 0; 
 }

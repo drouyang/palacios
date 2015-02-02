@@ -57,8 +57,8 @@ execs-$(V3_CONFIG_CHECKPOINT) += 	v3_save \
 
 libs-y := 	libv3vee_user.a
 
-libv3vee_user_objs := create.o 
-
+libv3vee_user_objs :=	create.o \
+			v3vee.o
 
 
 CFILES = $(execs-y:%=%.c) 
