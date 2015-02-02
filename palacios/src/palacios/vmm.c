@@ -1077,7 +1077,7 @@ v3_yield_cond(struct v3_core_info * core,
 
 	//	v3_fpu_load(info);
 
-        core->yield_start_cycle +=  core->vm_info->yield_cycle_period;
+        core->yield_start_cycle = v3_get_host_time(&core->time_state);;
     }
 
 }
