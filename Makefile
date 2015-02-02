@@ -479,6 +479,12 @@ DEFAULT_EXTRA_TARGETS=
 endif
 endif
 
+
+ifdef V3_CONFIG_USER
+DEFAULT_EXTRA_TARGETS += user
+endif
+
+
 # The all: target is the default when no target is given on the
 # command line.
 # This allow a user to issue only 'make' to build a kernel including modules
@@ -623,10 +629,14 @@ libv3vee.a: $(palacios)
 palacios: libv3vee.a
 
 
+user/libv3vee_user.a: user/*.c user/*.h
+	cd user/ && make
+
+user: user/libv3vee_user.a
 
 
 linux_module/v3vee.ko: linux_module/*.c linux_module/*.h libv3vee.a
-	cd linux_module/ && make -j 8
+	cd linux_module/ && make
 	cp linux_module/v3vee.ko v3vee.ko
 
 
@@ -992,16 +1002,18 @@ clean := -f $(if $(KBUILD_SRC),$(srctree)/)scripts/Makefile.clean obj
 
 endif	# skip-makefile
 
-# Force the O variable for user and init_task (not set by kbuild?)
-user init_task: O:=$(if $O,$O,$(objtree))
-# Build Palacios user-space libraries and example programs
-user: FORCE
-	if [ ! -d $O/$@ ]; then mkdir $O/$@; fi
-	$(MAKE) \
-		-C $(src)/$@ \
-		O=$O/$@ \
-		src=$(src)/$@ \
-		all
+
+
+# # Force the O variable for user and init_task (not set by kbuild?)
+# user init_task: O:=$(if $O,$O,$(objtree))
+# # Build Palacios user-space libraries and example programs
+# user: FORCE
+# 	if [ ! -d $O/$@ ]; then mkdir $O/$@; fi
+# 	$(MAKE) \
+# 		-C $(src)/$@ \
+# 		O=$O/$@ \
+# 		src=$(src)/$@ \
+# 		all
 
 
 

@@ -6,20 +6,20 @@
 
 include $(PWD)/../.config
 
+USER_TOOLS_DIR = $(PWD)
 
-ifdef V3_CONFIG_LINUX_USER_STATIC
+ifdef V3_CONFIG_USER_STATIC
   CFLAGS += -static 
   CURSES_CFLAGS = -DNCURSES_STATIC 
-
 endif
 
 
 CC = gcc
 AR = ar
 
-PETLIB := ./petlib
+PETLIB := $(V3_CONFIG_PETLIB_PATH)
 
-CFLAGS += -I../linux_module -I$(PETLIB) -L$(PETLIB)
+CFLAGS = -I../linux_module -I$(PETLIB) -L$(PETLIB)
 
 #
 # Executables that implement core functionality
@@ -106,7 +106,7 @@ $(PETLIB)/petlib.a:
 # Most tools compile in a straightforward way
 #
 
-include .dependencies
+#include .dependencies
 
 
 

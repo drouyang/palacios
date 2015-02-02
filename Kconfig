@@ -45,13 +45,7 @@ config LINUX_KERN
 	help 
 	  This is the directory containing the linux source for the kernel module to be built
 
-config LINUX_USER_STATIC
-	depends on LINUX
-	bool "Statically link Linux user utilities" 
-	default n
-	help 
-	  If selected this will cause the Linux user utilities to be statically linked. 
-	  This is helpful if you are running in an embedded environment, such as BusyBox
+
 
 config MINIX
 	bool "MINIX 3"
@@ -66,6 +60,26 @@ config OTHER_OS
 
 endchoice
 	
+config USER
+	bool "Build User Tools"
+	default y
+	help
+	  Build Control utilities (Command line tools and control library)
+
+config USER_STATIC
+	depends on USER
+	bool "Statically link user utilities" 
+	default n
+	help 
+	  If selected this will cause the Linux user utilities to be statically linked. 
+	  This is helpful if you are running in an embedded environment, such as BusyBox
+
+config PETLIB_PATH
+	depends on USER
+	string "Directory path to PetLib"
+	default "$(USER_TOOLS_DIR)/../../petlib"
+	help
+	  Location of the Petlib user space control library
 
 config CRAY_XT
         bool "Red Storm (Cray XT3/XT4)"
