@@ -24,13 +24,6 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_types.h>
 
-#define XPMEM_MAXNAME_SIZE 128
-
-typedef sint64_t xpmem_domid_t;
-typedef sint64_t xpmem_link_t;
-typedef sint64_t xpmem_segid_t;
-typedef sint64_t xpmem_apid_t;
-
 struct xpmem_cmd_make_ex {
     xpmem_segid_t request;
     xpmem_segid_t segid;
@@ -127,6 +120,7 @@ struct xpmem_cmd_ex {
 
 
 int v3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd);
+int v3_xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem, int vector);
 
 #endif // ! __V3VEE__
 

@@ -1308,4 +1308,11 @@ v3_xpmem_command(struct v3_xpmem_state * v3_xpmem,
     return 0;
 }
 
+int
+v3_xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem,
+                   int                     vector)
+{
+    return 0;
+}
+
 device_register("XPMEM", xpmem_init)

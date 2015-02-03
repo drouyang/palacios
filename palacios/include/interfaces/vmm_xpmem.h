@@ -24,8 +24,13 @@
 #include <palacios/vmm.h>
 #include <palacios/vmm_types.h>
 
+typedef sint64_t xpmem_domid_t;
+typedef sint64_t xpmem_segid_t;
+typedef sint64_t xpmem_apid_t;
+typedef signed short xpmem_link_t;
+
 /* Opaque handle to host xpmem state */
-typedef void * xpmem_host_handle_t;
+typedef xpmem_link_t xpmem_host_handle_t;
 
 
 struct v3_xpmem_state;
@@ -45,6 +50,7 @@ void V3_Init_Xpmem(struct v3_xpmem_hooks * hooks);
 
 // Incoming command requests/responses
 int V3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd);
+int V3_xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem, int vector);
 
 
 /* VMM --> Host interface */

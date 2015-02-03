@@ -39,6 +39,10 @@ int V3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd
     return v3_xpmem_command(v3_xpmem, cmd);
 }
 
+int V3_xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem, int vector) {
+    return v3_xpmem_raise_irq(v3_xpmem, vector);
+}
+
 
 /* VMM --> host interface */
 xpmem_host_handle_t v3_xpmem_host_connect(struct v3_vm_info * vm, struct v3_xpmem_state * v3_xpmem) {
