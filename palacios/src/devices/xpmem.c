@@ -1236,7 +1236,7 @@ xpmem_init(struct v3_vm_info * vm,
 
     /* Initialize host channel */
     state->host_handle = v3_xpmem_host_connect(vm, state);
-    if (!state->host_handle) {
+    if (state->host_handle <= 0) {
         PrintError("Could not initialized XPMEM host channel\n");
         V3_Free(state);
         return -1;
