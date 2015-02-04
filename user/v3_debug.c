@@ -86,7 +86,7 @@ int main(int argc, char ** argv  ) {
 
     printf("Debug Virtual Core %d with Command %x\n", core, flags);
 
-    if (v3_debug(get_vm_id_from_path(vm_dev), core, flags) != 0) {
+    if (v3_debug_vm(get_vm_id_from_path(vm_dev), core, flags) != 0) {
 	printf("Error: Could not issue debug command to VM\n");
 	return -1;
     }

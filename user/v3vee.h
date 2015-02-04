@@ -75,7 +75,7 @@ int v3_move_vcore(int vm_id,
 
 #define CLEAR_COUNTERS   0x40000000
 #define SINGLE_EXIT_MODE 0x80000000 // begin single exit when this flag is set, until flag is cleared.
-int v3_debug(int vm_id, u32 core, u32 flags);
+int v3_debug_vm(int vm_id, u32 core, u32 flags);
 
 
 

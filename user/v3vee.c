@@ -254,9 +254,9 @@ v3_move_vcore(int vm_id,
 }
 
 int
-v3_debug(int vm_id,
-	 u32 core,
-	 u32 flags)
+v3_debug_vm(int vm_id,
+	    u32 core,
+	    u32 flags)
 {
 
     char * dev_path = get_vm_dev_path(vm_id);
