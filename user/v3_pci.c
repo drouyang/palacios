@@ -104,7 +104,6 @@ int main(int argc, char ** argv) {
 	unsigned int bus = 0;
 	unsigned int dev = 0;
 	unsigned int fn  = 0;
-	struct v3_hw_pci_dev dev_spec;
 	
 	if (argc - optind + 1 < 2) {
 	    usage();
@@ -119,29 +118,15 @@ int main(int argc, char ** argv) {
 	    return -1;
 	}
 	
-	if (pet_offline_pci(bus, dev, fn) != 0) {
-	    printf("Error: Could not offline PCI device\n");
+	if (v3_add_pci(name, bus, dev, fn) != 0) {
+	    printf("Error: Could not add PCI device\n");
 	    return -1;
 	}
-	
-	memset(&dev_spec, 0, sizeof(struct v3_hw_pci_dev));
-	
-	
-	dev_spec.bus  = bus;
-	dev_spec.dev  = dev;
-	dev_spec.func = fn;
-	strncpy(dev_spec.url, name, 128);
-	
-	if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_PCI,  &dev_spec) != 0) {
-	    printf("Error: Could not add device to Palacios\n");
-	    pet_online_pci(bus, dev, fn);
-	    return -1;
-	}
+
     } else if (mode == REMOVE) {
 	unsigned int bus = 0;
 	unsigned int dev = 0;
 	unsigned int fn  = 0;
-	struct v3_hw_pci_dev dev_spec;
 	
 	if (argc - optind + 1 < 2) {
 	    usage();
@@ -156,23 +141,8 @@ int main(int argc, char ** argv) {
 	}
 	
 
-	memset(&dev_spec, 0, sizeof(struct v3_hw_pci_dev));
-	
-	
-	dev_spec.bus  = bus;
-	dev_spec.dev  = dev;
-	dev_spec.func = fn;
-	strncpy(dev_spec.url, name, 128);
-	
-	if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_PCI,  &dev_spec) != 0) {
-	    printf("Error: Could not remove device from Palacios\n");
-	    pet_online_pci(bus, dev, fn);
-	    return -1;
-	}
-
-
-	if (pet_online_pci(bus, dev, fn) != 0) {
-	    printf("Error: Could not online PCI device (%s)\n", bdf_str);
+	if (v3_remove_pci(name, bus, dev, fn) != 0) {
+	    printf("Error: Could not remove pci device\n");
 	    return -1;
 	}
 	
