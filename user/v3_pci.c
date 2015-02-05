@@ -12,9 +12,8 @@
 #include <string.h>
 #include <getopt.h>
 
-#include "v3_ioctl.h"
+#include "v3vee.h"
 #include <pet_pci.h>
-#include <pet_ioctl.h>
 
 void usage() {
     printf("Usage:\n"); 
