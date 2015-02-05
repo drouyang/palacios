@@ -118,6 +118,69 @@ v3_add_mem_explicit(int block_id)
 }
 
 
+int 
+v3_add_pci(char * name, 
+	   u32    bus, 
+	   u32    dev,
+	   u32    fn)
+{
+    struct v3_hw_pci_dev dev_spec;
+
+    memset(&dev_spec, 0, sizeof(struct v3_hw_pci_dev));
+
+    dev_spec.bus  = bus;
+    dev_spec.dev  = dev;
+    dev_spec.func = fn;
+    strncpy(dev_spec.url, name, 128);
+
+   if (pet_offline_pci(bus, dev, fn) != 0) {
+       printf("Error: Could not offline PCI device\n");
+       return -1;
+   }
+
+
+   if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_PCI,  &dev_spec) != 0) {
+       printf("Error: Could not add device to Palacios\n");
+       pet_online_pci(bus, dev, fn);
+       return -1;
+   }
+   
+   
+   return 0;
+
+}
+
+
+int 
+v3_remove_pci(char * name, 
+	      u32    bus, 
+	      u32    dev, 
+	      u32    fn)
+{
+    struct v3_hw_pci_dev dev_spec;
+
+    memset(&dev_spec, 0, sizeof(struct v3_hw_pci_dev));
+
+    dev_spec.bus  = bus;
+    dev_spec.dev  = dev;
+    dev_spec.func = fn;
+    strncpy(dev_spec.url, name, 128);
+
+    if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_PCI,  &dev_spec) != 0) {
+	printf("Error: Could not remove device from Palacios\n");
+	//	pet_online_pci(bus, dev, fn);
+	return -1;
+    }
+    
+    if (pet_online_pci(bus, dev, fn) != 0) {
+	printf("Error: Could not online PCI device [%s] (%d:%d.%d)\n", name, bus, dev, fn);
+	return -1;
+    }
+
+
+ return 0;
+
+}
 
 
 int
