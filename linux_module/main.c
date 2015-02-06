@@ -204,6 +204,18 @@ out_err:
 
 	    break;
 	}
+	case V3_REMOVE_MEM: {
+	    uintptr_t base_addr = (uintptr_t)arg;
+
+
+	    if (remove_palacios_memory(base_addr) == -1) {
+		ERROR("Could not remove memory block (base_addr=%p) from Palacios\n", 
+		      (void *)base_addr);
+		return -EFAULT;
+	    }
+
+	    break;
+	}
 	default: {
 	    struct global_ctrl * ctrl = get_global_ctrl(ioctl);
 	    

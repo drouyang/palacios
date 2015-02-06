@@ -21,6 +21,9 @@ int v3_add_mem(int num_blocks,
 int v3_add_mem_explicit(int block_id);
 
 
+int v3_remove_mem(int num_blocks, int numa_zone);
+int v3_remove_mem_node(int numa_zone);
+
 int v3_add_pci(char * name, 
 	       u32    bus,
 	       u32    dev,

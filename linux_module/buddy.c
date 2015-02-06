@@ -228,12 +228,12 @@ static int __buddy_remove_mempool(struct buddy_memzone * zone,
 	return -1;
     }
 
-    if (!bitmap_empty(pool->tag_bits, pool->num_blocks)) {
+    block = (struct block *)__va(pool->base_addr);
+
+    if (!is_available(pool, block)) {
 	ERROR("Trying to remove an in use memory pool\n");
 	return -1;
     }
-
-    block = (struct block *)__va(pool->base_addr);
 
     list_del(&(block->link));
     rb_erase(&(pool->tree_node), &(zone->mempools));

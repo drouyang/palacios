@@ -57,6 +57,16 @@ v3_add_mem_node(int numa_zone)
     return ret;
 }
 
+int
+v3_remove_mem_node(int numa_zone) 
+{
+
+
+
+    return -1;
+}
+
+
 int 
 v3_add_mem(int num_blocks, 
 	   int numa_zone) 
@@ -94,7 +104,103 @@ v3_add_mem(int num_blocks,
     
     return 0;
 }
-	       
+
+
+int 
+v3_remove_mem(int num_blocks,
+	      int numa_zone)
+{
+    int blocks_freed = 0;
+
+    if (numa_zone >= 0) {
+	char * proc_filename = NULL;
+	FILE * proc_file     = NULL;
+	char * line          = NULL;
+	size_t size          = 0;
+
+	if (asprintf(&proc_filename, "/proc/v3vee/v3-mem%d", numa_zone) == -1) {
+	    printf("Error: %s(%d): asprintf failed\n", __FILE__, __LINE__);
+	    return -1;
+	}
+
+	proc_file = fopen(proc_filename, "r");
+	
+	free(proc_filename);
+
+	if (proc_file == NULL) {
+	    printf("Error: Could not open proc file for numa zone %d\n", numa_zone);
+	    return -1;
+	}
+	
+	printf("Searching for memory pools\n");
+
+	while (getline(&line, &size, proc_file) != -1) {
+	    if (strstr(line, "memory pools") != NULL) break;
+	}
+
+
+	printf("iterating over blocks\n");
+	while (getline(&line, &size, proc_file) != -1) {
+	    u64 base_addr = 0;
+	    u32 order     = 0;
+	    u32 size      = 0;
+	    u32 freed     = 0;
+	    
+	    int matched   = 0;
+
+
+	    matched = sscanf(line, "    Base Addr=%llx, order=%u, size=%u, free=%u", 
+			     &base_addr, &order, &size, &freed);
+
+	    if (matched == 0) {
+		printf("Error: Could not match memory pool string\n");
+		break;
+	    }
+
+	    if (pet_block_size() != (1 << order)) {
+		printf("Pool (%p) is not a block\n", (void *)base_addr);
+		continue;
+	    }
+
+
+	    printf("base_addr=%llx, order=%u, size=%u, free=%u\n", 
+		   base_addr, order, size, freed);
+
+
+	    if (freed == size) {
+		// block is clear, remove it
+		printf("attempting to remove block at %p\n", (void *)base_addr);
+
+		
+		if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_MEM, base_addr) == -1) {
+		    printf("Error: Could not remove memory from Palacios\n");
+		    continue;
+		}
+		
+		blocks_freed++;
+
+		if (pet_online_block(base_addr / pet_block_size()) == -1) {
+		    printf("Error: Block removed from Palacios, but not onlined\n");
+		}
+	    }
+
+
+	    if (blocks_freed == num_blocks) break;
+	}
+
+
+	fclose(proc_file);
+
+	return blocks_freed;
+    } else {
+
+	// Free from all numa zones....
+
+    }
+    return -1;
+
+}
+
 int 
 v3_add_mem_explicit(int block_id)
 {

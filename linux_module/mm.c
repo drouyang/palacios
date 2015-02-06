@@ -31,8 +31,8 @@ static uintptr_t             * seed_addrs = NULL;
 // alignment is in bytes
 uintptr_t 
 alloc_palacios_pgs(u64 num_pages, 
-			     u32 alignment, 
-			     int node_id) 
+		   u32 alignment, 
+		   int node_id) 
 {
     uintptr_t addr        = 0;
     int       mem_node_id = node_id;
@@ -128,13 +128,11 @@ add_palacios_memory(uintptr_t base_addr,
 
 
 int 
-palacios_remove_memory(uintptr_t base_addr) 
+remove_palacios_memory(uintptr_t base_addr) 
 {
     int node_id = numa_addr_to_node(base_addr);
 
-    buddy_remove_pool(memzones[node_id], base_addr, 0);
-
-    return 0;
+    return buddy_remove_pool(memzones[node_id], base_addr, 0);
 }
 
 

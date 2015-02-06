@@ -42,11 +42,9 @@ add_palacios_memory(uintptr_t base_addr,
 /*
  * Remove a physically contiguous memory region from Palacios' Page Allocator
  *  - base_addr  : Base address of physically contiguous region
- *  - num_pages  : Number of pages making up the region
  */
 int 
-remove_palacios_memory(uintptr_t base_addr, 
-		       u64       num_pages);
+remove_palacios_memory(uintptr_t base_addr);
 
 /* 
  * Initialize Palacios memory management 
