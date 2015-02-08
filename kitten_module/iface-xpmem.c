@@ -157,7 +157,6 @@ init_xpmem_guest(struct v3_guest * guest,
     }
 
     state->link = xpmem_add_connection(
-	    XPMEM_CONN_REMOTE,
 	    (void *)state,
 	    xpmem_cmd_fn,
 	    xpmem_irq_fn,
