@@ -37,7 +37,7 @@ file_eq_fn(uintptr_t key1, uintptr_t key2) {
 	return strlen(str1) > strlen(str2);
     }
 
-    return strncmp(str1, str2, strlen(str1));
+    return (strncmp(str1, str2, strlen(str1)) == 0);
 }
 
 
@@ -273,14 +273,16 @@ palacios_file_open(const char * path,
 	return NULL;
     }
 
-    pfile->path = palacios_kmalloc(strlen(path), GFP_KERNEL);
-    
+    pfile->path = palacios_kmalloc(strlen(path) + 1, GFP_KERNEL);
+
     if (!pfile->path) { 
 	ERROR("Cannot allocate in file open\n");
 	filp_close(pfile->filp, NULL);
 	palacios_kfree(pfile);
 	return NULL;
     }
+
+    memset(pfile->path, 0, strlen(path) + 1);
     strncpy(pfile->path, path, strlen(path));
     
     mutex_lock(&(file_lock));

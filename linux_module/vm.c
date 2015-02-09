@@ -514,6 +514,13 @@ out_err:
 
 int free_palacios_vm(struct v3_guest * guest) {
 
+    {
+	char proc_file[32] = {[0 ... 31] = 0};
+
+	snprintf(proc_file, 31, "v3-vm%d", MINOR(guest->vm_dev));
+
+	remove_proc_entry(proc_file, palacios_proc_dir);
+    }
 
     device_destroy(v3_class, guest->vm_dev);
 
