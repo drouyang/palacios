@@ -273,70 +273,6 @@ palacios_interrupt_cpu(
 	}
 }
 
-/**
- * Dispatches an interrupt to Palacios for handling.
- */
-static void
-palacios_dispatch_interrupt(
-	struct pt_regs *	regs,
-	unsigned int		vector
-) 
-{
-	struct v3_interrupt intr = {
-		.irq		= vector,
-		.error		= regs->orig_rax,
-		.should_ack	= 1,
-	};
-
-	v3_deliver_irq(irq_to_guest_map[vector], &intr);
-}
-
-/**
- * Instructs the kernel to forward the specified IRQ to Palacios.
- */
-static int
-palacios_hook_interrupt(
-	struct v3_vm_info *	vm,
-	unsigned int		vector
-)
-{
-	if (irq_to_guest_map[vector]) {
-		printk(KERN_WARNING
-		       "%s: Interrupt vector %u is already hooked.\n",
-		       __func__, vector);
-		return -1;
-	}
-
-	printk(KERN_DEBUG
-	       "%s: Hooking interrupt vector %u to vm %p.\n",
-	       __func__, vector, vm);
-
-	irq_to_guest_map[vector] = vm;
-
-	/*
-	 * NOTE: Normally PCI devices are supposed to be level sensitive,
-	 *       but we need them to be edge sensitive so that they are
-	 *       properly latched by Palacios.  Leaving them as level
-	 *       sensitive would lead to an interrupt storm.
-	 */
-	ioapic_set_trigger_for_vector(vector, ioapic_edge_sensitive);
-
-	set_idtvec_handler(vector, palacios_dispatch_interrupt);
-
-	return 0;
-}
-
-/**
- * Acknowledges an interrupt.
- */
-static int
-palacios_ack_interrupt(
-	int			vector
-) 
-{
-	lapic_ack_interrupt();
-	return 0;
-}
   
 /**
  * Returns the CPU frequency in kilohertz.
@@ -481,8 +417,6 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.free			= palacios_free,
 	.vaddr_to_paddr		= palacios_vaddr_to_paddr,
 	.paddr_to_vaddr		= palacios_paddr_to_vaddr,
-	.hook_interrupt		= palacios_hook_interrupt,
-	.ack_irq		= palacios_ack_interrupt,
 	.get_cpu_khz		= palacios_get_cpu_khz,
 	.yield_cpu		= palacios_yield_cpu,
 	.sleep_cpu		= palacios_sleep_cpu,

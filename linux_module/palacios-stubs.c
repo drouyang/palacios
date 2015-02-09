@@ -330,101 +330,7 @@ palacios_interrupt_cpu(struct v3_vm_info * vm,
     return;
 }
 
-/**
- * Dispatches an interrupt to Palacios for handling.
- */
-static void
-palacios_dispatch_interrupt(int              vector, 
-			    void           * dev,
-			    struct pt_regs * regs ) 
-{
-    struct v3_interrupt intr = {
-	.irq		= vector,
-	.error		= regs->orig_ax,
-	.should_ack	= 1,
-    };
-    
-    if (irq_to_guest_map[vector]) {
-	v3_deliver_irq(irq_to_guest_map[vector], &intr);
-    }
-    
-}
 
-/**
- * Instructs the kernel to forward the specified IRQ to Palacios.
- */
-static int
-palacios_hook_interrupt(struct v3_vm_info * vm,
-			unsigned int	    vector ) 
-{
-    v3_lnx_printk("hooking vector %d\n", vector);  	
-
-    if (irq_to_guest_map[vector]) {
-
-	WARNING("%s: Interrupt vector %u is already hooked.\n",
-		__func__, vector);
-	return -1;
-    }
-
-    DEBUG("%s: Hooking interrupt vector %u to vm %p.\n",
-	  __func__, vector, vm);
-
-    irq_to_guest_map[vector] = vm;
-
-    /*
-     * NOTE: Normally PCI devices are supposed to be level sensitive,
-     *       but we need them to be edge sensitive so that they are
-     *       properly latched by Palacios.  Leaving them as level
-     *       sensitive would lead to an interrupt storm.
-     */
-    //ioapic_set_trigger_for_vector(vector, ioapic_edge_sensitive);
-    
-    //set_idtvec_handler(vector, palacios_dispatch_interrupt);
-    if (vector < 32) {
-	ERROR("unexpected vector for hooking\n");
-	return -1;
-    } else {
-	int device_id = 0;		
-	int flag      = 0;
-	int error     = 0;
-		
-	DEBUG("hooking vector: %d\n", vector);		
-
-	if (vector == 32) {
-	    flag = IRQF_TIMER;
-	} else {
-	    flag = IRQF_SHARED;
-	}
-
-	error = request_irq((vector - 32),
-			    (void *)palacios_dispatch_interrupt,
-			    flag,
-			    "interrupt_for_palacios",
-			    &device_id);
-	
-	if (error) {
-	    ERROR("error code for request_irq is %d\n", error);
-	    ERROR("request vector %d failed", vector);
-	    return -1;
-	}
-    }
-	
-    return 0;
-}
-
-
-
-/**
- * Acknowledges an interrupt.
- */
-static int
-palacios_ack_interrupt(int vector) 
-{
-    ack_APIC_irq(); 
-    DEBUG("Pretending to ack interrupt, vector=%d\n", vector);
-    return 0;
-}
-  
 /**
  * Returns the CPU frequency in kilohertz.
  */
@@ -555,8 +461,6 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.free			= palacios_free,
 	.vaddr_to_paddr		= palacios_vaddr_to_paddr,
 	.paddr_to_vaddr		= palacios_paddr_to_vaddr,
-	.hook_interrupt		= palacios_hook_interrupt,
-	.ack_irq		= palacios_ack_interrupt,
 	.get_cpu_khz		= palacios_get_cpu_khz,
 	.yield_cpu		= palacios_yield_cpu,
 	.sleep_cpu		= palacios_sleep_cpu,

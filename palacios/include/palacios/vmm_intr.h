@@ -32,7 +32,6 @@ typedef enum {V3_INVALID_INTR, V3_EXTERNAL_IRQ, V3_VIRTUAL_IRQ, V3_SOFTWARE_INTR
 
 struct v3_core_info;
 struct v3_vm_info;
-struct v3_interrupt;
 
 
 struct v3_irq {
@@ -44,10 +43,6 @@ struct v3_irq {
 
 
 
-struct v3_irq_hook {
-    int (*handler)(struct v3_vm_info * vm, struct v3_interrupt * intr, void * priv_data);
-    void * priv_data;
-};
 
 #define MAX_IRQ 256
 
@@ -131,14 +126,6 @@ int v3_injecting_intr(struct v3_core_info * core, uint_t intr_num, v3_intr_type_
   int end_irq(struct vm_intr * intr, int irq);
 */
 
-
-
-int v3_hook_irq(struct v3_vm_info * vm, 
-		uint_t irq,
-		int (*handler)(struct v3_vm_info * vm, struct v3_interrupt * intr, void * priv_data),
-		void  * priv_data);
-
-int v3_hook_passthrough_irq(struct v3_vm_info * vm, uint_t irq);
 
 
 

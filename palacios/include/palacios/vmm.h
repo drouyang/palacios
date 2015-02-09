@@ -188,25 +188,6 @@ struct v3_core_info;
 
 
 
-#define V3_Hook_Interrupt(vm, irq) ({					\
-	    int ret = 0;						\
-	    extern struct v3_os_hooks * os_hooks;			\
-	    if ((os_hooks) && (os_hooks)->hook_interrupt) {		\
-		ret = (os_hooks)->hook_interrupt(vm, irq);		\
-	    }								\
-	    ret;							\
-	})								\
-	
-
-#define V3_ACK_IRQ(irq)						\
-    do {							\
-	extern struct v3_os_hooks * os_hooks;			\
-	if ((os_hooks) && (os_hooks)->ack_irq) {		\
-	    (os_hooks)->ack_irq(irq);				\
-	}							\
-    } while (0)
-
-
 
 
 
@@ -375,9 +356,6 @@ struct v3_os_hooks {
     void *(*paddr_to_vaddr)(void * addr);
     void *(*vaddr_to_paddr)(void * addr);
 
-    int (*hook_interrupt)(struct v3_vm_info * vm, unsigned int irq);
-    int (*ack_irq)(int irq);
-
     unsigned int (*get_cpu_khz)(void);
 
     void (*yield_cpu)(void); 
@@ -407,17 +385,6 @@ struct v3_os_hooks {
   
 
 
-
-/*
- * Virtual IRQ state - each IRQ that is injected is defined  
- */
-struct v3_interrupt {
-    unsigned int irq;
-    unsigned int error;
-
-    unsigned int should_ack;  /* Should the vmm ack this interrupt, or will
-    			       * the host OS do it? */
-};
 
 
 /* 
@@ -455,7 +422,6 @@ int v3_move_vm_core(struct v3_vm_info * vm, int vcore_id, int target_cpu);
 
 int v3_free_vm(struct v3_vm_info * vm);
 
-int v3_deliver_irq(struct v3_vm_info * vm, struct v3_interrupt * intr);
 
 int v3_add_cpu(int cpu_id);
 int v3_remove_cpu(int cpu_id);
