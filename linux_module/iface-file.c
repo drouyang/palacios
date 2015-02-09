@@ -319,14 +319,24 @@ static void
 file_last_close(struct kref * kref)
 {
     struct palacios_file * pfile = container_of(kref, struct palacios_file, refcount);
-
+    uintptr_t ret = 0;
+	
    
     mutex_lock(&file_lock);
     {
+
 	list_del(&(pfile->file_node));
-	palacios_htable_remove(file_table, (uintptr_t)(pfile->path), 0);
+	ret = palacios_htable_remove(file_table, (uintptr_t)(pfile->path), 0);
+
     }
     mutex_unlock(&file_lock);
+
+    if (ret == 0) {
+	ERROR("Did not remove file from file pointer cache (%s)\n", pfile->path);
+	ERROR("You now have a memory leak, and the file will never close\n");
+	ERROR("Reboot is necessary\n");
+	return;
+    }
 
     filp_close(pfile->filp, NULL);
     palacios_kfree(pfile->path);    
