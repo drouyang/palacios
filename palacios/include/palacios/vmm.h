@@ -407,9 +407,9 @@ struct v3_os_hooks {
   
 
 
+
 /*
- *
- * This is the interrupt state that the VMM's interrupt handlers need to see
+ * Virtual IRQ state - each IRQ that is injected is defined  
  */
 struct v3_interrupt {
     unsigned int irq;
@@ -418,6 +418,16 @@ struct v3_interrupt {
     unsigned int should_ack;  /* Should the vmm ack this interrupt, or will
     			       * the host OS do it? */
 };
+
+
+/* 
+ * Memory region definition
+ */
+struct v3_guest_mem_region {
+    uint64_t start;
+    uint64_t end;
+};
+
 
 
 
@@ -449,5 +459,14 @@ int v3_deliver_irq(struct v3_vm_info * vm, struct v3_interrupt * intr);
 
 int v3_add_cpu(int cpu_id);
 int v3_remove_cpu(int cpu_id);
+
+
+/* 
+ * Returns an array of v3_guest_mem_regions specifying a VM's base memory region layout
+ *  - implemented in vmm_mem.c
+ */
+struct v3_guest_mem_region * v3_get_guest_memory_regions(struct v3_vm_info * vm, int * num_regions);
+
+
 
 #endif

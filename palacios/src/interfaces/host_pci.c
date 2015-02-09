@@ -38,32 +38,6 @@ V3_Init_Host_PCI(struct v3_host_pci_hooks * hooks)
 }
 
 
-/* This is ugly and should be abstracted out to a function in the memory manager */
-int 
-V3_get_guest_mem_region(struct v3_vm_info          * vm, 
-			struct v3_guest_mem_region * region,
-			uint64_t                     gpa) 
-{
-    struct v3_mem_region * reg = NULL;
-
-    memset(region, 0, sizeof(struct v3_guest_mem_region));
-
-    if (!vm) {
-	PrintError("Tried to get a mem region from a NULL vm pointer\n");
-	return 0;
-    }
-
-    reg = v3_get_base_region(vm, gpa);
-
-    if (reg == NULL) {
-	return 0;
-    }
-
-    region->start = reg->host_addr;
-    region->end   = reg->host_addr + (reg->guest_end - reg->guest_start);
-
-    return 1;
-}
 
 
 struct v3_host_pci_dev * 

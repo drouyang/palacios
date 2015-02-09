@@ -294,9 +294,12 @@ request_pci_dev(char * url,
 	
 	
 	if (v3_dev->iface == IOMMU) {
-	    struct v3_guest_mem_region region;
-	    uintptr_t gpa   = 0;
-	    int       flags = 0;
+	    struct v3_guest_mem_region * regs = NULL;
+	    uintptr_t gpa      = 0;
+	    int       flags    = 0;
+	    int       num_regs = 0;
+	    int       map_ret  = 0;
+	    int       i        = 0;
 	    
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,43)
 	    host_dev->hw_dev.iommu_domain = iommu_domain_alloc();
@@ -325,13 +328,14 @@ request_pci_dev(char * url,
 	    }
 	    
 	    
+	    regs = v3_get_guest_memory_regions(v3_ctx, &num_regs);
+
 	    
-	    while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
-		
+	    for (i = 0; i < num_regs; i++) {
 		v3_lnx_printk("Memory region: (GPA=%p), start=%p, end=%p\n", 
 			      (void *)gpa, 
-			      (void *)region.start,
-			      (void *)region.end);
+			      (void *)regs[i].start,
+			      (void *)regs[i].end);
 
 
 	    
@@ -339,13 +343,13 @@ request_pci_dev(char * url,
 		/* This version could be wrong */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,38) 
 		// Guest VAs start at zero and go to end of memory
-		iommu_map_range(host_dev->hw_dev.iommu_domain, 0, region.start, (region.end - region.start), flags);
+		iommu_map_range(host_dev->hw_dev.iommu_domain, 0, regs[i].start, (regs[i].end - regs[i].start), flags);
 #else 
 		/* Linux actually made the interface worse... Now you can only map memory in powers of 2 (meant to only be pages...) */
 		{	
-		    u64 size      = region.end - region.start;
+		    u64 size      = regs[i].end - regs[i].start;
 		    u32 page_size = 512 * 4096; // assume large 64bit pages (2MB)
-		    u64 hpa       = region.start;
+		    u64 hpa       = regs[i].start;
 		
 
 		    v3_lnx_printk("Memory region: GPA=%p, HPA=%p, size=%p\n", 
@@ -371,7 +375,7 @@ request_pci_dev(char * url,
 				  (void *)hpa, 
 				  get_order(page_size));
 
-			    return NULL;
+			    break;
 			}
 #else 
 			// JRL: Linux Cannot decide whether they want to specify mappings by order or by page size. So now we're back to page size.
@@ -384,7 +388,7 @@ request_pci_dev(char * url,
 				  (void *)hpa, 
 				  get_order(page_size));
 
-			    return NULL;
+			    break;
 			}
 #endif
 		    
@@ -396,8 +400,14 @@ request_pci_dev(char * url,
 		    } while (size > 0);
 		}
 #endif
-	    
 
+	    }
+
+	    palacios_kfree(regs);
+	    
+	    if (map_ret == -1) {
+		ERROR("Could not Map PCI device into IOMMU: NEED TO CLEANUP THE STATE\n");
+		return NULL;
 	    }
 
 
@@ -486,12 +496,18 @@ release_pci_dev(struct v3_host_pci_dev * v3_dev)
 
     /* Unmap Device from IOMMU */
     if (v3_dev->iface == IOMMU) {
-	struct v3_guest_mem_region region;
-	uintptr_t gpa = 0;
+	struct v3_guest_mem_region * regs = NULL;
+
+	int       num_regs = 0;
+	uintptr_t gpa      = 0;
+	int       i        = 0;
 
 	
-	while (V3_get_guest_mem_region(host_dev->v3_ctx, &region, gpa)) {
-	    u64 size      = region.end - region.start;
+	regs = v3_get_guest_memory_regions(host_dev->v3_ctx, &num_regs);
+
+
+	for (i = 0; i < num_regs; i++) {
+	    u64 size      = regs[i].end - regs[i].start;
 	    u32 page_size = 512 * 4096;
 
 
@@ -508,7 +524,8 @@ release_pci_dev(struct v3_host_pci_dev * v3_dev)
 	    } while (size > 0);
 	}
 
-    
+	palacios_kfree(regs);
+
 	/* Free IOMMU domain */
 	iommu_detach_device(host_dev->hw_dev.iommu_domain, &(dev->dev));
 	iommu_domain_free(host_dev->hw_dev.iommu_domain);

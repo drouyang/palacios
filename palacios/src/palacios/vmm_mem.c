@@ -60,6 +60,35 @@ v3_get_base_region(struct v3_vm_info * vm,
 
 
 
+struct v3_guest_mem_region * 
+v3_get_guest_memory_regions(struct v3_vm_info * vm, 
+			    int               * num_regions)
+{
+    struct v3_mem_map          * map     = &(vm->mem_map);
+    struct v3_guest_mem_region * reg_arr = NULL;
+    int i = 0;
+    
+    *num_regions = 0;
+
+    reg_arr = V3_Malloc(sizeof(struct v3_guest_mem_region) *  map->num_base_blocks);
+
+
+    if (reg_arr == NULL) {
+	PrintError("Could not allocate guest_mem_region array\n");
+	return NULL;
+    }
+
+    for (i = 0; i < map->num_base_blocks; i++) {
+	struct v3_mem_region * base_reg = &(map->base_regions[i]);
+
+	reg_arr[i].start = base_reg->host_addr;
+	reg_arr[i].end   = base_reg->host_addr + (base_reg->guest_end - base_reg->guest_start);
+    }
+
+    *num_regions = map->num_base_blocks;
+    return reg_arr;
+}
+
 static int 
 mem_offset_hypercall(struct v3_core_info * core, 
 		     uint_t                hcall_id, 

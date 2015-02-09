@@ -442,27 +442,32 @@ host_pci_request_dev(char * url,
 	/* Map device with IOMMU (Done in Linux via LCALLs) */
 	{
 
-		struct pci_iommu_map_lcall iommu_lcall;
-		struct v3_guest_mem_region region;
-		u64 gpa = 0;
+		struct pci_iommu_map_lcall   iommu_lcall;
+		struct v3_guest_mem_region * regs = NULL;
+		int map_ret  = 0;
+		int num_regs = 0;
+		u64 gpa      = 0;
+		int i        = 0;
 
 		iommu_lcall.lcall.lcall    = PISCES_LCALL_IOMMU_MAP;
 		iommu_lcall.lcall.data_len = (sizeof(struct pci_iommu_map_lcall) - 
 					      sizeof(struct pisces_lcall));
 		
-		while (V3_get_guest_mem_region(v3_ctx, &region, gpa)) {
+		regs = v3_get_guest_memory_regions(v3_ctx, &num_regs);
+
+		for (i = 0; i < num_regs; i++) {
 			
 			struct pisces_lcall_resp * lcall_resp = NULL;
 			int status = 0;
 				
 			printk("Memory region (GPA:%p), start=%p, end=%p\n",
 			       (void *)gpa,
-			       (void *)region.start,
-			       (void *)region.end);
+			       (void *)regs[i].start,
+			       (void *)regs[i].end);
 
 			strncpy(iommu_lcall.name, host_dev->name, 128);
-			iommu_lcall.region_start = region.start;
-			iommu_lcall.region_end   = region.end;
+			iommu_lcall.region_start = regs[i].start;
+			iommu_lcall.region_end   = regs[i].end;
 			iommu_lcall.gpa          = gpa;
 			
 			pisces_lcall_exec((struct pisces_lcall       *)&iommu_lcall,
@@ -472,11 +477,21 @@ host_pci_request_dev(char * url,
 			kmem_free(lcall_resp);
 
 			if (status != 0) {
-				return NULL;
+			    printk("Error: IOMMU_MAP LCALL returned error (%d)\n", status);
+			    map_ret = -1;
+			    break;
 			}
 			
-			gpa += (region.end - region.start);
+			gpa += (regs[i].end - regs[i].start);
 		}
+
+		kmem_free(regs);
+
+		if (map_ret == -1) {
+		    printk("Error: Could not map PCI address space. CLEANUP IS NEEDED\n");
+		    return NULL;
+		}
+
 	}
 
 	host_dev->v3_ctx = v3_ctx;
@@ -525,27 +540,31 @@ host_pci_release_dev(struct v3_host_pci_dev * v3_dev)
 	/* Unmap IOMMU */
 	{
 
-		struct pci_iommu_unmap_lcall iommu_lcall;
-		struct v3_guest_mem_region region;
-		u64 gpa = 0;
+		struct pci_iommu_unmap_lcall   iommu_lcall;
+		struct v3_guest_mem_region   * regs = NULL;
+		int map_ret  = 0;
+		int num_regs = 0;
+		u64 gpa      = 0;
+		int i        = 0;
 
 		iommu_lcall.lcall.lcall    = PISCES_LCALL_IOMMU_UNMAP;
 		iommu_lcall.lcall.data_len = (sizeof(struct pci_iommu_unmap_lcall) - 
 					      sizeof(struct pisces_lcall));
 		
-		while (V3_get_guest_mem_region(host_dev->v3_ctx, &region, gpa)) {
-			
+		regs = v3_get_guest_memory_regions(host_dev->v3_ctx, &num_regs);
+
+		for (i = 0; i < num_regs; i++) {
 			struct pisces_lcall_resp * lcall_resp = NULL;
 			int status = 0;
 				
 			printk("Unmapping Memory region (GPA:%p), start=%p, end=%p\n",
 			       (void *)gpa,
-			       (void *)region.start,
-			       (void *)region.end);
+			       (void *)regs[i].start,
+			       (void *)regs[i].end);
 
 			strncpy(iommu_lcall.name, host_dev->name, 128);
-			iommu_lcall.region_start = region.start;
-			iommu_lcall.region_end   = region.end;
+			iommu_lcall.region_start = regs[i].start;
+			iommu_lcall.region_end   = regs[i].end;
 			iommu_lcall.gpa          = gpa;
 			
 			pisces_lcall_exec((struct pisces_lcall       *)&iommu_lcall,
@@ -555,10 +574,19 @@ host_pci_release_dev(struct v3_host_pci_dev * v3_dev)
 			kmem_free(lcall_resp);
 
 			if (status != 0) {
-				return -1;
+				map_ret = -1;
+				printk("Error: IOMMU_UNMAP LCALL returned error (%d)\n", status);
+				break;
 			}
 			
-			gpa += (region.end - region.start);
+			gpa += (regs[i].end - regs[i].start);
+		}
+
+		kmem_free(regs);
+
+		if (map_ret != 0) {
+		    printk("Error: Could not unmap guest memory from IOMMU. CLEANUP IS NEEDED\n");
+		    return -1;
 		}
 	}
 
