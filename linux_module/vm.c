@@ -17,6 +17,7 @@
 #include <linux/spinlock.h>
 #include <linux/rbtree.h>
 #include <linux/module.h>
+#include <linux/version.h>
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_host_events.h>
@@ -370,6 +371,62 @@ static struct file_operations v3_vm_fops = {
 };
 
 
+/* VM PROC FILE */
+
+
+/* This is OK, because at least for now there is no way we will exceed 4KB of data in the file. 
+ * If we ever do, we will need to implement a full seq_file implementation
+ */
+static int 
+vm_seq_show(struct seq_file * s, 
+	    void            * v) 
+{
+    struct v3_guest            * guest = (struct v3_guest *)(s->private);
+    struct v3_guest_mem_region * regs  = NULL;
+
+    int num_regs = 0;
+    int i        = 0;
+
+    regs = v3_get_guest_memory_regions(guest->v3_ctx, &num_regs);
+	
+    seq_printf(s, "BASE MEMORY REGIONS\n");
+
+    for (i = 0; i < num_regs; i++) {
+	seq_printf(s, "\t%llx - %llx  (size=%lluMB)\n", regs[i].start, regs[i].end, (regs[i].end - regs[i].start) / (1024 * 1024));
+    }
+
+
+    return 0;
+}
+
+
+
+
+static int 
+vm_proc_open(struct inode * inode, 
+	     struct file  * filp) 
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+    void * data = PDE(inode)->data;
+#else 
+    void * data = PDE_DATA(inode);
+#endif
+
+    return single_open(filp, vm_seq_show, data);
+}
+
+
+static const struct file_operations vm_proc_ops = {
+    .owner   = THIS_MODULE,
+    .open    = vm_proc_open, 
+    .read    = seq_read, 
+    .llseek  = seq_lseek,
+    .release = single_release,
+};
+
+/*** END PROC File functions */
+
+
 extern u32 pg_allocs;
 extern u32 pg_frees;
 extern u32 mallocs;
@@ -395,7 +452,7 @@ int create_palacios_vm(struct v3_guest * guest)  {
     cdev_init(&(guest->cdev), &v3_vm_fops);
 
     guest->cdev.owner = THIS_MODULE;
-    guest->cdev.ops = &v3_vm_fops;
+    guest->cdev.ops   = &v3_vm_fops;
 
 
     v3_lnx_printk("Adding VM device\n");
@@ -411,10 +468,37 @@ int create_palacios_vm(struct v3_guest * guest)  {
         goto out_err2;
     }
 
-    v3_lnx_printk("VM created at /dev/v3-vm%d\n", MINOR(guest->vm_dev));
 
+    {
+	struct proc_dir_entry * entry = NULL;
+	char proc_file[32] = {[0 ... 31] = 0};
+
+	snprintf(proc_file, 31, "v3-vm%d", MINOR(guest->vm_dev));
+
+    
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+	entry = create_proc_entry(proc_file, 0444, palacios_proc_dir);
+    
+	if (entry) {
+	    entry->proc_fops = &vm_proc_ops;
+	    entry->data      = guest;
+	    v3_lnx_printk("/proc/v3vee/v3-vm%d successfully created\n", MINOR(guest->vm_dev));
+	}
+#else 
+	entry = proc_create_data(proc_file, 0444, palacios_proc_dir, &vm_proc_ops, guest);
+#endif
+    
+	if (!entry) {
+	    ERROR("Could not create proc entry (%s)\n", proc_file);
+	    goto out_err3;;
+	}
+    }
+    v3_lnx_printk("VM created at /dev/v3-vm%d\n", MINOR(guest->vm_dev));
+    
     return 0;
 
+out_err3:
+    device_destroy(v3_class, guest->vm_dev);
 out_err2:
     cdev_del(&(guest->cdev));
 out_err1:
@@ -430,15 +514,14 @@ out_err:
 
 int free_palacios_vm(struct v3_guest * guest) {
 
-    if (v3_free_vm(guest->v3_ctx) < 0) { 
-	return -1;
-    }
 
     device_destroy(v3_class, guest->vm_dev);
 
     cdev_del(&(guest->cdev));
 
     free_guest_ctrls(guest);
+
+    v3_free_vm(guest->v3_ctx);
 
     deinit_vm_extensions(guest);
 

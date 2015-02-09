@@ -255,8 +255,9 @@ vm_seq_show(struct seq_file * s,
 
     for (i = 0; i < MAX_VMS; i++) {
 	if (guest_map[i]) {
-	    seq_printf(s, "/dev/v3-vm%d\t%s\n", 
-		       i, guest_map[i]->name);
+	    seq_printf(s, "%s: /dev/v3-vm%d\n", 
+		       guest_map[i]->name, i);
+
 	}
     }
 
