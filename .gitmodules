@@ -1,3 +1,0 @@
-[submodule "linux_usr/petlib"]
-	path = linux_usr/petlib
-	url = ssh://petos@essex.cs.pitt.edu///home/petos/petlib
