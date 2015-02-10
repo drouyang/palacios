@@ -221,60 +221,39 @@ parse_config(void * cfg_blob)
 }
 
 
-static inline uint32_t 
-get_alignment(char * align_str) 
-{
-    // default is 4KB alignment
-    uint32_t alignment = PAGE_SIZE_4KB;
-
-    if (align_str != NULL) {
-	if (strcasecmp(align_str, "2MB") == 0) {
-	    alignment = PAGE_SIZE_2MB;
-	} else if (strcasecmp(align_str, "4MB") == 0) {
-	    alignment = PAGE_SIZE_4MB;
-	}
-    }
-    
-#ifndef V3_CONFIG_ALIGNED_PG_ALLOC
-    if (alignment != PAGE_SIZE_4KB) {
-	PrintError("Aligned page allocations are not supported in this host (requested alignment=%d)\n", alignment);
-	PrintError("Ignoring alignment request\n");
-    }
-#endif 
-
-    return alignment;
-}
 
 
 static int 
 pre_config_vm(struct v3_vm_info * vm, 
 	      v3_cfg_tree_t     * vm_cfg) 
 {
-    char * memory_str      = v3_cfg_val(vm_cfg, "memory");
+    
     char * schedule_hz_str = v3_cfg_val(vm_cfg, "schedule_hz");
     char * vm_class        = v3_cfg_val(vm_cfg, "class");
-    char * align_str       = v3_cfg_val(v3_cfg_subtree(vm_cfg, "memory"), "alignment");
+
+    char * mem_size_str    = v3_cfg_val(v3_cfg_subtree(vm_cfg, "memory"), "size");
+
     uint32_t sched_hz      = 100; 	// set the schedule frequency to 100 HZ
 
-
-    if (!memory_str) {
-	PrintError("Memory is a required configuration parameter\n");
+    if (!mem_size_str) {
+	PrintError("Memory size is a required configuration parameter\n");
+	PrintError("\n");
+	PrintError("<<<=================================================>>\n");
+	PrintError("<<<=================================================>>\n");
+	PrintError("\n");
+	PrintError("Note: The memory options have changed. Please update your xml file.\n");
+	PrintError("Change: <memory>XXX</memory> to <memory size=\"XXX\" />\n");
+	PrintError("\n");
+	PrintError("<<<=================================================>>\n");
+	PrintError("<<<=================================================>>\n");
+	PrintError("\n");
 	return -1;
     }
     
-    PrintDebug("Memory=%s\n", memory_str);
-    if (align_str) {
-	 PrintDebug("Alignment=%s\n", align_str);
-    } else {
-	 PrintDebug("Alignment defaulted to 4KB.\n");
-    }
+    PrintDebug("Memory size=%s\n", mem_size_str);
 
-    // Amount of ram the Guest will have, always in MB
-    vm->mem_size  = (addr_t)atoi(memory_str) * 1024 * 1024;
-    vm->mem_align = get_alignment(align_str);
-
-
-    PrintDebug("Alignment for %lu bytes of memory computed as 0x%x\n", vm->mem_size, vm->mem_align);
+    vm->mem_size  = (addr_t)atoi(mem_size_str) * 1024 * 1024;     /* Memory sizes should always be specified in MB */
+    vm->mem_align =  PAGE_SIZE_2MB;                               /* Alignment shouldn't be an issue anymore, but leave it in for other OSes */
 
     if (strcasecmp(vm_class, "PC") == 0) {
 	vm->vm_class = V3_PC_VM;

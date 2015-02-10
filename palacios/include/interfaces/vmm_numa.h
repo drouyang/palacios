@@ -28,6 +28,7 @@
 #include <palacios/vmm_types.h>
 #include <palacios/vm.h>
 
+int v3_numa_get_node_cnt(void);
 int v3_numa_gpa_to_node(struct v3_vm_info * vm, addr_t gpa);
 int v3_numa_hpa_to_node(addr_t hpa);
 int v3_numa_cpu_to_node(uint32_t cpu);
@@ -37,6 +38,7 @@ int v3_numa_get_distance(uint32_t node1, uint32_t node2);
 
 
 struct v3_numa_hooks {
+    int (*get_num_nodes)(void);
     int (*cpu_to_node)(int phys_cpu_id);
     int (*phys_addr_to_node)(void * addr);
     int (*get_distance)(int node1, int node2);

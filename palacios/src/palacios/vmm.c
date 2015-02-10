@@ -28,6 +28,8 @@
 #include <palacios/vmm_timeout.h>
 #include <palacios/vmm_options.h>
 
+#include <interfaces/vmm_numa.h>
+
 
 #ifdef V3_CONFIG_SVM
 #include <palacios/svm.h>
@@ -554,6 +556,7 @@ v3_create_vm(void * cfg,
 	    PrintDebug("run: core=%u, func=0x%p, arg=0x%p, name=%s\n",
 		       core_idx, start_core, core, core->exec_name);
 
+	    core->numa_id        = v3_numa_cpu_to_node(core_idx);
 	    core->pcpu_id        = core_idx;
 	    core->core_thread    = V3_CREATE_THREAD_ON_CPU(core_idx, start_core, core, core->exec_name);
 

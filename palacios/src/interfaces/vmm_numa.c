@@ -75,3 +75,14 @@ int v3_numa_get_distance(uint32_t node1, uint32_t node2) {
 
     return numa_hooks->get_distance(node1, node2);
 }
+
+
+int
+v3_numa_get_node_cnt(void)
+{
+    if (!numa_hooks) {
+	return 1;
+    }
+
+    return numa_hooks->get_num_nodes();
+}

@@ -133,29 +133,33 @@ static int
 gpa_to_node_from_cfg(struct v3_vm_info * vm, 
 		     addr_t              gpa) 
 {
-    v3_cfg_tree_t * layout_cfg  = v3_cfg_subtree(vm->cfg_data->cfg, "mem_layout");
-    v3_cfg_tree_t * region_desc = v3_cfg_subtree(layout_cfg,        "region");
+    v3_cfg_tree_t * mem_cfg     = v3_cfg_subtree(vm->cfg_data->cfg, "memory");
+    v3_cfg_tree_t * region_desc = v3_cfg_subtree(mem_cfg,           "region");
+
+    addr_t addr_iter = 0;
 
     while (region_desc) {
-	char * start_addr_str = v3_cfg_val(region_desc, "start_addr");
-	char * end_addr_str   = v3_cfg_val(region_desc, "end_addr");
-	char * node_id_str    = v3_cfg_val(region_desc, "node");
+	char * node_str = v3_cfg_val(region_desc, "node");
+	char * size_str = v3_cfg_val(region_desc, "size");
 
-	addr_t start_addr = 0;
-	addr_t end_addr   = 0;
-	int    node_id    = 0;
-	
-	if ((!start_addr_str) || (!end_addr_str) || (!node_id_str)) {
-	    PrintError("Invalid memory layout in configuration\n");
+	if (!size_str) {
+	    PrintError("Invalid region config: Memory size not specified.\n");
 	    return -1;
 	}
-	
-	start_addr = atox(start_addr_str);
-	end_addr   = atox(end_addr_str);
-	node_id    = atoi(node_id_str);
 
-	if ((gpa >= start_addr) && (gpa < end_addr)) {
-	    return node_id;
+	{
+	    addr_t start_addr = addr_iter;
+	    addr_t end_addr   = start_addr + (atoi(size_str) * (1024 * 1024));
+	    int    node_id    = -1;
+	
+	    if (node_str) {
+		node_id = atoi(node_str);
+	    }
+	    	    
+	    if ((gpa >= start_addr) && (gpa < end_addr)) {
+		return node_id;
+	    }
+
 	}
 
 	region_desc = v3_cfg_next_branch(region_desc);
@@ -192,28 +196,16 @@ v3_init_mem_map(struct v3_vm_info * vm)
 
     for (i = 0; i < map->num_base_blocks; i++) {
 	struct v3_mem_region * region  = &(map->base_regions[i]);
-	int                    node_id = -1;
 
-	/* 
-	 * There is an underlying region that contains all of the guest memory
-	 * 
-	 * 2MB page alignment needed for 2MB hardware nested paging
-	 */
 	// PrintDebug("Mapping %d pages of memory (%u bytes)\n", (int)mem_pages, (uint_t)core->mem_size);
 	region->guest_start = MEM_BLOCK_SIZE_BYTES * i;
 	region->guest_end   = region->guest_start + MEM_BLOCK_SIZE_BYTES;
-
-	/* 
-	 * We assume that the xml config was smart enough to align the layout to the block size
-	 * If they didn't we're going to ignore their settings 
-	 *     and use whatever node the first byte of the block is assigned to
-	 */
-	node_id = gpa_to_node_from_cfg(vm, region->guest_start);
+	region->numa_id     = gpa_to_node_from_cfg(vm, region->guest_start);
 	
-	V3_Print("Allocating block %d on node %d\n", i, node_id);
+	V3_Print("Allocating block %d on node %d\n", i, region->numa_id);
 	
-	if (node_id != -1) {
-	    region->host_addr = (addr_t)V3_AllocPagesNode(block_pages, node_id);
+	if (region->numa_id != -1) {
+	    region->host_addr = (addr_t)V3_AllocPagesNode(block_pages, region->numa_id);
 	} else {
 	    region->host_addr = (addr_t)V3_AllocPages(block_pages);
 	}

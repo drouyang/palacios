@@ -45,6 +45,7 @@ phys_ptr_to_node(void * phys_ptr)
 }
 
 struct v3_numa_hooks numa_hooks = {
+    .get_num_nodes     = numa_num_nodes,
     .cpu_to_node       = numa_cpu_to_node,
     .phys_addr_to_node = phys_ptr_to_node,
     .get_distance      = numa_get_distance,

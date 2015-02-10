@@ -24,6 +24,8 @@
 #include <palacios/vmm.h>
 #include <palacios/vm.h>
 
+#include <interfaces/vmm_numa.h>
+
 
 #define FW_CFG_CTL_PORT         0x510
 #define FW_CFG_DATA_PORT        0x511
@@ -365,8 +367,6 @@ v3_fw_cfg_init(struct v3_vm_info * vm)
 
     /* NUMA layout */
     {
-	v3_cfg_tree_t * layout_cfg    = v3_cfg_subtree(vm->cfg_data->cfg, "mem_layout");
-	char          * num_nodes_str = v3_cfg_val(layout_cfg, "vnodes");
 	int num_nodes = 0;
 	
 	/* locations in fw_cfg NUMA array for each info region. */
@@ -374,11 +374,10 @@ v3_fw_cfg_init(struct v3_vm_info * vm)
 	int core_offset = 1;
 	int mem_offset  = 1 + vm->num_cores;
 	
-	if (num_nodes_str) {
-	    num_nodes = atoi(num_nodes_str);
-	}
+	/* Get number of physical NUMA nodes */
+	num_nodes = v3_numa_get_node_cnt();;
 
-	if (num_nodes > 0) {
+	if (num_nodes > 1) {
 	    uint64_t * numa_fw_cfg = NULL;
 	    int i = 0;
 
@@ -398,14 +397,7 @@ v3_fw_cfg_init(struct v3_vm_info * vm)
 	    
 	    // Next region is array of core->node mappings
 	    for (i = 0; i < vm->num_cores; i++) {
-		char * vnode_str = v3_cfg_val(vm->cores[i].core_cfg_data, "vnode");
-		
-		if (vnode_str == NULL) {
-		    // if no cpu was specified then NUMA layout is randomized, and we're screwed...
-		    numa_fw_cfg[core_offset + i] = 0;
-		} else {
-		    numa_fw_cfg[core_offset + i] = (uint64_t)atoi(vnode_str);
-		}
+		numa_fw_cfg[core_offset + i] = vm->cores[i].numa_id;
 	    }
 
 
@@ -417,36 +409,48 @@ v3_fw_cfg_init(struct v3_vm_info * vm)
 	     *     The array only stores the x,y,... values, indexed by the node ID
 	     *     We should probably fix this, but that will require modifications to SEABIOS
 	     * 
-	     *
-	     * For now we will assume that the xml data is set accordingly, so we will just walk through the mem regions specified there.
-	     *   NOTE: This will overwrite configurations if multiple xml regions are defined for each node
 	     */
 
 	    {
-		v3_cfg_tree_t * region_desc = v3_cfg_subtree(layout_cfg, "region");
+		v3_cfg_tree_t * mem_cfg     = v3_cfg_subtree(vm->cfg_data->cfg, "memory");
+		v3_cfg_tree_t * region_desc = v3_cfg_subtree(mem_cfg,           "region");
+
 		
-		while (region_desc) {
-		    char * start_addr_str = v3_cfg_val(region_desc, "start_addr");
-		    char * end_addr_str   = v3_cfg_val(region_desc, "end_addr");
-		    char * vnode_id_str   = v3_cfg_val(region_desc, "vnode");
-		    
-		    addr_t start_addr = 0;
-		    addr_t end_addr   = 0;
-		    int vnode_id      = 0;
+		if (!region_desc) {
+		    // one large region in numa node 0
+		    numa_fw_cfg[mem_offset + 0] = vm->mem_size;
+		} else {
 
-		    if ((!start_addr_str) || (!end_addr_str) || (!vnode_id_str)) {
-			PrintError("Invalid memory layout in configuration\n");
-			V3_Free(numa_fw_cfg);
-			return -1;
+		    addr_t tmp_start = 0;
+		    addr_t tmp_end   = 0;
+		    int    node_iter = 0;
+
+		    while (region_desc) {
+			char   * node_str = v3_cfg_val(region_desc, "node");
+			char   * size_str = v3_cfg_val(region_desc, "size");
+			uint32_t reg_size = atoi(size_str) * (1024 * 1024);
+			
+
+
+			if ((node_str) && (atoi(node_str) != node_iter)) {
+			    int node_id  = atoi(node_str);
+
+			    if (atoi(node_str) < node_iter) {
+				PrintError("NUMA interleaving is not supported\n");
+			    } else {
+				numa_fw_cfg[mem_offset + node_iter] = (tmp_end - tmp_start);
+
+				tmp_start = tmp_end;
+				node_iter = node_id;
+			    }
+			}
+			
+			tmp_end += reg_size;
+			
+			region_desc = v3_cfg_next_branch(region_desc);
 		    }
-		    
-		    start_addr = atox(start_addr_str);
-		    end_addr   = atox(end_addr_str);
-		    vnode_id   = atoi(vnode_id_str);
-		    
-		    numa_fw_cfg[mem_offset + vnode_id] = end_addr - start_addr;
 
-		    region_desc = v3_cfg_next_branch(region_desc);
+		    numa_fw_cfg[mem_offset + node_iter] = (tmp_end - tmp_start);
 		}
 	    }
 
