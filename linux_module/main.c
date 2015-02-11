@@ -36,11 +36,12 @@
 MODULE_LICENSE("GPL");
 
 // Module parameter
-int cpu_list[NR_CPUS] = {[0 ... NR_CPUS - 1] = 0};
+int cpu_list[V3_CONFIG_MAX_CPUS] = {[0 ... V3_CONFIG_MAX_CPUS - 1] = 0}; /* Array of CPU ids to be enabled during initialization */
 int cpu_list_len      = 0;
 module_param_array(cpu_list, int, &cpu_list_len, 0644);
 MODULE_PARM_DESC(cpu_list, "Comma-delimited list of CPUs that Palacios will run on");
 
+int active_cpu_list[V3_CONFIG_MAX_CPUS] = {[0 ... V3_CONFIG_MAX_CPUS - 1] = 0}; /* Array of CPUs that are currently enabled */
 
 
 
@@ -167,22 +168,32 @@ out_err:
 	}
 	case V3_ADD_CPU: {
 	    int cpu_id = (int)arg;
+	    int ret    = 0;
 
-	    if (v3_add_cpu(cpu_id) != 0) {
+	    ret = v3_add_cpu(cpu_id);
+
+	    if (ret == 1) {
+		active_cpu_list[cpu_id] = 1;
+	    } else if (ret < 0) {
                 printk(KERN_ERR "Error adding CPU %d to Palacios\n", cpu_id);
-                return -1;
 	    }
 
+	    return ret;
 	    break;
 	}
 	case V3_REMOVE_CPU: {
 	    int cpu_id = (int)arg;
+	    int ret    = 0;
 
-	    if (v3_remove_cpu(cpu_id) != 0) {
+	    ret = v3_remove_cpu(cpu_id);
+
+	    if (ret == 1) {
+		active_cpu_list[cpu_id] = 0;
+	    } else if (ret < 0) {
                 printk(KERN_ERR "Error adding CPU %d to Palacios\n", cpu_id);
-                return -1;
 	    }
 
+	    return ret;
 	    break;
 	}
 	case V3_ADD_MEM: {
@@ -280,6 +291,46 @@ static const struct file_operations vm_proc_ops = {
 };
 
 
+static int 
+cpu_seq_show(struct seq_file * s, 
+	    void            * v) 
+{
+    int i;
+    int * cpu_arr = NULL;
+    int   cpu_cnt = 0;
+    
+    cpu_arr = v3_get_cpu_usage(&cpu_cnt);
+
+    if (!cpu_arr) return -EFAULT;
+
+    for (i = 0; i < V3_CONFIG_MAX_CPUS; i++) {
+	if (active_cpu_list[i]) {
+	    seq_printf(s, "CPU %d: enabled (%d vcores)\n", i, cpu_arr[i]);
+	}
+    }
+
+
+    palacios_kfree(cpu_arr);
+
+    return 0;
+}
+
+
+
+static int cpu_proc_open(struct inode * inode, struct file * filp) {
+    return single_open(filp, cpu_seq_show, NULL);
+    
+}
+
+static const struct file_operations cpu_proc_ops = {
+    .owner   = THIS_MODULE,
+    .open    = cpu_proc_open, 
+    .read    = seq_read, 
+    .llseek  = seq_lseek,
+    .release = single_release,
+};
+
+
 
 /*** END PROC File functions */
 
@@ -354,8 +405,16 @@ v3_init(void)
 	    entry->proc_fops = &vm_proc_ops;
 	    v3_lnx_printk("/proc/v3vee/v3-guests successfully created\n");
 	}
+
+	entry = create_proc_entry("v3-cpus", 0444, palacios_proc_dir);
+
+        if (entry) {
+	    entry->proc_fops = &cpu_proc_ops;
+	    v3_lnx_printk("/proc/v3vee/v3-cpus successfully created\n");
+	}
 #else 
 	entry = proc_create_data("v3-guests", 0444, palacios_proc_dir, &vm_proc_ops, NULL);
+	entry = proc_create_data("v3-cpus",   0444, palacios_proc_dir, &cpu_proc_ops, NULL);
 #endif
 
 	if (!entry) {
@@ -416,6 +475,20 @@ v3_exit(void)
 
     palacios_vmm_exit();
 
+
+
+
+
+    deinit_lnx_extensions();
+    deinit_global_ctrls();
+
+    palacios_deinit_mm();
+
+    remove_proc_entry("v3-guests", palacios_proc_dir);
+    remove_proc_entry("v3-cpus",   palacios_proc_dir);
+    remove_proc_entry("v3vee",     NULL);
+
+
     {
 	/*
 	 * Simple Memory leak detection
@@ -435,16 +508,6 @@ v3_exit(void)
 	    ERROR("\t-- Page Allocs = %d, Page Frees = %d\n", pg_allocs, pg_frees);
 	}
     }
-
-
-
-    deinit_lnx_extensions();
-    deinit_global_ctrls();
-
-    palacios_deinit_mm();
-
-    remove_proc_entry("v3-guests", palacios_proc_dir);
-    remove_proc_entry("v3vee",     NULL);
 }
 
 

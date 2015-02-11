@@ -58,10 +58,21 @@ int main(int argc, char ** argv) {
 
     if (remove) {
 	printf("Removing CPU %d from Palacios\n", cpu_id);
-	v3_remove_cpu(cpu_id);
+	ret = v3_remove_cpu(cpu_id);
     } else {
 	printf("Addign CPU %d to Palacios\n", cpu_id);
-	v3_add_cpu(cpu_id);
+	ret = v3_add_cpu(cpu_id);
     }
+
+    if (ret == 0) {
+	printf("CPU %d was NOT %s due to VMM state.\n", 
+	       cpu_id,
+	       (remove) ? "removed" : "added");
+    } else if (ret < 0) {
+	printf("Error: Could not %s CPU %d due to error\n", 
+	       (remove) ? "remove" : "add",
+	       cpu_id);
+    }
+    
     
 }

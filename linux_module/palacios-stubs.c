@@ -28,10 +28,6 @@
 
 
 
-u32 pg_allocs = 0;
-u32 pg_frees  = 0;
-u32 mallocs   = 0;
-u32 frees     = 0;
 
 
 static struct v3_vm_info * irq_to_guest_map[256];
@@ -39,7 +35,8 @@ static struct v3_vm_info * irq_to_guest_map[256];
 
 extern unsigned int cpu_khz;
 
-extern int cpu_list[NR_CPUS];
+extern int active_cpu_list[V3_CONFIG_MAX_CPUS];
+extern int cpu_list[V3_CONFIG_MAX_CPUS];
 extern int cpu_list_len;
 
 
@@ -78,8 +75,6 @@ palacios_allocate_pages(int          num_pages,
 	return NULL;
     }
 
-    pg_allocs     += num_pages;
-
     return pg_addr;
 }
 
@@ -94,7 +89,6 @@ void
 palacios_free_pages(void * page_paddr, 
 		    int    num_pages) 
 {
-    pg_frees += num_pages;
     free_palacios_pgs((uintptr_t)page_paddr, num_pages);
 }
 
@@ -107,7 +101,6 @@ palacios_free_pages(void * page_paddr,
 void *
 palacios_alloc(unsigned int size) 
 {
-    mallocs++;
     return palacios_kmalloc(size, GFP_KERNEL);
 }
 
@@ -117,7 +110,6 @@ palacios_alloc(unsigned int size)
 void
 palacios_free(void * addr)
 {
-    frees++;
     palacios_kfree(addr);
     return;
 }
@@ -486,7 +478,7 @@ static struct v3_os_hooks palacios_os_hooks = {
 int 
 palacios_vmm_init( void )
 {
-    int    num_cpus = num_online_cpus();
+    int    num_cpus = num_present_cpus();
     char * cpu_mask = NULL;
 
     if (cpu_list_len > 0) {
@@ -512,17 +504,38 @@ palacios_vmm_init( void )
 
             major = cpu_list[i] / 8;
             minor = cpu_list[i] % 8;
-    
-            *(cpu_mask + major) |= (0x1 << minor);
-        }
+
+	    if (!cpu_online(cpu_list[i])) {
+		WARNING("Tried to add an CPU %d, but it is offline\n", cpu_list[i]);
+		continue;
+	    }
+
+
+	    /* Mark it as active in our local list */
+	    active_cpu_list[cpu_list[i]] = 1;
+
+	    /* Set bitmap entry to pass to Palacios */
+	    *(cpu_mask + major) |= (0x1 << minor);
+	}
+    } else {
+	int i = 0;
+
+	for (i = 0; i < num_cpus; i++) {
+	    if (cpu_online(i)) {
+		active_cpu_list[i] = 1;
+	    }
+	}
     }
 
     memset(irq_to_guest_map, 0, sizeof(struct v3_vm_info *) * 256);
-
+    
 
     v3_lnx_printk("palacios_init starting - calling init_v3\n");
 
-    Init_V3(&palacios_os_hooks, cpu_mask, num_cpus, NULL);
+    if (Init_V3(&palacios_os_hooks, cpu_mask, num_cpus, NULL) == -1) {
+	ERROR("Error: Could not initialize Palacios\n");
+	return -1;
+    };
 
     return 0;
 

@@ -315,7 +315,12 @@ struct v3_core_info;
 
 
 // Maybe make this a define....
-typedef enum v3_cpu_arch {V3_INVALID_CPU, V3_SVM_CPU, V3_SVM_REV3_CPU, V3_VMX_CPU, V3_VMX_EPT_CPU, V3_VMX_EPT_UG_CPU} v3_cpu_arch_t;
+typedef enum v3_cpu_arch { V3_INVALID_CPU, 
+			   V3_SVM_CPU, 
+			   V3_SVM_REV3_CPU, 
+			   V3_VMX_CPU, 
+			   V3_VMX_EPT_CPU, 
+			   V3_VMX_EPT_UG_CPU } v3_cpu_arch_t;
 
 
 v3_cpu_mode_t v3_get_host_cpu_mode( void );
@@ -397,8 +402,6 @@ struct v3_guest_mem_region {
 
 
 
-
-
 int Init_V3(struct v3_os_hooks * hooks, char * cpus, int num_cpus, char * options);
 int Shutdown_V3( void );
 
@@ -425,6 +428,7 @@ int v3_free_vm(struct v3_vm_info * vm);
 
 int v3_add_cpu(int cpu_id);
 int v3_remove_cpu(int cpu_id);
+int * v3_get_cpu_usage(int * num_cpus);
 
 
 /* 

@@ -19,6 +19,10 @@
 #include "v3_ioctl.h"
 #include <ezxml.h>
 
+
+#include <pet_mem.h>
+#include <pet_cpu.h>
+
 struct file_info {
     u32 size;
     char     filename[2048];

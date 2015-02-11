@@ -26,6 +26,10 @@ static uintptr_t             * seed_addrs = NULL;
 #define MEM_BLOCK_SIZE_BYTES ((uint64_t)(V3_CONFIG_MEM_BLOCK_SIZE_MB * (1024 * 1024)))
 
 
+u32 pg_allocs = 0;
+u32 pg_frees  = 0;
+u32 mallocs   = 0;
+u32 frees     = 0;
 
 
 // alignment is in bytes
@@ -74,6 +78,8 @@ alloc_palacios_pgs(u64 num_pages,
     }
 
 
+    pg_allocs += num_pages;
+
     return addr;
 }
 
@@ -88,6 +94,8 @@ free_palacios_pgs(uintptr_t pg_addr,
     //DEBUG("Freeing Memory page %p\n", (void *)pg_addr);
     
     buddy_free(memzones[node_id], pg_addr, get_order(num_pages * PAGE_SIZE) + PAGE_SHIFT);
+
+    pg_frees += num_pages;
 }
 
 
@@ -210,8 +218,8 @@ int palacios_deinit_mm( void ) {
 	}
     }
 
-    kfree(seed_addrs);
-    kfree(memzones);
+    palacios_kfree(seed_addrs);
+    palacios_kfree(memzones);
 
     return 0;
 }
@@ -244,7 +252,9 @@ palacios_kmalloc(size_t size,
     //    printk("V3_MALLOC: [%p]\n", addr);
     //    dump_stack();
     
-    //udelay(500);
+    //    udelay(500);
+
+    mallocs++;
 
     return addr;
 }
@@ -254,8 +264,9 @@ void
 palacios_kfree(void * ptr) 
 {
     
-//    printk("V3_FREE: [%p]\n", ptr);
+    //    printk("V3_FREE: [%p]\n", ptr);
 
+    frees++;
     return kfree(ptr);
 }
 

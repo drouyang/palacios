@@ -205,7 +205,7 @@ deinit_cpu(void * arg)
 int 
 v3_add_cpu(int cpu_id) 
 {
-    int ret = 0;
+    int ret = 1;
 
     if (os_hooks == NULL) {
 	PrintError("Error Tried to add a CPU to unitialized VMM\n");
@@ -218,9 +218,14 @@ v3_add_cpu(int cpu_id)
     {
 	if (v3_cpu_types[cpu_id] != V3_INVALID_CPU) {
 	    PrintError("Error: CPU %d is already Active\n", cpu_id);
-	    ret = -1;
+	    ret = 0;
 	} else {
 	    os_hooks->call_on_cpu(cpu_id, &init_cpu, (void *)(addr_t)cpu_id);
+
+	    if (v3_cpu_types[cpu_id] == V3_INVALID_CPU) {
+		PrintError("Error: CPU initialization failed for CPU %d\n", cpu_id);
+		ret = -1;
+	    }
 	}
     }
     op_lock_release();
@@ -231,7 +236,7 @@ v3_add_cpu(int cpu_id)
 int 
 v3_remove_cpu(int cpu_id) 
 {
-    int ret = 0;
+    int ret = 1;
  
     if (os_hooks == NULL) {
 	PrintError("Error Tried to remove a CPU from unitialized VMM\n");
@@ -245,13 +250,18 @@ v3_remove_cpu(int cpu_id)
     {
 
 	if (!list_empty(&(v3_cores_assigned[cpu_id]))) {
-	    PrintError("Error: CPU %d has active VCores\n", cpu_id);
-	    ret = -1;
+	    V3_Print("Cannot Remove CPU: CPU %d has active VCores\n", cpu_id);
+	    ret = 0;
 	} else if (v3_cpu_types[cpu_id] == V3_INVALID_CPU) {
 	    PrintError("Error: CPU %d is inactive\n", cpu_id);
-	    ret = -1;
+	    ret = 0;
 	} else {
 	    os_hooks->call_on_cpu(cpu_id, &deinit_cpu, (void *)(addr_t)cpu_id);
+	    
+	    if (v3_cpu_types[cpu_id] != V3_INVALID_CPU) {
+		PrintError("Error: CPU denitialization failed for CPU %d\n", cpu_id);
+		ret = -1;
+	    }
 	}
     }
     op_lock_release();
@@ -1173,4 +1183,52 @@ v3_vm_enter(struct v3_core_info * core)
 struct v3_core_info * 
 v3_get_current_core( void ) {
     return v3_cores_current[V3_Get_CPU()];
+}
+
+
+int * 
+v3_get_cpu_usage(int * cpu_cnt)
+{
+    int * cpu_arr = NULL;
+    int i = 0;
+
+    if (os_hooks == NULL) {
+	PrintError("Error Tried to query CPUs for an unitialized VMM\n");
+	return NULL;
+    }
+    
+    cpu_arr = V3_Malloc(sizeof(int) * V3_CONFIG_MAX_CPUS);
+
+    if (cpu_arr == NULL) {
+	PrintError("Could not allocate CPU array\n");
+	return NULL;
+    }
+
+    memset(cpu_arr, 0, sizeof(int) * V3_CONFIG_MAX_CPUS);
+
+    op_lock_acquire();
+    {
+	
+	for (i = 0; i < V3_CONFIG_MAX_CPUS; i++) {
+	    struct list_head * pos = NULL;
+	    
+	    int cnt = 0;
+	    
+	    if (list_empty(&v3_cores_assigned[i])) {
+		continue;
+	    }
+
+	    list_for_each(pos, &v3_cores_assigned[i]) {
+		cnt++;
+	    }
+	    
+	    cpu_arr[i] = cnt;
+	}
+    }
+    op_lock_release();
+
+    *cpu_cnt = V3_CONFIG_MAX_CPUS;
+
+    return cpu_arr;
+
 }
