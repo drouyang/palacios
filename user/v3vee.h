@@ -10,6 +10,7 @@
 #include <ezxml.h>
 
 
+int v3_is_vmm_present(void);
 
 int v3_add_cpu(int cpu_id);
 int v3_remove_cpu(int cpu_id);

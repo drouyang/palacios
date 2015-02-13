@@ -14,6 +14,21 @@
 
 
 int 
+v3_is_vmm_present()
+{
+    int fd = 0;
+
+    fd = open(V3_DEV_FILENAME, O_RDWR);
+
+    if (fd == -1) {
+	return 0;
+    }
+
+    close(fd);
+    return 1;
+}
+
+int 
 v3_add_cpu(int cpu_id)
 {
     return pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_CPU, cpu_id);
