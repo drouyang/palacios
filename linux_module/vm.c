@@ -18,6 +18,7 @@
 #include <linux/rbtree.h>
 #include <linux/module.h>
 #include <linux/version.h>
+#include <linux/seq_file.h>
 
 #include <palacios/vmm.h>
 #include <palacios/vmm_host_events.h>
