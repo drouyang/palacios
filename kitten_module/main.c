@@ -202,7 +202,7 @@ out_err:
 	case V3_ADD_CPU: {
 	    int cpu_id = (int)arg;
 	    
-	    if (v3_add_cpu(cpu_id) != 0) {
+	    if (v3_add_cpu(cpu_id) != 1) {
 		printk(KERN_ERR "Error adding CPU %d to Palacios\n", cpu_id);
 		return -EFAULT;
 	    }
