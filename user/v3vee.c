@@ -11,7 +11,7 @@
 #include "v3_ioctl.h"
 
 #include <pet_mem.h>
-
+#include <pet_log.h>
 
 int 
 v3_is_vmm_present()
@@ -63,7 +63,7 @@ v3_add_mem_node(int numa_zone)
 	       (void *)mem_range.base_addr);
 	
 	if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, &mem_range) == -1) {
-	    printf("Error: Could not add memory to Palacios\n");
+	    ERROR("Could not add memory to Palacios\n");
 	}
     }
     
@@ -95,7 +95,7 @@ v3_add_mem(int num_blocks,
     ret       = pet_offline_blocks(num_blocks, numa_zone, block_arr);
     
     if (ret != num_blocks) {
-	printf("Error: Could not allocate %d memory blocks\n", num_blocks);
+	ERROR("Could not allocate %d memory blocks (ret = %d)\n", num_blocks, ret);
 	
 	pet_online_blocks(ret, block_arr);
 	free(block_arr);
@@ -111,7 +111,7 @@ v3_add_mem(int num_blocks,
 	       (void *)mem_range.base_addr);
 	
 	if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, &mem_range) == -1) {
-	    printf("Error: Could not add memory to Palacios\n");
+	    ERROR("Could not add memory to Palacios\n");
 	}
     }
     
@@ -134,7 +134,7 @@ v3_remove_mem(int num_blocks,
 	size_t size          = 0;
 
 	if (asprintf(&proc_filename, "/proc/v3vee/v3-mem%d", numa_zone) == -1) {
-	    printf("Error: %s(%d): asprintf failed\n", __FILE__, __LINE__);
+	    ERROR("%s(%d): asprintf failed\n", __FILE__, __LINE__);
 	    return -1;
 	}
 
@@ -143,7 +143,7 @@ v3_remove_mem(int num_blocks,
 	free(proc_filename);
 
 	if (proc_file == NULL) {
-	    printf("Error: Could not open proc file for numa zone %d\n", numa_zone);
+	    ERROR("Could not open proc file for numa zone %d\n", numa_zone);
 	    return -1;
 	}
 	
@@ -168,7 +168,7 @@ v3_remove_mem(int num_blocks,
 			     &base_addr, &order, &size, &freed);
 
 	    if (matched == 0) {
-		printf("Error: Could not match memory pool string\n");
+		ERROR("Could not match memory pool string\n");
 		break;
 	    }
 
@@ -188,14 +188,14 @@ v3_remove_mem(int num_blocks,
 
 		
 		if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_MEM, base_addr) == -1) {
-		    printf("Error: Could not remove memory from Palacios\n");
+		    ERROR("Could not remove memory from Palacios\n");
 		    continue;
 		}
 		
 		blocks_freed++;
 
 		if (pet_online_block(base_addr / pet_block_size()) == -1) {
-		    printf("Error: Block removed from Palacios, but not onlined\n");
+		    ERROR("Block removed from Palacios, but not onlined\n");
 		}
 	    }
 
@@ -222,7 +222,7 @@ v3_add_mem_explicit(int block_id)
     struct v3_mem_region mem_range;
   
     if (pet_offline_block(block_id) == -1) {
-	printf("Error: Could not offline memory block %d\n", block_id);
+	ERROR("Could not offline memory block %d\n", block_id);
 	return -1;
     }
 
@@ -230,7 +230,7 @@ v3_add_mem_explicit(int block_id)
     mem_range.num_pages = pet_block_size() / 4096;
     
     if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, &mem_range) == -1) {
- 	printf("Error: Could not add explicit memory block (block_id: %d)\n", block_id); 
+	ERROR("Could not add explicit memory block (block_id: %d)\n", block_id); 
 	pet_online_block(block_id);
 	return -1;
     }
@@ -255,13 +255,13 @@ v3_add_pci(char * name,
     strncpy(dev_spec.url, name, 128);
 
    if (pet_offline_pci(bus, dev, fn) != 0) {
-       printf("Error: Could not offline PCI device\n");
+       ERROR("Could not offline PCI device\n");
        return -1;
    }
 
 
    if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_PCI,  &dev_spec) != 0) {
-       printf("Error: Could not add device to Palacios\n");
+       ERROR("Could not add device to Palacios\n");
        pet_online_pci(bus, dev, fn);
        return -1;
    }
@@ -288,13 +288,13 @@ v3_remove_pci(char * name,
     strncpy(dev_spec.url, name, 128);
 
     if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_PCI,  &dev_spec) != 0) {
-	printf("Error: Could not remove device from Palacios\n");
+	ERROR("Could not remove device from Palacios\n");
 	//	pet_online_pci(bus, dev, fn);
 	return -1;
     }
     
     if (pet_online_pci(bus, dev, fn) != 0) {
-	printf("Error: Could not online PCI device [%s] (%d:%d.%d)\n", name, bus, dev, fn);
+	ERROR("Could not online PCI device [%s] (%d:%d.%d)\n", name, bus, dev, fn);
 	return -1;
     }
 
@@ -315,7 +315,7 @@ v3_launch_vm(int vm_id)
     free(dev_path);
 
     if (ret < 0) {
-	printf("Error: Could not launch vm (%d)\n", vm_id);
+	ERROR("Could not launch vm (%d)\n", vm_id);
 	return -1;
     }
     
@@ -334,7 +334,7 @@ v3_stop_vm(int vm_id)
     free(dev_path);
 
     if (ret < 0) {
-	printf("Error: Could not stop vm (%d)\n", vm_id);
+	ERROR("Could not stop vm (%d)\n", vm_id);
 	return -1;
     }
     
@@ -359,7 +359,7 @@ v3_continue_vm(int vm_id)
     free(dev_path);
 
     if (ret < 0) {
-	printf("Error: Could not continue vm (%d)\n", vm_id);
+	ERROR("Could not continue vm (%d)\n", vm_id);
 	return -1;
     }
     
@@ -378,7 +378,7 @@ v3_pause_vm(int vm_id)
     free(dev_path);
 
     if (ret < 0) {
-	printf("Error: Could not pause vm (%d)\n", vm_id);
+	ERROR("Could not pause vm (%d)\n", vm_id);
 	return -1;
     }
     
@@ -398,7 +398,7 @@ v3_simulate_vm(int vm_id,
     free(dev_path);
 
     if (ret < 0) {
-	printf("Error: Could not simulate vm (%d)\n", vm_id);
+	ERROR("Could not simulate vm (%d)\n", vm_id);
 	return -1;
     }
     
@@ -428,7 +428,7 @@ v3_move_vcore(int vm_id,
     free(dev_path);
 
     if (ret < 0) {
-	printf("Error: Could not move vm %d's vcore (%d)\n", vm_id, vcore);
+	ERROR("Could not move vm %d's vcore (%d)\n", vm_id, vcore);
 	return -1;
     }
     
@@ -458,7 +458,7 @@ v3_debug_vm(int vm_id,
     free(dev_path);
 
     if (ret < 0) {
-	printf("Error: Could not send debug command to VM (%d)\n", vm_id);
+	ERROR("Could not send debug command to VM (%d)\n", vm_id);
 	return -1;
     }
     
@@ -481,13 +481,13 @@ v3_load_vm(int    vm_id,
     memset(&chkpt, 0, sizeof(struct v3_chkpt_info));
 
     if (strlen(store) >= MAX_CHKPT_STORE_LEN) {
-	printf("ERROR: Checkpoint store name longer than maximum size (%d)\n",
+	ERROR("Checkpoint store name longer than maximum size (%d)\n",
 	       MAX_CHKPT_STORE_LEN);
 	return -1;
     }
 
     if (strlen(url) >= MAX_CHKPT_URL_LEN) {
-	printf("ERROR: Checkpoint URL longer than maximum size (%d)\n", 
+	ERROR("Checkpoint URL longer than maximum size (%d)\n", 
 	       MAX_CHKPT_URL_LEN);
 	return -1;
     }    
@@ -517,13 +517,13 @@ v3_save_vm(int    vm_id,
     memset(&chkpt, 0, sizeof(struct v3_chkpt_info));
 
     if (strlen(store) >= MAX_CHKPT_STORE_LEN) {
-	printf("ERROR: Checkpoint store name longer than maximum size (%d)\n",
+	ERROR("Checkpoint store name longer than maximum size (%d)\n",
 	       MAX_CHKPT_STORE_LEN);
 	return -1;
     }
 
     if (strlen(url) >= MAX_CHKPT_URL_LEN) {
-	printf("ERROR: Checkpoint URL longer than maximum size (%d)\n", 
+	ERROR("Checkpoint URL longer than maximum size (%d)\n", 
 	       MAX_CHKPT_URL_LEN);
 	return -1;
     }    
