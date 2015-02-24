@@ -27,7 +27,7 @@
 #include "vm.h"
 #include "mm.h"
 #include "linux-exts.h"
-
+#include "numa.h"
 
 struct vm_ctrl {
     unsigned int cmd;
@@ -363,12 +363,12 @@ static ssize_t v3_vm_write(struct file * filp, const char __user * buf, size_t s
 
 
 static struct file_operations v3_vm_fops = {
-    .owner = THIS_MODULE,
+    .owner          = THIS_MODULE,
     .unlocked_ioctl = v3_vm_ioctl,
-    .compat_ioctl = v3_vm_ioctl,
-    .open = v3_vm_open,
-    .read = v3_vm_read, 
-    .write = v3_vm_write,
+    .compat_ioctl   = v3_vm_ioctl,
+    .open           = v3_vm_open,
+    .read           = v3_vm_read, 
+    .write          = v3_vm_write,
 };
 
 
@@ -390,10 +390,14 @@ vm_seq_show(struct seq_file * s,
 
     regs = v3_get_guest_memory_regions(guest->v3_ctx, &num_regs);
 	
-    seq_printf(s, "BASE MEMORY REGIONS\n");
+    seq_printf(s, "BASE MEMORY REGIONS (%d)\n", num_regs);
 
     for (i = 0; i < num_regs; i++) {
-	seq_printf(s, "\t%llx - %llx  (size=%lluMB)\n", regs[i].start, regs[i].end, (regs[i].end - regs[i].start) / (1024 * 1024));
+	seq_printf(s, "\t0x%p - 0x%p  (size=%lluMB) [NUMA ZONE=%d]\n", 
+		   (void *)regs[i].start, 
+		   (void *)regs[i].end, 
+		   (regs[i].end - regs[i].start) / (1024 * 1024),
+		   numa_addr_to_node(regs[i].start));
     }
 
 
