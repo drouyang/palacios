@@ -531,9 +531,9 @@ int free_palacios_vm(struct v3_guest * guest) {
 
     cdev_del(&(guest->cdev));
 
-    free_guest_ctrls(guest);
-
     v3_free_vm(guest->v3_ctx);
+
+    free_guest_ctrls(guest);
 
     deinit_vm_extensions(guest);
 
