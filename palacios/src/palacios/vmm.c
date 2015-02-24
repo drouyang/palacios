@@ -488,6 +488,8 @@ start_core(void * p)
     v3_unhook_core_preemptions(core, core_sched_in, core_sched_out);
 #endif
 
+    core->core_thread = NULL;
+
     return ret;
 }
 
@@ -534,7 +536,8 @@ v3_create_vm(void * cfg,
 	}
 
 	if (vm->num_cores > avail_cores) {
-	    PrintError("Attempted to create a VM with too many cores (vm->num_cores = %d, avail_cores = %d, MAX=%d)\n",                    vm->num_cores, avail_cores, V3_CONFIG_MAX_CPUS);
+	    PrintError("Attempted to create a VM with too many cores (vm->num_cores = %d, avail_cores = %d, MAX=%d)\n", 
+		       vm->num_cores, avail_cores, V3_CONFIG_MAX_CPUS);
 	    goto err;
 	}
 
@@ -549,9 +552,13 @@ v3_create_vm(void * cfg,
 	    if (specified_cpu != NULL) {
 		core_idx = atoi(specified_cpu);
 
-		if ((core_idx < 0) || (core_idx >= V3_CONFIG_MAX_CPUS)) {
-		    PrintError("Target CPU out of bounds (%d) (V3_CONFIG_MAX_CPUS=%d)\n", core_idx, V3_CONFIG_MAX_CPUS);
+		if ((core_idx               <  0)                  || 
+		    (core_idx               >= V3_CONFIG_MAX_CPUS) || 
+		    (v3_cpu_types[core_idx] == V3_INVALID_CPU)) {
+		    PrintError("Invalid Target CPU [%d] for vcore %d\n", core_idx, vcore_id);
+		    goto err;
 		}
+
 
 		i--; // We reset the logical core idx. Not strictly necessary I guess...
 	    } else {
@@ -588,6 +595,36 @@ v3_create_vm(void * cfg,
     return vm;
 
 err:
+    {
+	int i    = 0;
+	int done = 0;
+
+	/* Launch all the threads, they should immediately exit because the VM state is VM_STOPPED */
+	for (i = 0; i < vm->num_cores; i++) {
+	    struct v3_core_info * core = &(vm->cores[i]);
+
+	    if (core->core_thread) {
+		V3_START_THREAD(core->core_thread);
+	    }
+	}
+
+	/* Wait for each core to exit, we detect this by seeing if the core's thread ptr has been set to NULL */
+	while (!done) {
+	    done = 1;
+	    
+	    for (i = 0; i < vm->num_cores; i++) {
+		struct v3_core_info * core = &(vm->cores[i]);
+
+		if (core->core_thread != NULL) {
+		    done = 0;
+		}
+	    }
+	    
+	    v3_yield(NULL, -1);
+	}
+
+    }
+
     op_lock_release();
     v3_free_vm(vm);
 

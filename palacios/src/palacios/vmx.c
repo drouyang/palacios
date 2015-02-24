@@ -1311,6 +1311,11 @@ int
 v3_start_vmx_guest(struct v3_core_info * core) 
 {
 
+    if (core->vm_info->run_state == VM_STOPPED) {
+	PrintError("Aborting Thread for Core %d\n", core->vcpu_id);
+	return -1;
+    }
+
     V3_Print("Starting VMX core %u\n", core->vcpu_id);
     
 

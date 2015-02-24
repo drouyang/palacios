@@ -841,6 +841,11 @@ v3_start_svm_guest(struct v3_core_info * core)
     //  vmcb_saved_state_t * guest_state = GET_VMCB_SAVE_STATE_AREA((vmcb_t *)(core->vmm_data));
     //  vmcb_ctrl_t        * guest_ctrl  = GET_VMCB_CTRL_AREA(      (vmcb_t *)(core->vmm_data));
 
+    if (core->vm_info->run_state == VM_STOPPED) {
+	PrintError("Aborting Thread for Core %d\n", core->vcpu_id);
+	return -1;
+    }
+
     PrintDebug("Starting SVM core %u (on logical core %u)\n", core->vcpu_id, core->pcpu_id);
 
 
