@@ -121,11 +121,16 @@ v3_add_mem(int num_blocks,
 }
 
 
+
 int 
 v3_remove_mem(int num_blocks,
 	      int numa_zone)
 {
     int blocks_freed = 0;
+
+    if (num_blocks == 0) {
+	return 0;
+    }
 
     if (numa_zone >= 0) {
 	char * proc_filename = NULL;
@@ -134,7 +139,7 @@ v3_remove_mem(int num_blocks,
 	size_t size          = 0;
 
 	if (asprintf(&proc_filename, "/proc/v3vee/v3-mem%d", numa_zone) == -1) {
-	    ERROR("%s(%d): asprintf failed\n", __FILE__, __LINE__);
+	    ERROR("asprintf failed\n");
 	    return -1;
 	}
 
@@ -206,14 +211,20 @@ v3_remove_mem(int num_blocks,
 
 	fclose(proc_file);
 
-	return blocks_freed;
-    } else {
 
-	// Free from all numa zones....
+    } else {
+	int i = 0;
+	
+	for (i = 0; i < pet_num_numa_nodes(); i++) {
+	    
+	    blocks_freed += v3_remove_mem(num_blocks - blocks_freed, i);
+	    
+	    if (blocks_freed == num_blocks) break;
+	}
 
     }
-    return -1;
 
+    return blocks_freed;
 }
 
 int 
