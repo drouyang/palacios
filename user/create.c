@@ -201,7 +201,7 @@ v3_create_vm(char * vm_name,
 	return -1;
     }
 
-    printf("VM (%s) created at " V3_VM_FILENAME "%s\n", vm_name, vm_id);
+    printf("VM (%s) created at " V3_VM_FILENAME "%d\n", vm_name, vm_id);
 
     return vm_id;
 }
