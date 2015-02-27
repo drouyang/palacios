@@ -3,8 +3,9 @@
  * (c) Brian Kocoloski, 2014
  */
 
-#include <lwk/list.h>
-#include <arch/atomic.h>
+#include <lwk/interrupt.h>
+#include <lwk/cpuinfo.h>
+#include <lwk/spinlock_types.h>
 
 #include <xpmem_iface.h>
 #include <xpmem_extended.h>
@@ -17,6 +18,15 @@
 #include <interfaces/vmm_xpmem.h>
 
 
+extern struct cpuinfo cpu_info[NR_CPUS];
+
+
+struct xpmem_idt_info {
+    int      host_irq;
+    uint16_t guest_vector;
+    int      in_use;
+};
+
 struct host_xpmem_state {
     /* Guest pointer */
     struct v3_guest	  * guest;
@@ -26,8 +36,48 @@ struct host_xpmem_state {
 
     /* XPMEM kernel interface */
     xpmem_link_t            link;
+
+    /* Host vector to guest vector translations */
+    rwlock_t                idt_lock;
+    struct xpmem_idt_info   idt_map[NUM_IRQS];
 }; 
 
+
+static void
+xpmem_set_idt_info(struct host_xpmem_state * state,
+                   uint16_t                  host_vector,
+		   struct xpmem_idt_info   * info)
+{
+
+    write_lock(&(state->idt_lock));
+    {
+	state->idt_map[host_vector].host_irq     = info->host_irq;
+	state->idt_map[host_vector].guest_vector = info->guest_vector;
+	state->idt_map[host_vector].in_use       = 1;
+    }
+    write_unlock(&(state->idt_lock));
+}
+
+static int
+xpmem_get_idt_info(struct host_xpmem_state * state,
+                   uint16_t                  host_vector,
+		   struct xpmem_idt_info   * info)
+{
+    int status = -1;
+
+    read_lock(&(state->idt_lock));
+    {
+	if (state->idt_map[host_vector].in_use) {
+	    info->host_irq     = state->idt_map[host_vector].host_irq;
+	    info->guest_vector = state->idt_map[host_vector].guest_vector;
+
+	    status = 0;
+	}
+    }
+    read_unlock(&(state->idt_lock));
+
+    return status;
+}
 
 static int
 xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
@@ -35,15 +85,50 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 {
     struct host_xpmem_state * state    = (struct host_xpmem_state *)priv_data;
     struct v3_xpmem_state   * v3_state = state->v3_xpmem;
-
+    
     return V3_xpmem_command(v3_state, cmd);
 }
 
-static int
-xpmem_irq_fn(int    irq,
-	     void * priv_data)
+
+static int 
+xpmem_segid_fn(xpmem_segid_t segid,
+               xpmem_sigid_t sigid,
+               xpmem_domid_t domid,
+               void        * priv_data)
 {
-    return 0;
+    struct host_xpmem_state * state    = (struct host_xpmem_state *)priv_data;
+    struct v3_xpmem_state   * v3_state = state->v3_xpmem;
+    struct xpmem_signal     * sig      = (struct xpmem_signal *)&sigid;
+    int                       vector   = sig->vector;
+    int                       status   = 0;
+    struct xpmem_idt_info     info;
+
+    printk("IRQ_FN: host vector = %d\n", vector);
+
+    /* Get idt info */
+    status = xpmem_get_idt_info(state, vector, &info);
+    if (status != 0) {
+        ERROR("XPMEM: Cannot get idt info for host vector %d\n", vector);
+        return -EINVAL;
+    }
+
+    printk("IRQ_FN: guest vector = %d\n", info.guest_vector);
+
+    return V3_xpmem_raise_irq(v3_state, info.guest_vector);
+}
+
+
+static irqreturn_t
+xpmem_irq_fn(int    irq,
+             void * priv_data)
+{
+    xpmem_sigid_t         sigid = 0;
+    struct xpmem_signal * sig   = (struct xpmem_signal *)&sigid;
+
+    sig->irq    = irq;
+    sig->vector = xpmem_irq_to_vector(irq);
+
+    return xpmem_segid_fn(-1, sigid, -1, priv_data);
 }
 
 static void
@@ -116,7 +201,7 @@ palacios_xpmem_command(xpmem_link_t	     link,
 
     state = xpmem_get_link_data(link);
     if (state == NULL) {
-	ERROR("XPMEM Cannot deliver command for link %d\n", link);
+	ERROR("XPMEM: Cannot deliver command for link %d\n", link);
 	return -1;
     }
 
@@ -126,12 +211,110 @@ palacios_xpmem_command(xpmem_link_t	     link,
     return ret;
 }
 
+
+static int
+palacios_xpmem_read_apicid(xpmem_link_t link,
+                           uint32_t     cpu)
+{
+    return cpu_info[cpu].arch.apic_id;
+}
+
+
+static int
+palacios_xpmem_request_irq(xpmem_link_t link,
+                           uint16_t     guest_vector)
+{
+    struct host_xpmem_state * state       = NULL;
+    int                       host_vector = 0;
+    struct xpmem_idt_info     info;
+
+    state = xpmem_get_link_data(link);
+    if (state == NULL) {
+	ERROR("XPMEM: Cannot request irq for link %d: invalid link\n", link);
+	return -1;
+    }
+
+    /* Request irq */
+    info.host_irq = xpmem_request_irq(xpmem_irq_fn, state);
+    if (info.host_irq < 0) {
+	ERROR("XPMEM: Cannot request irq for link %d\n", state->link);
+	xpmem_put_link_data(state->link);
+	return info.host_irq;
+    }
+
+    /* Get IDT vector */
+    host_vector = xpmem_irq_to_vector(info.host_irq);
+    if (host_vector < 0) {
+	ERROR("XPMEM: Cannot convert irq %d to IDT vector\n", info.host_irq);
+	xpmem_release_irq(info.host_irq, state);
+	xpmem_put_link_data(state->link);
+	return host_vector;
+    }
+
+    info.guest_vector = guest_vector;
+
+    /* Update idt info */
+    xpmem_set_idt_info(state, host_vector, &info);
+
+    return host_vector;
+}
+
+static int 
+palacios_xpmem_release_irq(xpmem_link_t link,
+                           uint16_t     host_vector)
+{
+    struct host_xpmem_state * state  = NULL;
+    int                       status = 0;
+    struct xpmem_idt_info     info;
+
+    state = xpmem_get_link_data(link);
+    if (state == NULL) {
+	ERROR("XPMEM: Cannot release irq for link %d: invalid link\n", link);
+	return -EBUSY;
+    }
+
+    /* Get idt info */
+    status = xpmem_get_idt_info(state, host_vector, &info);
+    if (status != 0) {
+	ERROR("XPMEM: Cannot get idt info for host vector %d\n", host_vector);
+	return -EINVAL;
+    }
+
+
+    printk("Releasing host vector %d\n", host_vector);
+
+    /* Release irq */
+    xpmem_release_irq(info.host_irq, state);
+
+    info.host_irq     = 0;
+    info.guest_vector = 0;
+    info.in_use       = 0;
+
+    /* Update idt info */
+    xpmem_set_idt_info(state, host_vector, &info);
+
+    return 0;
+}
+
+static void
+palacios_xpmem_deliver_irq(xpmem_link_t  link,
+                           xpmem_segid_t segid,
+                           xpmem_sigid_t sigid,
+                           xpmem_domid_t domid)
+{
+    xpmem_irq_deliver(segid, sigid, domid);
+}
+
 static struct v3_xpmem_hooks 
 palacios_xpmem_hooks = 
 {
-    .xpmem_host_connect     = palacios_xpmem_host_connect,
-    .xpmem_host_disconnect  = palacios_xpmem_host_disconnect,
-    .xpmem_command          = palacios_xpmem_command,
+    .xpmem_host_connect    = palacios_xpmem_host_connect,
+    .xpmem_host_disconnect = palacios_xpmem_host_disconnect,
+    .xpmem_command         = palacios_xpmem_command,
+    .xpmem_read_apicid     = palacios_xpmem_read_apicid,
+    .xpmem_request_irq     = palacios_xpmem_request_irq,
+    .xpmem_release_irq     = palacios_xpmem_release_irq,
+    .xpmem_deliver_irq     = palacios_xpmem_deliver_irq,
 };
 
 
@@ -156,10 +339,13 @@ init_xpmem_guest(struct v3_guest * guest,
 	return -1;
     }
 
+    rwlock_init(&(state->idt_lock));
+    memset(state->idt_map, 0, sizeof(state->idt_map));
+
     state->link = xpmem_add_connection(
 	    (void *)state,
 	    xpmem_cmd_fn,
-	    xpmem_irq_fn,
+	    xpmem_segid_fn,
 	    xpmem_kill_fn);
  
     if (state->link <= 0) {

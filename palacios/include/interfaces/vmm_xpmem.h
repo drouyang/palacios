@@ -25,6 +25,7 @@
 #include <palacios/vmm_types.h>
 
 typedef sint64_t xpmem_domid_t;
+typedef sint64_t xpmem_sigid_t;
 typedef sint64_t xpmem_segid_t;
 typedef sint64_t xpmem_apid_t;
 typedef signed short xpmem_link_t;
@@ -40,6 +41,10 @@ struct v3_xpmem_hooks {
     xpmem_host_handle_t (*xpmem_host_connect)(void * private_data, struct v3_xpmem_state * v3_xpmem);
     int (*xpmem_host_disconnect)(xpmem_host_handle_t handle);
     int (*xpmem_command)(xpmem_host_handle_t handle, struct xpmem_cmd_ex * cmd);
+    int (*xpmem_read_apicid)(xpmem_host_handle_t, uint32_t logical_cpu);
+    int (*xpmem_request_irq)(xpmem_host_handle_t, uint16_t guest_vector);
+    int (*xpmem_release_irq)(xpmem_host_handle_t, uint16_t host_vector);
+    void (*xpmem_deliver_irq)(xpmem_host_handle_t, xpmem_segid_t segid, xpmem_sigid_t sigid, xpmem_domid_t domid);
 };
 
 
@@ -50,7 +55,7 @@ void V3_Init_Xpmem(struct v3_xpmem_hooks * hooks);
 
 // Incoming command requests/responses
 int V3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd);
-int V3_xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem, int vector);
+int V3_xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem, uint16_t guest_vector);
 
 
 /* VMM --> Host interface */
@@ -59,5 +64,9 @@ int v3_xpmem_host_disconnect(xpmem_host_handle_t handle);
 
 // Outgoing command requests/responses
 int v3_xpmem_host_command(xpmem_host_handle_t handle, struct xpmem_cmd_ex * cmd);
+int v3_xpmem_read_apicid(xpmem_host_handle_t, uint32_t logical_cpu);
+int v3_xpmem_request_irq(xpmem_host_handle_t handle, uint16_t guest_vector);
+int v3_xpmem_release_irq(xpmem_host_handle_t handle, uint16_t host_vector);
+void v3_xpmem_deliver_irq(xpmem_host_handle_t handle, xpmem_segid_t segid, xpmem_sigid_t sigid, xpmem_domid_t domid);
 
 #endif

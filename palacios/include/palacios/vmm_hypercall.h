@@ -60,7 +60,11 @@ typedef enum {
     XPMEM_HCALL                     =  0xf000,
     XPMEM_DETACH_HCALL              =  0xf001,
     XPMEM_IRQ_CLEAR_HCALL           =  0xf002,
-    XPMEM_READ_CMD_HCALL            =  0xf003
+    XPMEM_READ_CMD_HCALL            =  0xf003,
+    XPMEM_READ_APICID_HCALL         =  0xf004,
+    XPMEM_REQUEST_IRQ_HCALL         =  0xf005,
+    XPMEM_RELEASE_IRQ_HCALL         =  0xf006,
+    XPMEM_DELIVER_IRQ_HCALL         =  0xf007
 } hcall_id_t;
 
 

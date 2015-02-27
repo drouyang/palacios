@@ -20,10 +20,14 @@
 #include <palacios/vmm.h>
 #include <palacios/svm.h>
 #include <palacios/vmx.h>
+#include <palacios/vmm_types.h>
 #include <palacios/vmm_list.h>
 #include <palacios/vmm_lock.h>
 #include <palacios/vm_guest_mem.h>
+
 #include <interfaces/vmm_xpmem.h>
+
+#include <devices/apic.h>
 #include <devices/pci.h>
 #include <devices/pci_types.h>
 #include <devices/xpmem.h>
@@ -47,6 +51,10 @@ struct xpmem_bar_state {
     uint32_t xpmem_detach_hcall_id;
     uint32_t xpmem_irq_clear_hcall_id;
     uint32_t xpmem_read_cmd_hcall_id;
+    uint32_t xpmem_read_apicid_hcall_id;
+    uint32_t xpmem_request_irq_hcall_id;
+    uint32_t xpmem_release_irq_hcall_id;
+    uint32_t xpmem_deliver_irq_hcall_id;
 
     /* VMX-enabled */
     uint8_t vmx_capable;
@@ -78,6 +86,7 @@ struct xpmem_memory_region {
 struct v3_xpmem_state {
     struct v3_vm_info   * vm;
     struct vm_device    * pci_bus;
+    struct vm_device    * apic_dev;
     struct pci_device   * pci_dev;
 
     /* state lock */
@@ -1105,6 +1114,98 @@ out:
 }
 
 static int
+xpmem_read_apicid_hcall(struct v3_core_info * core,
+                        hcall_id_t            hcall_id,
+		    	void                * priv_data)
+{
+    struct v3_xpmem_state * state       = (struct v3_xpmem_state *)priv_data;
+    uint32_t                cpu         = core->vm_regs.rbx;
+    addr_t                  apicid_gva  = core->vm_regs.rcx;
+    int                     apic_id     = 0;
+    size_t wrote, bytes;
+    
+    /* Returning -1 on hypercalls kills the guest */
+    apic_id = v3_xpmem_read_apicid(state->host_handle, cpu);
+    if (apic_id < 0) {
+	PrintError("Unable to read host apicid for cpu %d\n", cpu);
+	return 0;
+    }
+
+    /* Write the apicid to the guest */
+    bytes = sizeof(sint32_t);
+    wrote = v3_write_gva(core, apicid_gva, bytes, (uint8_t *)&apic_id);
+
+    if (wrote < bytes) {
+	PrintError("v3_write_gva failed (wrote %llu bytes out of %llu)\n",
+	    (unsigned long long)wrote, (unsigned long long)bytes);
+	return -1;
+    }
+
+    return 0;
+}
+
+static int
+xpmem_request_irq_hcall(struct v3_core_info * core,
+                        hcall_id_t            hcall_id,
+			void                * priv_data)
+{
+    struct v3_xpmem_state * state       = (struct v3_xpmem_state *)priv_data;
+    uint16_t                gvector     = core->vm_regs.rbx;
+    addr_t                  hvector_gva = core->vm_regs.rcx;
+    int                     hvector     = 0;
+    size_t wrote, bytes;
+    
+    /* Returning -1 on hypercalls kills the guest, which we probably don't want to do if
+     * irqs are exhausted
+     */
+    hvector = v3_xpmem_request_irq(state->host_handle, gvector);
+    if (hvector <= 0) {
+	PrintError("Unable to request irq from host\n");
+	return 0;
+    }
+
+    /* Write the host vector to the guest */
+    bytes = sizeof(sint32_t);
+    wrote = v3_write_gva(core, hvector_gva, bytes, (uint8_t *)&hvector);
+
+    if (wrote < bytes) {
+	PrintError("v3_write_gva failed (wrote %llu bytes out of %llu)\n",
+	    (unsigned long long)wrote, (unsigned long long)bytes);
+	return -1;
+    }
+
+    return 0;
+}
+
+static int
+xpmem_release_irq_hcall(struct v3_core_info * core,
+                        hcall_id_t            hcall_id,
+			void                * priv_data)
+{
+    struct v3_xpmem_state * state   = (struct v3_xpmem_state *)priv_data;
+    uint16_t                hvector = core->vm_regs.rbx;
+
+    /* Release irq */
+    return v3_xpmem_release_irq(state->host_handle, hvector);
+}
+
+static int
+xpmem_deliver_irq_hcall(struct v3_core_info * core,
+                        hcall_id_t            hcall_id,
+			void                * priv_data)
+{
+    struct v3_xpmem_state * state = (struct v3_xpmem_state *)priv_data;
+    xpmem_segid_t           segid = core->vm_regs.rbx;
+    xpmem_sigid_t           sigid = core->vm_regs.rcx;
+    xpmem_domid_t           domid = core->vm_regs.rdx;
+
+    /* Deliver irq */
+    v3_xpmem_deliver_irq(state->host_handle, segid, sigid, domid);
+
+    return 0;
+}
+
+static int
 register_xpmem_dev(struct v3_xpmem_state * state)
 {
     struct v3_pci_bar   bars[6];
@@ -1190,6 +1291,9 @@ xpmem_init(struct v3_vm_info * vm,
     state->pci_bus = pci_bus;
     state->vm      = vm;
 
+    /* Locate APIC */
+    state->apic_dev = v3_find_dev(vm, "apic");
+
     dev = v3_add_device(vm, dev_id, &dev_ops, state);
     if (dev == NULL) {
         PrintError("Could not attach device %s\n", dev_id);
@@ -1205,10 +1309,14 @@ xpmem_init(struct v3_vm_info * vm,
     state->bar_state->vmx_capable = (v3_is_vmx_capable() > 0);
 
     /* Save hypercall ids in the bar */
-    state->bar_state->xpmem_hcall_id           = XPMEM_HCALL;
-    state->bar_state->xpmem_detach_hcall_id    = XPMEM_DETACH_HCALL;
-    state->bar_state->xpmem_irq_clear_hcall_id = XPMEM_IRQ_CLEAR_HCALL;
-    state->bar_state->xpmem_read_cmd_hcall_id  = XPMEM_READ_CMD_HCALL;
+    state->bar_state->xpmem_hcall_id             = XPMEM_HCALL;
+    state->bar_state->xpmem_detach_hcall_id      = XPMEM_DETACH_HCALL;
+    state->bar_state->xpmem_irq_clear_hcall_id   = XPMEM_IRQ_CLEAR_HCALL;
+    state->bar_state->xpmem_read_cmd_hcall_id    = XPMEM_READ_CMD_HCALL;
+    state->bar_state->xpmem_read_apicid_hcall_id = XPMEM_READ_APICID_HCALL;
+    state->bar_state->xpmem_request_irq_hcall_id = XPMEM_REQUEST_IRQ_HCALL;
+    state->bar_state->xpmem_release_irq_hcall_id = XPMEM_RELEASE_IRQ_HCALL;
+    state->bar_state->xpmem_deliver_irq_hcall_id = XPMEM_DELIVER_IRQ_HCALL;
 
     /* Setup other bar information */
     state->bar_state->xpmem_cmd_size = 0;
@@ -1220,6 +1328,10 @@ xpmem_init(struct v3_vm_info * vm,
     v3_register_hypercall(vm, XPMEM_DETACH_HCALL, xpmem_detach_hcall, state);
     v3_register_hypercall(vm, XPMEM_IRQ_CLEAR_HCALL, xpmem_irq_clear_hcall, state);
     v3_register_hypercall(vm, XPMEM_READ_CMD_HCALL, xpmem_read_cmd_hcall, state);
+    v3_register_hypercall(vm, XPMEM_READ_APICID_HCALL, xpmem_read_apicid_hcall, state);
+    v3_register_hypercall(vm, XPMEM_REQUEST_IRQ_HCALL, xpmem_request_irq_hcall, state);
+    v3_register_hypercall(vm, XPMEM_RELEASE_IRQ_HCALL, xpmem_release_irq_hcall, state);
+    v3_register_hypercall(vm, XPMEM_DELIVER_IRQ_HCALL, xpmem_deliver_irq_hcall, state);
 
     /* Misc setup */
     v3_spinlock_init(&(state->lock));
@@ -1312,7 +1424,20 @@ int
 v3_xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem,
                    int                     vector)
 {
-    return 0;
+    struct v3_gen_ipi ipi;
+
+    memset(&ipi, 0, sizeof(struct v3_gen_ipi));
+
+    ipi.vector        = vector;
+    ipi.dst_shorthand = 0;
+    ipi.logical       = 0;
+    ipi.mode          = IPI_FIXED;
+    ipi.trigger_mode  = 1;
+    ipi.dst           = 0;
+
+    PrintDebug("Sending IPI %d to apic %d\n", ipi.vector, ipi.dst);
+    
+    return v3_apic_send_ipi(v3_xpmem->vm, &ipi, v3_xpmem->apic_dev);
 }
 
 device_register("XPMEM", xpmem_init)

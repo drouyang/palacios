@@ -26,43 +26,95 @@
 
 static struct v3_xpmem_hooks * xpmem_hooks = NULL;
 
-
-
-/* Host --> VMM interface */
-void V3_Init_Xpmem(struct v3_xpmem_hooks * hooks) {
+void 
+V3_Init_Xpmem(struct v3_xpmem_hooks * hooks)
+{
     xpmem_hooks = hooks;
-    return;
 }
 
-// Incoming command requests/responses
-int V3_xpmem_command(struct v3_xpmem_state * v3_xpmem, struct xpmem_cmd_ex * cmd) {
+int 
+V3_xpmem_command(struct v3_xpmem_state * v3_xpmem, 
+                 struct xpmem_cmd_ex   * cmd)
+{
     return v3_xpmem_command(v3_xpmem, cmd);
 }
 
-int V3_xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem, int vector) {
-    return v3_xpmem_raise_irq(v3_xpmem, vector);
+int 
+V3_xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem, 
+                   uint16_t                guest_vector)
+{
+    return v3_xpmem_raise_irq(v3_xpmem, guest_vector);
 }
 
 
-/* VMM --> host interface */
-xpmem_host_handle_t v3_xpmem_host_connect(struct v3_vm_info * vm, struct v3_xpmem_state * v3_xpmem) {
+xpmem_host_handle_t 
+v3_xpmem_host_connect(struct v3_vm_info     * vm, 
+                      struct v3_xpmem_state * v3_xpmem)
+{
     V3_ASSERT(xpmem_hooks);
     V3_ASSERT(xpmem_hooks->xpmem_host_connect);
 
     return xpmem_hooks->xpmem_host_connect(vm->host_priv_data, v3_xpmem);
 }
 
-int v3_xpmem_host_disconnect(xpmem_host_handle_t handle) {
+int 
+v3_xpmem_host_disconnect(xpmem_host_handle_t handle)
+{
     V3_ASSERT(xpmem_hooks);
     V3_ASSERT(xpmem_hooks->xpmem_host_disconnect);
 
     return xpmem_hooks->xpmem_host_disconnect(handle);
 }
 
-// Outgoing command requests/responses
-int v3_xpmem_host_command(xpmem_host_handle_t handle, struct xpmem_cmd_ex * cmd) {
+int 
+v3_xpmem_host_command(xpmem_host_handle_t   handle, 
+                      struct xpmem_cmd_ex * cmd)
+{
     V3_ASSERT(xpmem_hooks);
     V3_ASSERT(xpmem_hooks->xpmem_command);
 
     return xpmem_hooks->xpmem_command(handle, cmd);
+}
+
+int
+v3_xpmem_read_apicid(xpmem_host_handle_t handle,
+                     uint32_t            cpu)
+{
+    V3_ASSERT(xpmem_hooks);
+    V3_ASSERT(xpmem_hooks->xpmem_read_apicid);
+
+    return xpmem_hooks->xpmem_read_apicid(handle, cpu);
+}
+
+
+int 
+v3_xpmem_request_irq(xpmem_host_handle_t handle, 
+                     uint16_t            guest_vector)
+{
+    V3_ASSERT(xpmem_hooks);
+    V3_ASSERT(xpmem_hooks->xpmem_request_irq);
+
+    return xpmem_hooks->xpmem_request_irq(handle, guest_vector);
+}
+
+int
+v3_xpmem_release_irq(xpmem_host_handle_t handle,
+                     uint16_t            host_vector)
+{
+    V3_ASSERT(xpmem_hooks);
+    V3_ASSERT(xpmem_hooks->xpmem_release_irq);
+
+    return xpmem_hooks->xpmem_release_irq(handle, host_vector);
+}
+
+void
+v3_xpmem_deliver_irq(xpmem_host_handle_t handle,
+                     xpmem_segid_t       segid,
+                     xpmem_sigid_t       sigid,
+		     xpmem_domid_t       domid)
+{
+    V3_ASSERT(xpmem_hooks);
+    V3_ASSERT(xpmem_hooks->xpmem_deliver_irq);
+
+    xpmem_hooks->xpmem_deliver_irq(handle, segid, sigid, domid);
 }
