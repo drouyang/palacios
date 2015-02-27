@@ -4,7 +4,6 @@
  */
  
 
-#include <interfaces/vmm_socket.h>
 
 #include <linux/spinlock.h>
 #include <asm/uaccess.h>
@@ -17,6 +16,8 @@
 #include <linux/preempt.h>
 #include <linux/sched.h>
 #include <linux/list.h>
+
+#include <interfaces/vmm_socket.h>
 
 #include "palacios.h"
 #include "linux-exts.h"

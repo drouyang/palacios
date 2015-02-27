@@ -128,7 +128,7 @@ xpmem_irq_fn(int    irq,
     sig->irq    = irq;
     sig->vector = xpmem_irq_to_vector(irq);
 
-    return xpmem_segid_fn(-1, sigid, -1, priv_data);
+    return (xpmem_segid_fn(-1, sigid, -1, priv_data) == 0) ? IRQ_HANDLED : IRQ_NONE;
 }
 
 static void
