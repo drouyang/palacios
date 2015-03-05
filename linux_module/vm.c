@@ -383,23 +383,60 @@ vm_seq_show(struct seq_file * s,
 	    void            * v) 
 {
     struct v3_guest            * guest = (struct v3_guest *)(s->private);
-    struct v3_guest_mem_region * regs  = NULL;
 
-    int num_regs = 0;
-    int i        = 0;
+    /* Print our CPU thread info */
+    {
+	struct v3_thread_info * threads = NULL;
 
-    regs = v3_get_guest_memory_regions(guest->v3_ctx, &num_regs);
-	
-    seq_printf(s, "BASE MEMORY REGIONS (%d)\n", num_regs);
+	int num_threads = 0;
+	int i           = 0;
 
-    for (i = 0; i < num_regs; i++) {
-	seq_printf(s, "\t0x%p - 0x%p  (size=%lluMB) [NUMA ZONE=%d]\n", 
-		   (void *)regs[i].start, 
-		   (void *)regs[i].end, 
-		   (regs[i].end - regs[i].start) / (1024 * 1024),
-		   numa_addr_to_node(regs[i].start));
+	threads = v3_get_vm_thread_info(guest->v3_ctx, &num_threads);
+
+	seq_printf(s, "VM CORES (%d)\n", num_threads);
+
+	for (i = 0; i < num_threads; i++) {
+	    struct task_struct * thread   = threads[i].host_thread;
+	    struct pid         * thrd_pid = get_task_pid(thread, PIDTYPE_PID);
+	    
+	    seq_printf(s, "\tVCPU %d: [PCPU=%d] [PID=%d] [TID=%d]\n", 
+		       i, 
+		       threads[i].phys_cpu_id, 
+		       pid_nr(thrd_pid),
+		       pid_nr(thrd_pid));
+	    
+		       put_pid(thrd_pid);
+
+	}
+
+ 	palacios_kfree(threads);
+
     }
 
+    /* Print our memory info */
+    {
+	struct v3_guest_mem_region * regs  = NULL;
+	
+	int num_regs = 0;
+	int i        = 0;
+	
+	regs = v3_get_guest_memory_regions(guest->v3_ctx, &num_regs);
+	
+	
+	
+	
+	seq_printf(s, "BASE MEMORY REGIONS (%d)\n", num_regs);
+	
+	for (i = 0; i < num_regs; i++) {
+	    seq_printf(s, "\t0x%p - 0x%p  (size=%lluMB) [NUMA ZONE=%d]\n", 
+		       (void *)regs[i].start, 
+		       (void *)regs[i].end, 
+		       (regs[i].end - regs[i].start) / (1024 * 1024),
+		       numa_addr_to_node(regs[i].start));
+	}
+
+	palacios_kfree(regs);
+    }
 
     return 0;
 }

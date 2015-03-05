@@ -750,6 +750,32 @@ v3_reset_vm_core(struct v3_core_info * core,
     return ret;
 }
 
+struct v3_thread_info *
+v3_get_vm_thread_info(struct v3_vm_info * vm, 
+		      int               * num_threads)
+{
+    struct v3_thread_info * tmp_arr = NULL;
+    int i = 0;
+
+    tmp_arr = V3_Malloc(sizeof(struct v3_thread_info) * vm->num_cores);
+ 
+    if (tmp_arr == NULL) {
+	PrintError("Could not allocate cpu thread array\n");
+	return NULL;
+    }
+
+    memset(tmp_arr, 0, sizeof(void *) * vm->num_cores);
+
+    for (i = 0; i < vm->num_cores; i++) {
+	tmp_arr[i].host_thread = vm->cores[i].core_thread;
+	tmp_arr[i].phys_cpu_id = vm->cores[i].pcpu_id;
+    }
+    
+    *num_threads = vm->num_cores;
+
+    return tmp_arr;
+}
+
 
 
 /* move a virtual core to different physical core */

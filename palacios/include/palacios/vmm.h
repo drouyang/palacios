@@ -400,6 +400,13 @@ struct v3_guest_mem_region {
     uint64_t end;
 };
 
+/* 
+ * CPU Thread info
+ */
+struct v3_thread_info {
+    void    * host_thread;
+    uint32_t  phys_cpu_id;
+};
 
 
 int Init_V3(struct v3_os_hooks * hooks, char * cpus, int num_cpus, char * options);
@@ -435,7 +442,14 @@ int * v3_get_cpu_usage(int * num_cpus);
  * Returns an array of v3_guest_mem_regions specifying a VM's base memory region layout
  *  - implemented in vmm_mem.c
  */
-struct v3_guest_mem_region * v3_get_guest_memory_regions(struct v3_vm_info * vm, int * num_regions);
+struct v3_guest_mem_region * 
+v3_get_guest_memory_regions(struct v3_vm_info * vm, int * num_regions);
+
+/* 
+ * Returns an array of host thread pointers, indexed by VCPU ID
+ */
+struct v3_thread_info *
+v3_get_vm_thread_info(struct v3_vm_info * vm, int * num_threads);
 
 
 
