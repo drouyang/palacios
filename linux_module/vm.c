@@ -379,7 +379,7 @@ static struct file_operations v3_vm_fops = {
  * If we ever do, we will need to implement a full seq_file implementation
  */
 static int 
-vm_seq_show(struct seq_file * s, 
+cpu_seq_show(struct seq_file * s, 
 	    void            * v) 
 {
     struct v3_guest            * guest = (struct v3_guest *)(s->private);
@@ -413,6 +413,34 @@ vm_seq_show(struct seq_file * s,
 
     }
 
+    return 0;
+}
+
+
+
+
+static int 
+cpu_proc_open(struct inode * inode, 
+	     struct file  * filp) 
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+    void * data = PDE(inode)->data;
+#else 
+    void * data = PDE_DATA(inode);
+#endif
+
+    return single_open(filp, cpu_seq_show, data);
+}
+
+/* This is OK, because at least for now there is no way we will exceed 4KB of data in the file. 
+ * If we ever do, we will need to implement a full seq_file implementation
+ */
+static int 
+mem_seq_show(struct seq_file * s, 
+	    void            * v) 
+{
+    struct v3_guest            * guest = (struct v3_guest *)(s->private);
+
     /* Print our memory info */
     {
 	struct v3_guest_mem_region * regs  = NULL;
@@ -445,8 +473,8 @@ vm_seq_show(struct seq_file * s,
 
 
 static int 
-vm_proc_open(struct inode * inode, 
-	     struct file  * filp) 
+mem_proc_open(struct inode * inode, 
+	      struct file  * filp) 
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
     void * data = PDE(inode)->data;
@@ -454,17 +482,28 @@ vm_proc_open(struct inode * inode,
     void * data = PDE_DATA(inode);
 #endif
 
-    return single_open(filp, vm_seq_show, data);
+    return single_open(filp, mem_seq_show, data);
 }
 
 
-static const struct file_operations vm_proc_ops = {
+static const struct file_operations mem_proc_ops = {
     .owner   = THIS_MODULE,
-    .open    = vm_proc_open, 
+    .open    = mem_proc_open, 
     .read    = seq_read, 
     .llseek  = seq_lseek,
     .release = single_release,
 };
+
+static const struct file_operations cpu_proc_ops = {
+    .owner   = THIS_MODULE,
+    .open    = cpu_proc_open, 
+    .read    = seq_read, 
+    .llseek  = seq_lseek,
+    .release = single_release,
+};
+
+
+
 
 /*** END PROC File functions */
 
@@ -512,33 +551,69 @@ int create_palacios_vm(struct v3_guest * guest)  {
 
 
     {
-	struct proc_dir_entry * entry = NULL;
-	char proc_file[32] = {[0 ... 31] = 0};
+	struct proc_dir_entry * cpu_entry = NULL;
+	struct proc_dir_entry * mem_entry = NULL;
+	char dir_path[32] = {[0 ... 31] = 0};
 
-	snprintf(proc_file, 31, "v3-vm%d", MINOR(guest->vm_dev));
+	snprintf(dir_path, 31, "v3-vm%d", MINOR(guest->vm_dev));
 
+	guest->vm_proc_dir = proc_mkdir(dir_path, palacios_proc_dir);
+
+	if (guest->vm_proc_dir == NULL) {
+	    ERROR("Could not create VM proc directory\n");
+	    goto out_err3;
+	}
     
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
-	entry = create_proc_entry(proc_file, 0444, palacios_proc_dir);
+	cpu_entry = create_proc_entry("cpus", 0444, guest->vm_proc_dir);
     
-	if (entry) {
-	    entry->proc_fops = &vm_proc_ops;
-	    entry->data      = guest;
-	    v3_lnx_printk("/proc/v3vee/v3-vm%d successfully created\n", MINOR(guest->vm_dev));
+	if (cpu_entry) {
+	    cpu_entry->proc_fops = &cpu_proc_ops;
+	    cpu_entry->data      = guest;
+	    v3_lnx_printk("%s successfully created\n", cpu_path);
+	}
+
+    
+#else 
+	cpu_entry = proc_create_data("cpus", 0444, guest->vm_proc_dir, &cpu_proc_ops, guest);
+#endif
+
+    
+	if (!cpu_entry) {
+	    ERROR("Could not create proc cpu file\n");
+	    goto out_err4;
+	}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+
+	mem_entry = create_proc_entry("mem", 0444, guest->vm_proc_dir);
+
+	if (mem_entry) {
+	    mem_entry->proc_fops = &mem_proc_ops;
+	    mem_entry->data      = guest;
+	    v3_lnx_printk("%s successfully created\n", mem_path);
 	}
 #else 
-	entry = proc_create_data(proc_file, 0444, palacios_proc_dir, &vm_proc_ops, guest);
+	mem_entry = proc_create_data("mem", 0444, guest->vm_proc_dir, &mem_proc_ops, guest);
 #endif
     
-	if (!entry) {
-	    ERROR("Could not create proc entry (%s)\n", proc_file);
-	    goto out_err3;;
+	if (!mem_entry) {
+	    ERROR("Could not create proc mem file\n");
+	    goto out_err5;
 	}
     }
     v3_lnx_printk("VM created at /dev/v3-vm%d\n", MINOR(guest->vm_dev));
     
     return 0;
 
+out_err5:
+    remove_proc_entry("cpus", guest->vm_proc_dir);
+out_err4:
+    {
+	char proc_file[32] = {[0 ... 31] = 0};
+	snprintf(proc_file, 31, "v3-vm%d", MINOR(guest->vm_dev));
+	remove_proc_entry(proc_file, palacios_proc_dir);
+    }
 out_err3:
     device_destroy(v3_class, guest->vm_dev);
 out_err2:
@@ -554,14 +629,19 @@ out_err:
 
 
 
-int free_palacios_vm(struct v3_guest * guest) {
+int 
+free_palacios_vm(struct v3_guest * guest) 
+{
+
+    remove_proc_entry("cpus", guest->vm_proc_dir);
+    remove_proc_entry("mem",  guest->vm_proc_dir);
 
     {
-	char proc_file[32] = {[0 ... 31] = 0};
+	char proc_dir[32] = {[0 ... 31] = 0};
 
-	snprintf(proc_file, 31, "v3-vm%d", MINOR(guest->vm_dev));
+	snprintf(proc_dir, 31, "v3-vm%d", MINOR(guest->vm_dev));
 
-	remove_proc_entry(proc_file, palacios_proc_dir);
+	remove_proc_entry(proc_dir, palacios_proc_dir);
     }
 
     device_destroy(v3_class, guest->vm_dev);

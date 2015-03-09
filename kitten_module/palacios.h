@@ -54,6 +54,8 @@
 
 #define V3_CMD_PATH         "/dev/v3vee"
 #define V3_VM_PATH          "/dev/v3-vm"
+#define V3_PROC_PATH        "/proc/v3vee"
+#define V3_VM_PROC_PATH     "/proc/v3vee/v3-vm"
 
 #define MAX_VMS 32
 

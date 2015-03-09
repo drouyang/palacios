@@ -13,6 +13,7 @@
 #include <lwk/fdTable.h>
 #include <lwk/poll.h>
 #include <lwk/kfs.h>
+#include <lwk/proc_fs.h>
 
 #include <lwk/kthread.h>
 #include <arch/unistd.h>
@@ -297,6 +298,9 @@ palacios_init(void)
 		   &palacios_ctrl_fops,
 		   0777, 
 		   NULL, 0);
+
+	proc_mkdir(V3_PROC_PATH);
+
 
 	return 0;
 }

@@ -4,6 +4,10 @@
  */
 
 #include <lwk/kfs.h>
+#include <lwk/proc_fs.h>
+#include <lwk/print.h>
+#include <lwk/aspace.h>
+#include <lwk/task.h>
 #include <arch/uaccess.h>
 #include <arch/apic.h>
 
@@ -124,6 +128,66 @@ static struct kfs_fops vm_ctrl_fops = {
 	.unlocked_ioctl = vm_ioctl,
 };
 
+
+static int 
+get_cpu_proc_data(struct file * file, void * private)
+{
+	struct v3_guest       * guest   = (struct v3_guest *)private;
+        struct v3_thread_info * threads = NULL;
+
+        int num_threads = 0;
+        int i           = 0;
+
+	printk("Getting VM CPU INFO\n");
+
+        threads = v3_get_vm_thread_info(guest->v3_ctx, &num_threads);
+
+        proc_sprintf(file, "VM CORES (%d)\n", num_threads);
+
+        for (i = 0; i < num_threads; i++) {
+		struct task_struct * task = threads[i].host_thread;
+            
+		proc_sprintf(file, "\tVCPU %d: [PCPU=%d] [PID=%d] [TID=%d]\n", 
+			   i, 
+			   threads[i].phys_cpu_id, 
+			   task->aspace->id,
+			   task->id);
+            
+
+        }
+
+        kmem_free(threads);
+
+	return 0;
+}
+
+static int 
+get_mem_proc_data(struct file * file, void * private)
+{
+	struct v3_guest            * guest = (struct v3_guest *)private;
+        struct v3_guest_mem_region * regs  = NULL;
+        
+        int num_regs = 0;
+        int i        = 0;
+        
+	printk("Getting VM MEM INFO\n");
+        regs = v3_get_guest_memory_regions(guest->v3_ctx, &num_regs);
+        
+        proc_sprintf(file, "BASE MEMORY REGIONS (%d)\n", num_regs);
+        
+        for (i = 0; i < num_regs; i++) {
+            proc_sprintf(file, "\t0x%p - 0x%p  (size=%lluMB) [NUMA ZONE=%d]\n", 
+                       (void *)regs[i].start, 
+                       (void *)regs[i].end, 
+                       (regs[i].end - regs[i].start) / (1024 * 1024),
+                       0);
+        }
+
+        kmem_free(regs);
+
+	return 0;
+}
+
 int
 palacios_create_vm(struct v3_guest * guest) 
 {
@@ -162,6 +226,22 @@ palacios_create_vm(struct v3_guest * guest)
 		
 	}
 
+
+	{
+		char * vm_proc_path  = kasprintf(0, V3_VM_PROC_PATH "%d",      guest->guest_id);
+		char * cpu_proc_path = kasprintf(0, V3_VM_PROC_PATH "%d/cpus", guest->guest_id);
+		char * mem_proc_path = kasprintf(0, V3_VM_PROC_PATH "%d/mem",  guest->guest_id);
+
+		proc_mkdir(vm_proc_path);
+		create_proc_file(cpu_proc_path, get_cpu_proc_data, guest);
+		create_proc_file(mem_proc_path, get_mem_proc_data, guest);
+		
+		kmem_free(vm_proc_path);
+		kmem_free(cpu_proc_path);
+		kmem_free(mem_proc_path);
+	    
+	}
+
 	v3_lwk_printk("Created VM (id=%d) at %p\n", guest->guest_id, guest);
     
 
@@ -174,6 +254,21 @@ palacios_create_vm(struct v3_guest * guest)
 int 
 palacios_free_vm(struct v3_guest * guest) 
 {
+
+	{
+		char * vm_proc_path  = kasprintf(0, V3_VM_PROC_PATH "%d",      guest->guest_id);
+		char * cpu_proc_path = kasprintf(0, V3_VM_PROC_PATH "%d/cpus", guest->guest_id);
+		char * mem_proc_path = kasprintf(0, V3_VM_PROC_PATH "%d/mem",  guest->guest_id);
+		
+		remove_proc_file(cpu_proc_path);
+		remove_proc_file(mem_proc_path);
+		proc_rmdir(vm_proc_path);
+		
+		kmem_free(vm_proc_path);
+		kmem_free(cpu_proc_path);
+		kmem_free(mem_proc_path);
+
+	}
 
 	kfs_destroy(guest->kfs_inode);
 	

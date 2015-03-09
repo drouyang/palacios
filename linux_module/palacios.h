@@ -101,6 +101,8 @@ struct v3_guest {
 
     dev_t       vm_dev; 
     struct cdev cdev;
+
+    struct proc_dir_entry  * vm_proc_dir;
 };
 
 #define MAX_VMS 32
