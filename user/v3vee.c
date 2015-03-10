@@ -548,3 +548,30 @@ v3_save_vm(int    vm_id,
 
     return ret;
 }
+
+
+
+struct v3_vm_info * 
+v3_get_vms(u32 * num_vms)
+{
+
+
+
+}
+
+
+struct v3_vcpu_info *
+v3_get_vm_cpus(int vm_id, u32 * num_cores)
+{
+
+
+}
+
+
+struct v3_vmem_region *
+v3_get_vm_mem(int vm_id, u32 * num_regions)
+{
+
+
+}
+

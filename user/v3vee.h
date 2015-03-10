@@ -92,5 +92,37 @@ int v3_move_vcore(int vm_id,
 int v3_debug_vm(int vm_id, u32 core, u32 flags);
 
 
+/* VM Query functions */
+
+struct v3_vm_info {
+    char name[32];
+    u32  vm_id;
+};
+
+struct v3_vm_info * 
+v3_get_vms(u32 * num_vms);
+
+
+struct v3_vcpu_info {
+    u32 pcpu_id;
+    u32 pid;
+    u32 tid;
+};
+
+
+struct v3_vcpu_info *
+v3_get_vm_cpus(int vm_id, u32 * num_cores);
+
+struct v3_vmem_region {
+    u64 start_paddr;
+    u64 end_paddr;
+    u32 numa_zone;
+};
+
+struct v3_vmem_region *
+v3_get_vm_mem(int vm_id, u32 * num_regions);
+
+
+
 
 #endif
