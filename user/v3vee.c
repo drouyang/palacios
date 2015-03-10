@@ -550,11 +550,13 @@ v3_save_vm(int    vm_id,
 }
 
 
+#define PROC_PATH   "/proc/v3vee/"
+
 
 struct v3_vm_info * 
 v3_get_vms(u32 * num_vms)
 {
-
+  
 
 
 }
@@ -568,10 +570,89 @@ v3_get_vm_cpus(int vm_id, u32 * num_cores)
 }
 
 
+#define MEM_HDR_STR       "BASE MEMORY REGIONS ([0-9]+)"
+#define MEM_REGEX_STR     "[0-9]+: ([0-9A-Fa-f]{16}) - ([0-9A-Fa-f]{16})"
+
+
 struct v3_vmem_region *
 v3_get_vm_mem(int vm_id, u32 * num_regions)
 {
+    struct v3_vmem_region * regs = NULL;
+    
+    char * proc_filename   = NULL;
+    FILE * proc_file       = NULL;
+    char * line            = NULL;
+    size_t line_size       = 0;
 
+    int num_blks = 0;
+    int matched  = 0;
+    int i        = 0;
 
+    /* grab memory in VM */
+    if (asprintf(&proc_filename, PROC_PATH "v3-vm%d/mem", vm_id) == -1) {
+	ERROR("asprintf failed\n");
+	goto err1;
+    }
+
+    proc_file = fopen(proc_filename, "r");
+
+    free(proc_filename);
+    
+    if (proc_file == NULL) {
+	ERROR("Could not open proc file for VM [%d]\n", vm_id);
+	goto err1;
+    }
+
+    if (getline(&line, &line_size, proc_file) == -1) {
+	ERROR("Could not read VM proc file for VM [%d]\n", vm_id);
+	goto err1;
+    }
+	
+    matched = sscanf(line, "BASE MEMORY REGIONS (%d)", &num_blks);
+	
+    if (matched != 1) {
+	ERROR("Could not parse VM information proc file (memory header)\n");
+	goto err2;
+    }
+	
+
+    regs = calloc(num_blks, sizeof(struct v3_vmem_region));
+
+    for (i = 0; i < num_blks; i++) {
+	uint64_t start_addr = 0;
+	uint64_t end_addr   = 0;
+	uint32_t blk_size   = 0;
+	int      numa_zone  = 0;
+	    
+	line = NULL;
+
+	if (getline(&line, &line_size, proc_file) == -1) {
+	    ERROR("Could not read VM proc file for VM [%d]\n", vm_id);
+	    goto err3;
+	}
+
+	matched = sscanf(line, "       0x%llx - 0x%llx  (size=%uMB) [NUMA ZONE=%d]", 
+			 &start_addr, &end_addr, &blk_size, &numa_zone);
+	
+	if (matched != 4) {
+	    ERROR("Parsing error for VM memory blocks\n");
+	    goto err3;
+	}
+
+	regs[i].start_paddr = start_addr;
+	regs[i].end_paddr   = end_addr;
+	regs[i].numa_zone   = numa_zone;
+    }
+
+    *num_regions = num_blks;
+    return regs;
+
+ err3:
+    free(regs);
+ err2:
+    free(line);
+ err1:
+    return NULL;
 }
+
 
