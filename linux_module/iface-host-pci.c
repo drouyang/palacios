@@ -320,13 +320,14 @@ request_pci_dev(char * url,
 	    
 	    
 	    flags = IOMMU_READ | IOMMU_WRITE; // Need to see what IOMMU_CACHE means
-	    
+
+#if 0
 	    // Disable this for now, because it causes Intel DMAR faults for invalid bits set in PTE
 	    if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_CACHE_COHERENCY)) {
 		v3_lnx_printk("IOMMU SUPPORTS CACHE COHERENCY FOR DMA REMAPPING\n");
 		flags |= IOMMU_CACHE;
 	    }
-	    
+#endif	    
 	    
 	    regs = v3_get_guest_memory_regions(v3_ctx, &num_regs);
 
@@ -411,9 +412,11 @@ request_pci_dev(char * url,
 	    }
 
 
+#if 0
 	    if (iommu_domain_has_cap(host_dev->hw_dev.iommu_domain, IOMMU_CAP_INTR_REMAP)) {
 		v3_lnx_printk("IOMMU SUPPORTS INTERRUPT REMAPPING\n");
 	    }
+#endif
 
 	    dev->dev_flags |= PCI_DEV_FLAGS_ASSIGNED;
 	
