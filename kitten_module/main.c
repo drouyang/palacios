@@ -274,6 +274,29 @@ static struct kfs_fops palacios_ctrl_fops = {
 
 
 
+static int
+get_vm_proc_data(struct file * file, void * private)
+{
+    int num_vms = 0;
+    int i = 0;
+    
+    for (i = 0; i < MAX_VMS; i++) {
+	if (guest_map[i]) num_vms++;
+    }
+    
+    proc_sprintf(file, "V3 GUESTS (%d)\n", num_vms);
+
+    for (i = 0; i < MAX_VMS; i++) {
+	if (guest_map[i]) {
+	    proc_sprintf(file, "%s: [vm_id=%d]\n", 
+		       guest_map[i]->name, i);
+
+	}
+    }
+
+    return 0;
+}
+
 
 /**
  * Initialize the Palacios hypervisor.
@@ -301,6 +324,7 @@ palacios_init(void)
 
 	proc_mkdir(V3_PROC_PATH);
 
+	create_proc_file(V3_PROC_PATH "/v3-guests", get_vm_proc_data, NULL);
 
 	return 0;
 }
