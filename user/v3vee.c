@@ -553,24 +553,159 @@ v3_save_vm(int    vm_id,
 #define PROC_PATH   "/proc/v3vee/"
 
 
+#define VM_HDR_STR "V3 GUESTS (%d)"
+
 struct v3_vm_info * 
 v3_get_vms(u32 * num_vms)
 {
-  
+    struct v3_vm_info * vms = NULL;
+    
+    char * proc_filename    = NULL;
+    FILE * proc_file        = NULL;
+    char * line             = NULL;
+    size_t line_size        = 0;
 
+    int vm_cnt  = 0;
+    int matched = 0;
+    int i       = 0;
 
+    if (asprintf(&proc_filename, PROC_PATH "v3-guests") == -1) {
+	ERROR("asprintf failed\n");
+	goto err1;
+    }
+
+    proc_file = fopen(proc_filename, "r");
+    
+    free(proc_filename);
+
+    if (proc_file == NULL) {
+	ERROR("Could not open v3-guests proc file\n");
+	goto err1;
+    }
+    
+    if (getline(&line, &line_size, proc_file) == -1) {
+	ERROR("Could not read v3-guests proc file\n");
+	goto err1;
+    }
+
+    matched = sscanf(line, VM_HDR_STR, &vm_cnt);
+
+    if (matched != 1) {
+	ERROR("Could not parse v3-guests proc file header\n");
+	goto err2;
+    }
+
+    vms = calloc(vm_cnt, sizeof(struct v3_vm_info));
+
+    for (i = 0; i < vm_cnt; i++) {
+	if (getline(&line, &line_size, proc_file) == -1) {
+	    ERROR("Could not read v3-guests proc file\n");
+	    goto err3;
+	}
+
+	matched = sscanf(line, "%s: [vm_id=%d]",
+			 vms[i].name, &(vms[i].vm_id));
+	
+	if (matched != 2) {
+	    ERROR("parsing error in v3-guests proc file (matched=%d)\n", matched);
+	    goto err3;
+	}
+    }
+
+    free(line);
+
+    *num_vms = vm_cnt;
+    return vms;
+
+ err3:
+    free(vms);
+ err2:
+    free(line);
+ err1:
+    return NULL;
 }
 
+#define CPU_HDR_STR "VM CORES (%d)"
 
 struct v3_vcpu_info *
 v3_get_vm_cpus(int vm_id, u32 * num_cores)
 {
+    struct v3_vcpu_info * cpus = NULL;
 
+    char * proc_filename       = NULL;
+    FILE * proc_file           = NULL;
+    char * line                = NULL;
+    size_t line_size           = 0;
+
+    int num_cpus = 0;
+    int matched  = 0;
+    int i        = 0;
+
+
+    if (asprintf(&proc_filename, PROC_PATH "v3-vm%d/cpus", vm_id) == -1) {
+	ERROR("asprintf failed\n");
+	goto err1;
+    }
+    
+    proc_file = fopen(proc_filename, "r");
+    
+    free(proc_filename);
+
+    if (proc_file == NULL) {
+	ERROR("Could not open CPU proc file for VM [%d]\n", vm_id);
+	goto err1;
+    }
+
+    if (getline(&line, &line_size, proc_file) == -1) {
+	ERROR("Could not read CPU proc file for VM [%d]\n", vm_id);
+	goto err1;
+    }
+
+
+    matched = sscanf(line, CPU_HDR_STR, &num_cpus);
+
+    if (matched != 1) {
+	ERROR("Could not parse CPU proc file header for VM [%d]\n", vm_id);
+	goto err2;
+    }
+
+    cpus = calloc(num_cpus, sizeof(struct v3_vcpu_info));
+
+    for (i = 0; i < num_cpus; i++) {
+
+	if (getline(&line, &line_size, proc_file) == -1) {
+	    ERROR("Could not read CPU proc file for VM [%d]\n", vm_id);
+	    goto err3;
+	}
+
+	matched = sscanf(line, "\tVCPU %d: [PCPU=%d] [PID=%d] [TID=%d]", 
+			 &(cpus[i].vcpu_id),
+			 &(cpus[i].pcpu_id),
+			 &(cpus[i].pid),
+			 &(cpus[i].tid));
+
+	if (matched != 4) {
+	    ERROR("Parsing error in CPU proc file for VM [%d] (matched=%d)\n", vm_id, matched);
+	    goto err3;
+	}
+    }
+
+    free(line);
+
+    *num_cores = num_cpus;
+    return cpus;
+
+ err3:
+    free(cpus);
+ err2: 
+    free(line);
+ err1: 
+    return NULL;
 
 }
 
 
-#define MEM_HDR_STR       "BASE MEMORY REGIONS ([0-9]+)"
+#define MEM_HDR_STR       "BASE MEMORY REGIONS (%d)"
 #define MEM_REGEX_STR     "[0-9]+: ([0-9A-Fa-f]{16}) - ([0-9A-Fa-f]{16})"
 
 
@@ -599,50 +734,46 @@ v3_get_vm_mem(int vm_id, u32 * num_regions)
     free(proc_filename);
     
     if (proc_file == NULL) {
-	ERROR("Could not open proc file for VM [%d]\n", vm_id);
+	ERROR("Could not open MEM proc file for VM [%d]\n", vm_id);
 	goto err1;
     }
 
     if (getline(&line, &line_size, proc_file) == -1) {
-	ERROR("Could not read VM proc file for VM [%d]\n", vm_id);
+	ERROR("Could not read MEM proc file for VM [%d]\n", vm_id);
 	goto err1;
     }
 	
-    matched = sscanf(line, "BASE MEMORY REGIONS (%d)", &num_blks);
+    matched = sscanf(line, MEM_HDR_STR, &num_blks);
 	
     if (matched != 1) {
-	ERROR("Could not parse VM information proc file (memory header)\n");
+	ERROR("Could not parse MEM proc file header for VM [%d]\n", vm_id);
 	goto err2;
     }
-	
+
 
     regs = calloc(num_blks, sizeof(struct v3_vmem_region));
 
     for (i = 0; i < num_blks; i++) {
-	uint64_t start_addr = 0;
-	uint64_t end_addr   = 0;
-	uint32_t blk_size   = 0;
-	int      numa_zone  = 0;
+	u32 blk_size   = 0;
 	    
-	line = NULL;
-
 	if (getline(&line, &line_size, proc_file) == -1) {
-	    ERROR("Could not read VM proc file for VM [%d]\n", vm_id);
+	    ERROR("Could not read MEM proc file for VM [%d]\n", vm_id);
 	    goto err3;
 	}
 
 	matched = sscanf(line, "       0x%llx - 0x%llx  (size=%uMB) [NUMA ZONE=%d]", 
-			 &start_addr, &end_addr, &blk_size, &numa_zone);
+			 &(regs[i].start_paddr), 
+			 &(regs[i].end_paddr), 
+			 &blk_size, 
+			 &(regs[i].numa_zone));
 	
 	if (matched != 4) {
-	    ERROR("Parsing error for VM memory blocks\n");
+	    ERROR("Parsing error in MEM proc file for VM [%d] (matched=%d)\n", vm_id, matched);
 	    goto err3;
 	}
-
-	regs[i].start_paddr = start_addr;
-	regs[i].end_paddr   = end_addr;
-	regs[i].numa_zone   = numa_zone;
     }
+
+    free(line);
 
     *num_regions = num_blks;
     return regs;

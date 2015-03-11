@@ -95,7 +95,7 @@ int v3_debug_vm(int vm_id, u32 core, u32 flags);
 /* VM Query functions */
 
 struct v3_vm_info {
-    char name[32];
+    char name[128];
     u32  vm_id;
 };
 
@@ -104,6 +104,7 @@ v3_get_vms(u32 * num_vms);
 
 
 struct v3_vcpu_info {
+    u32 vcpu_id;
     u32 pcpu_id;
     u32 pid;
     u32 tid;
