@@ -253,6 +253,39 @@ info_hcall(struct v3_core_info * core,
 }
 
 
+
+static int
+yield_to_pid_hcall(struct v3_core_info * core, 
+		   uint32_t              hcall_id,
+		   void                * priv_data)
+{
+    uint32_t pid = core->vm_regs.rbx;
+    uint32_t tid = core->vm_regs.rcx;
+	
+    v3_yield_to_pid(core, pid, tid);
+
+    return 0;
+}
+
+
+static int
+yield_to_core_hcall(struct v3_core_info * core, 
+		    uint32_t              hcall_id,
+		    void                * priv_data)
+{
+    uint32_t vcpu_id = core->vm_regs.rbx;
+    
+    if (vcpu_id > core->vm_info->num_cores) {
+	PrintError("Tried to yield to invalid virtual core (%u)\n", vcpu_id);
+	return -1;
+    }
+    
+    v3_yield_to_thread(core, core->vm_info->cores[vcpu_id].core_thread);
+    
+    return 0;
+}
+
+
 #ifdef V3_CONFIG_SVM
 #include <palacios/svm.h>
 #include <palacios/svm_io.h>
@@ -335,9 +368,9 @@ v3_init_vm(struct v3_vm_info * vm)
 	    return -1;
     }
     
-    v3_register_hypercall(vm, VM_INFO_HCALL, info_hcall, NULL);
-
-    V3_Print("VM_INFO_HCALL=%x\n", VM_INFO_HCALL);
+    v3_register_hypercall(vm, VM_INFO_HCALL,       info_hcall,          NULL);
+    v3_register_hypercall(vm, YIELD_TO_PID_HCALL,  yield_to_pid_hcall,  NULL);
+    v3_register_hypercall(vm, YIELD_TO_CORE_HCALL, yield_to_core_hcall, NULL);
 
     return 0;
 }
@@ -349,9 +382,8 @@ v3_free_vm_internal(struct v3_vm_info * vm)
     extern v3_cpu_arch_t v3_mach_type;
 
     v3_remove_hypercall(vm, VM_INFO_HCALL);
-
-
-
+    v3_remove_hypercall(vm, YIELD_TO_PID_HCALL);
+    v3_remove_hypercall(vm, YIELD_TO_CORE_HCALL);
 
 
     v3_deinit_dev_mgr(vm);
