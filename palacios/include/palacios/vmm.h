@@ -327,6 +327,9 @@ v3_cpu_mode_t v3_get_host_cpu_mode( void );
 
 void v3_yield(struct v3_core_info * core, int usec);
 void v3_yield_cond(struct v3_core_info * core, int usec);
+void v3_yield_to_pid(struct v3_core_info * core, uint32_t pid, uint32_t tid);
+void v3_yield_to_thread(struct v3_core_info * core, void * thread);
+
 void v3_print_cond(const char * fmt, ...);
 
 void v3_interrupt_cpu(struct v3_vm_info * vm, int logical_cpu, int vector);
@@ -363,7 +366,10 @@ struct v3_os_hooks {
 
     unsigned int (*get_cpu_khz)(void);
 
+    
     void (*yield_cpu)(void); 
+    void (*yield_to_pid)(unsigned int pid, unsigned int tid);  /* Optional: If not set, will default to regular yield */
+    void (*yield_to_thread)(void * thread);                    /* Optional: If not set, will default to regular yield */
     void (*sleep_cpu)(unsigned int usec);
     void (*wakeup_cpu)(void *cpu);
 

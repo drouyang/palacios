@@ -1122,7 +1122,39 @@ v3_get_host_cpu_mode()
 #endif 
 
 
+void
+v3_yield_to_pid(struct v3_core_info * core, 
+		uint32_t              pid,
+		uint32_t              tid)
+{
+    V3_ASSERT(os_hooks);
+    
+    if (os_hooks->yield_to_pid == NULL) {
+	V3_Yield();
+	return;
+    } 
 
+    os_hooks->yield_to_pid(pid, tid);
+
+    return;
+}
+
+
+void 
+v3_yield_to_thread(struct v3_core_info * core, 
+		   void *                thread)
+{
+    V3_ASSERT(os_hooks);
+
+    if (os_hooks->yield_to_thread == NULL) {
+	V3_Yield();
+	return;
+    }
+
+    os_hooks->yield_to_thread(thread);
+
+    return;
+}
 
 
 void 

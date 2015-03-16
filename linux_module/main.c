@@ -262,11 +262,18 @@ static int
 vm_seq_show(struct seq_file * s, 
 	    void            * v) 
 {
-    int i;
+    int num_vms = 0;
+    int i = 0;
+    
+    for (i = 0; i < MAX_VMS; i++) {
+	if (guest_map[i]) num_vms++;
+    }
+    
+    seq_printf(s, "V3 GUESTS (%d)\n", num_vms);
 
     for (i = 0; i < MAX_VMS; i++) {
 	if (guest_map[i]) {
-	    seq_printf(s, "%s: /dev/v3-vm%d\n", 
+	    seq_printf(s, "%s: [vm_id=%d]\n", 
 		       guest_map[i]->name, i);
 
 	}

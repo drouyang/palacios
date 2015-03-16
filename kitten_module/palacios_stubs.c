@@ -292,6 +292,18 @@ palacios_yield_cpu(void)
 	schedule();
 }
 
+
+/** 
+ * Yields to another thread specified via the pid/tid pair 
+ */
+static void
+palacios_yield_to_pid(unsigned int pid,
+		      unsigned int tid)
+{
+    sched_yield_task_to(pid, tid);
+}
+
+
 /**
  * Puts the caller to sleep 'usec' microseconds.
  */
@@ -419,6 +431,8 @@ static struct v3_os_hooks palacios_os_hooks = {
 	.paddr_to_vaddr		= palacios_paddr_to_vaddr,
 	.get_cpu_khz		= palacios_get_cpu_khz,
 	.yield_cpu		= palacios_yield_cpu,
+	.yield_to_pid           = palacios_yield_to_pid,
+	.yield_to_thread        = NULL,
 	.sleep_cpu		= palacios_sleep_cpu,
 	.save_fpu               = palacios_save_fpu,
 	.restore_fpu            = palacios_restore_fpu,
