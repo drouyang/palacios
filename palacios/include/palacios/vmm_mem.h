@@ -79,6 +79,10 @@ struct v3_mem_region {
 		     struct v3_mem_region * reg, 
 		     pf_error_t             access_info);
 
+    addr_t (*translate)(struct v3_core_info  * info,
+			addr_t                 guest_pa,
+		        struct v3_mem_region * reg);
+
     void * priv_data;
 
     int core_id;                         /* The virtual core this region is assigned to (-1 means all cores) */
