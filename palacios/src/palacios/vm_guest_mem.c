@@ -93,9 +93,13 @@ v3_gpa_to_hpa(struct v3_core_info * core,
     //v3_print_mem_map(core->vm_info);
 	return -1;
     }
-	
-    *hpa = (gpa - reg->guest_start) + reg->host_addr;
 
+    if (reg->translate) {
+	return reg->translate(core, reg, gpa, hpa);
+    }
+
+    *hpa = (gpa - reg->guest_start) + reg->host_addr;
+    
     return 0;
 }
 

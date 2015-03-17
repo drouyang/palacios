@@ -225,6 +225,7 @@ v3_init_mem_map(struct v3_vm_info * vm)
 	region->flags.alloced  = 1;
 
 	region->unhandled      = unhandled_err;
+	region->translate      = NULL;
 
 	
 #ifdef V3_CONFIG_CHECKPOINT
@@ -308,6 +309,7 @@ v3_create_mem_region(struct v3_vm_info * vm,
     entry->flags.value = flags;
     entry->core_id     = core_id;
     entry->unhandled   = unhandled_err;
+    entry->translate   = NULL;
 
     return entry;
 }
