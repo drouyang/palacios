@@ -123,15 +123,6 @@ unhandled_err(struct v3_core_info  * core,
     return -1;
 }
 
-static addr_t 
-default_translate(struct v3_core_info  * info,
-                  addr_t                 gpa,
-		  struct v3_mem_region * reg)
-{
-    return (gpa - reg->guest_start) + reg->host_addr;
-}
-
-
 /*
  * This isn't the fastest lookup in the world, 
  * but we cache the NUMA nodes in the region descriptor after this so it should be fine.
@@ -233,7 +224,7 @@ v3_init_mem_map(struct v3_vm_info * vm)
 	region->flags.alloced  = 1;
 
 	region->unhandled      = unhandled_err;
-	region->translate      = default_translate;
+	region->translate      = NULL;
 
 	
 #ifdef V3_CONFIG_CHECKPOINT
@@ -317,7 +308,7 @@ v3_create_mem_region(struct v3_vm_info * vm,
     entry->flags.value = flags;
     entry->core_id     = core_id;
     entry->unhandled   = unhandled_err;
-    entry->translate   = default_translate;
+    entry->translate   = NULL;
 
     return entry;
 }

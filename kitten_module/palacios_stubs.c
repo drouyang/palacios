@@ -34,6 +34,7 @@
 #include <lwk/xcall.h>
 #include <lwk/interrupt.h>
 #include <lwk/sched.h>
+#include <lwk/sched_control.h>
 #include <lwk/cpuinfo.h>
 #include <arch/io.h>
 #include <arch/unistd.h>

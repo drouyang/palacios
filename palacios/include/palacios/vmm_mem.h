@@ -79,9 +79,10 @@ struct v3_mem_region {
 		     struct v3_mem_region * reg, 
 		     pf_error_t             access_info);
 
-    addr_t (*translate)(struct v3_core_info  * info,
-			addr_t                 guest_pa,
-		        struct v3_mem_region * reg);
+    int (*translate)(struct v3_core_info  * info,
+		     struct v3_mem_region * reg,
+		     addr_t                 guest_pa,
+		     addr_t               * host_pa);
 
     void * priv_data;
 

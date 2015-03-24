@@ -94,12 +94,12 @@ v3_gpa_to_hpa(struct v3_core_info * core,
 	return -1;
     }
 
-    *hpa = reg->translate(core, gpa, reg);
-    if (*hpa == (addr_t)0) {
-	PrintError("Failed to translate HPA %p to GPA through region translation callback!!!\n", (void *)gpa);
-	return -1;
+    if (reg->translate) {
+	return reg->translate(core, reg, gpa, hpa);
     }
 
+    *hpa = (gpa - reg->guest_start) + reg->host_addr;
+    
     return 0;
 }
 
