@@ -24,6 +24,7 @@ obj-y := \
 	vmm_paging.o \
 	vmm_queue.o \
 	vmm_rbtree.o \
+	vmm_radix-tree.o \
 	vmm_ringbuffer.o \
 	vmm_shadow_paging.o \
 	vmm_sprintf.o \

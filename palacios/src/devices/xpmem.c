@@ -23,6 +23,7 @@
 #include <palacios/vmm_types.h>
 #include <palacios/vmm_list.h>
 #include <palacios/vmm_lock.h>
+#include <palacios/vmm_radix-tree.h>
 #include <palacios/vm_guest_mem.h>
 
 #include <interfaces/vmm_xpmem.h>
@@ -107,6 +108,9 @@ struct v3_xpmem_state {
 
     /* guest XPMEM memory map */
     struct xpmem_memory_map  mem_map;
+
+    /* radix tree for allocated guest regions */
+    struct radix_tree_root   pt;
 };
 
 struct xpmem_cmd_ex_iter {
@@ -115,16 +119,43 @@ struct xpmem_cmd_ex_iter {
 };
 
 
-static uint32_t 
+static inline uint32_t 
 xpmem_paddr_to_pfn(addr_t paddr)
 {
     return paddr >> PAGE_POWER;
 }
 
-static addr_t
+static inline addr_t
 xpmem_pfn_to_paddr(uint32_t pfn)
 {
     return (addr_t)pfn << PAGE_POWER;
+}
+
+
+
+/* EPT fault handler invokes gpa_to_hpa, which calls this translate callback
+ * to get access to XPMEM memory.
+ *
+ * Lookup host address in our private radix tree
+ */
+static int
+xpmem_translate(struct v3_core_info  * core,
+		struct v3_mem_region * reg,
+                addr_t                 gpa,
+		addr_t               * hpa)
+{
+    struct v3_xpmem_state * state = (struct v3_xpmem_state *)reg->priv_data;
+    addr_t                  gpfn  = xpmem_paddr_to_pfn(gpa);
+    addr_t                  hpfn  = 0;
+
+    hpfn = (addr_t)v3_radix_tree_lookup(&(state->pt), gpfn);
+    if (hpfn == 0) {
+	PrintError("Failed to handle guest XPMEM EPT fault (GPA: %p)\n", (void *)gpa);
+	return -1;
+    }
+
+    *hpa = xpmem_pfn_to_paddr(hpfn);
+    return 0;
 }
 
 
@@ -479,6 +510,7 @@ static int
 init_xpmem_mem_map(struct v3_xpmem_state * state)
 {
     struct xpmem_memory_map * mem_map = &(state->mem_map);
+    int                       status  = 0;
 
     memset(mem_map, 0, sizeof(struct xpmem_memory_map));
 
@@ -486,11 +518,18 @@ init_xpmem_mem_map(struct v3_xpmem_state * state)
     INIT_LIST_HEAD(&(mem_map->alloc_list));
 
     /* All is free to start */
-    return xpmem_insert_free_memory_region(
+    status = xpmem_insert_free_memory_region(
 	state,
 	XPMEM_MEM_START, 
 	XPMEM_MEM_END - XPMEM_MEM_START
     );
+
+    if (status != 0) {
+	PrintError("Could not insert initial free guest region\n");
+	return status;
+    }
+
+    return 0;
 }
 
 
@@ -502,9 +541,11 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
 			uint64_t                num_pfns,
                         uint32_t              * pfn_list)
 {
+    int    i          = 0;
     int    status     = 0;
     addr_t region_len = 0;
     addr_t start_addr = 0;
+    addr_t gpa, gpfn;
 
     region_len = (addr_t)(num_pfns * PAGE_SIZE);
 
@@ -518,14 +559,123 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
     if (status != 0) {
 	PrintError("XPMEM: cannot find free region of %llu bytes: "
 		"cannot map host memory\n", (unsigned long long)region_len);
-	return -1;
+	return status;
     }
 
-    /* Map region into guest. The host range may be discontiguous, so we have to
-     * do this a page at a time
+    /* Map region into guest. The current strategy is to update the internal xpmem radix
+     * tree with each page translation, and then simply add a single shadow region (i.e.,
+     * region in the rb tree) covering the whole guest range. On EPT faults,
+     * xpmem_translate() will be invoked, where we query the radix tree to supply the host
+     * page address for the faulting memory area.
      */
 
-//    v3_raise_barrier(state->vm, NULL);
+    for (i = 0; i < num_pfns; i++) {
+	gpa  = start_addr + (i * PAGE_SIZE);
+	gpfn = xpmem_paddr_to_pfn(gpa);
+
+	status = v3_radix_tree_insert(&(state->pt), 
+	    gpfn, 
+	    (void *)(addr_t)pfn_list[i]);
+
+	if (status != 0) {
+	    PrintError("XPMEM: could not update radix tree!\n");
+	    goto err;
+	}
+
+	/* Update pfn list with guest address */
+	pfn_list[i] = (uint32_t)gpfn;
+    }
+
+    /* Update the alloc list */
+    status = xpmem_insert_allocated_memory_region(
+	state, 
+	start_addr, 
+	region_len
+    );
+
+    if (status != 0) {
+	PrintError("XPMEM: cannot add region [%p, %p) to guest alloc list\n",
+		(void *)start_addr, (void *)(start_addr + region_len));
+	goto err;
+    }
+
+    /* Perform single shadow mem insertion */
+    {
+	struct v3_mem_region * entry = NULL;
+
+	entry = v3_create_mem_region(
+		state->vm,
+		V3_MEM_CORE_ANY,
+		V3_MEM_RD | V3_MEM_WR | V3_MEM_ALLOC,
+		start_addr,
+		start_addr + (PAGE_SIZE * num_pfns));
+
+	if (entry == NULL) {
+	    PrintError("Failed to create v3_mem_region\n");
+	    status = -1;
+	    goto err_list;
+	}
+
+	/* v3_mem_regions are assumed to be host contiguous, and the alignment of the
+	 * host_addr field is used to determine the page size to map in the EPT. Because
+	 * our host memory might not be contiguous, we need to set this to something
+	 * that's not 2MB/1GB aligned to prevent the use of hugepages
+	 *
+	 * TODO: use hugepages when possible. This would have the added benefit of
+	 * reducing the size of the radix tree.
+	 */
+	entry->host_addr = (addr_t)-1;
+
+	/* Register custom translation function */
+	entry->translate = xpmem_translate;
+	entry->priv_data = state;
+
+	status = v3_insert_mem_region(state->vm, entry);
+	if (status != 0) {
+	    PrintError("Failed to insert v3_mem_region\n");
+	    V3_Free(entry);
+	    goto err_list;
+	}
+    }
+
+    PrintDebug("Mapped %llu pages to guest PA range [%p, %p)\n",
+	num_pfns,
+	(void *)start_addr,
+	(void *)(start_addr + (PAGE_SIZE * num_pfns)));
+
+    return 0;
+
+err_list:
+    /* Undo updates to free/alloc lists */
+    {
+	struct xpmem_memory_region region;
+
+	xpmem_find_and_remove_allocated_region(
+	    state, 
+	    start_addr, 
+	    &region
+	);
+
+	xpmem_insert_free_memory_region(
+	    state, 
+	    region.guest_start, 
+	    region.guest_end - region.guest_start
+	);
+    }
+err:
+    /* Undo radix tree updates */
+    {
+	int j = 0;
+	for (j = 0; j < i; j++) {
+	    gpa  = start_addr + (j * PAGE_SIZE);
+	    gpfn = xpmem_paddr_to_pfn(gpa);
+	    v3_radix_tree_delete(&(state->pt), gpfn);
+	}
+    }
+
+    return status;
+}
+#if 0
     {
 	int i = 0;
 
@@ -560,7 +710,6 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
 		    region_len
 		);
 
-//		v3_lower_barrier(state->vm);
 		return -1;
 	    }
 
@@ -587,36 +736,50 @@ xpmem_add_shadow_region(struct v3_xpmem_state * state,
 	if (status != 0) {
 	    PrintError("XPMEM: cannot add region [%p, %p) to guest alloc list\n",
 		    (void *)start_addr, (void *)(start_addr + region_len));
-//	    v3_lower_barrier(state->vm);
 	    return -1;
 	}
     }
-//    v3_lower_barrier(state->vm);
 
     return 0;
 }
-
+#endif
 
 static int 
 xpmem_remove_shadow_region(struct v3_xpmem_state * state, 
 			   addr_t		   addr, 
 			   uint64_t		   len)
 {
-    uint64_t num_pfns = len / PAGE_SIZE;
-    uint64_t i        = 0;
+    struct v3_mem_region * old_reg = NULL;
 
-    for (i = 0; i < num_pfns; i++) {
-	struct v3_mem_region * old_reg    = NULL;
-	addr_t                 guest_addr = addr + (i * PAGE_SIZE);
+    old_reg = v3_get_mem_region(state->vm, V3_MEM_CORE_ANY, addr);
+    if (old_reg == NULL) {
+	PrintError("Cannot find guest shadow region for address %p\n", (void *)addr);
+	return -1;
+    }
 
-	guest_addr = addr + (i * PAGE_SIZE);
-	old_reg    = v3_get_mem_region(state->vm, V3_MEM_CORE_ANY, guest_addr);
+    if ((old_reg->guest_start != addr) ||
+	(old_reg->guest_end   != (addr + len)))
+    {
+	PrintError("Cannot remove region [%p, %p) from shadow map: real region is [%p, %p)\n",
+		(void *)addr,
+		(void *)(addr + len),
+		(void *)old_reg->guest_start,
+		(void *)old_reg->guest_end);
+	return -1;
+    }
 
-	if (!old_reg) {
-	    return -1;
+    /* Remove single shadow map region */
+    v3_delete_mem_region(state->vm, old_reg);
+
+    /* Update the radix tree */
+    {
+	uint64_t num_pfns = len / PAGE_SIZE;
+	int      i        = 0;
+	for (i = 0; i < num_pfns; i++) {
+	    addr_t gpa  = addr + (i * PAGE_SIZE);
+	    addr_t gpfn = xpmem_paddr_to_pfn(gpa); 
+	    v3_radix_tree_delete(&(state->pt), gpfn);
 	}
-
-	v3_delete_mem_region(state->vm, old_reg);
     }
 
     return 0;
@@ -627,7 +790,17 @@ xpmem_remove_shadow_region(struct v3_xpmem_state * state,
 static int xpmem_free(void * private_data) {
     struct v3_xpmem_state * state = (struct v3_xpmem_state *)private_data;
 
-    /* First, disconnect from host */
+    /* Remove hypercalls */
+    v3_remove_hypercall(state->vm, XPMEM_HCALL);
+    v3_remove_hypercall(state->vm, XPMEM_DETACH_HCALL);
+    v3_remove_hypercall(state->vm, XPMEM_IRQ_CLEAR_HCALL);
+    v3_remove_hypercall(state->vm, XPMEM_READ_CMD_HCALL);
+    v3_remove_hypercall(state->vm, XPMEM_READ_APICID_HCALL);
+    v3_remove_hypercall(state->vm, XPMEM_REQUEST_IRQ_HCALL);
+    v3_remove_hypercall(state->vm, XPMEM_RELEASE_IRQ_HCALL);
+    v3_remove_hypercall(state->vm, XPMEM_DELIVER_IRQ_HCALL);
+
+    /* Disconnect from host */
     v3_xpmem_host_disconnect(state->host_handle);
 
     /* Free cmd list */
@@ -916,7 +1089,7 @@ xpmem_detach_hcall(struct v3_core_info * core,
     if (status != 0) {
 	PrintError("XPMEM: cannot find region at address %p in guest shadow map\n",
 	     (void *)gpa);
-	return 0;
+	return status;
     }
 
     len = region.guest_end - region.guest_start;
@@ -930,7 +1103,7 @@ xpmem_detach_hcall(struct v3_core_info * core,
     if (status != 0) {
 	PrintError("XPMEM: cannot insert region [%p, %p) into guest free list\n",
 	     (void *)region.guest_start, (void *)(region.guest_end));
-	return 0;
+	return status;
     }
 
     status = xpmem_remove_shadow_region(
@@ -942,7 +1115,7 @@ xpmem_detach_hcall(struct v3_core_info * core,
     if (status != 0) {
 	PrintError("XPMEM: cannot shadow remove region [%p, %p) from guest memory map\n",
 	     (void *)region.guest_start, (void *)(region.guest_end));
-	return 0;
+	return status;
     }
 
     return 0;
@@ -1336,6 +1509,7 @@ xpmem_init(struct v3_vm_info * vm,
     /* Misc setup */
     v3_spinlock_init(&(state->lock));
     INIT_LIST_HEAD(&(state->cmd_list));
+    INIT_RADIX_TREE(&(state->pt));
     state->htg_table = v3_create_htable(0, xpmem_hash_fn, xpmem_eq_fn);
     state->gth_table = v3_create_htable(0, xpmem_hash_fn, xpmem_eq_fn);
 
