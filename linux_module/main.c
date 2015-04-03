@@ -227,6 +227,11 @@ out_err:
 
 	    break;
 	}
+        case V3_SHUTDOWN: {
+	    /* With Linux this is handled by module exit */
+	    break;
+        }
+
 	default: {
 	    struct global_ctrl * ctrl = get_global_ctrl(ioctl);
 	    

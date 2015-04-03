@@ -29,6 +29,13 @@ v3_is_vmm_present()
 }
 
 int 
+v3_shutdown(void)
+{
+    return pet_ioctl_path(V3_DEV_FILENAME, V3_SHUTDOWN, 0);
+}
+
+
+int 
 v3_add_cpu(int cpu_id)
 {
     return pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_CPU, cpu_id);
@@ -39,6 +46,7 @@ v3_remove_cpu(int cpu_id)
 {
     return pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_CPU, cpu_id);
 }
+
 
 
 
