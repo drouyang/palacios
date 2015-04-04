@@ -13,7 +13,7 @@ AR = ar
 
 PETLIB := $(V3_CONFIG_PETLIB_PATH)
 
-CFLAGS = -I../linux_module -I$(PETLIB) -L$(PETLIB)
+CFLAGS = -Wall -Werror -D_GNU_SOURCE -I../linux_module -I$(PETLIB) -L$(PETLIB)
 
 ifdef V3_CONFIG_USER_STATIC
   CFLAGS += -static 

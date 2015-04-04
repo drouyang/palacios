@@ -37,7 +37,6 @@ void usage() {
 int main(int argc, char ** argv  ) {
     char * vm_dev = NULL;
 
-    int exit_mode_disable = 0;
     int num_opts = 0;
     u32 flags    = 0;
     u32 core     = 0;

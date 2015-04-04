@@ -6,12 +6,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "v3vee.h"
 #include "v3_ioctl.h"
 
 #include <pet_mem.h>
 #include <pet_log.h>
+#include <pet_ioctl.h>
+#include <pet_numa.h>
+#include <pet_pci.h>
 
 int 
 v3_is_vmm_present()
@@ -31,20 +35,20 @@ v3_is_vmm_present()
 int 
 v3_shutdown(void)
 {
-    return pet_ioctl_path(V3_DEV_FILENAME, V3_SHUTDOWN, 0);
+    return pet_ioctl_path(V3_DEV_FILENAME, V3_SHUTDOWN, IOCTL_ARG(0));
 }
 
 
 int 
 v3_add_cpu(int cpu_id)
 {
-    return pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_CPU, cpu_id);
+    return pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_CPU, IOCTL_ARG(cpu_id));
 }
 
 int 
 v3_remove_cpu(int cpu_id)
 {
-    return pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_CPU, cpu_id);
+    return pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_CPU, IOCTL_ARG(cpu_id));
 }
 
 
@@ -70,7 +74,7 @@ v3_add_mem_node(int numa_zone)
 	printf("Adding memory range (%p) to Palacios\n", 
 	       (void *)mem_range.base_addr);
 	
-	if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, &mem_range) == -1) {
+	if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, IOCTL_ARG(&mem_range)) == -1) {
 	    ERROR("Could not add memory to Palacios\n");
 	}
     }
@@ -118,7 +122,7 @@ v3_add_mem(int num_blocks,
 	printf("Adding memory range (%p) to Palacios\n", 
 	       (void *)mem_range.base_addr);
 	
-	if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, &mem_range) == -1) {
+	if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, IOCTL_ARG(&mem_range)) == -1) {
 	    ERROR("Could not add memory to Palacios\n");
 	}
     }
@@ -200,7 +204,7 @@ v3_remove_mem(int num_blocks,
 		printf("attempting to remove block at %p\n", (void *)base_addr);
 
 		
-		if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_MEM, base_addr) == -1) {
+		if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_MEM, IOCTL_ARG(base_addr)) == -1) {
 		    ERROR("Could not remove memory from Palacios\n");
 		    continue;
 		}
@@ -248,7 +252,7 @@ v3_add_mem_explicit(int block_id)
     mem_range.base_addr = pet_block_size() * block_id;
     mem_range.num_pages = pet_block_size() / 4096;
     
-    if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, &mem_range) == -1) {
+    if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_MEM, IOCTL_ARG(&mem_range)) == -1) {
 	ERROR("Could not add explicit memory block (block_id: %d)\n", block_id); 
 	pet_online_block(block_id);
 	return -1;
@@ -279,7 +283,7 @@ v3_add_pci(char * name,
    }
 
 
-   if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_PCI,  &dev_spec) != 0) {
+   if (pet_ioctl_path(V3_DEV_FILENAME, V3_ADD_PCI,  IOCTL_ARG(&dev_spec)) != 0) {
        ERROR("Could not add device to Palacios\n");
        pet_online_pci(bus, dev, fn);
        return -1;
@@ -306,7 +310,7 @@ v3_remove_pci(char * name,
     dev_spec.func = fn;
     strncpy(dev_spec.url, name, 128);
 
-    if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_PCI,  &dev_spec) != 0) {
+    if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_PCI,  IOCTL_ARG(&dev_spec)) != 0) {
 	ERROR("Could not remove device from Palacios\n");
 	//	pet_online_pci(bus, dev, fn);
 	return -1;
@@ -329,7 +333,7 @@ v3_launch_vm(int vm_id)
     char * dev_path = get_vm_dev_path(vm_id);
     int ret = 0;
 
-    ret = pet_ioctl_path(dev_path, V3_VM_LAUNCH, NULL); 
+    ret = pet_ioctl_path(dev_path, V3_VM_LAUNCH, IOCTL_ARG(NULL)); 
 
     free(dev_path);
 
@@ -348,7 +352,7 @@ v3_stop_vm(int vm_id)
     char * dev_path = get_vm_dev_path(vm_id);
     int ret = 0;
 
-    ret = pet_ioctl_path(dev_path, V3_VM_STOP, NULL); 
+    ret = pet_ioctl_path(dev_path, V3_VM_STOP, IOCTL_ARG(NULL)); 
 
     free(dev_path);
 
@@ -363,7 +367,7 @@ v3_stop_vm(int vm_id)
 int 
 v3_free_vm(int vm_id)
 {
-    return pet_ioctl_path(V3_DEV_FILENAME, V3_FREE_GUEST, vm_id);
+    return pet_ioctl_path(V3_DEV_FILENAME, V3_FREE_GUEST, IOCTL_ARG(vm_id));
 
 }
 
@@ -373,7 +377,7 @@ v3_continue_vm(int vm_id)
     char * dev_path = get_vm_dev_path(vm_id);
     int ret = 0;
 
-    ret = pet_ioctl_path(dev_path, V3_VM_CONTINUE, NULL); 
+    ret = pet_ioctl_path(dev_path, V3_VM_CONTINUE, IOCTL_ARG(NULL)); 
 
     free(dev_path);
 
@@ -392,7 +396,7 @@ v3_pause_vm(int vm_id)
     char * dev_path = get_vm_dev_path(vm_id);
     int ret = 0;
 
-    ret = pet_ioctl_path(dev_path, V3_VM_PAUSE, NULL); 
+    ret = pet_ioctl_path(dev_path, V3_VM_PAUSE, IOCTL_ARG(NULL)); 
 
     free(dev_path);
 
@@ -412,7 +416,7 @@ v3_simulate_vm(int vm_id,
     char * dev_path = get_vm_dev_path(vm_id);
     int ret = 0;
 
-    ret = pet_ioctl_path(dev_path, V3_VM_SIMULATE, msecs); 
+    ret = pet_ioctl_path(dev_path, V3_VM_SIMULATE, IOCTL_ARG(msecs)); 
 
     free(dev_path);
 
@@ -442,7 +446,7 @@ v3_move_vcore(int vm_id,
     cmd.vcore_id = vcore;
     cmd.pcore_id = target_pcore;
 
-    ret = pet_ioctl_path(dev_path, V3_VM_MOVE_CORE, &cmd); 
+    ret = pet_ioctl_path(dev_path, V3_VM_MOVE_CORE, IOCTL_ARG(&cmd)); 
 
     free(dev_path);
 
@@ -472,7 +476,7 @@ v3_debug_vm(int vm_id,
     cmd.core = core;
     cmd.cmd  = flags;
 
-    ret = pet_ioctl_path(dev_path, V3_VM_DEBUG, &cmd); 
+    ret = pet_ioctl_path(dev_path, V3_VM_DEBUG, IOCTL_ARG(&cmd)); 
 
     free(dev_path);
 
@@ -514,7 +518,7 @@ v3_load_vm(int    vm_id,
     strncpy(chkpt.store, store, MAX_CHKPT_STORE_LEN);
     strncpy(chkpt.url,   url,   MAX_CHKPT_URL_LEN);
 
-    ret = pet_ioctl_path(dev_path, V3_VM_LOAD, &chkpt);
+    ret = pet_ioctl_path(dev_path, V3_VM_LOAD, IOCTL_ARG(&chkpt));
 
     free(dev_path);
 
@@ -550,7 +554,7 @@ v3_save_vm(int    vm_id,
     strncpy(chkpt.store, store, MAX_CHKPT_STORE_LEN);
     strncpy(chkpt.url,   url,   MAX_CHKPT_URL_LEN);
 
-    ret = pet_ioctl_path(dev_path, V3_VM_SAVE, &chkpt);
+    ret = pet_ioctl_path(dev_path, V3_VM_SAVE, IOCTL_ARG(&chkpt));
 
     free(dev_path);
 

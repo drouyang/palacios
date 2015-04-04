@@ -6,6 +6,7 @@
 #ifndef __V3_IOCTL_H__
 #define __V3_IOCTL_H__
 
+
 #define V3_ADD_CPU               100
 #define V3_ADD_MEM               101
 #define V3_ADD_PCI               102
@@ -45,11 +46,14 @@
 
 #define V3_VM_XPMEM_CONNECT      12000
 
+#include <stdio.h>
+
 #include "v3_types.h"
 
 
 #define V3_DEV_FILENAME "/dev/v3vee"
 #define V3_VM_FILENAME  "/dev/v3-vm"
+
 
 
 static inline char * 

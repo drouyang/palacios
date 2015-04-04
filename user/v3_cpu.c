@@ -74,5 +74,5 @@ int main(int argc, char ** argv) {
 	       cpu_id);
     }
     
-    
+    return 0;
 }

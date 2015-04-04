@@ -2,7 +2,6 @@
  * V3 Control utility
  * (c) Jack lange, 2010
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h> 
@@ -22,6 +21,7 @@
 
 #include <pet_mem.h>
 #include <pet_cpu.h>
+#include <pet_ioctl.h>
 
 struct file_info {
     u32 size;
@@ -161,7 +161,7 @@ parse_aux_files(ezxml_t   cfg_input,
 	strncpy(files[i].id,       id,       256);
 	strncpy(files[i].filename, filename, 2048);
 
-	snprintf(index_buf, 256, "%llu", i);
+	snprintf(index_buf, 256, "%d", i);
 	ezxml_set_attr_d(tmp_file_tag, "index", index_buf);
 
 
@@ -313,7 +313,7 @@ v3_save_vm_cfg(char    * file_name,
 	return -1;
     }
 
-    ret = write_file(xml_fd, strlen(xml_str), xml_str);
+    ret = write_file(xml_fd, strlen(xml_str), (uint8_t *)xml_str);
 
     close(xml_fd);
     
@@ -331,12 +331,9 @@ v3_build_vm_image(ezxml_t   vm_xml_cfg,
 {
     struct file_info * files = NULL;
 
-    int    num_files         = 0;
+    u32    num_files         = 0;
     void * guest_img_data    = NULL;
     int    guest_img_size    = 0;
-
-    int i = 0;
-
 
     // parse files
     files = parse_aux_files(vm_xml_cfg, &num_files);

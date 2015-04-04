@@ -177,6 +177,8 @@ int handle_scroll(struct scroll_msg * msg) {
     } else {
 	console.y -= lines;	
     }
+
+    return 0;
 }
 
 int handle_text_resolution(struct resolution_msg * msg) {
@@ -210,14 +212,21 @@ int handle_update( void ) {
     } else {
 	fflush(stdout);
     }
+
+    return 0;
 }
 
 
 int handle_console_msg(int cons_fd) {
-    int ret = 0;
     struct cons_msg msg;
+    int ret = 0;
 
     ret = read(cons_fd, &msg, sizeof(struct cons_msg));
+
+    if (ret != sizeof(struct cons_msg)) {
+	fprintf(stderr, "Error: Could not read console message\n");
+	return -1;
+    }
 
     switch (msg.op) {
 	case CONSOLE_CURS_SET:
@@ -272,8 +281,7 @@ int main(int argc, char* argv[]) {
     int vm_fd;
     int cons_fd;
     char * vm_dev = NULL;
-    struct termios termios;
-
+ 
     use_curses = 1;
 
     if (argc < 2) {
@@ -348,7 +356,6 @@ int main(int argc, char* argv[]) {
 
     while (1) {
 	int ret; 
-	int bytes_read = 0;
 	fd_set rset;
 
 	FD_ZERO(&rset);

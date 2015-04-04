@@ -25,10 +25,8 @@ int main(int argc, char* argv[]) {
 
     int explicit   =  0;
     int numa_zone  = -1;
-    int num_blocks =  0;
-    int ret        =  0;
     int remove     =  0;
-
+    int ret        =  0;
 
     /* Parse options */
     {
@@ -73,7 +71,7 @@ int main(int argc, char* argv[]) {
 	if (explicit) {
 	    char * iter_str = NULL;
 	    
-	    while (iter_str = strsep(&mem_str, ",")) {
+	    while ((iter_str = strsep(&mem_str, ","))) {
 		int idx = atoi(iter_str);
 		
 		if (v3_add_mem_explicit(idx) != 0) {
@@ -98,5 +96,5 @@ int main(int argc, char* argv[]) {
     }
 
 
-    return 0;
+    return ret;
 }

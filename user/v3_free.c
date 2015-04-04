@@ -28,13 +28,13 @@ int main(int argc, char* argv[]) {
 
     vm_idx = strtol(argv[1], NULL, 0);
 
-    printf("Freeing VM %d\n", vm_idx);
+    printf("Freeing VM %lu\n", vm_idx);
 
 
     ret = v3_free_vm(vm_idx); 
 
     if (ret < 0) {
-        printf("Error freeing VM %d\n", vm_idx);
+        printf("Error freeing VM %lu\n", vm_idx);
         return -1;
     }
 
