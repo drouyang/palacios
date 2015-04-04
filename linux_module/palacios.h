@@ -20,6 +20,9 @@
 #define V3_CREATE_GUEST          112   /* Create a VM from a configuration image                     */
 #define V3_FREE_GUEST            113   /* Free a VM and all of its associated state                  */
 
+#define V3_SHUTDOWN              900
+
+
 /* VM Specific IOCTLs */
 
 #define V3_VM_PAUSE              123   /* Pause a running VMs execution                              */
@@ -43,7 +46,6 @@
 #define V3_VM_CONSOLE_DISCONNECT 141   /* Disconnect from a VM's text mode console                   */
 #define V3_VM_KEYBOARD_EVENT     142   /* Send a scan scode to the VM's virtual keyboard             */
 #define V3_VM_STREAM_CONNECT     145   /* Connect to a VM's named data stream                        */
-
 
 
 
