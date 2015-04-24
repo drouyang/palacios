@@ -43,10 +43,6 @@
 #include <arch/i387.h>
 
 
-/**
- * Global guest state... only one guest is supported currently.
- */
-static struct v3_vm_info * irq_to_guest_map[NUM_IDT_ENTRIES];
 
 /**
  * Sends a keyboard key press event to Palacios for handling.
@@ -90,7 +86,6 @@ send_tick_to_palacios(
 
 /**
  * Prints a message to the console.
- * TODO: Prefix print messages with vm->name and vcore
  */
 static void
 palacios_print(
@@ -108,7 +103,7 @@ palacios_print(
  * Allocates a contiguous region of pages of the requested size.
  * Returns the physical address of the first page in the region.
  *
- * TODO: Actually use node_id and constraint arguments
+ * TODO: Actually use node_id
  */
 static void *
 palacios_allocate_pages(
