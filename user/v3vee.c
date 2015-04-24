@@ -24,7 +24,7 @@ v3_is_vmm_present()
 
     fd = open(V3_DEV_FILENAME, O_RDWR);
 
-    if (fd == -1) {
+    if (fd < 0) {
 	return 0;
     }
 
