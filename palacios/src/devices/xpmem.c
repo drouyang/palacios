@@ -58,20 +58,27 @@ struct xpmem_bar_state {
     uint32_t xpmem_deliver_irq_hcall_id;
 
     /* VMX-enabled */
-    uint8_t vmx_capable;
+    uint8_t  vmx_capable;
 
     /* SVM-enabled */
-    uint8_t svm_capable;
+    uint8_t  svm_capable;
  
     /* interrupt status */
-    uint8_t irq_handled;
+    uint8_t  irq_handled;
 
     /* size of xpmem cmd size */
     uint64_t xpmem_cmd_size;
 
     /* size of requested buffer for attachment operations */
     uint64_t xpmem_pfn_size;
-};
+
+    /* Running in a hobbes environment */
+    uint8_t  hobbes_enabled;
+
+    /* Hobbes Enclave ID */
+    uint64_t hobbes_enclave_id; 
+
+} __attribute__((packed));
  
 struct xpmem_memory_map {
     struct list_head free_list;
