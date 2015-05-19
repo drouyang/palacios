@@ -31,4 +31,10 @@ config EXT_VMWARE
 	help
 	  Provides a VMWare persona to allow TSC calibration
 
+config EXT_HOBBES
+	bool "Hobbes environment"
+	default y
+	help
+	  Signals that the Hobbes environment is available to the VM
+
 endmenu
