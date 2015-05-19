@@ -43,7 +43,7 @@ typedef union reg_ex {
 
 void v3_dump_mem(uint8_t * start, int n);
 
-
+int v3_atoi(int dflt, char * str);
 
 
 #define rdtsc(low,high)						\

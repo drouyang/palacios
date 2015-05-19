@@ -51,3 +51,24 @@ v3_dump_mem(uint8_t * start,
 
 
 
+int
+v3_atoi(int dflt, char * str) 
+{
+    char * end = NULL;
+    int    tmp = 0;
+    
+    if ((str == NULL) || (*str == '\0')) {
+        /*  String was either NULL or empty */
+        return dflt;
+    }
+
+    tmp = strtoi(str, &end);
+
+    if (*end) {
+        /* String contained non-numerics */
+        return dflt;
+    }
+    
+    return tmp;
+}
+
