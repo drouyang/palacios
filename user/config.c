@@ -53,14 +53,14 @@ v3_create_default_config(int  mem_size, int  num_cpus)
   pet_xml_add_subtree(root, "devices");
 
 
-  apic        = v3_make_device("apic"       , "LAPIC"     );
-  keyboard    = v3_make_device("keyboard"   , "KEYBOARD"  );
-  pit         = v3_make_device("PIT"        , "8254_PIT"  );
-  ioapic      = v3_make_device("ioapic"     , "IOAPIC"    );
-  pci         = v3_make_device("pci0"       , "PCI"       );
-  northbridge = v3_make_device("northbridge", "i440FX"    );
-  southbridge = v3_make_device("southbridge", "PIIX3"     );
-  nvram       = v3_make_device("nvram"      , "NVRAM"     );
+  apic        = v3_make_device("LAPIC"   , "apic"         );
+  keyboard    = v3_make_device("KEYBOARD", "keyboard"     );
+  pit         = v3_make_device("8254_PIT", "PIT"          );
+  ioapic      = v3_make_device("IOAPIC"  , "ioapic"       );
+  pci         = v3_make_device("PCI"     , "pci0"         );
+  northbridge = v3_make_device("i440FX"  , "northbridge"  );
+  southbridge = v3_make_device("PIIX3"   , "southbridge"  );
+  nvram       = v3_make_device("NVRAM"   , "nvram"        );
 
   
   pet_xml_add_val(ioapic     , "apic"   , "apic");
@@ -82,7 +82,7 @@ v3_create_default_config(int  mem_size, int  num_cpus)
   {
     pet_xml_t ide = NULL;
     
-    ide = v3_make_device("ide", "IDE");
+    ide = v3_make_device("IDE", "ide");
     
     pet_xml_add_val(ide , "bus"        , "pci0"       );
     pet_xml_add_val(ide , "controller" , "southbridge");
@@ -125,14 +125,12 @@ add_ide(pet_xml_t   root,
   char * bus_str = NULL;
   char * drv_str = NULL;
 
-  dev = pet_xml_new_tree("device");
+  dev = v3_make_device("FILEDISK", id);
 
   frontend = pet_xml_add_subtree(dev, "frontend");
   
-  pet_xml_add_val(dev,       "id"      ,  id       );
-  pet_xml_add_val(dev,       "class"   , "FILEDISK");
-  pet_xml_add_val(dev,       "writable", ((writable == 1) ? "1" : "0")  );
-  pet_xml_add_val(dev,       "path"    , file_path   );
+  pet_xml_add_val(dev,      "writable", ((writable == 1) ? "1" : "0")  );
+  pet_xml_add_val(dev,      "path"    , file_path   );
   pet_xml_add_val(frontend, "tag"     , "ide"     );
 
   if ( is_cdrom ) {
@@ -195,7 +193,7 @@ v3_add_vd(pet_xml_t root, char* vd_path)
   /* TODO: Count how many virtio block devices are already present
            Set the ID to be LNX_VIRTIO_BLK-<index> based on that count
   */
-  vd = v3_make_device("blk_virtio", "LNX_VIRTIO_BLK");
+  vd = v3_make_device("LNX_VIRTIO_BLK", "blk_virtio");
 
 
   /* TODO: Add search function to find the PCI device 
@@ -231,8 +229,8 @@ v3_add_curses(pet_xml_t root)
   pet_xml_t    curses_front = NULL;
   pet_xml_t    cga          = NULL;
 
-  curses   = v3_make_device("curses" , "CURSES_CONSOLE");
-  cga      = v3_make_device("cga"    , "CGA_VIDEO"     );
+  curses   = v3_make_device("CURSES_CONSOLE" , "curses" );
+  cga      = v3_make_device("CGA_VIDEO"      , "cga"    );
 
   curses_front = pet_xml_add_subtree(curses, "frontend");
 
