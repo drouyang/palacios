@@ -266,7 +266,8 @@ int
 v3_add_pci(char * name, 
 	   u32    bus, 
 	   u32    dev,
-	   u32    fn)
+	   u32    fn,
+	   u8     force)
 {
     struct v3_hw_pci_dev dev_spec;
 
@@ -279,7 +280,7 @@ v3_add_pci(char * name,
 
    if (pet_offline_pci(bus, dev, fn) != 0) {
        ERROR("Could not offline PCI device\n");
-       return -1;
+       if (!force) return -1;
    }
 
 
@@ -299,7 +300,8 @@ int
 v3_remove_pci(char * name, 
 	      u32    bus, 
 	      u32    dev, 
-	      u32    fn)
+	      u32    fn,
+	      u8     force)
 {
     struct v3_hw_pci_dev dev_spec;
 
@@ -312,8 +314,8 @@ v3_remove_pci(char * name,
 
     if (pet_ioctl_path(V3_DEV_FILENAME, V3_REMOVE_PCI,  IOCTL_ARG(&dev_spec)) != 0) {
 	ERROR("Could not remove device from Palacios\n");
-	//	pet_online_pci(bus, dev, fn);
-	return -1;
+
+	if (!force) return -1;
     }
     
     if (pet_online_pci(bus, dev, fn) != 0) {

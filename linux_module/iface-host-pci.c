@@ -454,6 +454,7 @@ release_pci_dev(struct v3_host_pci_dev * v3_dev)
     struct host_pci_device * host_dev = v3_dev->host_data;
     struct pci_dev         * dev      = host_dev->hw_dev.dev;
     
+    v3_lnx_printk("Releasing PCI Device\n");
 
     /* Disable DMA operations, because we are going to nuke the IOMMU state  */
     pci_clear_master(dev);    

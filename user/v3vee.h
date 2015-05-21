@@ -31,12 +31,14 @@ int v3_remove_mem_node(int numa_zone);
 int v3_add_pci(char * name, 
 	       u32    bus,
 	       u32    dev,
-	       u32    fn);
+	       u32    fn,
+	       u8     force);
 
 int v3_remove_pci(char * name, 
 		  u32    bus,
 		  u32    dev,
-		  u32    fn);
+		  u32    fn,
+		  u8     force);
 
 
 

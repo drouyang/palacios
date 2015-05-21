@@ -17,9 +17,9 @@
 
 void usage() {
     printf("Usage:\n"); 
-    printf("\tv3_pci [<bus>:<dev>.<fn>]             --- List PCI Device State\n");
-    printf("\tv3_pci -a <name> <bus>:<dev>.<fn>     --- Add PCI Device\n");
-    printf("\tv3_pci -r <name> <bus>:<dev>.<fn>     --- Remove PCI Device\n");
+    printf("\tv3_pci [<bus>:<dev>.<fn>]                  --- List PCI Device State\n");
+    printf("\tv3_pci -a <name> [-f] <bus>:<dev>.<fn>     --- Add PCI Device\n");
+    printf("\tv3_pci -r <name> [-f] <bus>:<dev>.<fn>     --- Remove PCI Device\n");
 }
 
 
@@ -31,6 +31,7 @@ int main(int argc, char ** argv) {
     char      * bdf_str = NULL;
     char      * name    = NULL;
     op_mode_t   mode    = QUERY;
+    u8          force   = 0;
 
 
     {
@@ -41,10 +42,11 @@ int main(int argc, char ** argv) {
 	    {"help",   no_argument,       0, 'h'},
 	    {"remove", required_argument, 0, 'r'},
 	    {"add",    required_argument, 0, 'a'},
+	    {"force",  no_argument,       0, 'f'},
 	    {0, 0, 0, 0}
 	};
 
-	while ((c = getopt_long(argc, argv, "r:a:h", long_options, &opt_index)) != -1) {
+	while ((c = getopt_long(argc, argv, "r:a:fh", long_options, &opt_index)) != -1) {
 	    switch (c) {
 		case 'r':
 		    mode = REMOVE;
@@ -53,6 +55,9 @@ int main(int argc, char ** argv) {
 		case 'a':
 		    mode = ADD;
 		    name = optarg;
+		    break;
+		case 'f':
+		    force = 1;
 		    break;
 		case 'h':
 		case '?':
@@ -117,7 +122,7 @@ int main(int argc, char ** argv) {
 	    return -1;
 	}
 	
-	if (v3_add_pci(name, bus, dev, fn) != 0) {
+	if (v3_add_pci(name, bus, dev, fn, force) != 0) {
 	    printf("Error: Could not add PCI device\n");
 	    return -1;
 	}
@@ -140,7 +145,7 @@ int main(int argc, char ** argv) {
 	}
 	
 
-	if (v3_remove_pci(name, bus, dev, fn) != 0) {
+	if (v3_remove_pci(name, bus, dev, fn, force) != 0) {
 	    printf("Error: Could not remove pci device\n");
 	    return -1;
 	}

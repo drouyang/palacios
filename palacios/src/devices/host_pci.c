@@ -886,6 +886,8 @@ setup_virt_pci_dev(struct v3_vm_info * vm_info,
 static int 
 host_dev_free(struct host_pci_state * state) 
 {
+    V3_Print("Freeing Host PCI device (%s)\n", state->name);
+
     v3_host_pci_release_dev(state->host_dev);
 
     /* Free msix table pages */
