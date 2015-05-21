@@ -130,6 +130,8 @@ file_eq_fn(addr_t key1, addr_t key2)
     return (strcmp(name1, name2) == 0);
 }
 
+
+
 static struct v3_config * 
 parse_config(void * cfg_blob) 
 {
@@ -483,6 +485,29 @@ allocate_guest(int num_cores)
     return vm;
 }
 
+static void 
+config_error(struct v3_vm_info * vm)
+{
+    int i = 0;
+
+    if (vm == NULL) {
+	return;
+    }
+
+    v3_free_vm_devices(vm);
+
+    // free cores
+    for (i = 0; i < vm->num_cores; i++) {
+	v3_free_core(&(vm->cores[i]));
+    }
+
+    // free vm
+    v3_free_vm_internal(vm);
+
+    v3_free_config(vm);
+
+    V3_Free(vm);
+}
 
 
 struct v3_vm_info * 
@@ -538,6 +563,7 @@ v3_config_guest(void * cfg_blob,
 
     if (pre_config_vm(vm, vm->cfg_data->cfg) == -1) {
 	PrintError("Error in preconfiguration\n");
+	config_error(vm);
 	return NULL;
     }
 
@@ -554,6 +580,7 @@ v3_config_guest(void * cfg_blob,
 
 	if (pre_config_core(core, per_core_cfg) == -1) {
 	    PrintError("Error in core %d preconfiguration\n", i);
+	    config_error(vm);
 	    return NULL;
 	}
 
@@ -566,6 +593,7 @@ v3_config_guest(void * cfg_blob,
 
     if (post_config_vm(vm, vm->cfg_data->cfg) == -1) {
 	PrintError("Error in postconfiguration\n");
+	config_error(vm);
 	return NULL;
     }
 
