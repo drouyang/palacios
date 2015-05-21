@@ -110,51 +110,51 @@ v3_add_device(pet_xml_t root, pet_xml_t device)
 }
 
 
-static int
+static pet_xml_t
 add_ide(pet_xml_t   root,
 	char      * file_path,
 	char      * id,
-	u8          writable,
-	u8          bus_num,
-	u8          drive_num,
-	u8          is_cdrom)
+	uint8_t     writable,
+	uint8_t     bus_num,
+	uint8_t     drive_num,
+	uint8_t     is_cdrom)
 {
-  pet_xml_t hd          = NULL;
-  pet_xml_t hd_frontend = NULL;
+  pet_xml_t dev      = NULL;
+  pet_xml_t frontend = NULL;
 
   char * bus_str = NULL;
   char * drv_str = NULL;
 
-  hd = pet_xml_new_tree("device");
+  dev = pet_xml_new_tree("device");
 
-  hd_frontend = pet_xml_add_subtree(hd, "frontend");
+  frontend = pet_xml_add_subtree(dev, "frontend");
   
-  pet_xml_add_val(hd,          "id"      ,  id       );
-  pet_xml_add_val(hd,          "class"   , "FILEDISK");
-  pet_xml_add_val(hd,          "writable", ((writable == 1) ? "1" : "0")  );
-  pet_xml_add_val(hd,          "path"    , hd_path   );
-  pet_xml_add_val(hd_frontend, "tag"     , "ide"     );
+  pet_xml_add_val(dev,       "id"      ,  id       );
+  pet_xml_add_val(dev,       "class"   , "FILEDISK");
+  pet_xml_add_val(dev,       "writable", ((writable == 1) ? "1" : "0")  );
+  pet_xml_add_val(dev,       "path"    , file_path   );
+  pet_xml_add_val(frontend, "tag"     , "ide"     );
 
   if ( is_cdrom ) {
-      pet_xml_add_val(cd_frontend, "model" , "V3Vee CDROM");
-      pet_xml_add_val(cd_frontend, "type"  , "CDROM"      );
+      pet_xml_add_val(frontend, "model" , "V3Vee CDROM");
+      pet_xml_add_val(frontend, "type"  , "CDROM"      );
   } else {
-      pet_xml_add_val(hd_frontend, "model" , "V3Vee HDD");
-      pet_xml_add_val(hd_frontend, "type"  , "HD" );    
+      pet_xml_add_val(frontend, "model" , "V3Vee HDD");
+      pet_xml_add_val(frontend, "type"  , "HD" );    
   }
 
   asprintf(&bus_str, "%u", bus_num);
   asprintf(&drv_str, "%u", drive_num);
   
-  pet_xml_add_val(hd_frontend, "bus_num"  , bus_str );
-  pet_xml_add_val(hd_frontend, "drive_num", drv_str );
+  pet_xml_add_val(frontend, "bus_num"  , bus_str );
+  pet_xml_add_val(frontend, "drive_num", drv_str );
   
   free(bus_str);
   free(drv_str);
     
-  v3_add_device(root, hd);
+  v3_add_device(root, dev);
 
-  return hd;
+  return dev;
 }
 
 
@@ -246,31 +246,14 @@ v3_add_curses(pet_xml_t root)
   return curses;
 }
 
-//TODO
-//seperate into disable large pages, disable nested paging
-static pet_xml_t
-set_paging(pet_xml_t root, char* mode, char* large)
-{
-  pet_xml_t page = NULL;
-  
-  page = pet_xml_new_tree("paging");
-
-  pet_xml_add_val(page, "mode", mode);
-  pet_xml_add_val(page, "large_pages", large);
-
-  ezxml_insert(page, root, 0);
-  
-  return root;
-}
-
 
 int
-v3_set_mem_size(pet_xml_t root, u32 mem_size)
+v3_set_mem_size(pet_xml_t root, uint64_t mem_size)
 {
   pet_xml_t mem_tree = NULL;
-  char*     mem_str  = NULL 
+  char*     mem_str  = NULL;
 
-  asprintf(&mem_str, "%u", mem_size);
+  asprintf(&mem_str, "%lu", mem_size);
 
   mem_tree = pet_xml_add_subtree(root, "memory");
   pet_xml_add_val(mem_tree, "size", mem_str );
@@ -282,7 +265,7 @@ v3_set_mem_size(pet_xml_t root, u32 mem_size)
 
 
 int
-v3_set_num_cpus(pet_xml_t root, int num_cpus)
+v3_set_num_cpus(pet_xml_t root, uint32_t num_cpus)
 {
   pet_xml_t core_tree = NULL;
   char*     cpu_str   = NULL;
@@ -303,7 +286,7 @@ v3_set_num_cpus(pet_xml_t root, int num_cpus)
 }
 
 
-void
+int
 v3_disable_large_pages(pet_xml_t root)
 {
   pet_xml_t iter = NULL;
@@ -318,7 +301,7 @@ v3_disable_large_pages(pet_xml_t root)
 }
 
 
-void
+int
 v3_disable_nested_pages(pet_xml_t root)
 {
   pet_xml_t pages = NULL;
