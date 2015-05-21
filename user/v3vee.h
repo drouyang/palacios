@@ -7,6 +7,7 @@
 #define __V3VEE_H__
 
 #include "v3_types.h"
+#include "config.h"
 #include <ezxml.h>
 
 

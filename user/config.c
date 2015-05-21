@@ -1,23 +1,17 @@
-//xml config
-//Charles Smith <cas275@pitt.edu>
-
-
-
-#include "pet_xml.h"
-#include "v3_config.h"
-#include "ezxml.h"
+/* xml config
+ * (c) 2015, Charles Smith <cas275@pitt.edu>
+ */
 #include <string.h>
 
+#include <pet_xml.h>
+#include <ezxml.h>  /* TODO: Remove EZXML dependencies and go through pet_xml API */
 
-//methods that should only need to be used in here
-//the rest can be found in "config.h"
-pet_xml_t  v3_set_mem_amount(pet_xml_t root, int  mem_amount );
-pet_xml_t     v3_set_num_cpu(pet_xml_t root, int  num_cpu    );
-void               v3_add_hd(pet_xml_t root, char* hd_path, char* id, char* drive_num);
+#include "config.h"
+
 
 
 pet_xml_t 
-v3_create_config(int  mem_amount, int  num_cpu)
+v3_create_default_config(int  mem_size, int  num_cpus)
 {
   pet_xml_t    root         = NULL;
   pet_xml_t    apic         = NULL;
@@ -31,10 +25,10 @@ v3_create_config(int  mem_amount, int  num_cpu)
   
   
   root = pet_xml_new_tree("vm");
-  ezxml_set_attr(root, "class", "PC");
+  pet_xml_add_val(root, "class", "PC");
 
 
-  v3_set_mem_amount(root,  mem_amount);
+  v3_set_mem_size(root,  mem_size);
 
 
   /* sets the paging to the defaults */
@@ -43,7 +37,7 @@ v3_create_config(int  mem_amount, int  num_cpu)
     
     page = pet_xml_new_tree("paging");
     
-    ezxml_set_attr(page, "mode", "nested");
+    pet_xml_add_val(page, "mode", "nested");
     pet_xml_add_val(page, "large_pages", "true");
     
     ezxml_insert(page, root, 0); 
@@ -53,7 +47,7 @@ v3_create_config(int  mem_amount, int  num_cpu)
   pet_xml_add_val(root, "schedule_hz", "100");
 
 
-  v3_set_num_cpu(root,  num_cpu  );
+  v3_set_num_cpus(root,  num_cpus  );
 
 
   pet_xml_add_subtree(root, "devices");
@@ -116,89 +110,80 @@ v3_add_device(pet_xml_t root, pet_xml_t device)
 }
 
 
-void
-v3_add_hd(pet_xml_t root, char* hd_path, char* id, char* drive_num)
+static int
+add_ide(pet_xml_t   root,
+	char      * file_path,
+	char      * id,
+	u8          writable,
+	u8          bus_num,
+	u8          drive_num,
+	u8          is_cdrom)
 {
   pet_xml_t hd          = NULL;
   pet_xml_t hd_frontend = NULL;
 
+  char * bus_str = NULL;
+  char * drv_str = NULL;
 
   hd = pet_xml_new_tree("device");
 
   hd_frontend = pet_xml_add_subtree(hd, "frontend");
   
-  ezxml_set_attr(hd         , "id"      ,  id       );
-  ezxml_set_attr(hd         , "class"   , "FILEDISK");
-  ezxml_set_attr(hd         , "writable", "1"       );
-  ezxml_set_attr(hd_frontend, "tag"     , "ide"     );
+  pet_xml_add_val(hd,          "id"      ,  id       );
+  pet_xml_add_val(hd,          "class"   , "FILEDISK");
+  pet_xml_add_val(hd,          "writable", ((writable == 1) ? "1" : "0")  );
+  pet_xml_add_val(hd,          "path"    , hd_path   );
+  pet_xml_add_val(hd_frontend, "tag"     , "ide"     );
 
-  pet_xml_add_val(hd         , "path"     , hd_path    );
-  pet_xml_add_val(hd_frontend, "model"    , "V3Vee HDD");
-
-  if(atoi(drive_num)<3){
-    pet_xml_add_val(hd_frontend, "bus_num"  , "0"        );
-    pet_xml_add_val(hd_frontend, "drive_num", drive_num  );
+  if ( is_cdrom ) {
+      pet_xml_add_val(cd_frontend, "model" , "V3Vee CDROM");
+      pet_xml_add_val(cd_frontend, "type"  , "CDROM"      );
+  } else {
+      pet_xml_add_val(hd_frontend, "model" , "V3Vee HDD");
+      pet_xml_add_val(hd_frontend, "type"  , "HD" );    
   }
-  else{
-    pet_xml_add_val(hd_frontend, "bus_num"  , "1" );
-    pet_xml_add_val(hd_frontend, "drive_num", "1" );
-  }    
 
-  pet_xml_add_val(hd_frontend, "type"     , "HD" );
-
+  asprintf(&bus_str, "%u", bus_num);
+  asprintf(&drv_str, "%u", drive_num);
+  
+  pet_xml_add_val(hd_frontend, "bus_num"  , bus_str );
+  pet_xml_add_val(hd_frontend, "drive_num", drv_str );
+  
+  free(bus_str);
+  free(drv_str);
+    
   v3_add_device(root, hd);
 
+  return hd;
 }
 
 
 pet_xml_t
 v3_add_hda(pet_xml_t root, char* hd_path)
 {
-  v3_add_hd(root, hd_path, "hd0", "0");
-  return root;
+    return add_ide(root, hd_path, "hda", 1, 0, 0, 0);
 }
 
 
 pet_xml_t
 v3_add_hdb(pet_xml_t root, char* hd_path)
 {
-  v3_add_hd(root, hd_path, "hd1", "1");
-  return root;
+    return add_ide(root, hd_path, "hdb", 1, 0, 1, 0);
 }
 
 
+/*
 pet_xml_t
 v3_add_hdc(pet_xml_t root, char* hd_path)
 {
-  v3_add_hd(root, hd_path, "hd2", "2");
-  return root;
+    return add_ide(root, hd_path, "hdb", 1, 1, 0, 0);
 }
-
+*/
 
 pet_xml_t
 v3_add_cd(pet_xml_t root, char* cd_path)
 {
-  pet_xml_t cd          = NULL;
-  pet_xml_t cd_frontend = NULL;
-
-  cd = pet_xml_new_tree("device");
-
-  cd_frontend = pet_xml_add_subtree(cd, "frontend");
-  
-  ezxml_set_attr(cd         , "id"      , "cd"      );
-  ezxml_set_attr(cd         , "class"   , "FILEDISK");
-  ezxml_set_attr(cd         , "writable", "0"       );
-  ezxml_set_attr(cd_frontend, "tag"     , "ide"     );
-
-  pet_xml_add_val(cd         , "path"     , cd_path      );
-  pet_xml_add_val(cd_frontend, "model"    , "V3Vee CDROM");
-  pet_xml_add_val(cd_frontend, "bus_num"  , "1"          );
-  pet_xml_add_val(cd_frontend, "drive_num", "0"          );
-  pet_xml_add_val(cd_frontend, "type"     , "CDROM"      );
-
-  v3_add_device(root, cd);
-  
-  return root;
+    return add_ide(root, cd_path, "cdrom", 0, 1, 0, 1);
 }
 
 
@@ -207,13 +192,19 @@ v3_add_vd(pet_xml_t root, char* vd_path)
 {
   pet_xml_t vd = NULL;
 
+  /* TODO: Count how many virtio block devices are already present
+           Set the ID to be LNX_VIRTIO_BLK-<index> based on that count
+  */
   vd = v3_make_device("blk_virtio", "LNX_VIRTIO_BLK");
-  
+
+
+  /* TODO: Add search function to find the PCI device 
+   */
   pet_xml_add_val(vd , "bus" , "pci0");
 
   v3_add_device(root, vd); 
   
-  return root;
+  return vd;
 }
 
 
@@ -225,8 +216,8 @@ v3_make_device(char* id, char* class)
   
   device = pet_xml_new_tree("device");
   
-  ezxml_set_attr(device, "id"   , id   );
-  ezxml_set_attr(device, "class", class);
+  pet_xml_add_val(device, "id"   , id   );
+  pet_xml_add_val(device, "class", class);
   
   return device;
 }
@@ -245,26 +236,26 @@ v3_add_curses(pet_xml_t root)
 
   curses_front = pet_xml_add_subtree(curses, "frontend");
 
-  ezxml_set_attr(curses_front , "tag"        , "cga"    );
-  ezxml_set_attr(cga          , "passthrough", "disable");
+  pet_xml_add_val(curses_front , "tag"        , "cga"    );
+  pet_xml_add_val(cga          , "passthrough", "disable");
 
   v3_add_device( root , cga   );
   v3_add_device( root , curses);
   
 
-  return root;
+  return curses;
 }
 
 //TODO
 //seperate into disable large pages, disable nested paging
-pet_xml_t
+static pet_xml_t
 set_paging(pet_xml_t root, char* mode, char* large)
 {
   pet_xml_t page = NULL;
   
   page = pet_xml_new_tree("paging");
 
-  ezxml_set_attr(page, "mode", mode);
+  pet_xml_add_val(page, "mode", mode);
   pet_xml_add_val(page, "large_pages", large);
 
   ezxml_insert(page, root, 0);
@@ -273,37 +264,42 @@ set_paging(pet_xml_t root, char* mode, char* large)
 }
 
 
-pet_xml_t
-v3_set_mem_amount(pet_xml_t root, int mem_amount)
+int
+v3_set_mem_size(pet_xml_t root, u32 mem_size)
 {
-  pet_xml_t memory = NULL;
-  char*      mem   = malloc(32);
+  pet_xml_t mem_tree = NULL;
+  char*     mem_str  = NULL 
 
-  sprintf(mem, "%d", mem_amount);
-  memory = pet_xml_add_subtree(root, "memory");
-  ezxml_set_attr(memory, "size", mem );
+  asprintf(&mem_str, "%u", mem_size);
 
-  return root;
+  mem_tree = pet_xml_add_subtree(root, "memory");
+  pet_xml_add_val(mem_tree, "size", mem_str );
+
+  free(mem_str);
+  
+  return 0;
 }
 
 
-pet_xml_t
-v3_set_num_cpu(pet_xml_t root, int num_cpu)
+int
+v3_set_num_cpus(pet_xml_t root, int num_cpus)
 {
-  pet_xml_t cores    = NULL;
-  int       i        = 0;
-  char*     cpu      = malloc(32);
+  pet_xml_t core_tree = NULL;
+  char*     cpu_str   = NULL;
+  int       i         = 0;
 
-  sprintf(cpu, "%d", num_cpu);
+  asprintf(&cpu_str, "%u", num_cpus);
 
-  cores = pet_xml_add_subtree(root, "cores");
-  ezxml_set_attr(cores, "count", cpu);
+  core_tree = pet_xml_add_subtree(root, "cores");
+  pet_xml_add_val(core_tree, "count", cpu_str);
 
-  for(i = 0; i < num_cpu; i++){
-    pet_xml_add_val(cores, "core", "");
+  for(i = 0; i < num_cpus; i++){
+    pet_xml_add_val(core_tree, "core", "");
   }
 
-  return root;
+  free(cpu_str);
+  
+  return 0;
 }
 
 
@@ -317,7 +313,8 @@ v3_disable_large_pages(pet_xml_t root)
   if(iter != NULL){
     ezxml_set_txt(iter, "false");
   }
-  
+
+  return 0;
 }
 
 
@@ -328,6 +325,7 @@ v3_disable_nested_pages(pet_xml_t root)
   
   pages = pet_xml_get_subtree(root, "paging");
   
-  ezxml_set_attr(pages, "mode", "shadow" );
+  pet_xml_add_val(pages, "mode", "shadow" );
 
+  return 0;
 }

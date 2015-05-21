@@ -1,4 +1,3 @@
-
 #
 # Build Static or Dynamic versions of the control utilities
 #
@@ -57,6 +56,7 @@ execs-$(V3_CONFIG_CHECKPOINT) += 	v3_save \
 libs-y := 	libv3vee_user.a
 
 libv3vee_user_objs :=	create.o \
+			config.o \
 			v3vee.o
 
 
