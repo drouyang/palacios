@@ -893,7 +893,7 @@ xpmem_raise_irq(struct v3_xpmem_state * v3_xpmem)
     }
     v3_spin_unlock(&(v3_xpmem->lock));
 
-    PrintDebug("Raising XPMEM irq for command %d\n", iter->cmd->type);
+    PrintDebug("Raising XPMEM irq for command %s\n", xpmem_op_to_str(iter->cmd->type));
 
     /* Tell the guest to allocate a buffer if this is an attachment */
     if (iter->cmd->type == XPMEM_ATTACH) {
