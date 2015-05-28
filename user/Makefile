@@ -33,7 +33,8 @@ execs-y := 	v3_mem \
 		v3_continue \
 		v3_core_move \
 		v3_debug \
-		v3_create
+		v3_create \
+		v3_start
 
 
 

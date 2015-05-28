@@ -8,12 +8,14 @@
 
 #include "config.h"
 
+#define SCHEDULE_HZ "100"
 
 
 pet_xml_t 
 v3_create_default_config(int  mem_size, int  num_cpus)
 {
   pet_xml_t    root         = NULL;
+  pet_xml_t    pic          = NULL;
   pet_xml_t    apic         = NULL;
   pet_xml_t    keyboard     = NULL;
   pet_xml_t    pit          = NULL;
@@ -44,23 +46,24 @@ v3_create_default_config(int  mem_size, int  num_cpus)
   }
 
 
-  pet_xml_add_val(root, "schedule_hz", "100");
+  pet_xml_add_val(root, "schedule_hz", SCHEDULE_HZ);
 
 
   v3_set_num_cpus(root,  num_cpus  );
 
 
-  pet_xml_add_subtree(root, "devices");
+  pet_xml_add_subtree_tail(root, "devices");
 
 
-  apic        = v3_make_device("LAPIC"   , "apic"         );
-  keyboard    = v3_make_device("KEYBOARD", "keyboard"     );
-  pit         = v3_make_device("8254_PIT", "PIT"          );
-  ioapic      = v3_make_device("IOAPIC"  , "ioapic"       );
-  pci         = v3_make_device("PCI"     , "pci0"         );
-  northbridge = v3_make_device("i440FX"  , "northbridge"  );
-  southbridge = v3_make_device("PIIX3"   , "southbridge"  );
-  nvram       = v3_make_device("NVRAM"   , "nvram"        );
+  pic         = v3_make_device("PIC"        , "8259A"      );
+  apic        = v3_make_device("apic"       , "LAPIC"      );
+  keyboard    = v3_make_device("keyboard"   , "KEYBOARD"   );
+  pit         = v3_make_device("PIT"        , "8254_PIT"   );
+  ioapic      = v3_make_device("ioapic"     , "IOAPIC"     );
+  pci         = v3_make_device("pci0"       , "PCI"        );
+  northbridge = v3_make_device("northbridge", "i440FX"     );
+  southbridge = v3_make_device("southbridge",  "PIIX4"     );
+  nvram       = v3_make_device("nvram"      , "NVRAM"      );
 
   
   pet_xml_add_val(ioapic     , "apic"   , "apic");
@@ -70,9 +73,10 @@ v3_create_default_config(int  mem_size, int  num_cpus)
   
   
 
-  v3_add_device( root , apic        );
+  v3_add_device( root , pic         );
   v3_add_device( root , keyboard    );
   v3_add_device( root , pit         );
+  v3_add_device( root , apic        );
   v3_add_device( root , ioapic      );
   v3_add_device( root , pci         );
   v3_add_device( root , northbridge );
@@ -82,7 +86,7 @@ v3_create_default_config(int  mem_size, int  num_cpus)
   {
     pet_xml_t ide = NULL;
     
-    ide = v3_make_device("IDE", "ide");
+    ide = v3_make_device("ide", "IDE");
     
     pet_xml_add_val(ide , "bus"        , "pci0"       );
     pet_xml_add_val(ide , "controller" , "southbridge");
@@ -125,9 +129,9 @@ add_ide(pet_xml_t   root,
   char * bus_str = NULL;
   char * drv_str = NULL;
 
-  dev = v3_make_device("FILEDISK", id);
+  dev = v3_make_device( id, "FILEDISK");
 
-  frontend = pet_xml_add_subtree(dev, "frontend");
+  frontend = pet_xml_add_subtree_tail(dev, "frontend");
   
   pet_xml_add_val(dev,      "writable", ((writable == 1) ? "1" : "0")  );
   pet_xml_add_val(dev,      "path"    , file_path   );
@@ -193,7 +197,7 @@ v3_add_vd(pet_xml_t root, char* vd_path)
   /* TODO: Count how many virtio block devices are already present
            Set the ID to be LNX_VIRTIO_BLK-<index> based on that count
   */
-  vd = v3_make_device("LNX_VIRTIO_BLK", "blk_virtio");
+  vd = v3_make_device( "blk_virtio", "LNX_VIRTIO_BLK");
 
 
   /* TODO: Add search function to find the PCI device 
@@ -229,10 +233,10 @@ v3_add_curses(pet_xml_t root)
   pet_xml_t    curses_front = NULL;
   pet_xml_t    cga          = NULL;
 
-  curses   = v3_make_device("CURSES_CONSOLE" , "curses" );
-  cga      = v3_make_device("CGA_VIDEO"      , "cga"    );
+  curses   = v3_make_device( "curses", "CURSES_CONSOLE" );
+  cga      = v3_make_device( "cga"   , "CGA_VIDEO"      );
 
-  curses_front = pet_xml_add_subtree(curses, "frontend");
+  curses_front = pet_xml_add_subtree_tail(curses, "frontend");
 
   pet_xml_add_val(curses_front , "tag"        , "cga"    );
   pet_xml_add_val(cga          , "passthrough", "disable");
@@ -271,11 +275,11 @@ v3_set_num_cpus(pet_xml_t root, uint32_t num_cpus)
 
   asprintf(&cpu_str, "%u", num_cpus);
 
-  core_tree = pet_xml_add_subtree(root, "cores");
+  core_tree = pet_xml_add_subtree_tail(root, "cores");
   pet_xml_add_val(core_tree, "count", cpu_str);
 
   for(i = 0; i < num_cpus; i++){
-    pet_xml_add_val(core_tree, "core", "");
+    pet_xml_add_subtree_tail(core_tree, "core");
   }
 
   free(cpu_str);
