@@ -2172,7 +2172,7 @@ apic_init(struct v3_vm_info * vm,
     for (i = 0; i < vm->num_cores; i++) {
 	struct apic_state * apic = &(apic_dev->apics[i]);
 	PrintDebug("apic: sanity check: apic %u (at %p) has id %u and msr value %llx and core at %p\n",
-		   i, apic, apic->lapic_id.val, apic->base_addr_msr.value,apic->core);
+		   i, apic, apic->lapic_id.val, apic->base_addr_msr.val, apic->core);
     }
 #endif
 
