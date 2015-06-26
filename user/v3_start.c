@@ -171,8 +171,8 @@ int main(int argc, char** argv)
   /*create the VM */
   {
     u8* img_data = NULL;
-    u32 img_size = NULL;
-    int vm_id    = NULL;
+    u32 img_size = 0;
+    int vm_id    = 0;
     int launch   = 0;
  
    
